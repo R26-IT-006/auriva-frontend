@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Auriva",
+    "slug": "auriva",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F0F2FA"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.auriva.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F0F2FA"
+      },
+      "package": "com.auriva.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Auriva to access your photos to upload profile pictures."
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-secure-store"
+    ]
+  }
+}
