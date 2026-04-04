@@ -1,115 +1,173 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   Text,
   StyleSheet,
   ActivityIndicator,
   View,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 
+const VARIANTS = {
+  primary: {
+    gradient:      ['#7C6FCD', '#5A8EE0'],
+    gradientPress: ['#5A4FB0', '#3D70C8'],
+    gradientDis:   ['#B0BED8', '#9AAEC8'],
+    textColor:     '#FFFFFF',
+    radius:        14,
+  },
+  outline: {
+    bg:            'transparent',
+    bgPress:       '#EFEDF8',
+    border:        Colors.primary,
+    textColor:     Colors.primary,
+    textPress:     '#5A4FB0',
+    radius:        14,
+  },
+  ghost: {
+    bg:            'transparent',
+    bgPress:       '#F0F2FA',
+    textColor:     Colors.primary,
+    textPress:     '#5A4FB0',
+    radius:        14,
+  },
+  danger: {
+    bg:            'transparent',
+    bgPress:       '#FFF0F3',
+    border:        Colors.status.error,
+    textColor:     Colors.status.error,
+    textPress:     '#CC1A3A',
+    radius:        14,
+  },
+};
+
+const SIZE = {
+  sm: { height: 38,  px: 14, fontSize: Layout.fontSize.sm, iconSize: 15 },
+  md: { height: 50,  px: 22, fontSize: Layout.fontSize.md, iconSize: 18 },
+  lg: { height: 56,  px: 30, fontSize: Layout.fontSize.lg, iconSize: 20 },
+};
+
 export function Button({
   title,
   onPress,
-  variant = 'primary', // 'primary' | 'outline' | 'ghost' | 'danger'
-  size = 'md',         // 'sm' | 'md' | 'lg'
+  variant = 'primary',
+  size    = 'md',
   loading = false,
   disabled = false,
-  icon = null,
+  icon    = null,
   style,
   textStyle,
 }) {
   const isDisabled = disabled || loading;
+  const pressed    = useRef(new Animated.Value(0)).current;
+  const cfg = VARIANTS[variant] || VARIANTS.primary;
+  const s   = SIZE[size] || SIZE.md;
 
-  const sizeStyles = {
-    sm: { height: 40, paddingHorizontal: 16 },
-    md: { height: 52, paddingHorizontal: 24 },
-    lg: { height: 58, paddingHorizontal: 32 },
-  };
+  function handlePressIn() {
+    Animated.spring(pressed, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
+  }
+  function handlePressOut() {
+    Animated.spring(pressed, { toValue: 0, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
+  }
 
-  const textSizes = {
-    sm: Layout.fontSize.sm,
-    md: Layout.fontSize.md,
-    lg: Layout.fontSize.lg,
-  };
+  const scale = pressed.interpolate({ inputRange: [0, 1], outputRange: [1, 0.96] });
 
+  const content = loading ? (
+    <ActivityIndicator color={variant === 'primary' ? '#FFF' : Colors.primary} size="small" />
+  ) : (
+    <View style={styles.row}>
+      {icon && <View style={styles.iconLeft}>{icon}</View>}
+      <Text style={[
+        styles.text,
+        { fontSize: s.fontSize, color: cfg.textColor },
+        textStyle,
+      ]}>
+        {title}
+      </Text>
+    </View>
+  );
+
+  // ── Primary: gradient button ────────────────────────────────────────────
   if (variant === 'primary') {
+    const gradColors = isDisabled ? cfg.gradientDis : cfg.gradient;
+    const gradPress  = isDisabled ? cfg.gradientDis : cfg.gradientPress;
+
     return (
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={isDisabled}
-        activeOpacity={0.85}
-        style={[styles.wrapper, sizeStyles[size], style]}
-      >
-        <LinearGradient
-          colors={isDisabled ? ['#B0BED8', '#9AAEC8'] : Colors.primaryGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.gradient}
+      <Animated.View style={[{ transform: [{ scale }] }, style]}>
+        <TouchableOpacity
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          disabled={isDisabled}
+          activeOpacity={1}
+          style={[styles.wrapper, { height: s.height, borderRadius: cfg.radius, opacity: isDisabled ? 0.6 : 1 }]}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <View style={styles.row}>
-              {icon && <View style={styles.iconLeft}>{icon}</View>}
-              <Text style={[styles.primaryText, { fontSize: textSizes[size] }, textStyle]}>
-                {title}
-              </Text>
-            </View>
-          )}
-        </LinearGradient>
-      </TouchableOpacity>
+          <LinearGradient
+            colors={gradColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.gradient, { borderRadius: cfg.radius }]}
+          >
+            {content}
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
     );
   }
 
-  const outlineStyle = variant === 'outline' ? styles.outline : {};
-  const ghostStyle = variant === 'ghost' ? styles.ghost : {};
-  const dangerStyle = variant === 'danger' ? styles.danger : {};
+  // ── Outline / Ghost / Danger ─────────────────────────────────────────────
+  const bgColor   = pressed.interpolate({ inputRange: [0, 1], outputRange: [cfg.bg || 'transparent', cfg.bgPress || 'transparent'] });
+  const txtColor  = pressed.interpolate({ inputRange: [0, 1], outputRange: [cfg.textColor, cfg.textPress || cfg.textColor] });
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={isDisabled}
-      activeOpacity={0.75}
-      style={[
-        styles.base,
-        sizeStyles[size],
-        outlineStyle,
-        ghostStyle,
-        dangerStyle,
-        isDisabled && styles.disabledBase,
-        style,
-      ]}
-    >
-      {loading ? (
-        <ActivityIndicator
-          color={variant === 'danger' ? Colors.status.error : Colors.primary}
-          size="small"
-        />
-      ) : (
-        <View style={styles.row}>
-          {icon && <View style={styles.iconLeft}>{icon}</View>}
-          <Text
-            style={[
-              styles.baseText,
-              { fontSize: textSizes[size] },
-              variant === 'danger' && { color: Colors.status.error },
-              textStyle,
-            ]}
-          >
-            {title}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+        activeOpacity={1}
+        style={{ borderRadius: cfg.radius, overflow: 'hidden', opacity: isDisabled ? 0.5 : 1 }}
+      >
+        <Animated.View style={[
+          styles.base,
+          {
+            height: s.height,
+            paddingHorizontal: s.px,
+            borderRadius: cfg.radius,
+            backgroundColor: bgColor,
+            borderWidth:  cfg.border ? 1.5 : 0,
+            borderColor:  cfg.border || 'transparent',
+          },
+        ]}>
+          {loading ? (
+            <ActivityIndicator
+              color={variant === 'danger' ? Colors.status.error : Colors.primary}
+              size="small"
+            />
+          ) : (
+            <View style={styles.row}>
+              {icon && <View style={styles.iconLeft}>{icon}</View>}
+              <Animated.Text style={[
+                styles.text,
+                { fontSize: s.fontSize, color: txtColor },
+                textStyle,
+              ]}>
+                {title}
+              </Animated.Text>
+            </View>
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderRadius: Layout.radius.full,
     overflow: 'hidden',
   },
   gradient: {
@@ -117,41 +175,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryText: {
-    color: '#FFFFFF',
-    fontWeight: Layout.fontWeight.bold,
-    letterSpacing: 0.3,
-  },
   base: {
-    borderRadius: Layout.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  outline: {
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    backgroundColor: 'transparent',
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
-  danger: {
-    borderWidth: 1.5,
-    borderColor: Colors.status.error,
-    backgroundColor: 'transparent',
-  },
-  disabledBase: {
-    opacity: 0.5,
-  },
-  baseText: {
-    color: Colors.primary,
-    fontWeight: Layout.fontWeight.semibold,
+  text: {
+    fontWeight: Layout.fontWeight.bold,
+    letterSpacing: 0.2,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconLeft: {
-    marginRight: 8,
+    marginRight: 7,
   },
 });

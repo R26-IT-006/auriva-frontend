@@ -19,6 +19,9 @@ import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { principalApi } from '../../../api/principal';
 import { formatDate } from '../../../utils/formatters';
+import { useToast } from '../../../context/ToastContext';
+import { Breadcrumb } from '../../../components/common/Breadcrumb';
+import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 
 function InfoRow({ icon, label, value }) {
   if (!value) return null;
@@ -49,11 +52,13 @@ export default function StudentDetailScreen({ route, navigation }) {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
+  const toast = useToast();
   const [student, setStudent] = useState(initialStudent);
   const [teachers, setTeachers] = useState([]);
   const [deleting, setDeleting] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   const fetch = useCallback(async () => {
     try {
@@ -104,36 +109,28 @@ export default function StudentDetailScreen({ route, navigation }) {
     try {
       const updated = await principalApi.assignStudent(student.sid, teacherId);
       setStudent(updated);
-      Alert.alert('Success', teacherId ? 'Student assigned successfully!' : 'Student unassigned.');
+      toast.show(teacherId ? 'Student assigned successfully!' : 'Student unassigned.');
     } catch (err) {
-      Alert.alert('Error', err.message);
+      toast.show(err.message, 'error');
     } finally {
       setAssigning(false);
     }
   }
 
   function handleDelete() {
-    Alert.alert(
-      'Delete Student',
-      `Are you sure you want to delete ${student.full_name}? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await principalApi.deleteStudent(student.sid);
-              navigation.popToTop();
-            } catch (err) {
-              Alert.alert('Error', err.message);
-              setDeleting(false);
-            }
-          },
-        },
-      ]
-    );
+    setConfirmVisible(true);
+  }
+
+  async function confirmDelete() {
+    setConfirmVisible(false);
+    setDeleting(true);
+    try {
+      await principalApi.deleteStudent(student.sid);
+      navigation.popToTop();
+    } catch (err) {
+      toast.show(err.message, 'error');
+      setDeleting(false);
+    }
   }
 
   if (!student) return null;
@@ -161,13 +158,19 @@ export default function StudentDetailScreen({ route, navigation }) {
           )}
         </View>
         <Button
-          title={student.teacher_id ? 'Reassign' : 'Assign'}
+          title={student.teacher_id ? 'Assigned' : 'Assign'}
           size="sm"
-          variant={student.teacher_id ? 'outline' : 'primary'}
+          variant="outline"
           onPress={handleAssign}
           loading={assigning}
+          disabled={!!student.teacher_id}
         />
       </View>
+      {student.teacher_id && (
+        <Text style={styles.assignLocked}>
+          Once assigned, a student cannot be reallocated to another teacher.
+        </Text>
+      )}
     </Card>
   );
 
@@ -217,6 +220,13 @@ export default function StudentDetailScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Breadcrumb
+        crumbs={[
+          { label: 'Students', onPress: () => navigation.goBack() },
+          { label: student.full_name },
+        ]}
+        title={student.full_name}
+      />
       <ScrollView
         contentContainerStyle={[styles.scroll, isLandscape && styles.scrollLandscape]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetch(); }} />}
@@ -244,6 +254,17 @@ export default function StudentDetailScreen({ route, navigation }) {
           </>
         )}
       </ScrollView>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        title="Delete Student"
+        message={`Are you sure you want to delete ${student.full_name}? This action cannot be undone.`}
+        confirmLabel="Yes, Delete"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -272,6 +293,7 @@ const styles = StyleSheet.create({
   assignInfo: { flex: 1, marginRight: Layout.spacing.md },
   assignLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 4 },
   assignValue: { fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.semibold, color: Colors.text.primary },
+  assignLocked: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 8, fontStyle: 'italic' },
   section: { marginBottom: Layout.spacing.md },
   sectionTitle: {
     fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.bold,

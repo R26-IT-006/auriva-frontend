@@ -9,6 +9,7 @@ import PrincipalNavigator from './PrincipalNavigator';
 import TeacherNavigator from './TeacherNavigator';
 import SetPasswordScreen from '../screens/auth/SetPasswordScreen';
 import { Colors } from '../constants/colors';
+import { ToastProvider } from '../context/ToastContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +48,7 @@ export default function AppNavigator() {
     isAuthenticated && user?.role === 'teacher' && user?.is_first_login === true;
 
   return (
+    <ToastProvider>
     <NavigationContainer>
       {!isAuthenticated ? (
         <AuthNavigator />
@@ -58,6 +60,7 @@ export default function AppNavigator() {
         <TeacherNavigator />
       )}
     </NavigationContainer>
+    </ToastProvider>
   );
 }
 
