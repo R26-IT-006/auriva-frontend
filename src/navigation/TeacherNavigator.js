@@ -16,6 +16,7 @@ import PronunciationLearnWordScreen from "../screens/teacher/students/modules/pr
 import PronunciationMouthShapeScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationMouthShapeScreen";
 import PronunciationSpeakWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSpeakWordScreen";
 import PronunciationResultScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultScreen";
+import StudentDashboardScreen from "../screens/teacher/students/StudentDashboardScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -114,6 +115,10 @@ export default function TeacherNavigator() {
       <Stack.Screen name="WorkspaceSelect" component={WorkspaceSelectScreen} />
       <Stack.Screen name="TeacherMain" component={TeacherTabs} />
       <Stack.Screen name="StudentPicker" component={StudentPickerScreen} />
+      <Stack.Screen
+        name="StudentDashboard"
+        component={StudentDashboardScreen}
+      />
       <Stack.Screen
         name="StudentSession"
         component={TeacherStudentDetailScreen}
