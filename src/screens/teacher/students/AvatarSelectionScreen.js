@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { teacherApi } from '../../../api/teacher';
 import { Layout } from '../../../constants/layout';
 
 const AVATARS = [
@@ -89,8 +90,10 @@ export default function AvatarSelectionScreen({ navigation, route }) {
     if (!selected) return;
     setSaving(true);
     try {
+      await teacherApi.setAvatar(student.sid, selected.key);
+      // Cache locally so StudentPickerScreen can check without an extra request
       await AsyncStorage.setItem(`student_avatar_${student.sid}`, selected.key);
-      navigation.replace('StudentDashboard', { student: { ...student, avatar: selected.key } });
+      navigation.replace('StudentDashboard', { student: { ...student, avatar_key: selected.key } });
     } catch {
       setSaving(false);
     }

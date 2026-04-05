@@ -130,11 +130,13 @@ export default function StudentPickerScreen({ navigation }) {
                 index={index}
                 size={cardSize}
                 onPress={async () => {
-                  const avatar = await AsyncStorage.getItem(`student_avatar_${item.sid}`);
-                  if (!avatar) {
+                  // avatar_key comes from API; fall back to local cache if missing
+                  const avatarKey = item.avatar_key
+                    ?? await AsyncStorage.getItem(`student_avatar_${item.sid}`);
+                  if (!avatarKey) {
                     navigation.navigate('AvatarSelection', { student: item });
                   } else {
-                    navigation.navigate('StudentDashboard', { student: { ...item, avatar } });
+                    navigation.navigate('StudentDashboard', { student: { ...item, avatar_key: avatarKey } });
                   }
                 }}
               />

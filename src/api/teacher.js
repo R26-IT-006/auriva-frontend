@@ -30,4 +30,11 @@ export const teacherApi = {
     });
     return data;
   },
+
+  async setAvatar(studentId, avatarKey) {
+    const { data } = await client.post(ENDPOINTS.TEACHER_STUDENT_AVATAR(studentId), {
+      avatar_key: avatarKey,
+    });
+    return data;
+  },
 };
