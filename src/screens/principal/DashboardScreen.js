@@ -14,7 +14,6 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { principalApi } from '../../api/principal';
 
-// Muted, soft palette for kid-friendly UI
 const K = {
   purple:     '#8A80BC',
   purpleLight:'#EFEDF8',

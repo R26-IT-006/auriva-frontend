@@ -1,4 +1,3 @@
-import React from 'react'; // required for JSX
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,8 +7,10 @@ import { Layout } from '../constants/layout';
 import TeacherDashboardScreen    from '../screens/teacher/DashboardScreen';
 import TeacherStudentListScreen  from '../screens/teacher/students/StudentListScreen';
 import TeacherStudentDetailScreen from '../screens/teacher/students/StudentDetailScreen';
-import WorkspaceSelectScreen     from '../screens/teacher/WorkspaceSelectScreen';
-import StudentPickerScreen       from '../screens/teacher/students/StudentPickerScreen';
+import WorkspaceSelectScreen      from '../screens/teacher/WorkspaceSelectScreen';
+import StudentPickerScreen        from '../screens/teacher/students/StudentPickerScreen';
+import StudentDashboardScreen     from '../screens/teacher/students/StudentDashboardScreen';
+import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelectionScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -85,8 +86,10 @@ export default function TeacherNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WorkspaceSelect" component={WorkspaceSelectScreen} />
       <Stack.Screen name="TeacherMain"     component={TeacherTabs} />
-      <Stack.Screen name="StudentPicker"   component={StudentPickerScreen} />
-      <Stack.Screen name="StudentSession"  component={TeacherStudentDetailScreen} />
+      <Stack.Screen name="StudentPicker"    component={StudentPickerScreen} />
+      <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
+      <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
+      <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
     </Stack.Navigator>
   );
 }
