@@ -1,418 +1,295 @@
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  Image,
   TouchableOpacity,
   StyleSheet,
-  RefreshControl,
   useWindowDimensions,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar } from '../../../components/common/Avatar';
-import { Badge } from '../../../components/common/Badge';
-import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
+import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
-import { formatDate } from '../../../utils/formatters';
+import { useAuthStore } from '../../../store/authStore';
+import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
+import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { useToast } from '../../../context/ToastContext';
-import { useState, useCallback, useEffect } from 'react';
 
-// ── Dot-grid background (shared aesthetic with student workspace) ──────────────
-function DotGrid() {
-  const { width, height } = useWindowDimensions();
-  const GAP  = 28;
-  const COLS = Math.ceil(width  / GAP);
-  const ROWS = Math.ceil(height / GAP);
-  const dots = [];
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      dots.push(
-        <View
-          key={`${r}-${c}`}
-          style={{
-            position: 'absolute',
-            top:  r * GAP + 6,
-            left: c * GAP + 6,
-            width: 3, height: 3, borderRadius: 2,
-            backgroundColor: 'rgba(160,160,180,0.22)',
-          }}
-        />,
-      );
-    }
-  }
-  return <>{dots}</>;
-}
+const AVATAR_MAP = {
+  boba:     require('../../../../assets/avatar-images/Boba.png'),
+  glitter:  require('../../../../assets/avatar-images/Glitter.png'),
+  lily:     require('../../../../assets/avatar-images/Lily.png'),
+  megatron: require('../../../../assets/avatar-images/Megatron.png'),
+};
 
-// ── Quick-info tile ────────────────────────────────────────────────────────────
-function InfoTile({ icon, label, value, color, bg }) {
-  return (
-    <View style={[styles.tile, { borderLeftColor: color }]}>
-      <View style={[styles.tileIcon, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={18} color={color} />
-      </View>
-      <View style={styles.tileText}>
-        <Text style={styles.tileLabel}>{label}</Text>
-        <Text style={styles.tileValue} numberOfLines={2}>{value || '—'}</Text>
-      </View>
-    </View>
-  );
-}
+const AVATAR_NAMES = {
+  boba: 'Boba', glitter: 'Glitter', lily: 'Lily', megatron: 'Megatron',
+};
 
-// ── Main screen ────────────────────────────────────────────────────────────────
+const MODULES = [
+  { key: 'concept',       label: 'Concept Learning',    icon: 'bulb-outline' },
+  { key: 'writing',       label: 'Writing Module',       icon: 'pencil-outline' },
+  { key: 'pronunciation', label: 'Pronunciation Module', icon: 'mic-outline' },
+  { key: 'dialogue',      label: 'Dialogue Module',      icon: 'chatbubbles-outline' },
+];
+
 export default function StudentDashboardScreen({ route, navigation }) {
-  const initialStudent = route.params?.student;
-  const toast = useToast();
+  const initialStudent    = route.params?.student;
+  const toast             = useToast();
+  const logout            = useAuthStore((s) => s.logout);
+  const { width } = useWindowDimensions();
 
-  const [student,          setStudent]          = useState(initialStudent);
-  const [hasActiveSession, setHasActiveSession] = useState(false);
-  const [sessionLoading,   setSessionLoading]   = useState(false);
-  const [refreshing,       setRefreshing]       = useState(false);
+  const [student,       setStudent]       = useState(initialStudent);
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [gateVisible,   setGateVisible]   = useState(false);
+  const [activeModule,  setActiveModule]  = useState(null);
 
   const fetch = useCallback(async () => {
     try {
       const data = await teacherApi.getStudent(initialStudent.sid);
       setStudent(data);
-    } catch {
-      // use cached
-    } finally {
-      setRefreshing(false);
-    }
+    } catch { /* keep cached */ }
   }, [initialStudent.sid]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  async function handleSessionToggle() {
-    setSessionLoading(true);
-    try {
-      if (hasActiveSession) {
-        await teacherApi.endSession(student.sid);
-        setHasActiveSession(false);
-        toast.show(`Session with ${student.full_name} has been recorded.`);
-      } else {
-        await teacherApi.startSession(student.sid);
-        setHasActiveSession(true);
-        toast.show(`Session with ${student.full_name} is now active.`);
-      }
-    } catch (err) {
-      toast.show(err.message, 'error');
-    } finally {
-      setSessionLoading(false);
-    }
-  }
-
   if (!student) return null;
 
+  const theme     = getAvatarTheme(student.avatar_key);
+  const firstName = student.full_name?.split(' ')[0] ?? student.full_name;
+
+  // Card dimensions
+  const H_PAD    = Layout.spacing.lg;
+  const GAP      = 12;
+  const cardSize  = Math.min((width - H_PAD * 2 - GAP) / 2, 175);
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      {/* Dot-pattern background */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <DotGrid />
-      </View>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safe} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+    <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
 
       {/* ── Top bar ──────────────────────────────────────────────── */}
       <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color={Colors.text.primary} />
+        <TouchableOpacity style={styles.iconBtn} onPress={() => setGateVisible(true)} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={20} color={theme.headingText} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle} numberOfLines={1}>Student Dashboard</Text>
-        <View style={styles.topBarRight} />
+
+        <View style={styles.topRight}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => navigation.navigate('StudentSession', { student })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-outline" size={20} color={theme.headingText} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setLogoutVisible(true)} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={20} color={theme.headingText} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingHorizontal: H_PAD }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); fetch(); }}
-            tintColor={Colors.primary}
-          />
-        }
       >
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <View style={styles.hero}>
-          <View style={styles.heroAvatar}>
-            <Avatar name={student.full_name} uri={student.profile_photo_url} size={96} />
-            {/* Session live indicator */}
-            {hasActiveSession && (
-              <View style={styles.liveRing}>
-                <View style={styles.liveDot} />
+        {/* ── Hero banner card ─────────────────────────────────── */}
+        <View style={[styles.heroBanner, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+          {/* Text side */}
+          <View style={styles.heroText}>
+            <Text style={[styles.heroGreeting, { color: theme.headingText, opacity: 0.5 }]}>Hello there 👋</Text>
+            <Text style={[styles.heroName, { color: theme.headingText }]}>Welcome Back,{'\n'}{firstName}!</Text>
+            {student.avatar_key && (
+              <View style={[styles.avatarBadge, { backgroundColor: theme.background, borderColor: theme.cardOutline }]}>
+                <Text style={[styles.avatarBadgeText, { color: theme.headingText }]}>
+                  {AVATAR_NAMES[student.avatar_key]}
+                </Text>
               </View>
             )}
           </View>
-          <Text style={styles.heroName}>{student.full_name}</Text>
-          <Text style={styles.heroCode}>{student.student_code}</Text>
-          <Badge label={student.disability} variant="info" style={{ marginTop: 6 }} />
+
+          {/* Avatar image */}
+          {student.avatar_key && (
+            <Image
+              source={AVATAR_MAP[student.avatar_key]}
+              style={styles.heroAvatar}
+              resizeMode="contain"
+            />
+          )}
         </View>
 
-        {/* ── Session control ───────────────────────────────────── */}
-        <View style={[styles.sessionCard, hasActiveSession && styles.sessionCardActive]}>
-          <View style={styles.sessionLeft}>
-            <View style={styles.sessionIndicatorRow}>
-              <View style={[styles.dot, hasActiveSession && styles.dotActive]} />
-              <Text style={[styles.sessionStatus, hasActiveSession && styles.sessionStatusActive]}>
-                {hasActiveSession ? 'Session Active' : 'No Active Session'}
-              </Text>
-            </View>
-            {hasActiveSession && (
-              <Text style={styles.sessionHint}>Session is currently in progress</Text>
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.sessionBtn, hasActiveSession && styles.sessionBtnEnd]}
-            onPress={handleSessionToggle}
-            disabled={sessionLoading}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={hasActiveSession ? 'stop-circle-outline' : 'play-circle-outline'}
-              size={17}
-              color="#FFF"
-            />
-            <Text style={styles.sessionBtnText}>
-              {sessionLoading ? '...' : hasActiveSession ? 'End' : 'Start'}
-            </Text>
-          </TouchableOpacity>
+        {/* ── Module grid ──────────────────────────────────────── */}
+        <View style={[styles.grid, { gap: GAP }]}>
+          {MODULES.map((m) => {
+            const isActive = activeModule === m.key;
+            return (
+              <TouchableOpacity
+                key={m.key}
+                style={[
+                  styles.moduleCard,
+                  {
+                    width: cardSize,
+                    height: cardSize,
+                    backgroundColor: isActive ? theme.button       : theme.cardSurface,
+                    borderColor:     isActive ? theme.button       : theme.cardOutline,
+                  },
+                ]}
+                onPress={() => {
+                  setActiveModule(isActive ? null : m.key);
+                  toast.show('Coming soon!', 'info');
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[
+                  styles.moduleIconWrap,
+                  { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : theme.background },
+                ]}>
+                  <Ionicons
+                    name={m.icon}
+                    size={28}
+                    color={isActive ? theme.buttonText : theme.cardOutline}
+                  />
+                </View>
+                <Text style={[
+                  styles.moduleLabel,
+                  { color: isActive ? theme.buttonText : theme.headingText },
+                ]}>
+                  {m.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* ── Quick info tiles ──────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>Student Info</Text>
-        <View style={styles.tilesGrid}>
-          <InfoTile
-            icon="calendar-outline"
-            label="Date of Birth"
-            value={formatDate(student.date_of_birth)}
-            color={Colors.primary}
-            bg={Colors.status.infoLight}
-          />
-          <InfoTile
-            icon="medical-outline"
-            label="Disability"
-            value={student.disability}
-            color="#C9973A"
-            bg="#FBF4E6"
-          />
-          {student.father_name ? (
-            <InfoTile
-              icon="person-outline"
-              label="Father's Name"
-              value={student.father_name}
-              color="#4AADA3"
-              bg="#E8F6F5"
-            />
-          ) : null}
-          {student.mobile_number ? (
-            <InfoTile
-              icon="call-outline"
-              label="Contact"
-              value={student.mobile_number}
-              color="#5BAF85"
-              bg="#EAF6F1"
-            />
-          ) : null}
-        </View>
-
-        {/* ── View full profile ─────────────────────────────────── */}
-        <TouchableOpacity
-          style={styles.profileBtn}
-          onPress={() => navigation.navigate('StudentSession', { student })}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="person-circle-outline" size={20} color={Colors.primary} />
-          <Text style={styles.profileBtnText}>View Full Profile</Text>
-          <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
-        </TouchableOpacity>
+        {/* ── Bottom spacer for nav bar ─────────────────────────── */}
+        <View style={{ height: 20 }} />
       </ScrollView>
+
+      <ParentGateModal
+        visible={gateVisible}
+        onSuccess={() => { setGateVisible(false); navigation.goBack(); }}
+        onCancel={() => setGateVisible(false)}
+      />
+
+      <ConfirmDialog
+        visible={logoutVisible}
+        title="Sign Out"
+        message="Are you sure you want to sign out?"
+        confirmLabel="Sign Out"
+        onConfirm={() => { setLogoutVisible(false); logout(); }}
+        onCancel={() => setLogoutVisible(false)}
+      />
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FAFAFA' },
-  scroll: {
-    paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xxl,
-    gap: Layout.spacing.md,
-  },
+  safe: { flex: 1 },
+  safeInner: { flex: 1 },
 
-  // ── Top bar ────────────────────────────────────────────────────────────────
+  // ── Top bar ──────────────────────────────────────────────────
   topBar: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.lg,
     paddingVertical: Layout.spacing.sm,
-    gap: Layout.spacing.sm,
   },
-  backBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  topBarTitle: {
-    flex: 1,
-    fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-    textAlign: 'center',
-  },
-  topBarRight: { width: 38 }, // balances the back button
-
-  // ── Hero ───────────────────────────────────────────────────────────────────
-  hero: {
+  topRight: { flexDirection: 'row', gap: Layout.spacing.sm },
+  iconBtn: {
+    width: 40, height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.6)',
     alignItems: 'center',
-    paddingVertical: Layout.spacing.lg,
-    gap: 4,
+    justifyContent: 'center',
   },
-  heroAvatar: { position: 'relative', marginBottom: 4 },
-  liveRing: {
-    position: 'absolute',
-    bottom: 2, right: 2,
-    width: 18, height: 18, borderRadius: 9,
-    backgroundColor: Colors.surface,
-    alignItems: 'center', justifyContent: 'center',
+
+  // ── Scroll ───────────────────────────────────────────────────
+  scroll: {
+    gap: Layout.spacing.md,
+    paddingBottom: Layout.spacing.lg,
   },
-  liveDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: Colors.status.success,
+
+  // ── Hero banner ──────────────────────────────────────────────
+  heroBanner: {
+    borderRadius: 24,
+    borderWidth: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    overflow: 'hidden',
+    minHeight: 160,
+    paddingLeft: Layout.spacing.lg,
+    paddingBottom: Layout.spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  heroText: {
+    flex: 1,
+    gap: 6,
+    paddingTop: Layout.spacing.lg,
+  },
+  heroGreeting: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '500',
   },
   heroName: {
-    fontSize: Layout.fontSize.xxl,
-    fontWeight: Layout.fontWeight.extrabold,
-    color: Colors.text.primary,
-    textAlign: 'center',
+    fontSize: 26,
+    fontWeight: '900',
+    lineHeight: 32,
+    letterSpacing: -0.5,
+  },
+  avatarBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: Layout.radius.full,
+    borderWidth: 1.5,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     marginTop: 4,
   },
-  heroCode: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.link,
-    fontWeight: Layout.fontWeight.medium,
+  avatarBadgeText: {
+    fontSize: Layout.fontSize.xs,
+    fontWeight: '700',
+  },
+  heroAvatar: {
+    width: 140,
+    height: 160,
   },
 
-  // ── Session card ───────────────────────────────────────────────────────────
-  sessionCard: {
+  // ── Module grid ──────────────────────────────────────────────
+  grid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  moduleCard: {
+    borderWidth: 2.5,
+    borderRadius: 22,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    padding: Layout.spacing.md,
-    borderWidth: 1.5,
-    borderColor: Colors.borderLight,
+    justifyContent: 'center',
+    gap: Layout.spacing.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     elevation: 2,
   },
-  sessionCardActive: {
-    borderColor: Colors.status.success,
-    backgroundColor: Colors.status.successLight,
-  },
-  sessionLeft: { flex: 1, marginRight: Layout.spacing.md },
-  sessionIndicatorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: Colors.icon.muted,
-  },
-  dotActive: { backgroundColor: Colors.status.success },
-  sessionStatus: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.secondary,
-  },
-  sessionStatusActive: { color: Colors.status.success },
-  sessionHint: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.status.success,
-    marginTop: 4,
-  },
-  sessionBtn: {
-    flexDirection: 'row',
+  moduleIconWrap: {
+    width: 52, height: 52,
+    borderRadius: 16,
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.sm,
-    borderRadius: Layout.radius.md,
+    justifyContent: 'center',
   },
-  sessionBtnEnd: { backgroundColor: Colors.status.error },
-  sessionBtnText: {
-    color: '#FFF',
+  moduleLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontWeight: '700',
+    textAlign: 'center',
+    paddingHorizontal: 8,
+    lineHeight: 18,
   },
 
-  // ── Tiles ──────────────────────────────────────────────────────────────────
-  sectionTitle: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-  },
-  tilesGrid: {
-    gap: Layout.spacing.sm,
-  },
-  tile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    padding: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    borderLeftWidth: 4,
-    gap: Layout.spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  tileIcon: {
-    width: 38, height: 38, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-  },
-  tileText: { flex: 1 },
-  tileLabel: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  tileValue: {
-    fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.primary,
-  },
-
-  // ── View full profile button ───────────────────────────────────────────────
-  profileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    padding: Layout.spacing.md,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    gap: Layout.spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  profileBtnText: {
-    flex: 1,
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.primary,
-  },
 });
