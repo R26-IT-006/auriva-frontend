@@ -9,12 +9,12 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { principalApi } from '../../api/principal';
 
-// Muted, soft palette for kid-friendly UI
 const K = {
   purple:     '#8A80BC',
   purpleLight:'#EFEDF8',
@@ -35,7 +35,7 @@ const K = {
 };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ emoji, iconName, iconBg, tag, value, subtitle, subtitleColor, description, dimValue, onPress }) {
+function StatCard({ iconName, iconBg, tag, value, subtitle, subtitleColor, description, dimValue, onPress }) {
   return (
     <TouchableOpacity style={[styles.statCard, { borderTopColor: iconBg, borderTopWidth: 4 }]} onPress={onPress} activeOpacity={0.82}>
       <View style={styles.statCardTop}>
@@ -132,7 +132,12 @@ export default function PrincipalDashboardScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ──────────────────────────────────────────────── */}
-        <View style={styles.headerCard}>
+        <LinearGradient
+          colors={['#1F6B52', '#17573F', '#0F4530', '#0A3324']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerCard}
+        >
           <View style={styles.headerLeft}>
             <Text style={styles.headerDate}>{today}</Text>
             <Text style={styles.greeting}>
@@ -144,7 +149,7 @@ export default function PrincipalDashboardScreen({ navigation }) {
               <Text style={styles.headerBadgeText}>Welcome back</Text>
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* ── Stat Cards ──────────────────────────────────────────── */}
         <View style={styles.statsRow}>
@@ -288,7 +293,6 @@ const styles = StyleSheet.create({
 
   // Header card
   headerCard: {
-    backgroundColor: '#3D5A9E',
     borderRadius: 24,
     padding: Layout.spacing.lg,
     flexDirection: 'row',
@@ -302,7 +306,7 @@ const styles = StyleSheet.create({
   },
   headerDate: {
     fontSize: Layout.fontSize.xs,
-    color: 'rgba(255,255,255,0.65)',
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: Layout.fontWeight.semibold,
     letterSpacing: 0.3,
   },
@@ -321,7 +325,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
