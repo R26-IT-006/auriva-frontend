@@ -11,6 +11,7 @@ import WorkspaceSelectScreen      from '../screens/teacher/WorkspaceSelectScreen
 import StudentPickerScreen        from '../screens/teacher/students/StudentPickerScreen';
 import StudentDashboardScreen     from '../screens/teacher/students/StudentDashboardScreen';
 import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelectionScreen';
+import ConceptCategoriesScreen    from '../screens/teacher/concept/ConceptCategoriesScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -88,7 +89,8 @@ export default function TeacherNavigator() {
       <Stack.Screen name="TeacherMain"     component={TeacherTabs} />
       <Stack.Screen name="StudentPicker"    component={StudentPickerScreen} />
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
-      <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
+      <Stack.Screen name="AvatarSelection"    component={AvatarSelectionScreen} />
+      <Stack.Screen name="ConceptCategories" component={ConceptCategoriesScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
     </Stack.Navigator>
   );

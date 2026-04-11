@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import {
   View,
   Text,
@@ -58,7 +58,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
 
   return (
     <LinearGradient
-      colors={['#1A1A2E', '#16213E']}
+      colors={['#1A6B7A', '#226F80', '#2E8FA3']}
       style={[styles.sidebar, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}
     >
 
@@ -117,9 +117,9 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
       <TouchableOpacity
         onPress={() => setSignOutVisible(true)}
         activeOpacity={0.7}
-        style={styles.row}
+        style={[styles.row, styles.signOutRow]}
       >
-        <Ionicons name="log-out-outline" size={ICON_SIZE} color="rgba(255,110,100,0.8)" />
+        <Ionicons name="log-out-outline" size={ICON_SIZE} color="#222222" />
         <Animated.Text numberOfLines={1} style={[styles.rowLabel, styles.signOutLabel, labelStyle]}>
           Sign Out
         </Animated.Text>
@@ -229,8 +229,10 @@ const styles = StyleSheet.create({
     color: WHITE,
   },
 
-  // ── Sign-out label tint ───────────────────────────────────────────────────
+  signOutRow: {
+    backgroundColor: '#F2F2F2',
+  },
   signOutLabel: {
-    color: 'rgba(255,110,100,0.8)',
+    color: '#222222',
   },
 });

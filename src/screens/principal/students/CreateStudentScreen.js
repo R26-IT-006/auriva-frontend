@@ -36,7 +36,7 @@ const K = {
   green:      '#5BAF85',
   greenLight: '#EAF6F1',
   bg:         '#F2F1F8',
-  banner:     '#3D5A9E',
+  banner:     '#0F3D2E',
 };
 
 const DISABILITY_OPTIONS = [

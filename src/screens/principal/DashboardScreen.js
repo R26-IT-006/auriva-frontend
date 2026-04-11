@@ -9,7 +9,6 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
@@ -131,25 +130,24 @@ export default function PrincipalDashboardScreen({ navigation }) {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ──────────────────────────────────────────────── */}
-        <LinearGradient
-          colors={['#1F6B52', '#17573F', '#0F4530', '#0A3324']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerCard}
-        >
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerDate}>{today}</Text>
-            <Text style={styles.greeting}>
-              {greeting},{'\n'}
-              <Text style={styles.greetingAccent}>Principal!</Text>
-            </Text>
-            <View style={styles.headerBadge}>
-              <Ionicons name="star" size={11} color={K.amber} />
-              <Text style={styles.headerBadgeText}>Welcome back</Text>
+        {/* ── Greeting ────────────────────────────────────────────── */}
+        <View style={styles.greetingRow}>
+          <View style={styles.greetingLeft}>
+            <View style={styles.greetingIconBox}>
+              <Ionicons name="school" size={22} color="#2E9CBB" />
+            </View>
+            <View style={styles.greetingTexts}>
+              <Text style={styles.greetingDate}>{today}</Text>
+              <Text style={styles.greetingText}>
+                {greeting}, <Text style={styles.greetingBold}>Principal!</Text>
+              </Text>
             </View>
           </View>
-        </LinearGradient>
+          <View style={styles.greetingBadge}>
+            <Ionicons name="star" size={11} color="#C9973A" />
+            <Text style={styles.greetingBadgeText}>Welcome back</Text>
+          </View>
+        </View>
 
         {/* ── Stat Cards ──────────────────────────────────────────── */}
         <View style={styles.statsRow}>
@@ -289,6 +287,58 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.lg,
     paddingBottom: Layout.spacing.xxl,
     gap: Layout.spacing.lg,
+  },
+
+  // Greeting
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  greetingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  greetingIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#E4F4FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  greetingTexts: {
+    gap: 2,
+  },
+  greetingDate: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.text.muted,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  greetingText: {
+    fontSize: Layout.fontSize.xl,
+    color: Colors.text.primary,
+    fontWeight: '400',
+  },
+  greetingBold: {
+    fontWeight: '900',
+    color: Colors.text.primary,
+  },
+  greetingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FBF4E6',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  greetingBadgeText: {
+    fontSize: Layout.fontSize.xs,
+    color: '#C9973A',
+    fontWeight: '600',
   },
 
   // Header card

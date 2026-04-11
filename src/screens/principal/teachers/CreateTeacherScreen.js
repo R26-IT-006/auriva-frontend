@@ -31,7 +31,7 @@ const K = {
   amber:      '#C9973A',
   amberLight: '#FBF4E6',
   bg:         '#F2F1F8',
-  banner:     '#3D5A9E',
+  banner:     '#0F3D2E',
 };
 
 function SectionHeader({ icon, label, color, bg }) {

@@ -30,8 +30,10 @@ const AVATAR_NAMES = {
   boba: 'Boba', glitter: 'Glitter', lily: 'Lily', megatron: 'Megatron',
 };
 
+const CONCEPT_ICON = require('../../../../assets/concepts/Concept Learning Module Icon.png');
+
 const MODULES = [
-  { key: 'concept',       label: 'Concept Learning',    icon: 'bulb-outline' },
+  { key: 'concept',       label: 'Concept Learning',    icon: 'bulb-outline',        image: CONCEPT_ICON },
   { key: 'writing',       label: 'Writing Module',       icon: 'pencil-outline' },
   { key: 'pronunciation', label: 'Pronunciation Module', icon: 'mic-outline' },
   { key: 'dialogue',      label: 'Dialogue Module',      icon: 'chatbubbles-outline' },
@@ -41,7 +43,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
   const initialStudent    = route.params?.student;
   const toast             = useToast();
   const logout            = useAuthStore((s) => s.logout);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const [student,       setStudent]       = useState(initialStudent);
   const [logoutVisible, setLogoutVisible] = useState(false);
@@ -63,9 +65,11 @@ export default function StudentDashboardScreen({ route, navigation }) {
   const firstName = student.full_name?.split(' ')[0] ?? student.full_name;
 
   // Card dimensions
-  const H_PAD    = Layout.spacing.lg;
-  const GAP      = 12;
-  const cardSize  = Math.min((width - H_PAD * 2 - GAP) / 2, 175);
+  const isLandscape = width > height;
+  const H_PAD   = Layout.spacing.lg;
+  const GAP     = 12;
+  const COLS    = isLandscape ? 4 : 2;
+  const cardSize = (width - H_PAD * 2 - GAP * (COLS - 1)) / COLS;
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
@@ -137,8 +141,12 @@ export default function StudentDashboardScreen({ route, navigation }) {
                   },
                 ]}
                 onPress={() => {
-                  setActiveModule(isActive ? null : m.key);
-                  toast.show('Coming soon!', 'info');
+                  if (m.key === 'concept') {
+                    navigation.navigate('ConceptCategories', { student });
+                  } else {
+                    setActiveModule(isActive ? null : m.key);
+                    toast.show('Coming soon!', 'info');
+                  }
                 }}
                 activeOpacity={0.8}
               >
@@ -146,11 +154,15 @@ export default function StudentDashboardScreen({ route, navigation }) {
                   styles.moduleIconWrap,
                   { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : theme.background },
                 ]}>
-                  <Ionicons
-                    name={m.icon}
-                    size={28}
-                    color={isActive ? theme.buttonText : theme.cardOutline}
-                  />
+                  {m.image ? (
+                    <Image source={m.image} style={styles.moduleIconImage} resizeMode="contain" />
+                  ) : (
+                    <Ionicons
+                      name={m.icon}
+                      size={28}
+                      color={isActive ? theme.buttonText : theme.cardOutline}
+                    />
+                  )}
                 </View>
                 <Text style={[
                   styles.moduleLabel,
@@ -278,17 +290,19 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  moduleIconImage: { width: 150, height: 150 },
   moduleIconWrap: {
-    width: 52, height: 52,
-    borderRadius: 16,
+    width: 154, height: 154,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
   moduleLabel: {
-    fontSize: Layout.fontSize.sm,
+    fontSize: Layout.fontSize.lg,
     fontWeight: '700',
     textAlign: 'center',
     paddingHorizontal: 8,
+    marginTop: 10,
     lineHeight: 18,
   },
 

@@ -87,7 +87,7 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
           <Text style={styles.prompt}>To continue, please enter the numbers</Text>
           <Text style={styles.codeWords}>
             {code.map((n) => WORDS[n]).join(', ')}
-          </Text>
+          </Text> 
 
           {/* ── Input boxes ──────────────────────────────────── */}
           <Animated.View style={[styles.boxes, { transform: [{ translateX: shakeAnim }] }]}>
