@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   ScrollView,
-  Switch,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
@@ -11,17 +11,16 @@ import {
   Alert,
   useWindowDimensions,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { useAuthStore } from '../../store/authStore';
 
-// Role selector pill
 function RolePill({ label, active, onPress }) {
   return (
     <TouchableOpacity
@@ -44,7 +43,6 @@ export default function LoginScreen({ navigation }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
   const [errors, setErrors] = useState({});
 
   const login = useAuthStore((s) => s.login);
@@ -64,49 +62,26 @@ export default function LoginScreen({ navigation }) {
     try {
       await login(role, identifier.trim(), password);
     } catch (err) {
-      Alert.alert(
-        'Login Failed',
-        err.message || 'Invalid ID or password. Please try again.'
-      );
+      Alert.alert('Login Failed', err.message || 'Invalid ID or password. Please try again.');
     } finally {
       setLoading(false);
     }
   }
 
-  function handleDemoToggle(value) {
-    setDemoMode(value);
-    if (value) {
-      setRole('teacher');
-      setIdentifier('demo');
-      setPassword('auriva123');
-    } else {
-      setIdentifier('');
-      setPassword('');
-    }
-  }
-
   const brandSection = (
     <View style={[styles.brandSection, isLandscape && styles.brandSectionLandscape]}>
-      <View style={styles.logoContainer}>
-        <View style={styles.logo}>
-          <Ionicons name="flash" size={isLandscape ? 24 : 32} color="#FFFFFF" />
-        </View>
+      <View style={styles.loginPicWrapper}>
+        <Image
+          source={require('../../../assets/Portrait LPic.png')}
+          style={styles.loginPic}
+          resizeMode="cover"
+        />
       </View>
-      <Text style={[styles.appName, isLandscape && styles.appNameLandscape]}>Auriva</Text>
-      {!isLandscape && (
-        <>
-          <Text style={styles.headline}>Welcome, Educator</Text>
-          <Text style={styles.subheadline}>
-            Log in to access personalized learning plans{'\n'}for your students.
-          </Text>
-        </>
-      )}
     </View>
   );
 
   const formSection = (
     <View style={[styles.formWrapper, isLandscape && styles.formWrapperLandscape]}>
-      {/* Role Selector */}
       <View style={styles.roleSelector}>
         <RolePill
           label="Teacher"
@@ -120,18 +95,16 @@ export default function LoginScreen({ navigation }) {
         />
       </View>
 
-      {/* Form Card */}
       <View style={styles.formCard}>
         <Input
           label={role === 'teacher' ? 'Teacher ID' : 'Username'}
           value={identifier}
           onChangeText={(v) => { setIdentifier(v); setErrors((e) => ({ ...e, identifier: null })); }}
           placeholder={role === 'teacher' ? 'Enter your Teacher ID' : 'Enter your username'}
-          keyboardType={role === 'teacher' ? 'default' : 'default'}
+          keyboardType="default"
           leftIcon={<Ionicons name="person-outline" size={18} color={Colors.icon.default} />}
           error={errors.identifier}
         />
-
         <Input
           label="Password"
           value={password}
@@ -142,91 +115,78 @@ export default function LoginScreen({ navigation }) {
           error={errors.password}
         />
 
-        <Button
-          title="Log In"
+        <TouchableOpacity
           onPress={handleLogin}
-          loading={loading}
+          disabled={loading}
+          activeOpacity={0.85}
           style={styles.loginBtn}
-        />
+        >
+          <LinearGradient
+            colors={['#4AABB8', '#52C07C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.loginBtnGradient}
+          >
+            {loading
+              ? <ActivityIndicator color="#FFF" size="small" />
+              : <Text style={styles.loginBtnText}>Log In</Text>
+            }
+          </LinearGradient>
+        </TouchableOpacity>
 
         {role === 'teacher' && (
-          <Pressable
-            onPress={() => navigation.navigate('ForgotPassword')}
-            style={styles.forgotPasswordRow}
-          >
+          <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPasswordRow}>
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </Pressable>
-        )}
-      </View>
-
-      {/* Demo Mode */}
-      <View style={styles.demoCard}>
-        <View style={styles.demoRow}>
-          <View style={styles.demoInfo}>
-            <Text style={styles.demoTitle}>Demo Mode</Text>
-            <Text style={styles.demoDesc}>Simulate a teacher login experience.</Text>
-          </View>
-          <Switch
-            value={demoMode}
-            onValueChange={handleDemoToggle}
-            trackColor={{ false: Colors.border, true: Colors.primaryLight }}
-            thumbColor={demoMode ? Colors.primary : Colors.surface}
-          />
-        </View>
-        {demoMode && (
-          <View style={styles.demoHint}>
-            <Text style={styles.demoHintText}>
-              Use ID <Text style={{ fontWeight: '700' }}>demo</Text> and password{' '}
-              <Text style={{ fontWeight: '700' }}>auriva123</Text> to test the login flow.
-            </Text>
-          </View>
         )}
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={[styles.scroll, isLandscape && styles.scrollLandscape]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <LinearGradient colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']} style={styles.safe}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {isLandscape ? (
-            // Landscape: branding left, form right
-            <View style={styles.landscapeLayout}>
-              <LinearGradient colors={['#1A1A2E', '#2D2B6B']} style={styles.landscapeBrand}>
+          <ScrollView
+            contentContainerStyle={[styles.scroll, isLandscape && styles.scrollLandscape]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {isLandscape ? (
+              <View style={styles.landscapeLayout}>
+                <View style={styles.landscapeBrand}>
+                  <Image
+                    source={require('../../../assets/Landscape LPic.png')}
+                    style={styles.loginPicLandscape}
+                    resizeMode="cover"
+                  />
+                </View>
+                <View style={styles.landscapeForm}>
+                  {formSection}
+                  <Text style={styles.footer}>SECURE EDUCATOR ACCESS • AURIVA 2025</Text>
+                </View>
+              </View>
+            ) : (
+              <>
                 {brandSection}
-                <Text style={styles.headlineLandscape}>Welcome,{'\n'}Educator</Text>
-                <Text style={styles.subheadlineLandscape}>
-                  Log in to access personalized{'\n'}learning plans for your students.
-                </Text>
-              </LinearGradient>
-              <View style={styles.landscapeForm}>
                 {formSection}
                 <Text style={styles.footer}>SECURE EDUCATOR ACCESS • AURIVA 2025</Text>
-              </View>
-            </View>
-          ) : (
-            // Portrait: stacked
-            <>
-              {brandSection}
-              {formSection}
-              <Text style={styles.footer}>SECURE EDUCATOR ACCESS • AURIVA 2025</Text>
-            </>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              </>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  safe: { flex: 1 },
+  safeInner: { flex: 1 },
+
   scroll: {
     flexGrow: 1,
     paddingHorizontal: Layout.spacing.lg,
@@ -234,44 +194,35 @@ const styles = StyleSheet.create({
   },
   scrollLandscape: { padding: 0, paddingHorizontal: 0 },
 
-  // Brand (Portrait)
+  // Portrait brand section
   brandSection: {
     alignItems: 'center',
-    paddingTop: Layout.spacing.xl,
+    paddingTop: Layout.spacing.lg,
     paddingBottom: Layout.spacing.lg,
+    paddingHorizontal: Layout.spacing.lg,
   },
   brandSectionLandscape: {
-    paddingTop: Layout.spacing.xxl,
-    paddingBottom: Layout.spacing.md,
+    paddingTop: Layout.spacing.xl,
   },
-  logoContainer: { marginBottom: Layout.spacing.sm },
-  logo: {
-    width: 68, height: 68, borderRadius: 34,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-    ...Layout.shadow.md,
+  loginPicWrapper: {
+    width: '100%',
+    borderRadius: 28,
+    overflow: 'hidden',
+    borderWidth: 8,
+    borderColor: '#FFFFFF',
   },
-  appName: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Layout.spacing.sm,
+  loginPic: {
+    width: '100%',
+    height: 500,
   },
-  appNameLandscape: { color: '#FFFFFF' },
-  headline: {
-    fontSize: Layout.fontSize.xxl, fontWeight: Layout.fontWeight.extrabold,
-    color: Colors.text.primary, marginBottom: Layout.spacing.xs,
-  },
-  subheadline: {
-    fontSize: Layout.fontSize.sm, color: Colors.text.secondary,
-    textAlign: 'center', lineHeight: 20,
+  loginPicLandscape: {
+    width: '100%',
+    height: '100%',
   },
 
-  // Form wrapper
   formWrapper: {},
   formWrapperLandscape: { paddingHorizontal: Layout.spacing.lg },
 
-  // Role selector
   roleSelector: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
@@ -285,7 +236,7 @@ const styles = StyleSheet.create({
     flex: 1, paddingVertical: 10,
     borderRadius: Layout.radius.full, alignItems: 'center',
   },
-  rolePillActive: { backgroundColor: Colors.primary },
+  rolePillActive: { backgroundColor: '#4AABB8' },
   rolePillText: {
     fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
     color: Colors.text.secondary,
@@ -301,7 +252,18 @@ const styles = StyleSheet.create({
     borderColor: Colors.borderLight,
     ...Layout.shadow.md,
   },
-  loginBtn: { marginTop: Layout.spacing.sm },
+  loginBtn: { marginTop: Layout.spacing.sm, borderRadius: 14, overflow: 'hidden' },
+  loginBtnGradient: {
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginBtnText: {
+    color: '#FFF',
+    fontSize: Layout.fontSize.md,
+    fontWeight: Layout.fontWeight.bold,
+    letterSpacing: 0.2,
+  },
   forgotPasswordRow: {
     alignItems: 'center',
     paddingTop: Layout.spacing.md,
@@ -309,24 +271,8 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: Layout.fontSize.sm,
     fontWeight: Layout.fontWeight.semibold,
-    color: Colors.primary,
+    color: '#3A9BA8',
   },
-
-  // Demo
-  demoCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    padding: Layout.spacing.md,
-    marginBottom: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  demoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  demoInfo: { flex: 1, marginRight: Layout.spacing.sm },
-  demoTitle: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold, color: Colors.text.primary },
-  demoDesc: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 2 },
-  demoHint: { marginTop: Layout.spacing.sm, padding: Layout.spacing.sm, backgroundColor: Colors.surfaceAlt, borderRadius: Layout.radius.sm },
-  demoHintText: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, lineHeight: 18, fontStyle: 'italic' },
 
   footer: {
     textAlign: 'center', fontSize: 10, letterSpacing: 1.5,
@@ -334,24 +280,16 @@ const styles = StyleSheet.create({
     paddingBottom: Layout.spacing.sm,
   },
 
-  // Landscape layout
   landscapeLayout: { flexDirection: 'row', flex: 1, minHeight: '100%' },
   landscapeBrand: {
     flex: 1,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingTop: Layout.spacing.xl,
-    paddingBottom: Layout.spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headlineLandscape: {
-    fontSize: Layout.fontSize.xxl, fontWeight: Layout.fontWeight.extrabold,
-    color: '#FFFFFF', textAlign: 'center',
-    marginTop: Layout.spacing.md, lineHeight: 32,
-  },
-  subheadlineLandscape: {
-    fontSize: Layout.fontSize.sm, color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center', lineHeight: 20, marginTop: Layout.spacing.sm,
+    overflow: 'hidden',
+    margin: Layout.spacing.lg,
+    borderRadius: 28,
+    borderWidth: 8,
+    borderColor: 'rgba(255,255,255,0.7)',
   },
   landscapeForm: {
     flex: 1.2,
