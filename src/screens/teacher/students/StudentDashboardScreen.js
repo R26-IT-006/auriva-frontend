@@ -137,6 +137,10 @@ export default function StudentDashboardScreen({ route, navigation }) {
                   },
                 ]}
                 onPress={() => {
+                  if (m.key === 'dialogue') {
+                    navigation.navigate('DialogueLanding', { student });
+                    return;
+                  }
                   setActiveModule(isActive ? null : m.key);
                   toast.show('Coming soon!', 'info');
                 }}
