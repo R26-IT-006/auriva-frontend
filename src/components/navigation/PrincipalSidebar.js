@@ -1,87 +1,67 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Animated,
-} from "react-native";
-import { ConfirmDialog } from "../common/ConfirmDialog";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useAuthStore } from "../../store/authStore";
-import { SidebarContext } from "../../context/SidebarContext";
-import { SIDEBAR_WIDTH, MINI_WIDTH } from "../../constants/principalNavigation";
+} from 'react-native';
+import { ConfirmDialog } from '../common/ConfirmDialog';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useAuthStore } from '../../store/authStore';
+import { SidebarContext } from '../../context/SidebarContext';
+import { SIDEBAR_WIDTH, MINI_WIDTH } from '../../navigation/PrincipalNavigator';
 
 // All rows share the same icon size and alignment.
 // Icon center = MINI_WIDTH / 2 = 32px from sidebar edge.
 // Rows have marginHorizontal: ROW_MX, so:
 //   paddingLeft = (MINI_WIDTH / 2) - ROW_MX - (ICON_SIZE / 2)
 const ICON_SIZE = 20;
-const ROW_MX = 8;
+const ROW_MX    = 8;
 const ROW_PAD_L = MINI_WIDTH / 2 - ROW_MX - ICON_SIZE / 2; // = 14
 
 // Logo icon box is 36px — needs its own left padding (no row margin)
 const LOGO_ICON_SIZE = 36;
-const LOGO_PAD_L = MINI_WIDTH / 2 - LOGO_ICON_SIZE / 2; // = 14
+const LOGO_PAD_L     = MINI_WIDTH / 2 - LOGO_ICON_SIZE / 2; // = 14
 
 const NAV_ITEMS = [
-  {
-    name: "Dashboard",
-    label: "Dashboard",
-    icon: "home",
-    iconOutline: "home-outline",
-  },
-  {
-    name: "Teachers",
-    label: "Teachers",
-    icon: "people",
-    iconOutline: "people-outline",
-  },
-  {
-    name: "Students",
-    label: "Students",
-    icon: "person",
-    iconOutline: "person-outline",
-  },
+  { name: 'Dashboard', label: 'Dashboard', icon: 'home',   iconOutline: 'home-outline'   },
+  { name: 'Teachers',  label: 'Teachers',  icon: 'people', iconOutline: 'people-outline' },
+  { name: 'Students',  label: 'Students',  icon: 'person', iconOutline: 'person-outline' },
 ];
 
 // Shared colours
-const WHITE = "#FFFFFF";
-const WHITE_MID = "rgba(255,255,255,0.55)";
-const WHITE_DIM = "rgba(255,255,255,0.35)";
-const DIVIDER_CLR = "rgba(255,255,255,0.08)";
+const WHITE       = '#FFFFFF';
+const WHITE_MID   = 'rgba(255,255,255,0.55)';
+const WHITE_DIM   = 'rgba(255,255,255,0.35)';
+const DIVIDER_CLR = 'rgba(255,255,255,0.08)';
 
 export default function PrincipalSidebar({ navRef, activeRoute }) {
   const insets = useSafeAreaInsets();
-  const logout = useAuthStore((s) => s.logout);
+  const logout  = useAuthStore((s) => s.logout);
   const { isOpen, toggle, sidebarAnim } = useContext(SidebarContext);
   const [signOutVisible, setSignOutVisible] = useState(false);
 
   const labelOpacity = sidebarAnim.interpolate({
-    inputRange: [MINI_WIDTH, SIDEBAR_WIDTH],
+    inputRange:  [MINI_WIDTH, SIDEBAR_WIDTH],
     outputRange: [0, 1],
-    extrapolate: "clamp",
+    extrapolate: 'clamp',
   });
   const labelTranslate = sidebarAnim.interpolate({
-    inputRange: [MINI_WIDTH, SIDEBAR_WIDTH],
+    inputRange:  [MINI_WIDTH, SIDEBAR_WIDTH],
     outputRange: [6, 0],
-    extrapolate: "clamp",
+    extrapolate: 'clamp',
   });
-  const labelStyle = {
-    opacity: labelOpacity,
-    transform: [{ translateX: labelTranslate }],
-  };
+  const labelStyle = { opacity: labelOpacity, transform: [{ translateX: labelTranslate }] };
 
   return (
     <LinearGradient
-      colors={["#1A1A2E", "#16213E"]}
-      style={[
-        styles.sidebar,
-        { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 },
-      ]}
+      colors={['#1A1A2E', '#16213E']}
+      style={[styles.sidebar, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}
     >
+
       {/* ── Top: logo + toggle ───────────────────────────────────────────── */}
       <View style={styles.top}>
         <View style={styles.logoRow}>
@@ -89,22 +69,14 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
             <Ionicons name="sparkles" size={16} color={WHITE} />
           </View>
           <Animated.View style={[styles.logoTextWrap, labelStyle]}>
-            <Text style={styles.logoTitle} numberOfLines={1}>
-              Auriva
-            </Text>
-            <Text style={styles.logoSub} numberOfLines={1}>
-              Principal Portal
-            </Text>
+            <Text style={styles.logoTitle} numberOfLines={1}>Auriva</Text>
+            <Text style={styles.logoSub}   numberOfLines={1}>Principal Portal</Text>
           </Animated.View>
         </View>
 
-        <TouchableOpacity
-          onPress={toggle}
-          activeOpacity={0.7}
-          style={styles.toggleBtn}
-        >
+        <TouchableOpacity onPress={toggle} activeOpacity={0.7} style={styles.toggleBtn}>
           <Ionicons
-            name={isOpen ? "chevron-back" : "chevron-forward"}
+            name={isOpen ? 'chevron-back' : 'chevron-forward'}
             size={14}
             color={WHITE_DIM}
           />
@@ -131,11 +103,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
               />
               <Animated.Text
                 numberOfLines={1}
-                style={[
-                  styles.rowLabel,
-                  isActive && styles.rowLabelActive,
-                  labelStyle,
-                ]}
+                style={[styles.rowLabel, isActive && styles.rowLabelActive, labelStyle]}
               >
                 {item.label}
               </Animated.Text>
@@ -151,15 +119,8 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         activeOpacity={0.7}
         style={styles.row}
       >
-        <Ionicons
-          name="log-out-outline"
-          size={ICON_SIZE}
-          color="rgba(255,110,100,0.8)"
-        />
-        <Animated.Text
-          numberOfLines={1}
-          style={[styles.rowLabel, styles.signOutLabel, labelStyle]}
-        >
+        <Ionicons name="log-out-outline" size={ICON_SIZE} color="rgba(255,110,100,0.8)" />
+        <Animated.Text numberOfLines={1} style={[styles.rowLabel, styles.signOutLabel, labelStyle]}>
           Sign Out
         </Animated.Text>
       </TouchableOpacity>
@@ -189,8 +150,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingLeft: LOGO_PAD_L,
     paddingRight: 12,
     gap: 10,
@@ -199,37 +160,37 @@ const styles = StyleSheet.create({
     width: LOGO_ICON_SIZE,
     height: LOGO_ICON_SIZE,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
   },
   logoTextWrap: {
     flex: 1,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   logoTitle: {
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: '800',
     color: WHITE,
     letterSpacing: 0.2,
   },
   logoSub: {
     fontSize: 10,
-    fontWeight: "500",
+    fontWeight: '500',
     color: WHITE_DIM,
     marginTop: 1,
   },
 
   toggleBtn: {
-    alignSelf: "flex-start",
-    marginLeft: MINI_WIDTH / 2 - 14, // centres the 28px button under the logo icon
+    alignSelf: 'flex-start',
+    marginLeft: MINI_WIDTH / 2 - 14,  // centres the 28px button under the logo icon
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // ── Divider ───────────────────────────────────────────────────────────────
@@ -246,8 +207,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   row: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 10,
     paddingLeft: ROW_PAD_L,
     paddingRight: 14,
@@ -256,11 +217,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowActive: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   rowLabel: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: '600',
     color: WHITE_MID,
     flexShrink: 1,
   },
@@ -270,6 +231,6 @@ const styles = StyleSheet.create({
 
   // ── Sign-out label tint ───────────────────────────────────────────────────
   signOutLabel: {
-    color: "rgba(255,110,100,0.8)",
+    color: 'rgba(255,110,100,0.8)',
   },
 });
