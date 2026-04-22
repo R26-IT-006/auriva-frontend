@@ -11,16 +11,20 @@
       "resizeMode": "contain",
       "backgroundColor": "#F0F2FA"
     },
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.auriva.app"
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F0F2FA"
       },
-      "package": "com.auriva.app"
+      "package": "com.auriva.app",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.auriva.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow Auriva to use the microphone for pronunciation practice."
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

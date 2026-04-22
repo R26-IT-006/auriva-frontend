@@ -1,47 +1,55 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Animated, View } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Colors } from '../constants/colors';
+import React, { useState, useRef, useEffect } from "react";
+import { Animated, View } from "react-native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Colors } from "../constants/colors";
 
 // Screens
-import PrincipalDashboardScreen from '../screens/principal/DashboardScreen';
-import TeacherListScreen from '../screens/principal/teachers/TeacherListScreen';
-import TeacherDetailScreen from '../screens/principal/teachers/TeacherDetailScreen';
-import CreateTeacherScreen from '../screens/principal/teachers/CreateTeacherScreen';
-import EditTeacherScreen from '../screens/principal/teachers/EditTeacherScreen';
-import StudentListScreen from '../screens/principal/students/StudentListScreen';
-import StudentDetailScreen from '../screens/principal/students/StudentDetailScreen';
-import CreateStudentScreen from '../screens/principal/students/CreateStudentScreen';
-import EditStudentScreen from '../screens/principal/students/EditStudentScreen';
+import PrincipalDashboardScreen from "../screens/principal/DashboardScreen";
+import TeacherListScreen from "../screens/principal/teachers/TeacherListScreen";
+import TeacherDetailScreen from "../screens/principal/teachers/TeacherDetailScreen";
+import CreateTeacherScreen from "../screens/principal/teachers/CreateTeacherScreen";
+import EditTeacherScreen from "../screens/principal/teachers/EditTeacherScreen";
+import StudentListScreen from "../screens/principal/students/StudentListScreen";
+import StudentDetailScreen from "../screens/principal/students/StudentDetailScreen";
+import CreateStudentScreen from "../screens/principal/students/CreateStudentScreen";
+import EditStudentScreen from "../screens/principal/students/EditStudentScreen";
 
-import PrincipalSidebar from '../components/navigation/PrincipalSidebar';
-import { SidebarContext } from '../context/SidebarContext';
+import PrincipalSidebar from "../components/navigation/PrincipalSidebar";
+import { SidebarContext } from "../context/SidebarContext";
+import { SIDEBAR_WIDTH, MINI_WIDTH } from "../constants/principalNavigation";
 
-export const SIDEBAR_WIDTH = 230;
-export const MINI_WIDTH    = 64;
-
-const Tab   = createBottomTabNavigator();
+const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function TeachersStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
-      <Stack.Screen name="TeacherList"   component={TeacherListScreen} />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors.background },
+      }}
+    >
+      <Stack.Screen name="TeacherList" component={TeacherListScreen} />
       <Stack.Screen name="TeacherDetail" component={TeacherDetailScreen} />
       <Stack.Screen name="CreateTeacher" component={CreateTeacherScreen} />
-      <Stack.Screen name="EditTeacher"   component={EditTeacherScreen} />
+      <Stack.Screen name="EditTeacher" component={EditTeacherScreen} />
     </Stack.Navigator>
   );
 }
 
 function StudentsStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
-      <Stack.Screen name="StudentList"   component={StudentListScreen} />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors.background },
+      }}
+    >
+      <Stack.Screen name="StudentList" component={StudentListScreen} />
       <Stack.Screen name="StudentDetail" component={StudentDetailScreen} />
       <Stack.Screen name="CreateStudent" component={CreateStudentScreen} />
-      <Stack.Screen name="EditStudent"   component={EditStudentScreen} />
+      <Stack.Screen name="EditStudent" component={EditStudentScreen} />
     </Stack.Navigator>
   );
 }
@@ -74,7 +82,7 @@ function SidebarBridge({ navigation, state, navRef, onRouteChange }) {
 
 export default function PrincipalNavigator() {
   const [isOpen, setIsOpen] = useState(true);
-  const [activeRoute, setActiveRoute] = useState('Dashboard');
+  const [activeRoute, setActiveRoute] = useState("Dashboard");
   const sidebarAnim = useRef(new Animated.Value(SIDEBAR_WIDTH)).current;
   const navRef = useRef(null);
 
@@ -95,8 +103,7 @@ export default function PrincipalNavigator() {
         When sidebarAnim transitions, the flex:1 content column resizes
         in perfect sync — no separate margin animation needed.
       */}
-      <View style={{ flex: 1, flexDirection: 'row' }}>
-
+      <View style={{ flex: 1, flexDirection: "row" }}>
         {/* ── Sidebar column ──────────────────────────────────────── */}
         {/*
           Fixed inner width (SIDEBAR_WIDTH) + overflow:hidden means the
@@ -106,7 +113,7 @@ export default function PrincipalNavigator() {
         <Animated.View
           style={{
             width: sidebarAnim,
-            overflow: 'hidden',
+            overflow: "hidden",
           }}
         >
           <PrincipalSidebar navRef={navRef} activeRoute={activeRoute} />
@@ -125,11 +132,10 @@ export default function PrincipalNavigator() {
             screenOptions={{ headerShown: false }}
           >
             <Tab.Screen name="Dashboard" component={DashboardStack} />
-            <Tab.Screen name="Teachers"  component={TeachersStack} />
-            <Tab.Screen name="Students"  component={StudentsStack} />
+            <Tab.Screen name="Teachers" component={TeachersStack} />
+            <Tab.Screen name="Students" component={StudentsStack} />
           </Tab.Navigator>
         </View>
-
       </View>
     </SidebarContext.Provider>
   );
