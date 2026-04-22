@@ -10,13 +10,14 @@ import TeacherStudentListScreen from "../screens/teacher/students/StudentListScr
 import TeacherStudentDetailScreen from "../screens/teacher/students/StudentDetailScreen";
 import WorkspaceSelectScreen from "../screens/teacher/WorkspaceSelectScreen";
 import StudentPickerScreen from "../screens/teacher/students/StudentPickerScreen";
+import StudentDashboardScreen from "../screens/teacher/students/StudentDashboardScreen";
+import AvatarSelectionScreen from "../screens/teacher/students/AvatarSelectionScreen";
 import PronunciationSessionSetupScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSessionSetupScreen";
 import PronunciationWordSelectionScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationWordSelectionScreen";
 import PronunciationLearnWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationLearnWordScreen";
 import PronunciationMouthShapeScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationMouthShapeScreen";
 import PronunciationSpeakWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSpeakWordScreen";
 import PronunciationResultScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultScreen";
-import StudentDashboardScreen from "../screens/teacher/students/StudentDashboardScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -119,6 +120,7 @@ export default function TeacherNavigator() {
         name="StudentDashboard"
         component={StudentDashboardScreen}
       />
+      <Stack.Screen name="AvatarSelection" component={AvatarSelectionScreen} />
       <Stack.Screen
         name="StudentSession"
         component={TeacherStudentDetailScreen}
