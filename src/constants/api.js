@@ -23,6 +23,10 @@ export const ENDPOINTS = {
   TEACHER_DASHBOARD: "/teacher/dashboard",
   TEACHER_STUDENTS: "/teacher/students",
   TEACHER_STUDENT: (id) => `/teacher/students/${id}`,
-  TEACHER_SESSION_START: "/teacher/session/start",
-  TEACHER_SESSION_END: "/teacher/session/end",
+  TEACHER_SESSION_START: '/teacher/session/start',
+  TEACHER_SESSION_END: '/teacher/session/end',
+  TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
+
+  // Handwriting
+  HANDWRITING_ASSESSMENT: '/handwriting/assessment',
 };
