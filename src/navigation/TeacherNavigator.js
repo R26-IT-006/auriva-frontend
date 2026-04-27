@@ -12,6 +12,18 @@ import StudentPickerScreen        from '../screens/teacher/students/StudentPicke
 import StudentDashboardScreen     from '../screens/teacher/students/StudentDashboardScreen';
 import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelectionScreen';
 import DialogueLandingScreen      from '../screens/teacher/students/DialogueLandingScreen';
+import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
+import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
+import MagicWordLandingScreen     from '../screens/teacher/dialogue/magic-words/MagicWordLandingScreen';
+import Phase1VideoScreen          from '../screens/teacher/dialogue/magic-words/Phase1VideoScreen';
+import DragToLineScreen           from '../screens/teacher/dialogue/magic-words/DragToLineScreen';
+import Phase1CompleteScreen       from '../screens/teacher/dialogue/magic-words/Phase1CompleteScreen';
+import Phase2ProductionScreen    from '../screens/teacher/dialogue/magic-words/Phase2ProductionScreen';
+import Phase2NonVerbalScreen     from '../screens/teacher/dialogue/magic-words/Phase2NonVerbalScreen';
+import Phase3ContextualScreen    from '../screens/teacher/dialogue/magic-words/Phase3ContextualScreen';
+import VerbActivityScreen         from '../screens/teacher/dialogue/abilities/VerbActivityScreen';
+import ClapActivityScreen         from '../screens/teacher/dialogue/abilities/ClapActivityScreen';
+import RunActivityScreen          from '../screens/teacher/dialogue/abilities/RunActivityScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -91,7 +103,20 @@ export default function TeacherNavigator() {
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
       <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
-      <Stack.Screen name="DialogueLanding"  component={DialogueLandingScreen} />
+      <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
+      <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
+      <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
+      <Stack.Screen name="MagicWordLanding"  component={MagicWordLandingScreen} />
+      <Stack.Screen name="Phase1Video"       component={Phase1VideoScreen} />
+      <Stack.Screen name="DragToLine"        component={DragToLineScreen} />
+      <Stack.Screen name="Phase1Complete"    component={Phase1CompleteScreen} />
+      <Stack.Screen name="Phase2Production"  component={Phase2ProductionScreen} />
+      <Stack.Screen name="Phase2NonVerbal"   component={Phase2NonVerbalScreen} />
+      <Stack.Screen name="Phase3Contextual"  component={Phase3ContextualScreen} />
+      <Stack.Screen name="VerbActivity"      component={VerbActivityScreen} />
+      <Stack.Screen name="ClapActivity"      component={ClapActivityScreen} />
+      <Stack.Screen name="RunActivity"       component={RunActivityScreen} />
+
     </Stack.Navigator>
   );
 }
