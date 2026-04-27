@@ -80,7 +80,11 @@ export default function DialogueLandingScreen({ route, navigation }) {
                     },
                   ]}
                   activeOpacity={0.82}
-                  onPress={() => { /* navigate to level screen when built */ }}
+                  onPress={() => {
+                    if (level.key === 'level1') {
+                      navigation.navigate('DialogueCategory', { student });
+                    }
+                  }}
                 >
                   <Text style={[styles.levelLabel, { color: c.text }]}>
                     {level.label}
