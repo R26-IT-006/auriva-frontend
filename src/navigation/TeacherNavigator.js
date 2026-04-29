@@ -91,6 +91,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
       <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
+      <Stack.Screen name="HandwritingModule" component={HandwritingNavigator} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

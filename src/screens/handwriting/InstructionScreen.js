@@ -17,10 +17,14 @@ const BULLETS = [
 ];
 
 export default function InstructionScreen({ route, navigation }) {
-  const { student, selectedAvatar, theme } = route.params;
+  const { student, theme } = route.params;
+
+  const avatarLabel = student?.avatar_key
+    ? student.avatar_key.charAt(0).toUpperCase() + student.avatar_key.slice(1)
+    : '?';
 
   const handleNext = () => {
-    navigation.navigate('Welcome', { student, selectedAvatar, theme });
+    navigation.navigate('ChildWelcome', { student, theme });
   };
 
   return (
@@ -38,7 +42,7 @@ export default function InstructionScreen({ route, navigation }) {
           <Text style={[styles.title, { color: theme.headingText }]}>
             Let's Practice Writing
           </Text>
-          <Text style={[styles.sectionLabel, { color: theme.primaryButton }]}>
+          <Text style={[styles.sectionLabel, { color: theme.button ?? theme.primaryButton }]}>
             Instructions for the Teacher
           </Text>
           <Text style={styles.intro}>
@@ -59,7 +63,7 @@ export default function InstructionScreen({ route, navigation }) {
         {/* Bottom row: Next button + avatar circle */}
         <View style={styles.bottomRow}>
           <TouchableOpacity
-            style={[styles.nextButton, { backgroundColor: theme.primaryButton }]}
+            style={[styles.nextButton, { backgroundColor: theme.button ?? theme.primaryButton }]}
             onPress={handleNext}
             activeOpacity={0.85}
           >
@@ -75,7 +79,7 @@ export default function InstructionScreen({ route, navigation }) {
             ]}
           >
             <Text style={styles.avatarInitial}>
-              {selectedAvatar.charAt(0)}
+              {avatarLabel.charAt(0)}
             </Text>
           </View>
         </View>

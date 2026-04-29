@@ -1,38 +1,46 @@
-import AvatarSelectScreen from '../screens/handwriting/AvatarSelectScreen';
-import InstructionScreen from '../screens/handwriting/InstructionScreen';
-import WelcomeScreen from '../screens/handwriting/WelcomeScreen';
 import React from 'react';
 import { View, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// TODO: create this screen
-const ShapeAssessmentScreen = () => (
-  <View><Text>ShapeAssessment</Text></View>
+import { getAvatarTheme } from '../constants/avatarThemes';
+import WelcomeScreen from '../screens/handwriting/WelcomeScreen';
+import InstructionScreen from '../screens/handwriting/InstructionScreen';
+import LetterHomeScreen from '../screens/handwriting/LetterHomeScreen';
+
+const ChildWelcomeScreen = ({ route }) => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Text>ChildWelcome placeholder</Text>
+  </View>
 );
 
-// TODO: create this screen
-const AssessmentCompleteScreen = () => (
-  <View><Text>AssessmentComplete</Text></View>
+const ShapeAssessmentScreen = ({ route }) => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Text>ShapeAssessment placeholder</Text>
+  </View>
 );
 
-// TODO: create this screen
-const LetterHomeScreen = () => (
-  <View><Text>LetterHome</Text></View>
+const AssessmentCompleteScreen = ({ route }) => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Text>AssessmentComplete placeholder</Text>
+  </View>
 );
 
-// TODO: create this screen
-const LetterPracticeScreen = () => (
-  <View><Text>LetterPractice</Text></View>
+const LetterPracticeScreen = ({ route }) => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Text>LetterPractice placeholder</Text>
+  </View>
 );
 
-// TODO: create this screen
-const WordLearningScreen = () => (
-  <View><Text>WordLearning</Text></View>
+const WordLearningScreen = ({ route }) => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Text>WordLearning placeholder</Text>
+  </View>
 );
 
-// TODO: create this screen
-const HandwritingReportScreen = () => (
-  <View><Text>HandwritingReport</Text></View>
+const HandwritingReportScreen = ({ route }) => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Text>HandwritingReport placeholder</Text>
+  </View>
 );
 
 const Stack = createNativeStackNavigator();
@@ -40,54 +48,55 @@ const Stack = createNativeStackNavigator();
 const screenOptions = { headerShown: false };
 
 export default function HandwritingNavigator({ route }) {
-  const { student } = route.params;
+  const student = route.params?.student;
+  const theme = getAvatarTheme(student?.avatar_key);
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
-        name="AvatarSelect"
-        component={AvatarSelectScreen}
-        initialParams={{ student }}
+        name="Welcome"
+        component={WelcomeScreen}
+        initialParams={{ student, theme }}
       />
       <Stack.Screen
         name="Instructions"
         component={InstructionScreen}
-        initialParams={{ student }}
+        initialParams={{ student, theme }}
       />
       <Stack.Screen
-        name="Welcome"
-        component={WelcomeScreen}
-        initialParams={{ student }}
+        name="ChildWelcome"
+        component={ChildWelcomeScreen}
+        initialParams={{ student, theme }}
       />
       <Stack.Screen
         name="ShapeAssessment"
         component={ShapeAssessmentScreen}
-        initialParams={{ student }}
+        initialParams={{ student, theme }}
       />
       <Stack.Screen
         name="AssessmentComplete"
         component={AssessmentCompleteScreen}
-        initialParams={{ student }}
+        initialParams={{ student, theme }}
       />
       <Stack.Screen
         name="LetterHome"
         component={LetterHomeScreen}
-        initialParams={{ student }}
+        initialParams={{ student, theme }}
       />
       <Stack.Screen
         name="LetterPractice"
         component={LetterPracticeScreen}
-        initialParams={{ student }}
+        initialParams={{ student, theme }}
       />
       <Stack.Screen
         name="WordLearning"
         component={WordLearningScreen}
-        initialParams={{ student }}
+        initialParams={{ student, theme }}
       />
       <Stack.Screen
         name="HandwritingReport"
         component={HandwritingReportScreen}
-        initialParams={{ student }}
+        initialParams={{ student, theme }}
       />
     </Stack.Navigator>
   );

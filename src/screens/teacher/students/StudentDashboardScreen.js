@@ -137,8 +137,12 @@ export default function StudentDashboardScreen({ route, navigation }) {
                   },
                 ]}
                 onPress={() => {
-                  setActiveModule(isActive ? null : m.key);
-                  toast.show('Coming soon!', 'info');
+                  if (m.key === 'writing') {
+                    navigation.navigate('HandwritingModule', { student });
+                  } else {
+                    setActiveModule(isActive ? null : m.key);
+                    toast.show('Coming soon!', 'info');
+                  }
                 }}
                 activeOpacity={0.8}
               >
