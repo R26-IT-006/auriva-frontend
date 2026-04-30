@@ -38,6 +38,9 @@ const AVATAR_IMAGES = {
 // Only Lily has a production video; other avatars fall back to static image
 const PRODUCTION_VIDEOS = {
   lily: require('../../../../../assets/avatar-videos/Lily_Production.mp4'),
+  boba: require('../../../../../assets/avatar-videos/Boba_Dancing.mp4'),
+  megatron: require('../../../../../assets/avatar-videos/MegatronDancing.mp4'),
+  glitter: require('../../../../../assets/avatar-videos/GlitterDancing.mp4'),
 };
 
 const AUDIO = {
