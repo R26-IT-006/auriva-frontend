@@ -1,7 +1,7 @@
 // For Android emulator: http://10.0.2.2:3000/api
 // For iOS simulator: http://localhost:3000/api
 // For physical device: use your machine's local IP
-export const API_BASE_URL = 'http://172.20.10.3:3000/api';
+export const API_BASE_URL = 'http://192.168.1.19:3000/api';
 
 export const ENDPOINTS = {
   // Auth
@@ -26,4 +26,11 @@ export const ENDPOINTS = {
   TEACHER_SESSION_START: '/teacher/session/start',
   TEACHER_SESSION_END: '/teacher/session/end',
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
+
+  // Concept Learning
+  CONCEPT_ITEMS:            (cat) => `/teacher/concepts/${cat}/items`,
+  CONCEPT_TIER1_START:       '/teacher/concepts/tier1/start',
+  CONCEPT_TIER1_INTERACTION: '/teacher/concepts/tier1/interaction',
+  CONCEPT_TIER1_ATTEMPT:     '/teacher/concepts/tier1/attempt',
+  CONCEPT_TIER1_COMPLETE:    '/teacher/concepts/tier1/complete',
 };

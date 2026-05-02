@@ -11,7 +11,11 @@ import WorkspaceSelectScreen      from '../screens/teacher/WorkspaceSelectScreen
 import StudentPickerScreen        from '../screens/teacher/students/StudentPickerScreen';
 import StudentDashboardScreen     from '../screens/teacher/students/StudentDashboardScreen';
 import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelectionScreen';
-import ConceptCategoriesScreen    from '../screens/teacher/concept/ConceptCategoriesScreen';
+import ConceptCategoriesScreen        from '../screens/teacher/concept/ConceptCategoriesScreen';
+import ConceptItemsScreen            from '../screens/teacher/concept/ConceptItemsScreen';
+import ConceptImageScreen            from '../screens/teacher/concept/ConceptImageScreen';
+import ConceptMatchScreen            from '../screens/teacher/concept/ConceptMatchScreen';
+import ConceptCongratulationsScreen  from '../screens/teacher/concept/ConceptCongratulationsScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -91,6 +95,10 @@ export default function TeacherNavigator() {
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
       <Stack.Screen name="AvatarSelection"    component={AvatarSelectionScreen} />
       <Stack.Screen name="ConceptCategories" component={ConceptCategoriesScreen} />
+      <Stack.Screen name="ConceptItems"      component={ConceptItemsScreen} />
+      <Stack.Screen name="ConceptImage"      component={ConceptImageScreen} />
+      <Stack.Screen name="ConceptMatch"      component={ConceptMatchScreen} />
+      <Stack.Screen name="ConceptCongrats"   component={ConceptCongratulationsScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
     </Stack.Navigator>
   );

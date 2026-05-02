@@ -48,9 +48,7 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
       <TouchableOpacity
         activeOpacity={0.85}
         style={[styles.card, { width: cardW, height: cardH, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}
-        onPress={() => {
-          // future: navigate to category items
-        }}
+        onPress={() => navigation.navigate('ConceptItems', { student, category: item })}
       >
         <View style={[styles.badge, { backgroundColor: theme.cardOutline }]}>
           <Text style={styles.badgeText}>{index + 1}</Text>

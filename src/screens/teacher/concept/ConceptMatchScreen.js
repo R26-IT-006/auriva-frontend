@@ -1,0 +1,437 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  useWindowDimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Speech from 'expo-speech';
+import { getAvatarTheme } from '../../../constants/avatarThemes';
+import { getConceptItem, getConceptItemsForCategory } from '../../../constants/conceptData';
+import { conceptApi } from '../../../api/concept';
+import { ParentGateModal } from '../../../components/common/ParentGateModal';
+import { Layout } from '../../../constants/layout';
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export default function ConceptMatchScreen({ route, navigation }) {
+  const { student, category, conceptKey, sessionId } = route.params;
+
+  const concept    = getConceptItem(category.key, conceptKey);
+  const allItems   = getConceptItemsForCategory(category.key);
+  const theme      = getAvatarTheme(student?.avatar_key);
+  const { width }  = useWindowDimensions();
+
+  // 3 options: target + next 2 in sequence (wrapping)
+  const options = useRef(() => {
+    const idx = allItems.findIndex((it) => it.key === conceptKey);
+    const next1 = allItems[(idx + 1) % allItems.length];
+    const next2 = allItems[(idx + 2) % allItems.length];
+    return [concept, next1, next2];
+  });
+
+  const [currentAttempt, setCurrentAttempt] = useState(1);
+  const [displayOrder,   setDisplayOrder]   = useState(() => shuffle(options.current()));
+  const [locked,         setLocked]         = useState(false);
+  const [feedbackKey,    setFeedbackKey]     = useState(null); // key of tapped option
+  const [feedbackResult, setFeedbackResult] = useState(null); // 'correct' | 'wrong'
+  const [attempts,       setAttempts]       = useState([]);
+  const [gateVisible,    setGateVisible]    = useState(false);
+
+  const thumbsAnim   = useRef(new Animated.Value(0)).current;
+  const thumbsOffset = useRef(new Animated.Value(60)).current;
+  const hintPulse    = useRef(new Animated.Value(1)).current;
+  const attemptStart = useRef(Date.now());
+
+  const CARD_W = (width - Layout.spacing.md * 2 - 16) / 3;
+
+  const speakPrompt = useCallback(() => {
+    if (!concept) return;
+    Speech.stop();
+    Speech.speak(`Find the ${concept.label}!`, { language: 'en-US', rate: 0.8 });
+    setTimeout(() => {
+      Speech.speak(concept.labelSi || concept.label, { language: 'si-LK', rate: 0.7 });
+    }, 1500);
+  }, [concept]);
+
+  // Hint pulse on attempt 1
+  useEffect(() => {
+    if (currentAttempt === 1) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(hintPulse, { toValue: 1.08, duration: 500, useNativeDriver: true }),
+          Animated.timing(hintPulse, { toValue: 1,    duration: 500, useNativeDriver: true }),
+        ]),
+      );
+      loop.start();
+      const t = setTimeout(() => loop.stop(), 1500);
+      return () => { clearTimeout(t); loop.stop(); };
+    }
+  }, [currentAttempt]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Speak on each attempt
+  useEffect(() => {
+    const t = setTimeout(speakPrompt, 400);
+    return () => clearTimeout(t);
+  }, [currentAttempt]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  function showFeedback(correct) {
+    thumbsAnim.setValue(0);
+    thumbsOffset.setValue(60);
+    Animated.parallel([
+      Animated.spring(thumbsAnim,   { toValue: 1, useNativeDriver: true, bounciness: 12, speed: 8 }),
+      Animated.spring(thumbsOffset, { toValue: 0, useNativeDriver: true, bounciness: 8,  speed: 10 }),
+    ]).start();
+  }
+
+  function hideFeedback(cb) {
+    Animated.parallel([
+      Animated.timing(thumbsAnim,   { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(thumbsOffset, { toValue: 60, duration: 200, useNativeDriver: true }),
+    ]).start(cb);
+  }
+
+  async function handleOptionTap(option) {
+    if (locked) return;
+    setLocked(true);
+    Speech.stop();
+
+    const wasCorrect    = option.key === conceptKey;
+    const timeTakenMs   = Date.now() - attemptStart.current;
+    const newAttempt    = { attemptNumber: currentAttempt, selectedKey: option.key, correctKey: conceptKey, wasCorrect, timeTakenMs };
+
+    setFeedbackKey(option.key);
+    setFeedbackResult(wasCorrect ? 'correct' : 'wrong');
+    showFeedback(wasCorrect);
+
+    const updatedAttempts = [...attempts, newAttempt];
+    setAttempts(updatedAttempts);
+
+    // Log attempt (fire-and-forget)
+    conceptApi.logMatchAttempt({
+      studentId:     student.sid,
+      sessionId:     sessionId || null,
+      categoryKey:   category.key,
+      conceptKey,
+      attemptNumber: currentAttempt,
+      selectedKey:   option.key,
+      correctKey:    conceptKey,
+      timeTakenMs,
+      wasCorrect,
+    }).catch(() => {});
+
+    if (currentAttempt < 3) {
+      // Advance to next attempt after feedback
+      hideFeedback(() => {
+        setFeedbackKey(null);
+        setFeedbackResult(null);
+        setDisplayOrder(shuffle(options.current()));
+        attemptStart.current = Date.now();
+        setCurrentAttempt((n) => n + 1);
+        setLocked(false);
+      });
+    } else {
+      // Final attempt — complete after brief feedback display
+      setTimeout(() => {
+        hideFeedback(async () => {
+          const correctCount  = updatedAttempts.filter((a) => a.wasCorrect).length;
+          const score         = correctCount / 3;
+          const passed        = score >= 2 / 3;
+          const confusedWith  = updatedAttempts
+            .filter((a) => !a.wasCorrect)
+            .map((a) => ({ selected_key: a.selectedKey, correct_key: a.correctKey }));
+
+          try {
+            await conceptApi.completeTier1({
+              studentId:    student.sid,
+              categoryKey:  category.key,
+              conceptKey,
+              passed,
+              score,
+              attemptCount: 3,
+              confusedWith,
+            });
+          } catch { /* progress saved locally anyway */ }
+
+          Speech.stop();
+          if (passed) {
+            navigation.replace('ConceptCongrats', { student, category, conceptKey });
+          } else {
+            navigation.replace('ConceptImage', { student, category, conceptKey, sessionId, isRelearn: true });
+          }
+        });
+      }, 800);
+    }
+  }
+
+  if (!concept) return null;
+
+  return (
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.safe}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            onPress={() => setGateVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          </TouchableOpacity>
+
+          <Text style={[styles.title, { color: theme.headingText }]}>
+            Find the {concept.label}!
+          </Text>
+
+          {/* Replay TTS */}
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            onPress={speakPrompt}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="volume-high-outline" size={20} color={theme.headingText} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Attempt indicator */}
+        <View style={styles.attemptRow}>
+          {[1, 2, 3].map((n) => (
+            <View
+              key={n}
+              style={[
+                styles.attemptDot,
+                {
+                  backgroundColor:
+                    n < currentAttempt
+                      ? (attempts[n - 1]?.wasCorrect ? '#4CAF50' : '#F44336')
+                      : n === currentAttempt
+                      ? theme.button
+                      : 'rgba(0,0,0,0.15)',
+                  transform: [{ scale: n === currentAttempt ? 1.2 : 1 }],
+                },
+              ]}
+            />
+          ))}
+        </View>
+
+        {/* Options */}
+        <View style={[styles.optionsRow, { paddingHorizontal: Layout.spacing.md }]}>
+          {displayOrder.map((option) => {
+            const isTarget   = option.key === conceptKey;
+            const isTapped   = feedbackKey === option.key;
+            const isCorrect  = isTapped && feedbackResult === 'correct';
+            const isWrong    = isTapped && feedbackResult === 'wrong';
+            const isHint     = currentAttempt === 1 && isTarget && !locked;
+
+            let borderColor  = theme.cardOutline;
+            if (isCorrect)   borderColor = '#4CAF50';
+            if (isWrong)     borderColor = '#F44336';
+
+            return (
+              <Animated.View
+                key={option.key}
+                style={[
+                  styles.optionCard,
+                  {
+                    width:           CARD_W,
+                    backgroundColor: theme.cardSurface,
+                    borderColor,
+                    transform: [
+                      { scale: isHint ? hintPulse : 1 },
+                    ],
+                  },
+                  isCorrect && styles.optionCardCorrect,
+                  isWrong   && styles.optionCardWrong,
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={locked ? 1 : 0.8}
+                  disabled={locked}
+                  onPress={() => handleOptionTap(option)}
+                  style={styles.optionTouchable}
+                >
+                  <Image
+                    source={option.real}
+                    style={styles.optionImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.optionLabel}>{option.label}</Text>
+
+                  {isHint && (
+                    <View style={[styles.hintBadge, { backgroundColor: theme.button }]}>
+                      <Ionicons name="hand-left-outline" size={14} color="#FFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </View>
+
+        {/* Thumbs feedback popup */}
+        <Animated.View
+          style={[
+            styles.feedbackBubble,
+            {
+              opacity:   thumbsAnim,
+              transform: [{ translateY: thumbsOffset }],
+              backgroundColor: feedbackResult === 'correct' ? '#4CAF50' : '#F44336',
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={styles.feedbackEmoji}>
+            {feedbackResult === 'correct' ? '👍' : '👎'}
+          </Text>
+          <Text style={styles.feedbackText}>
+            {feedbackResult === 'correct' ? 'Great job!' : 'Try again!'}
+          </Text>
+        </Animated.View>
+
+      </SafeAreaView>
+
+      <ParentGateModal
+        visible={gateVisible}
+        onSuccess={() => { setGateVisible(false); navigation.goBack(); }}
+        onCancel={() => setGateVisible(false)}
+      />
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe:      { flex: 1 },
+  safeInner: { flex: 1, alignItems: 'center' },
+
+  topBar: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
+  },
+  iconBtn: {
+    width: 40, height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+
+  attemptRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  attemptDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+
+  optionsRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 8,
+  },
+  optionCard: {
+    borderRadius: 18,
+    borderWidth: 2.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  optionCardCorrect: {
+    shadowColor: '#4CAF50',
+    shadowOpacity: 0.25,
+    elevation: 6,
+  },
+  optionCardWrong: {
+    shadowColor: '#F44336',
+    shadowOpacity: 0.2,
+    elevation: 4,
+  },
+  optionTouchable: {
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  optionImage: {
+    width: '85%',
+    aspectRatio: 1,
+    marginBottom: 6,
+  },
+  optionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: '#1A1A1A',
+  },
+  hintBadge: {
+    position: 'absolute',
+    top: -4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  feedbackBubble: {
+    position: 'absolute',
+    bottom: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  feedbackEmoji: {
+    fontSize: 26,
+  },
+  feedbackText: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+});
