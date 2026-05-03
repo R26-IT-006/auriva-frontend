@@ -1,14 +1,6 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  useWindowDimensions,
-  Image,
-  Alert,
-  Linking,
-} from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, Image, Alert, Linking } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
@@ -60,7 +52,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                 </View>
               ))}
 
-              <TouchableOpacity
+              <ButtonFeedback
                 activeOpacity={0.88}
                 onPress={handleHearSounds}
                 style={[styles.hearBtn, isPlaying && styles.hearBtnActive]}
@@ -71,7 +63,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                   color="#FFFFFF"
                 />
                 <Text style={styles.hearBtnText}>Hear Sounds</Text>
-              </TouchableOpacity>
+              </ButtonFeedback>
             </View>
 
             <View style={styles.imagePane}>
@@ -90,22 +82,22 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           </View>
         </View>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
         >
           <Ionicons name="arrow-back" size={26} color="#41536D" />
-        </TouchableOpacity>
+        </ButtonFeedback>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.9}
           onPress={handleNext}
           style={styles.nextBtn}
         >
           <Text style={styles.nextText}>Next</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        </ButtonFeedback>
       </View>
     </SafeAreaView>
   );

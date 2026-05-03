@@ -1,13 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+  View, Text, ScrollView, RefreshControl, StyleSheet, Alert } from "react-native";
+import { ButtonFeedback } from "../../components/common/ButtonFeedback";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,7 +31,7 @@ const K = {
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ iconName, iconBg, tag, value, subtitle, subtitleColor, description, dimValue, onPress }) {
   return (
-    <TouchableOpacity style={[styles.statCard, { borderTopColor: iconBg, borderTopWidth: 4 }]} onPress={onPress} activeOpacity={0.82}>
+    <ButtonFeedback style={[styles.statCard, { borderTopColor: iconBg, borderTopWidth: 4 }]} onPress={onPress} activeOpacity={0.82}>
       <View style={styles.statCardTop}>
         <View style={[styles.statIconBox, { backgroundColor: iconBg }]}>
           <Ionicons name={iconName} size={20} color="#FFFFFF" />
@@ -55,19 +49,19 @@ function StatCard({ iconName, iconBg, tag, value, subtitle, subtitleColor, descr
       {description ? (
         <Text style={styles.statDescription}>{description}</Text>
       ) : null}
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
 // ─── Action Tile ─────────────────────────────────────────────────────────────
 function ActionTile({ iconName, label, iconBg, iconColor, onPress }) {
   return (
-    <TouchableOpacity style={styles.actionTile} onPress={onPress} activeOpacity={0.8}>
+    <ButtonFeedback style={styles.actionTile} onPress={onPress} activeOpacity={0.8}>
       <View style={[styles.actionIconBox, { backgroundColor: iconBg }]}>
         <Ionicons name={iconName} size={22} color={iconColor} />
       </View>
       <Text style={[styles.actionLabel, { color: iconColor }]}>{label}</Text>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -81,9 +75,9 @@ function EcoMetric({ tag, tagColor, value, valueColor, actionLabel, actionColor,
       <Text style={[styles.ecoTag, { color: tagColor }]}>{tag}</Text>
       <Text style={[styles.ecoValue, { color: valueColor }]}>{value ?? '00'}</Text>
       {onPress ? (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.75}>
+        <ButtonFeedback onPress={onPress} activeOpacity={0.75}>
           <Text style={[styles.ecoAction, { color: actionColor }]}>{actionLabel}</Text>
-        </TouchableOpacity>
+        </ButtonFeedback>
       ) : (
         <Text style={[styles.ecoAction, { color: actionColor }]}>{actionLabel}</Text>
       )}

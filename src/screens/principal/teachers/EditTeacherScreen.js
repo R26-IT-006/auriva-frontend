@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native";
+import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -121,7 +111,7 @@ export default function EditTeacherScreen({ route, navigation }) {
             <View style={styles.photoCard}>
               <View style={styles.photoBanner} />
               <View style={styles.photoBody}>
-                <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8} style={styles.photoTouch}>
+                <ButtonFeedback onPress={pickPhoto} activeOpacity={0.8} style={styles.photoTouch}>
                   {photoUri ? (
                     <Image source={{ uri: photoUri }} style={styles.photoPreview} />
                   ) : (
@@ -132,7 +122,7 @@ export default function EditTeacherScreen({ route, navigation }) {
                   <View style={styles.photoBadge}>
                     <Ionicons name="camera" size={11} color="#FFF" />
                   </View>
-                </TouchableOpacity>
+                </ButtonFeedback>
                 <Text style={styles.photoName}>{teacher.full_name}</Text>
                 <Text style={styles.photoHint}>Tap photo to change</Text>
               </View>

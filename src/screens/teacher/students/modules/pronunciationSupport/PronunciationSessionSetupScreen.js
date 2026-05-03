@@ -1,13 +1,6 @@
 import React, { useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  useWindowDimensions,
-  ScrollView,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
@@ -42,7 +35,7 @@ function StepConnector() {
 
 function CategoryCard({ item, selected, onPress, cardWidth }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       activeOpacity={0.85}
       onPress={onPress}
       style={[
@@ -62,7 +55,7 @@ function CategoryCard({ item, selected, onPress, cardWidth }) {
           {item.subtitle}
         </Text>
       </View>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -102,7 +95,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <TouchableOpacity
+          <ButtonFeedback
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
             activeOpacity={0.8}
@@ -112,7 +105,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               size={20}
               color={Colors.text.primary}
             />
-          </TouchableOpacity>
+          </ButtonFeedback>
 
           <View style={styles.headerCopy}>
             <Text style={styles.title}>New Session Setup</Text>
@@ -152,7 +145,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
                 ? `Selected: ${SESSION_CATEGORIES.find((c) => c.id === selectedCategory)?.title}`
                 : "Choose one category to continue to activity setup"}
             </Text>
-            <TouchableOpacity
+            <ButtonFeedback
               activeOpacity={0.85}
               style={[
                 styles.continueBtn,
@@ -163,7 +156,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
             >
               <Text style={styles.continueText}>Continue</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
+            </ButtonFeedback>
           </View>
         </View>
       </ScrollView>

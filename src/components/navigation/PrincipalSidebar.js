@@ -1,12 +1,7 @@
 import React, { useContext, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-} from "react-native";
+import { View, Text, StyleSheet, Animated } from "react-native";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ButtonFeedback } from "../common/ButtonFeedback";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -98,7 +93,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
           </Animated.View>
         </View>
 
-        <TouchableOpacity
+        <ButtonFeedback
           onPress={toggle}
           activeOpacity={0.7}
           style={styles.toggleBtn}
@@ -108,7 +103,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
             size={14}
             color={WHITE_DIM}
           />
-        </TouchableOpacity>
+        </ButtonFeedback>
       </View>
 
       <View style={styles.divider} />
@@ -118,7 +113,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         {NAV_ITEMS.map((item) => {
           const isActive = activeRoute === item.name;
           return (
-            <TouchableOpacity
+            <ButtonFeedback
               key={item.name}
               onPress={() => navRef.current?.navigate(item.name)}
               activeOpacity={0.7}
@@ -139,14 +134,14 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
               >
                 {item.label}
               </Animated.Text>
-            </TouchableOpacity>
+            </ButtonFeedback>
           );
         })}
       </View>
 
       {/* ── Bottom: sign-out ─────────────────────────────────────────────── */}
       <View style={styles.divider} />
-      <TouchableOpacity
+      <ButtonFeedback
         onPress={() => setSignOutVisible(true)}
         activeOpacity={0.7}
         style={styles.row}
@@ -162,7 +157,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         >
           Sign Out
         </Animated.Text>
-      </TouchableOpacity>
+      </ButtonFeedback>
 
       <ConfirmDialog
         visible={signOutVisible}

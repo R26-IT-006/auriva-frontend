@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
@@ -24,7 +25,7 @@ function MouthShapeIcon({ index }) {
 
 function MouthCard({ item, selected, onPress }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       activeOpacity={0.86}
       onPress={onPress}
       style={[styles.card, selected && styles.cardSelected]}
@@ -32,7 +33,7 @@ function MouthCard({ item, selected, onPress }) {
       <MouthShapeIcon index={item.id === "t" ? 2 : item.id === "ae" ? 1 : 0} />
       <Text style={styles.ipa}>{item.ipa}</Text>
       <Text style={styles.label}>{item.label}</Text>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -59,13 +60,13 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.screen}>
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
         >
           <Ionicons name="arrow-back" size={26} color="#41536D" />
-        </TouchableOpacity>
+        </ButtonFeedback>
 
         <View style={styles.centerWrap}>
           <Text style={styles.title}>Watch the mouth shapes</Text>
@@ -82,14 +83,14 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
           </View>
         </View>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.9}
           onPress={handleReady}
           style={styles.readyBtn}
         >
           <Text style={styles.readyText}>I&apos;m Ready!</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        </ButtonFeedback>
       </View>
     </SafeAreaView>
   );

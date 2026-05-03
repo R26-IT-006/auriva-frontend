@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
@@ -22,6 +23,14 @@ function ProgressRow({ label, value, barColor }) {
       </View>
       <Text style={styles.progressValue}>{value}%</Text>
     </View>
+  );
+}
+
+function FeedbackButton({ onPress, style, activeOpacity = 0.92, children }) {
+  return (
+    <ButtonFeedback style={style} activeOpacity={activeOpacity} onPress={onPress}>
+      {children}
+    </ButtonFeedback>
   );
 }
 
@@ -48,6 +57,10 @@ export default function PronunciationResultScreen({ navigation, route }) {
 
   function handleGoDashboard() {
     navigation.navigate("PronunciationSessionSetup", { student });
+  }
+
+  function handleGoHome() {
+    navigation.navigate("StudentSession", { student });
   }
 
   function handleTryAgain() {
@@ -78,14 +91,24 @@ export default function PronunciationResultScreen({ navigation, route }) {
               {student?.full_name || "Leo M."}'s Result
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.dashboardBtn}
-            activeOpacity={0.88}
-            onPress={handleGoDashboard}
-          >
-            <Ionicons name="home-outline" size={16} color="#5C6C85" />
-            <Text style={styles.dashboardText}>Dashboard</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonsGroup}>
+            <FeedbackButton
+              style={styles.homeBtn}
+              activeOpacity={0.88}
+              onPress={handleGoHome}
+            >
+              <Ionicons name="home" size={16} color="#5C6C85" />
+              <Text style={styles.btnText}>Home</Text>
+            </FeedbackButton>
+            <FeedbackButton
+              style={styles.dashboardBtn}
+              activeOpacity={0.88}
+              onPress={handleGoDashboard}
+            >
+              <Ionicons name="home-outline" size={16} color="#5C6C85" />
+              <Text style={styles.btnText}>Dashboard</Text>
+            </FeedbackButton>
+          </View>
         </View>
 
         <View style={styles.contentRow}>
@@ -157,23 +180,23 @@ export default function PronunciationResultScreen({ navigation, route }) {
               </View>
             </View>
 
-            <TouchableOpacity
+            <FeedbackButton
               style={styles.tryAgainBtn}
               activeOpacity={0.9}
               onPress={handleTryAgain}
             >
               <Ionicons name="refresh-outline" size={26} color="#4B5B72" />
               <Text style={styles.tryAgainText}>Try Again</Text>
-            </TouchableOpacity>
+            </FeedbackButton>
 
-            <TouchableOpacity
+            <FeedbackButton
               style={styles.nextWordBtn}
               activeOpacity={0.9}
               onPress={handleNextWord}
             >
               <Text style={styles.nextWordBtnText}>Next Word</Text>
               <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
+            </FeedbackButton>
           </View>
         </View>
       </View>
@@ -218,6 +241,21 @@ const styles = StyleSheet.create({
     color: "#1F2F49",
     fontWeight: "700",
   },
+  buttonsGroup: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  homeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#F3F5F8",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 42,
+  },
   dashboardBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -227,6 +265,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 42,
+  },
+  btnText: {
+    color: "#5D6D87",
+    fontWeight: "700",
+    fontSize: 14,
   },
   dashboardText: {
     color: "#5D6D87",

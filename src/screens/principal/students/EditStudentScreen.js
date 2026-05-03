@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native";
+import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -148,7 +138,7 @@ export default function EditStudentScreen({ route, navigation }) {
             <View style={styles.photoCard}>
               <View style={styles.photoBanner} />
               <View style={styles.photoBody}>
-                <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8} style={styles.photoTouch}>
+                <ButtonFeedback onPress={pickPhoto} activeOpacity={0.8} style={styles.photoTouch}>
                   {photoUri ? (
                     <Image source={{ uri: photoUri }} style={styles.photoPreview} />
                   ) : (
@@ -159,7 +149,7 @@ export default function EditStudentScreen({ route, navigation }) {
                   <View style={styles.photoBadge}>
                     <Ionicons name="camera" size={11} color="#FFF" />
                   </View>
-                </TouchableOpacity>
+                </ButtonFeedback>
                 <Text style={styles.photoName}>{student.full_name}</Text>
                 <Text style={styles.photoHint}>Tap photo to change</Text>
               </View>
@@ -188,7 +178,7 @@ export default function EditStudentScreen({ route, navigation }) {
               {/* Disability picker */}
               <View>
                 <Text style={styles.selectLabel}>Disability</Text>
-                <TouchableOpacity
+                <ButtonFeedback
                   style={[styles.selectBtn, errors.disability && { borderColor: Colors.status.error }]}
                   onPress={() => setShowDisabilityPicker((v) => !v)}
                   activeOpacity={0.8}
@@ -197,19 +187,19 @@ export default function EditStudentScreen({ route, navigation }) {
                     {form.disability || 'Select disability type'}
                   </Text>
                   <Ionicons name={showDisabilityPicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.icon.default} />
-                </TouchableOpacity>
+                </ButtonFeedback>
                 {errors.disability && <Text style={styles.fieldError}>{errors.disability}</Text>}
                 {showDisabilityPicker && (
                   <View style={styles.dropdown}>
                     {DISABILITY_OPTIONS.map((opt) => (
-                      <TouchableOpacity
+                      <ButtonFeedback
                         key={opt}
                         style={[styles.dropdownItem, form.disability === opt && styles.dropdownItemActive]}
                         onPress={() => { set('disability', opt); setShowDisabilityPicker(false); }}
                       >
                         <Text style={[styles.dropdownText, form.disability === opt && styles.dropdownTextActive]}>{opt}</Text>
                         {form.disability === opt && <Ionicons name="checkmark" size={16} color={K.purple} />}
-                      </TouchableOpacity>
+                      </ButtonFeedback>
                     ))}
                   </View>
                 )}
