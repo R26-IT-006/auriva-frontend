@@ -1,15 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  RefreshControl,
-  StyleSheet,
-  Alert,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, FlatList, TextInput, RefreshControl, StyleSheet, Alert, useWindowDimensions } from "react-native";
+import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../components/common/Avatar';
@@ -40,7 +31,7 @@ const CAPACITY_FILTERS = ['All', 'Available', 'Full'];
 
 function FilterChip({ label, active, color, onPress }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       onPress={onPress}
       activeOpacity={0.75}
       style={[
@@ -51,7 +42,7 @@ function FilterChip({ label, active, color, onPress }) {
       <Text style={[styles.chipText, active && styles.chipTextActive]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -62,7 +53,7 @@ function TeacherCard({ teacher, onPress }) {
   const fillCount    = Math.min(studentCount, 3);
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={styles.card}>
+    <ButtonFeedback onPress={onPress} activeOpacity={0.82} style={styles.card}>
       <View style={[styles.cardStrip, { backgroundColor: accent.color }]} />
 
       <View style={styles.cardBody}>
@@ -107,7 +98,7 @@ function TeacherCard({ teacher, onPress }) {
         <Text style={[styles.cardFooterText, { color: accent.color }]}>View Profile</Text>
         <Ionicons name="arrow-forward" size={14} color={accent.color} />
       </View>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -175,9 +166,9 @@ export default function TeacherListScreen({ navigation }) {
           autoCapitalize="none"
         />
         {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
+          <ButtonFeedback onPress={() => setSearch('')} activeOpacity={0.7}>
             <Ionicons name="close-circle" size={17} color={Colors.icon.muted} />
-          </TouchableOpacity>
+          </ButtonFeedback>
         )}
       </View>
 
@@ -259,13 +250,13 @@ export default function TeacherListScreen({ navigation }) {
         }
       />
 
-      <TouchableOpacity
+      <ButtonFeedback
         style={styles.fab}
         onPress={() => navigation.navigate('CreateTeacher')}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={28} color="#FFF" />
-      </TouchableOpacity>
+      </ButtonFeedback>
     </SafeAreaView>
   );
 }

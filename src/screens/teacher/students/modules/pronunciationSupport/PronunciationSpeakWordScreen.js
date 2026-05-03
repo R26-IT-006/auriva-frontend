@@ -1,15 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Alert,
-  useWindowDimensions,
-  Animated,
-  Easing,
-} from "react-native";
+import { View, Text, StyleSheet, Image, Alert, useWindowDimensions, Animated, Easing } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
@@ -223,7 +214,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           </View>
 
           <View style={styles.voiceCard}>
-            <TouchableOpacity
+            <ButtonFeedback
               activeOpacity={0.88}
               onPress={handleTapToSpeak}
               style={styles.micHitArea}
@@ -243,7 +234,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
                   color="#FFFFFF"
                 />
               </Animated.View>
-            </TouchableOpacity>
+            </ButtonFeedback>
             <Text style={styles.micLabel}>{statusText}</Text>
             {isRecording ? (
               <Text style={styles.recordingTimer}>
@@ -276,22 +267,22 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           </View>
         </View>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
         >
           <Ionicons name="arrow-back" size={26} color="#41536D" />
-        </TouchableOpacity>
+        </ButtonFeedback>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.9}
           onPress={handleNext}
           style={styles.nextBtn}
         >
           <Text style={styles.nextText}>Next</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        </ButtonFeedback>
       </View>
     </SafeAreaView>
   );

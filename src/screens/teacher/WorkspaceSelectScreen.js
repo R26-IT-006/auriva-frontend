@@ -1,178 +1,160 @@
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { Layout } from '../../constants/layout';
-import { useAuthStore } from '../../store/authStore';
-import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import React from "react";
+import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "../../constants/colors";
+import { Layout } from "../../constants/layout";
+import { ButtonFeedback } from "../../components/common/ButtonFeedback";
 
 const WORKSPACES = [
   {
-    key:    'teacher',
-    label:  'Teacher workspace',
-    sub:    'Manage classes & resources',
-    image:  require('../../../assets/teacher.png'),
-    route:  'TeacherMain',
-    iconBg: '#E1F5EE',
+    key: "teacher",
+    emoji: "👩‍🏫",
+    label: "Teacher\nWorkspace",
+    route: "TeacherMain",
+    border: "#1A1A2E",
+    bg: "#F0F2FA",
   },
   {
-    key:    'student',
-    label:  'Student workspace',
-    sub:    'Access lessons & assignments',
-    image:  require('../../../assets/students.png'),
-    route:  'StudentPicker',
-    iconBg: '#E8F0FB',
+    key: "student",
+    emoji: "👦👧",
+    label: "Student\nWorkspace",
+    route: "StudentPicker",
+    border: "#1A1A2E",
+    bg: "#FFFFFF",
   },
 ];
 
 export default function WorkspaceSelectScreen({ navigation }) {
   const { width } = useWindowDimensions();
-  const cardWidth = Math.min(width - Layout.spacing.lg * 2, 420);
-  const [logoutVisible, setLogoutVisible] = useState(false);
-  const logout = useAuthStore((s) => s.logout);
+  const cardSize = Math.min(
+    (width - Layout.spacing.lg * 2 - Layout.spacing.xl) / 2,
+    200,
+  );
 
   return (
-    <LinearGradient colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']} style={styles.safe}>
-      <SafeAreaView style={styles.safeInner}>
+    <SafeAreaView style={styles.safe}>
+      {/* Dot-pattern background layer */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <DotGrid />
+      </View>
 
-        {/* Top-right logout button */}
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.logoutBtn}
-            onPress={() => setLogoutVisible(true)}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="log-out-outline" size={20} color="#555" />
-            <Text style={styles.logoutText}>Sign Out</Text>
-          </TouchableOpacity>
+      <View style={styles.container}>
+        <Text style={styles.title}>Choose your workspace</Text>
+
+        <View style={styles.cardsRow}>
+          {WORKSPACES.map((ws) => (
+            <ButtonFeedback
+              key={ws.key}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate(ws.route)}
+              style={[
+                styles.card,
+                {
+                  width: cardSize,
+                  height: cardSize + 20,
+                  borderColor: ws.border,
+                },
+              ]}
+            >
+              <View style={[styles.emojiWrap, { backgroundColor: ws.bg }]}>
+                <Text style={styles.emoji}>{ws.emoji}</Text>
+              </View>
+              <Text style={styles.cardLabel}>{ws.label}</Text>
+            </ButtonFeedback>
+          ))}
         </View>
-
-        <View style={styles.container}>
-          <Text style={styles.title}>Choose Your Workspace</Text>
-
-          <View style={{ gap: Layout.spacing.md, width: cardWidth }}>
-            {WORKSPACES.map((ws) => (
-              <TouchableOpacity
-                key={ws.key}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate(ws.route)}
-                style={styles.card}
-              >
-                <View style={[styles.iconBox, { backgroundColor: ws.iconBg }]}>
-                  <Image source={ws.image} style={styles.iconImage} resizeMode="contain" />
-                </View>
-                <View style={styles.textWrap}>
-                  <Text style={styles.cardLabel}>{ws.label}</Text>
-                  <Text style={styles.cardSub}>{ws.sub}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9FBFB8" />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <ConfirmDialog
-          visible={logoutVisible}
-          title="Sign Out"
-          message="Are you sure you want to sign out?"
-          confirmLabel="Sign Out"
-          cancelLabel="Cancel"
-          icon="log-out-outline"
-          onConfirm={logout}
-          onCancel={() => setLogoutVisible(false)}
-        />
-
-      </SafeAreaView>
-    </LinearGradient>
+      </View>
+    </SafeAreaView>
   );
 }
 
+/* Lightweight dot-grid overlay */
+function DotGrid() {
+  const { width, height } = useWindowDimensions();
+  const GAP = 28;
+  const COLS = Math.ceil(width / GAP);
+  const ROWS = Math.ceil(height / GAP);
+  const dots = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      dots.push(
+        <View
+          key={`${r}-${c}`}
+          style={{
+            position: "absolute",
+            top: r * GAP + 6,
+            left: c * GAP + 6,
+            width: 3,
+            height: 3,
+            borderRadius: 2,
+            backgroundColor: "rgba(160,160,180,0.22)",
+          }}
+        />,
+      );
+    }
+  }
+  return <>{dots}</>;
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  safeInner: { flex: 1 },
-
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.md,
+  safe: {
+    flex: 1,
+    backgroundColor: "#FAFAFA",
   },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    borderRadius: 20,
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: 8,
-  },
-  logoutText: {
-    fontSize: Layout.fontSize.sm,
-    fontWeight: '600',
-    color: '#555',
-  },
-
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Layout.spacing.lg,
-    gap: Layout.spacing.xl,
+    gap: Layout.spacing.xxl,
   },
   title: {
-    fontSize: 38,
-    fontWeight: '800',
-    fontFamily: 'sans-serif-rounded',
-    color: '#020f0c',
-    textAlign: 'center',
-    letterSpacing: 0,
-    lineHeight: 48,
+    fontSize: 32,
+    fontWeight: "900",
+    color: Colors.text.primary,
+    textAlign: "center",
+    letterSpacing: -0.5,
+  },
+  cardsRow: {
+    flexDirection: "row",
+    gap: Layout.spacing.xl,
+    alignItems: "center",
+    justifyContent: "center",
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: '#E0EDE9',
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.lg,
-    shadowColor: '#0F6E56',
-    shadowOpacity: 0,
-    elevation: 0,
+    borderWidth: 2.5,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 14,
+    gap: 12,
+    overflow: "hidden",
+    // subtle shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  iconBox: {
-    width: 90,
-    height: 90,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  iconImage: {
-    width: 68,
-    height: 68,
-  },
-  textWrap: {
+  emojiWrap: {
     flex: 1,
-    gap: 6,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+  },
+  emoji: {
+    fontSize: 64,
+    lineHeight: 80,
   },
   cardLabel: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: '600',
-    color: '#1A2E26',
-  },
-  cardSub: {
-    fontSize: Layout.fontSize.md,
-    color: '#6B8A80',
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.semibold,
+    color: Colors.text.primary,
+    textAlign: "center",
+    lineHeight: 19,
   },
 });
