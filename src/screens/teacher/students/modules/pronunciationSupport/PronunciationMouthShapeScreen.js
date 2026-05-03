@@ -2,9 +2,11 @@ import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 
 const MOUTH_SHAPES = [
   { id: "k", ipa: "/k/", label: "open", icon: "ellipse-outline" },
@@ -12,26 +14,30 @@ const MOUTH_SHAPES = [
   { id: "t", ipa: "/t/", label: "teeth lip", icon: "ellipse-outline" },
 ];
 
-function MouthShapeIcon({ index }) {
+function MouthShapeIcon({ index, theme }) {
   const variant = index === 2 ? styles.mouthTeeth : styles.mouthOpen;
   return (
     <View style={styles.mouthIconWrap}>
-      <View style={[styles.mouthIconOuter, variant]}>
+      <View style={[styles.mouthIconOuter, { borderColor: theme.cardOutline }, variant]}>
         <View style={styles.mouthIconInner} />
       </View>
     </View>
   );
 }
 
-function MouthCard({ item, selected, onPress }) {
+function MouthCard({ item, selected, onPress, theme }) {
   return (
     <ButtonFeedback
       activeOpacity={0.86}
       onPress={onPress}
-      style={[styles.card, selected && styles.cardSelected]}
+      style={[
+        styles.card,
+        { backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
+        selected && styles.cardSelected,
+      ]}
     >
-      <MouthShapeIcon index={item.id === "t" ? 2 : item.id === "ae" ? 1 : 0} />
-      <Text style={styles.ipa}>{item.ipa}</Text>
+      <MouthShapeIcon index={item.id === "t" ? 2 : item.id === "ae" ? 1 : 0} theme={theme} />
+      <Text style={[styles.ipa, { color: theme.headingText }]}>{item.ipa}</Text>
       <Text style={styles.label}>{item.label}</Text>
     </ButtonFeedback>
   );
@@ -39,6 +45,7 @@ function MouthCard({ item, selected, onPress }) {
 
 export default function PronunciationMouthShapeScreen({ navigation, route }) {
   const student = route.params?.student;
+  const theme = getAvatarTheme(student?.avatar_key);
   const categoryId = route.params?.categoryId;
   const word = route.params?.word;
   const [selectedId, setSelectedId] = useState("ae");
@@ -58,18 +65,19 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <View style={styles.screen}>
         <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
-          style={styles.backBtn}
+          style={[styles.backBtn, { borderColor: theme.cardOutline }]}
         >
-          <Ionicons name="arrow-back" size={26} color="#41536D" />
+          <Ionicons name="arrow-back" size={26} color={theme.headingText} />
         </ButtonFeedback>
 
         <View style={styles.centerWrap}>
-          <Text style={styles.title}>Watch the mouth shapes</Text>
+          <Text style={[styles.title, { color: theme.headingText }]}>Watch the mouth shapes</Text>
 
           <View style={styles.cardsRow}>
             {MOUTH_SHAPES.map((item) => (
@@ -78,6 +86,7 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
                 item={item}
                 selected={selectedId === item.id}
                 onPress={() => setSelectedId(item.id)}
+                theme={theme}
               />
             ))}
           </View>
@@ -86,20 +95,23 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
         <ButtonFeedback
           activeOpacity={0.9}
           onPress={handleReady}
-          style={styles.readyBtn}
+          style={[styles.readyBtn, { backgroundColor: theme.button }]}
         >
           <Text style={styles.readyText}>I&apos;m Ready!</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
         </ButtonFeedback>
       </View>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#DCE9F5",
+  },
+  safeInner: {
+    flex: 1,
   },
   screen: {
     flex: 1,
@@ -152,7 +164,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   cardSelected: {
-    borderColor: "#2991FF",
     borderWidth: 2,
   },
   mouthIconWrap: {

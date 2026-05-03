@@ -2,20 +2,22 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, useWindowDimensions, Image, LayoutAnimation, Platform, UIManager, findNodeHandle } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { SESSION_CATEGORIES } from "./sessionCategories.js";
 import { WORD_BANK } from "./wordBank.js";
 
-function Step({ label, active, done }) {
+function Step({ label, active, done, theme }) {
   return (
     <View style={styles.stepWrap}>
       <View
         style={[
           styles.stepCircle,
-          active && styles.stepCircleActive,
-          done && styles.stepCircleDone,
+          active && { backgroundColor: theme.button, borderColor: theme.button },
+          done && { backgroundColor: theme.cardOutline, borderColor: theme.cardOutline },
         ]}
       >
         {done ? (
@@ -30,26 +32,18 @@ function Step({ label, active, done }) {
   );
 }
 
-function StepConnector() {
-  return <View style={styles.stepConnector} />;
+function StepConnector({ theme }) {
+  return <View style={[styles.stepConnector, { backgroundColor: theme.cardOutline }]} />;
 }
 
-function PhonemeDots({ count = 5 }) {
-  const dots = [];
-  for (let i = 0; i < count; i += 1) {
-    dots.push(<View key={i} style={styles.dot} />);
-  }
-  return <View style={styles.dotRow}>{dots}</View>;
-}
-
-function MoreWordCard({ item, selected, onPress, width }) {
+function MoreWordCard({ item, selected, onPress, width, theme }) {
   return (
     <ButtonFeedback
       activeOpacity={0.86}
       onPress={onPress}
       style={[
         styles.moreWordCard,
-        { width },
+        { width, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
         selected && styles.moreWordCardSelected,
       ]}
     >
@@ -68,11 +62,12 @@ function WordCard({
   expanded,
   width,
   refCallback,
+  theme,
 }) {
   return (
     <View
       ref={refCallback}
-      style={[styles.wordCard, { width }, selected && styles.wordCardSelected]}
+      style={[styles.wordCard, { width, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline }, selected && styles.wordCardSelected]}
     >
       <ButtonFeedback
         activeOpacity={0.86}
@@ -81,7 +76,6 @@ function WordCard({
       >
         <View style={styles.wordMetaCompact}>
           <Text style={styles.wordText}>{item.word}</Text>
-          <PhonemeDots count={item.phonemeCount} />
         </View>
         <Ionicons
           name={expanded ? "chevron-up" : "chevron-down"}
@@ -112,6 +106,7 @@ export default function PronunciationWordSelectionScreen({
   route,
 }) {
   const student = route.params?.student;
+  const theme = getAvatarTheme(student?.avatar_key);
   const categoryId = route.params?.categoryId;
   const [selectedWord, setSelectedWord] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -204,7 +199,8 @@ export default function PronunciationWordSelectionScreen({
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.scroll}
@@ -212,42 +208,43 @@ export default function PronunciationWordSelectionScreen({
       >
         <View style={styles.headerRow}>
           <ButtonFeedback
-            style={styles.backBtn}
+            style={[styles.backBtn, { borderColor: theme.cardOutline }]}
             onPress={() => navigation.goBack()}
             activeOpacity={0.82}
           >
             <Ionicons
               name="chevron-back"
               size={20}
-              color={Colors.text.primary}
+              color={theme.headingText}
             />
           </ButtonFeedback>
 
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>New Session Setup</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: theme.headingText }]}>New Session Setup</Text>
+            <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Configure the learning environment
             </Text>
           </View>
         </View>
 
         <View style={styles.stepsRow}>
-          <Step label="1" done />
-          <StepConnector />
-          <Step label="2" done />
-          <StepConnector />
-          <Step label="3" active />
+          <Step label="1" done theme={theme} />
+          <StepConnector theme={theme} />
+          <Step label="2" done theme={theme} />
+          <StepConnector theme={theme} />
+          <Step label="3" active theme={theme} />
         </View>
 
-        <View style={styles.panel}>
+        <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
           <View style={styles.panelTopRow}>
-            <Text style={styles.panelTitle}>Select Starting Word</Text>
+            <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Starting Word</Text>
             <ButtonFeedback
               activeOpacity={0.86}
               onPress={handleStartSession}
               disabled={!selectedWord}
               style={[
                 styles.startBtn,
+                { backgroundColor: theme.button },
                 !selectedWord && styles.startBtnDisabled,
               ]}
             >
@@ -262,7 +259,7 @@ export default function PronunciationWordSelectionScreen({
             </ButtonFeedback>
           </View>
 
-          <Text style={styles.contextText}>
+          <Text style={[styles.contextText, { color: theme.headingText }]}>
             {category ? `${category.title} category` : "Selected category"}
           </Text>
 
@@ -278,6 +275,7 @@ export default function PronunciationWordSelectionScreen({
                   expanded={expandedWordKey === key}
                   onToggleExpand={handleToggleExpand}
                   refCallback={(r) => (cardRefs.current[key] = r)}
+                  theme={theme}
                 />
               );
             })}
@@ -290,8 +288,8 @@ export default function PronunciationWordSelectionScreen({
               style={styles.moreHeaderRow}
             >
               <View>
-                <Text style={styles.moreWordsTitle}>More Words</Text>
-                <Text style={styles.moreWordsSubtitle}>
+                <Text style={[styles.moreWordsTitle, { color: theme.headingText }]}>More Words</Text>
+                <Text style={[styles.moreWordsSubtitle, { color: theme.headingText }]}>
                   Extra animal words to practise and review
                 </Text>
               </View>
@@ -314,6 +312,7 @@ export default function PronunciationWordSelectionScreen({
                     width={moreCardWidth}
                     selected={selectedWord?.id === item.id}
                     onPress={() => setSelectedWord(item)}
+                    theme={theme}
                   />
                 ))}
               </View>
@@ -322,13 +321,16 @@ export default function PronunciationWordSelectionScreen({
         </View>
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#DCE9F5",
+  },
+  safeInner: {
+    flex: 1,
   },
   scroll: {
     paddingHorizontal: Layout.spacing.lg,
@@ -491,7 +493,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   wordCardSelected: {
-    borderColor: Colors.primary,
     borderWidth: 2,
   },
   wordVisual: {
@@ -518,20 +519,6 @@ const styles = StyleSheet.create({
     fontWeight: Layout.fontWeight.bold,
     textTransform: "lowercase",
     lineHeight: 36,
-  },
-  dotRow: {
-    marginTop: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: "#4C5E79",
-    backgroundColor: "#DCE7F8",
   },
   wordHeader: {
     flexDirection: "row",
@@ -574,7 +561,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   moreWordCardSelected: {
-    borderColor: Colors.primary,
     borderWidth: 2,
   },
   moreWordBadge: {

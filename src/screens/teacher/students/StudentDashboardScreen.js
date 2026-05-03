@@ -51,7 +51,10 @@ export default function StudentDashboardScreen({ route, navigation }) {
   const fetch = useCallback(async () => {
     try {
       const data = await teacherApi.getStudent(initialStudent.sid);
-      setStudent(data);
+      setStudent((current) => ({
+        ...data,
+        avatar_key: data.avatar_key ?? current?.avatar_key ?? initialStudent.avatar_key,
+      }));
     } catch { /* keep cached */ }
   }, [initialStudent.sid]);
 
@@ -137,6 +140,11 @@ export default function StudentDashboardScreen({ route, navigation }) {
                   },
                 ]}
                 onPress={() => {
+                  if (m.key === 'pronunciation') {
+                    navigation.navigate('PronunciationSessionSetup', { student });
+                    return;
+                  }
+
                   setActiveModule(isActive ? null : m.key);
                   toast.show('Coming soon!', 'info');
                 }}
