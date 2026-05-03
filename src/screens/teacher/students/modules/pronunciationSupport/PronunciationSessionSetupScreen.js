@@ -1,27 +1,22 @@
 import React, { useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  useWindowDimensions,
-  ScrollView,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { SESSION_CATEGORIES } from "./sessionCategories.js";
 
-function Step({ label, active, done }) {
+function Step({ label, active, done, theme }) {
   return (
     <View style={styles.stepWrap}>
       <View
         style={[
           styles.stepCircle,
-          active && styles.stepCircleActive,
-          done && styles.stepCircleDone,
+          active && { backgroundColor: theme.button, borderColor: theme.button },
+          done && { backgroundColor: theme.cardOutline, borderColor: theme.cardOutline },
         ]}
       >
         {done ? (
@@ -36,18 +31,18 @@ function Step({ label, active, done }) {
   );
 }
 
-function StepConnector() {
-  return <View style={styles.stepConnector} />;
+function StepConnector({ theme }) {
+  return <View style={[styles.stepConnector, { backgroundColor: theme.cardOutline }]} />;
 }
 
-function CategoryCard({ item, selected, onPress, cardWidth }) {
+function CategoryCard({ item, selected, onPress, cardWidth, theme }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       activeOpacity={0.85}
       onPress={onPress}
       style={[
         styles.categoryCard,
-        { width: cardWidth },
+        { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
         selected && styles.categoryCardSelected,
       ]}
     >
@@ -62,12 +57,13 @@ function CategoryCard({ item, selected, onPress, cardWidth }) {
           {item.subtitle}
         </Text>
       </View>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
 export default function PronunciationSessionSetupScreen({ navigation, route }) {
   const student = route.params?.student;
+  const theme = getAvatarTheme(student?.avatar_key);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const { width } = useWindowDimensions();
 
@@ -96,27 +92,28 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backBtn}
+          <ButtonFeedback
+            style={[styles.backBtn, { borderColor: theme.cardOutline }]}
             onPress={() => navigation.goBack()}
             activeOpacity={0.8}
           >
             <Ionicons
               name="chevron-back"
               size={20}
-              color={Colors.text.primary}
+              color={theme.headingText}
             />
-          </TouchableOpacity>
+          </ButtonFeedback>
 
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>New Session Setup</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: theme.headingText }]}>New Session Setup</Text>
+            <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Pronunciation Support Module
               {student?.full_name ? ` for ${student.full_name}` : ""}
             </Text>
@@ -124,15 +121,15 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
         </View>
 
         <View style={styles.stepsRow}>
-          <Step label="1" done />
-          <StepConnector />
-          <Step label="2" active />
-          <StepConnector />
-          <Step label="3" />
+          <Step label="1" done theme={theme} />
+          <StepConnector theme={theme} />
+          <Step label="2" active theme={theme} />
+          <StepConnector theme={theme} />
+          <Step label="3" theme={theme} />
         </View>
 
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Select Category</Text>
+        <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+          <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Category</Text>
 
           <View style={styles.cardsRow}>
             {SESSION_CATEGORIES.map((item) => (
@@ -142,20 +139,22 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
                 selected={selectedCategory === item.id}
                 onPress={() => setSelectedCategory(item.id)}
                 cardWidth={cardWidth}
+                theme={theme}
               />
             ))}
           </View>
 
           <View style={styles.panelFooter}>
-            <Text style={styles.selectionText}>
+            <Text style={[styles.selectionText, { color: theme.headingText }]}>
               {selectedCategory
                 ? `Selected: ${SESSION_CATEGORIES.find((c) => c.id === selectedCategory)?.title}`
                 : "Choose one category to continue to activity setup"}
             </Text>
-            <TouchableOpacity
+            <ButtonFeedback
               activeOpacity={0.85}
               style={[
                 styles.continueBtn,
+                { backgroundColor: theme.button },
                 !selectedCategory && styles.continueBtnDisabled,
               ]}
               disabled={!selectedCategory}
@@ -163,18 +162,21 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
             >
               <Text style={styles.continueText}>Continue</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
+            </ButtonFeedback>
           </View>
         </View>
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#DCE9F5",
+  },
+  safeInner: {
+    flex: 1,
   },
   scroll: {
     paddingHorizontal: Layout.spacing.lg,
@@ -281,7 +283,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   categoryCardSelected: {
-    borderColor: Colors.primary,
     borderWidth: 2,
   },
   categoryVisual: {

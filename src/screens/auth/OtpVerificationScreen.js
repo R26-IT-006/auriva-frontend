@@ -1,15 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from "react-native";
+import { ButtonFeedback } from "../../components/common/ButtonFeedback";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/common/Button';
@@ -153,11 +144,11 @@ export default function OtpVerificationScreen({ navigation, route }) {
                   Resend OTP in <Text style={styles.resendTimerBold}>{countdown}s</Text>
                 </Text>
               ) : (
-                <TouchableOpacity onPress={handleResend} disabled={resending}>
+                <ButtonFeedback onPress={handleResend} disabled={resending}>
                   <Text style={[styles.resendLink, resending && styles.resendLinkDisabled]}>
                     {resending ? 'Sending...' : 'Resend OTP'}
                   </Text>
-                </TouchableOpacity>
+                </ButtonFeedback>
               )}
             </View>
 

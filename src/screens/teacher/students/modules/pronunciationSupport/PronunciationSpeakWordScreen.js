@@ -1,23 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Alert,
-  useWindowDimensions,
-  Animated,
-  Easing,
-} from "react-native";
+import { View, Text, StyleSheet, Image, Alert, useWindowDimensions, Animated, Easing } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
+  const theme = getAvatarTheme(student?.avatar_key);
+  const categoryId = route.params?.categoryId || "animals";
   const word = route.params?.word;
   const { width } = useWindowDimensions();
   const [isRecording, setIsRecording] = useState(false);
@@ -177,7 +172,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   function handleNext() {
     navigation.navigate("PronunciationResult", {
       student,
-      categoryId: "animals",
+      categoryId,
       wordId: word?.id || "cat",
       word,
     });
@@ -197,17 +192,18 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     outputRange: [1, 1.12],
   });
 
-  const micBackground = isRecording ? "#E89C8E" : Colors.primary;
+  const micBackground = isRecording ? "#E89C8E" : theme.button;
   const statusText = isRecording ? "Recording..." : "Tap to speak";
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <View style={styles.container}>
-        <Text style={styles.title}>What is this?</Text>
+        <Text style={[styles.title, { color: theme.headingText }]}>What is this?</Text>
 
         <View style={[styles.contentRow, { width: cardWidth }]}>
           <View style={styles.imageCard}>
-            <View style={styles.imageFrame}>
+            <View style={[styles.imageFrame, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
               {word?.imageUri ? (
                 <Image
                   source={{ uri: word.imageUri }}
@@ -222,8 +218,8 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             </View>
           </View>
 
-          <View style={styles.voiceCard}>
-            <TouchableOpacity
+          <View style={[styles.voiceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+            <ButtonFeedback
               activeOpacity={0.88}
               onPress={handleTapToSpeak}
               style={styles.micHitArea}
@@ -243,7 +239,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
                   color="#FFFFFF"
                 />
               </Animated.View>
-            </TouchableOpacity>
+            </ButtonFeedback>
             <Text style={styles.micLabel}>{statusText}</Text>
             {isRecording ? (
               <Text style={styles.recordingTimer}>
@@ -276,31 +272,34 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           </View>
         </View>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
-          style={styles.backBtn}
+          style={[styles.backBtn, { borderColor: theme.cardOutline }]}
         >
-          <Ionicons name="arrow-back" size={26} color="#41536D" />
-        </TouchableOpacity>
+          <Ionicons name="arrow-back" size={26} color={theme.headingText} />
+        </ButtonFeedback>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.9}
           onPress={handleNext}
-          style={styles.nextBtn}
+          style={[styles.nextBtn, { backgroundColor: theme.button }]}
         >
           <Text style={styles.nextText}>Next</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        </ButtonFeedback>
       </View>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#DCE9F5",
+  },
+  safeInner: {
+    flex: 1,
   },
   container: {
     flex: 1,

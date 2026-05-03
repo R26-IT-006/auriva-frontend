@@ -1,22 +1,17 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  useWindowDimensions,
-  Image,
-  Alert,
-  Linking,
-} from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, Image, Alert, Linking } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { WORD_BANK } from "./wordBank.js";
 
 export default function PronunciationLearnWordScreen({ navigation, route }) {
   const student = route.params?.student;
+  const theme = getAvatarTheme(student?.avatar_key);
   const categoryId = route.params?.categoryId;
   const selectedWordId = route.params?.wordId;
   const { width } = useWindowDimensions();
@@ -46,12 +41,13 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <View style={styles.container}>
         <View style={styles.centerStage}>
-          <Text style={styles.headline}>Listen to the sounds</Text>
+          <Text style={[styles.headline, { color: theme.headingText }]}>Listen to the sounds</Text>
 
-          <View style={[styles.wordCard, { width: cardWidth }]}>
+          <View style={[styles.wordCard, { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
             <View style={styles.soundStage}>
               {sounds.map((sound, index) => (
                 <View key={`${sound.text}-${index}`} style={styles.soundBlock}>
@@ -60,10 +56,10 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                 </View>
               ))}
 
-              <TouchableOpacity
+              <ButtonFeedback
                 activeOpacity={0.88}
                 onPress={handleHearSounds}
-                style={[styles.hearBtn, isPlaying && styles.hearBtnActive]}
+                style={[styles.hearBtn, { backgroundColor: theme.button }, isPlaying && styles.hearBtnActive]}
               >
                 <Ionicons
                   name="volume-high-outline"
@@ -71,7 +67,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                   color="#FFFFFF"
                 />
                 <Text style={styles.hearBtnText}>Hear Sounds</Text>
-              </TouchableOpacity>
+              </ButtonFeedback>
             </View>
 
             <View style={styles.imagePane}>
@@ -90,31 +86,34 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           </View>
         </View>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
-          style={styles.backBtn}
+          style={[styles.backBtn, { borderColor: theme.cardOutline }]}
         >
-          <Ionicons name="arrow-back" size={26} color="#41536D" />
-        </TouchableOpacity>
+          <Ionicons name="arrow-back" size={26} color={theme.headingText} />
+        </ButtonFeedback>
 
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.9}
           onPress={handleNext}
-          style={styles.nextBtn}
+          style={[styles.nextBtn, { backgroundColor: theme.button }]}
         >
           <Text style={styles.nextText}>Next</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        </ButtonFeedback>
       </View>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#DCE9F5",
+  },
+  safeInner: {
+    flex: 1,
   },
   container: {
     flex: 1,
