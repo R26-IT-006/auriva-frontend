@@ -1,4 +1,4 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+﻿import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
@@ -23,7 +23,7 @@ const Stack = createNativeStackNavigator();
 const stackOptions = {
   headerStyle: { backgroundColor: Colors.surface },
   headerTitleStyle: {
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
     fontSize: Layout.fontSize.lg,
   },
@@ -68,7 +68,7 @@ function TeacherTabs() {
         },
         tabBarLabelStyle: {
           fontSize:   Layout.fontSize.xs,
-          fontWeight: Layout.fontWeight.semibold,
+          fontFamily: 'Nunito_600SemiBold',
         },
         tabBarIcon: ({ color, size, focused }) => {
           const icons = {

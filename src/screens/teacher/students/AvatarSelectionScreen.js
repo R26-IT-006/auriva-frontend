@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+﻿import { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -225,12 +225,12 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   studentName: {
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#333',
   },
   avatarName: {
     fontSize: 48,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#1A2E26',
     letterSpacing: -1,
     fontFamily: 'sans-serif-rounded',
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   avatarIconName: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#888',
   },
   avatarIconNameSelected: {
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   confirmText: {
     color: '#FFF',
     fontSize: Layout.fontSize.xs,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
     lineHeight: 17,
   },

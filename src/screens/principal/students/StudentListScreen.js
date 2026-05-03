@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+﻿import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -336,14 +336,14 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pageTitle: { fontSize: Layout.fontSize.xl, fontWeight: '900', color: Colors.text.primary },
+  pageTitle: { fontSize: Layout.fontSize.xl, fontFamily: 'Nunito_900Black', color: Colors.text.primary },
   countBadge: {
     backgroundColor: K.teal,
     borderRadius: Layout.radius.full,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  countText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  countText: { fontSize: 11, fontFamily: 'Nunito_700Bold', color: '#FFF' },
 
   // ── Filter bar ───────────────────────────────────────────────
   filterBar: {
@@ -389,8 +389,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   chipActive:     { backgroundColor: '#FFF' },
-  chipText:       { fontSize: 12, fontWeight: '600', color: Colors.text.secondary },
-  chipTextActive: { color: Colors.text.primary, fontWeight: '700' },
+  chipText:       { fontSize: 12, fontFamily: 'Nunito_600SemiBold', color: Colors.text.secondary },
+  chipTextActive: { color: Colors.text.primary, fontFamily: 'Nunito_700Bold' },
 
   addBtn: {
     flexDirection: 'row',
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.md,
     paddingVertical: 9,
   },
-  addBtnText: { fontSize: Layout.fontSize.sm, fontWeight: '700', color: '#FFF' },
+  addBtnText: { fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_700Bold', color: '#FFF' },
 
   // ── Table ────────────────────────────────────────────────────
   tableContainer: {
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   },
   headerCell: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: 'rgba(255,255,255,0.85)',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
@@ -448,8 +448,8 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
 
-  codeText: { fontSize: 11, fontWeight: '700', color: K.teal, letterSpacing: 0.3 },
-  nameText: { fontSize: Layout.fontSize.sm, fontWeight: '700', color: Colors.text.primary },
+  codeText: { fontSize: 11, fontFamily: 'Nunito_700Bold', color: K.teal, letterSpacing: 0.3 },
+  nameText: { fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
   mutedText: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary },
 
   statusBadge: {
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
-  statusLabel: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  statusLabel: { fontSize: 11, fontFamily: 'Nunito_700Bold', color: '#FFF' },
 
   // ── Pagination ───────────────────────────────────────────────
   pagination: {
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
   },
-  paginationInfo: { fontSize: 10, fontWeight: '600', color: Colors.text.muted, letterSpacing: 0.5 },
+  paginationInfo: { fontSize: 10, fontFamily: 'Nunito_600SemiBold', color: Colors.text.muted, letterSpacing: 0.5 },
   pageControls: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pageArrow: {
     width: 28, height: 28, borderRadius: 8,
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderLight,
   },
   pageBtnActive:     { backgroundColor: K.headerBg, borderColor: K.headerBg },
-  pageBtnText:       { fontSize: 12, fontWeight: '600', color: Colors.text.secondary },
+  pageBtnText:       { fontSize: 12, fontFamily: 'Nunito_600SemiBold', color: Colors.text.secondary },
   pageBtnTextActive: { color: '#FFF' },
   pageEllipsis:      { fontSize: 12, color: Colors.text.muted, paddingHorizontal: 2 },
 });

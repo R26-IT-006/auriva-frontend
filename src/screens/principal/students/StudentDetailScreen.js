@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -286,17 +286,17 @@ const styles = StyleSheet.create({
   },
   profileHeaderLandscape: { padding: Layout.spacing.md },
   profileMeta: { flex: 1, marginLeft: Layout.spacing.lg },
-  profileName: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, color: Colors.text.primary },
+  profileName: { fontSize: Layout.fontSize.xl, fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
   profileCode: { fontSize: Layout.fontSize.sm, color: Colors.text.link, marginTop: 2 },
   assignCard: { marginBottom: Layout.spacing.md },
   assignRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   assignInfo: { flex: 1, marginRight: Layout.spacing.md },
   assignLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 4 },
-  assignValue: { fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.semibold, color: Colors.text.primary },
+  assignValue: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
   assignLocked: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 8, fontStyle: 'italic' },
   section: { marginBottom: Layout.spacing.md },
   sectionTitle: {
-    fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.bold,
+    fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary, marginBottom: Layout.spacing.sm,
   },
   infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Layout.spacing.sm, paddingHorizontal: Layout.spacing.md },
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
-  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontWeight: Layout.fontWeight.medium },
+  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
   divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 58 },
   actions: { flexDirection: 'row', gap: Layout.spacing.sm, marginTop: Layout.spacing.md },
   // Landscape

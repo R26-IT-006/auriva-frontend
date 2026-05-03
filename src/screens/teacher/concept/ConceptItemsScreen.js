@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItem, getConceptItemsForCategory } from '../../../constants/conceptData';
 import { conceptApi } from '../../../api/concept';
-import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
 
 export default function ConceptItemsScreen({ route, navigation }) {
@@ -25,14 +24,13 @@ export default function ConceptItemsScreen({ route, navigation }) {
 
   const [progressItems, setProgressItems] = useState([]);
   const [loading,       setLoading]       = useState(true);
-  const [gateVisible,   setGateVisible]   = useState(false);
 
   const theme    = getAvatarTheme(student?.avatar_key);
   const H_PAD    = Layout.spacing.md;
-  const GAP      = 12;
-  const COLS     = 2;
+  const GAP      = 14;
+  const COLS     = 4;
   const cardW    = (width - H_PAD * 2 - GAP * (COLS - 1)) / COLS;
-  const cardH    = cardW * 1.15;
+  const cardH    = cardW * 1.05;
 
   const localItems = getConceptItemsForCategory(category.key);
 
@@ -85,11 +83,13 @@ export default function ConceptItemsScreen({ route, navigation }) {
         })}
       >
         {/* Fruit image */}
-        <Image
-          source={item.real}
-          style={[styles.cardImage, isLocked && styles.cardImageLocked]}
-          resizeMode="contain"
-        />
+        <View style={styles.cardImageBox}>
+          <Image
+            source={item.real}
+            style={[styles.cardImage, isLocked && styles.cardImageLocked]}
+            resizeMode="cover"
+          />
+        </View>
 
         {/* Label */}
         <Text style={[styles.cardLabel, isLocked && styles.cardLabelLocked]}>
@@ -99,14 +99,14 @@ export default function ConceptItemsScreen({ route, navigation }) {
         {/* Locked overlay */}
         {isLocked && (
           <View style={styles.lockedOverlay}>
-            <Ionicons name="lock-closed" size={28} color="#AAA" />
+            <Ionicons name="lock-closed" size={20} color="#AAA" />
           </View>
         )}
 
         {/* Passed badge */}
         {isPassed && (
           <View style={styles.passedBadge}>
-            <Ionicons name="checkmark-circle" size={22} color="#4CAF50" />
+            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
           </View>
         )}
 
@@ -131,7 +131,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={() => setGateVisible(true)}
+            onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
@@ -164,11 +164,6 @@ export default function ConceptItemsScreen({ route, navigation }) {
         )}
       </SafeAreaView>
 
-      <ParentGateModal
-        visible={gateVisible}
-        onSuccess={() => { setGateVisible(false); navigation.goBack(); }}
-        onCancel={() => setGateVisible(false)}
-      />
     </LinearGradient>
   );
 }
@@ -197,12 +192,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,
@@ -216,30 +211,36 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.md,
   },
   card: {
-    borderRadius: 20,
-    borderWidth: 2.5,
+    borderRadius: 14,
+    borderWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 3,
     overflow: 'hidden',
   },
-  cardImage: {
-    width: '70%',
+  cardImageBox: {
+    width: '72%',
     aspectRatio: 1,
-    marginBottom: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 5,
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
   },
   cardImageLocked: {
     opacity: 0.25,
   },
   cardLabel: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 15,
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
     color: '#1A1A1A',
   },
@@ -254,13 +255,13 @@ const styles = StyleSheet.create({
   },
   passedBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 5,
+    right: 5,
   },
   progressDot: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 6,
+    right: 6,
     width: 10,
     height: 10,
     borderRadius: 5,

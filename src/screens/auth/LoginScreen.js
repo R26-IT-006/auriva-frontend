@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View,
   Text,
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   },
   rolePillActive: { backgroundColor: '#4AABB8' },
   rolePillText: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
+    fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.secondary,
   },
   rolePillTextActive: { color: '#FFFFFF' },
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   loginBtnText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
   forgotPasswordRow: {
@@ -299,13 +299,13 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: '#3A9BA8',
   },
 
   footer: {
     textAlign: 'center', fontSize: 10, letterSpacing: 1.5,
-    color: Colors.text.muted, fontWeight: Layout.fontWeight.medium,
+    color: Colors.text.muted, fontFamily: 'Nunito_600SemiBold',
     paddingBottom: Layout.spacing.sm,
   },
 
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#1A1A2E',
     textAlign: 'center',
   },
@@ -375,5 +375,5 @@ const styles = StyleSheet.create({
   },
   errorBtn: { width: '100%', borderRadius: 14, overflow: 'hidden', marginTop: 8 },
   errorBtnGradient: { height: 52, alignItems: 'center', justifyContent: 'center' },
-  errorBtnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.bold, letterSpacing: 0.2 },
+  errorBtnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
 });

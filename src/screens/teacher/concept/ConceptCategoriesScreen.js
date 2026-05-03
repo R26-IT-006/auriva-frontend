@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View,
   Text,
@@ -139,12 +139,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#FFF',
   },
   cardImage: {
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
     lineHeight: 18,
     color: '#1A1A1A',

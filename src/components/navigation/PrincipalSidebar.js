@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+﻿import { useContext, useState } from 'react';
 import {
   View,
   Text,
@@ -171,13 +171,13 @@ const styles = StyleSheet.create({
   },
   logoTitle: {
     fontSize: 15,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: WHITE,
     letterSpacing: 0.2,
   },
   logoSub: {
     fontSize: 10,
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     color: WHITE_DIM,
     marginTop: 1,
   },
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: WHITE_MID,
     flexShrink: 1,
   },

@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Animated,
@@ -25,22 +24,52 @@ export default function ConceptImageScreen({ route, navigation }) {
   const theme   = getAvatarTheme(student?.avatar_key);
   const { width, height } = useWindowDimensions();
 
-  const [tapCount,     setTapCount]     = useState(0);
-  const [gateVisible,  setGateVisible]  = useState(false);
+  const [tapCount,    setTapCount]    = useState(0);
+  const [gateVisible, setGateVisible] = useState(false);
 
   const fwdBtnScale  = useRef(new Animated.Value(0)).current;
   const imageScale   = useRef(new Animated.Value(1)).current;
+  const handScale    = useRef(new Animated.Value(1)).current;
+  const handY        = useRef(new Animated.Value(0)).current;
+  const rippleScale  = useRef(new Animated.Value(0.4)).current;
+  const rippleOpacity = useRef(new Animated.Value(0.7)).current;
   const sessionStart = useRef(Date.now());
+  const tapHintLoop  = useRef(null);
 
   const speak = useCallback((text) => {
     Speech.stop();
     Speech.speak(text, { language: 'en-US', rate: 0.75, pitch: 1.0 });
   }, []);
 
+  // Tap-hint animation loop (hand press + ripple)
+  useEffect(() => {
+    tapHintLoop.current = Animated.loop(
+      Animated.sequence([
+        Animated.delay(400),
+        // Press down
+        Animated.parallel([
+          Animated.timing(handScale, { toValue: 0.78, duration: 180, useNativeDriver: true }),
+          Animated.timing(handY,     { toValue: 10,   duration: 180, useNativeDriver: true }),
+          Animated.timing(rippleScale,   { toValue: 0.4, duration: 10,  useNativeDriver: true }),
+          Animated.timing(rippleOpacity, { toValue: 0.7, duration: 10,  useNativeDriver: true }),
+        ]),
+        // Release + ripple expands
+        Animated.parallel([
+          Animated.timing(handScale, { toValue: 1,   duration: 260, useNativeDriver: true }),
+          Animated.timing(handY,     { toValue: 0,   duration: 260, useNativeDriver: true }),
+          Animated.timing(rippleScale,   { toValue: 1.8, duration: 500, useNativeDriver: true }),
+          Animated.timing(rippleOpacity, { toValue: 0,   duration: 500, useNativeDriver: true }),
+        ]),
+        Animated.delay(500),
+      ])
+    );
+    tapHintLoop.current.start();
+    return () => tapHintLoop.current?.stop();
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!concept) return;
 
-    // Start tier1 (only if not a relearn attempt — already in_progress)
     if (!isRelearn) {
       conceptApi.startTier1({
         studentId:   student.sid,
@@ -48,7 +77,6 @@ export default function ConceptImageScreen({ route, navigation }) {
         conceptKey,
       }).catch(() => {});
     } else {
-      // Log relearn start
       conceptApi.logInteraction({
         studentId:   student.sid,
         sessionId:   sessionId || null,
@@ -59,7 +87,6 @@ export default function ConceptImageScreen({ route, navigation }) {
       }).catch(() => {});
     }
 
-    // Auto-speak after short delay
     const t = setTimeout(() => speak(concept.label), 800);
     return () => clearTimeout(t);
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
@@ -68,15 +95,15 @@ export default function ConceptImageScreen({ route, navigation }) {
     const newCount = tapCount + 1;
     setTapCount(newCount);
 
+    if (newCount === 1) tapHintLoop.current?.stop();
+
     speak(concept.label);
 
-    // Tap bounce animation
     Animated.sequence([
       Animated.spring(imageScale, { toValue: 0.93, useNativeDriver: true, speed: 60 }),
       Animated.spring(imageScale, { toValue: 1,    useNativeDriver: true, speed: 30 }),
     ]).start();
 
-    // Log tap event
     conceptApi.logInteraction({
       studentId:   student.sid,
       sessionId:   sessionId || null,
@@ -86,7 +113,6 @@ export default function ConceptImageScreen({ route, navigation }) {
       eventData:   { tap_index: newCount, time_ms: Date.now() - sessionStart.current },
     }).catch(() => {});
 
-    // Reveal forward button after 2 taps
     if (newCount === 2) {
       Animated.spring(fwdBtnScale, {
         toValue:    1,
@@ -130,11 +156,8 @@ export default function ConceptImageScreen({ route, navigation }) {
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
 
-          <Text style={[styles.conceptTitle, { color: theme.headingText }]}>
-            {concept.label}
-          </Text>
+          <View />
 
-          {/* Audio replay */}
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
             onPress={() => speak(concept.label)}
@@ -151,23 +174,41 @@ export default function ConceptImageScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Instruction */}
         <Text style={[styles.instruction, { color: theme.headingText }]}>
           Tap the picture to hear its name
         </Text>
 
         {/* Main image — tappable */}
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={handleImageTap}
-          style={styles.imageWrap}
-        >
-          <Animated.Image
-            source={concept.real}
-            style={[styles.conceptImage, { width: imgSize, height: imgSize, transform: [{ scale: imageScale }] }]}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
+        <View style={[styles.imageContainer, { width: imgSize, height: imgSize }]}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={handleImageTap}
+            style={StyleSheet.absoluteFill}
+          >
+            <Animated.Image
+              source={concept.real}
+              style={{ width: imgSize, height: imgSize, transform: [{ scale: imageScale }] }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+
+          {/* Tap hint — vanishes after first tap */}
+          {tapCount === 0 && (
+            <View style={styles.tapHint} pointerEvents="none">
+              {/* Ripple ring */}
+              <Animated.View
+                style={[
+                  styles.ripple,
+                  { borderColor: theme.button, transform: [{ scale: rippleScale }], opacity: rippleOpacity },
+                ]}
+              />
+              {/* Hand icon */}
+              <Animated.View style={{ transform: [{ scale: handScale }, { translateY: handY }] }}>
+                <Ionicons name="hand-left" size={52} color={theme.button} />
+              </Animated.View>
+            </View>
+          )}
+        </View>
 
         {/* Tap count dots */}
         <View style={styles.tapDots}>
@@ -176,9 +217,7 @@ export default function ConceptImageScreen({ route, navigation }) {
               key={n}
               style={[
                 styles.tapDot,
-                {
-                  backgroundColor: tapCount >= n ? theme.button : 'rgba(0,0,0,0.15)',
-                },
+                { backgroundColor: tapCount >= n ? theme.button : 'rgba(0,0,0,0.15)' },
               ]}
             />
           ))}
@@ -225,11 +264,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  conceptTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-  },
   relearnBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -242,29 +276,33 @@ const styles = StyleSheet.create({
   },
   relearnText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   instruction: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     opacity: 0.55,
     marginTop: 4,
     marginBottom: 16,
   },
-  imageWrap: {
+  imageContainer: {
+    position: 'relative',
+  },
+  tapHint: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 32,
-    padding: 24,
-    backgroundColor: 'rgba(255,255,255,0.55)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.10,
-    shadowRadius: 18,
-    elevation: 6,
   },
-  conceptImage: {
-    borderRadius: 16,
+  ripple: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
   },
   tapDots: {
     flexDirection: 'row',
@@ -296,6 +334,6 @@ const styles = StyleSheet.create({
   },
   fwdBtnText: {
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
 });

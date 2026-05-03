@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View,
   Text,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   portraitImage: { width: '100%', height: 500 },
 
   title: {
-    fontSize: Layout.fontSize.xxl, fontWeight: '900',
+    fontSize: Layout.fontSize.xxl, fontFamily: 'Nunito_900Black',
     color: Colors.text.primary, textAlign: 'center', marginBottom: Layout.spacing.sm,
   },
   subtitle: {
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.md, marginBottom: Layout.spacing.sm,
     borderWidth: 1, borderColor: Colors.border,
   },
-  reqTitle: { fontSize: 10, fontWeight: Layout.fontWeight.bold, color: Colors.text.muted, letterSpacing: 1.2, marginBottom: Layout.spacing.sm },
+  reqTitle: { fontSize: 10, fontFamily: 'Nunito_700Bold', color: Colors.text.muted, letterSpacing: 1.2, marginBottom: Layout.spacing.sm },
   reqRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   reqDot: {
     width: 16, height: 16, borderRadius: 8,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
 
   btn: { marginTop: Layout.spacing.md, borderRadius: 14, overflow: 'hidden' },
   btnGradient: { height: 50, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.bold, letterSpacing: 0.2 },
+  btnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
 
   // ── Success Modal ──────────────────────────────────────────
   overlay: {
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#1A1A2E',
     textAlign: 'center',
   },
@@ -302,10 +302,10 @@ const styles = StyleSheet.create({
   },
   successBtn: { width: '100%', borderRadius: 14, overflow: 'hidden', marginTop: 8 },
   successBtnGradient: { height: 52, alignItems: 'center', justifyContent: 'center' },
-  successBtnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.bold, letterSpacing: 0.2 },
+  successBtnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
 
   footer: {
     textAlign: 'center', fontSize: 10, letterSpacing: 1.5,
-    color: Colors.text.muted, fontWeight: Layout.fontWeight.medium, paddingBottom: Layout.spacing.sm,
+    color: Colors.text.muted, fontFamily: 'Nunito_600SemiBold', paddingBottom: Layout.spacing.sm,
   },
 });

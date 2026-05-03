@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
 
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xs,
     color: K.amber,
     lineHeight: 18,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
 
   // Buttons

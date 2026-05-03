@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -223,14 +223,14 @@ const styles = StyleSheet.create({
   portraitImage: { width: '100%', height: 500 },
 
   title: {
-    fontSize: Layout.fontSize.xxl, fontWeight: '900',
+    fontSize: Layout.fontSize.xxl, fontFamily: 'Nunito_900Black',
     color: Colors.text.primary, textAlign: 'center', marginBottom: Layout.spacing.sm,
   },
   subtitle: {
     fontSize: Layout.fontSize.sm, color: Colors.text.secondary,
     textAlign: 'center', lineHeight: 20, marginBottom: Layout.spacing.lg,
   },
-  emailText: { fontWeight: '600', color: Colors.text.primary },
+  emailText: { fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
 
   formCard: {
     backgroundColor: Colors.surface, borderRadius: Layout.radius.xl,
@@ -243,25 +243,25 @@ const styles = StyleSheet.create({
     width: 46, height: 56, borderRadius: Layout.radius.md,
     borderWidth: 1.5, borderColor: Colors.border,
     backgroundColor: Colors.surfaceAlt,
-    fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, color: Colors.text.primary,
+    fontSize: Layout.fontSize.xl, fontFamily: 'Nunito_700Bold', color: Colors.text.primary,
   },
   otpBoxFilled: { borderColor: '#4AABB8', backgroundColor: '#EAF6F9' },
 
   btn: { borderRadius: 14, overflow: 'hidden', marginBottom: Layout.spacing.md },
   btnGradient: { height: 50, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.bold, letterSpacing: 0.2 },
+  btnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
 
   resendRow: { alignItems: 'center', marginBottom: Layout.spacing.sm },
   resendTimer: { fontSize: Layout.fontSize.sm, color: Colors.text.muted },
-  resendTimerBold: { fontWeight: '600', color: Colors.text.secondary },
-  resendLink: { fontSize: Layout.fontSize.sm, fontWeight: '600', color: '#3A9BA8' },
+  resendTimerBold: { fontFamily: 'Nunito_600SemiBold', color: Colors.text.secondary },
+  resendLink: { fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_600SemiBold', color: '#3A9BA8' },
   resendLinkDisabled: { color: Colors.text.muted },
 
   backBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: Layout.spacing.sm },
-  backBtnText: { fontSize: Layout.fontSize.sm, fontWeight: '600', color: '#3A9BA8' },
+  backBtnText: { fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_600SemiBold', color: '#3A9BA8' },
 
   footer: {
     textAlign: 'center', fontSize: 10, letterSpacing: 1.5,
-    color: Colors.text.muted, fontWeight: Layout.fontWeight.medium, paddingBottom: Layout.spacing.sm,
+    color: Colors.text.muted, fontFamily: 'Nunito_600SemiBold', paddingBottom: Layout.spacing.sm,
   },
 });

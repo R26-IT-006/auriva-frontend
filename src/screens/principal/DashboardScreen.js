@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   greetingDate: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     letterSpacing: 0.3,
   },
   greetingText: {
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   greetingBold: {
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: Colors.text.primary,
   },
   greetingBadge: {
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   greetingBadgeText: {
     fontSize: Layout.fontSize.xs,
     color: '#C9973A',
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
 
   // Header card
@@ -357,18 +357,18 @@ const styles = StyleSheet.create({
   headerDate: {
     fontSize: Layout.fontSize.xs,
     color: 'rgba(255,255,255,0.7)',
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     letterSpacing: 0.3,
   },
   greeting: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: '#FFFFFF',
     lineHeight: 28,
   },
   greetingAccent: {
     fontSize: Layout.fontSize.xxl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#FFFFFF',
   },
   headerBadge: {
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   headerBadgeText: {
     fontSize: Layout.fontSize.xs,
     color: '#FFFFFF',
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
   },
   headerIllustration: {
     marginLeft: Layout.spacing.md,
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
   },
   statTag: {
     fontSize: 9,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.muted,
     letterSpacing: 0.6,
     textAlign: 'right',
@@ -440,13 +440,13 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: Layout.fontSize.xxxl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: Colors.text.primary,
     lineHeight: 36,
   },
   statSubtitle: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
   },
   statDescription: {
     fontSize: 10,
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: Colors.text.primary,
   },
   sectionEmoji: {
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
   },
 
@@ -530,16 +530,16 @@ const styles = StyleSheet.create({
   },
   ecoTag: {
     fontSize: 10,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.3,
   },
   ecoValue: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
   },
   ecoAction: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
   },
   ecoDiv: {
     width: 1,

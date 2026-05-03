@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -87,10 +87,10 @@ const stepStyles = StyleSheet.create({
   },
   circleActive: { borderColor: K.purple, backgroundColor: K.purple },
   circleDone:   { borderColor: K.green,  backgroundColor: K.green  },
-  circleText:   { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: Colors.text.muted },
+  circleText:   { fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_700Bold', color: Colors.text.muted },
   circleTextActive: { color: '#FFF' },
-  stepLabel:    { fontSize: 10, color: Colors.text.muted, fontWeight: Layout.fontWeight.medium },
-  stepLabelActive: { color: K.purple, fontWeight: Layout.fontWeight.bold },
+  stepLabel:    { fontSize: 10, color: Colors.text.muted, fontFamily: 'Nunito_600SemiBold' },
+  stepLabelActive: { color: K.purple, fontFamily: 'Nunito_700Bold' },
   line: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: Layout.spacing.sm, marginBottom: 14 },
   lineDone: { backgroundColor: K.green },
 });
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     width: 26, height: 26, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
-  sectionLabel: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, letterSpacing: 0.2 },
+  sectionLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
 
   // Form card
   formCard: {
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
 
   // Disability / teacher picker
   selectLabel: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
+    fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.secondary, marginBottom: Layout.spacing.xs,
   },
   selectBtn: {
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
   },
   dropdownItemActive: { backgroundColor: K.purpleLight },
   dropdownText:       { flex: 1, fontSize: Layout.fontSize.md, color: Colors.text.primary },
-  dropdownTextActive: { color: K.purple, fontWeight: Layout.fontWeight.semibold },
+  dropdownTextActive: { color: K.purple, fontFamily: 'Nunito_600SemiBold' },
 
   // Allocation card (step 2)
   allocationCard: {
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   allocationTitle: {
-    fontSize: Layout.fontSize.lg, fontWeight: Layout.fontWeight.extrabold,
+    fontSize: Layout.fontSize.lg, fontFamily: 'Nunito_800ExtraBold',
     color: Colors.text.primary,
   },
   allocationSubtitle: {
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: { fontSize: Layout.fontSize.sm, color: Colors.text.muted },
   summaryValue: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
+    fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.primary, flex: 1, textAlign: 'right',
   },
   skipHint: {

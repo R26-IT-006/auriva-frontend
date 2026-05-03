@@ -1,4 +1,4 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+﻿import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SetPasswordScreen from '../screens/auth/SetPasswordScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
@@ -15,7 +15,7 @@ export default function AuthNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: Colors.surface },
         headerTitleStyle: {
-          fontWeight: Layout.fontWeight.bold,
+          fontFamily: 'Nunito_700Bold',
           color: Colors.text.primary,
           fontSize: Layout.fontSize.lg,
         },

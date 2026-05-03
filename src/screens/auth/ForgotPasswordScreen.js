@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View,
   Text,
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: Layout.fontSize.xxl,
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: Colors.text.primary,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   btnText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
 
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   },
   backBtnText: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#3A9BA8',
   },
 
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.5,
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
     paddingBottom: Layout.spacing.sm,
   },
 });

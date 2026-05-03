@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -207,16 +207,16 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 32,
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     letterSpacing: -0.8,
   },
   conceptName: {
     fontSize: 22,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   sub: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     opacity: 0.6,
     marginTop: 4,
   },
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   continueBtnText: {
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
 
   star: {

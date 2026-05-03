@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
@@ -19,11 +20,11 @@ import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { useToast } from '../../../context/ToastContext';
 
-const AVATAR_MAP = {
-  boba:     require('../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../assets/avatar-images/Megatron.png'),
+const AVATAR_VIDEOS = {
+  boba:     require('../../../../assets/avatar-videos/BobaGreeting.mp4'),
+  lily:     require('../../../../assets/avatar-videos/LilyGreeting.mp4'),
+  glitter:  require('../../../../assets/avatar-videos/GlitterGreeting.mp4'),
+  megatron: require('../../../../assets/avatar-videos/MegatronGreeting.mp4'),
 };
 
 const AVATAR_NAMES = {
@@ -114,13 +115,18 @@ export default function StudentDashboardScreen({ route, navigation }) {
             )}
           </View>
 
-          {/* Avatar image */}
-          {student.avatar_key && (
-            <Image
-              source={AVATAR_MAP[student.avatar_key]}
-              style={styles.heroAvatar}
-              resizeMode="contain"
-            />
+          {/* Avatar image / video */}
+          {student.avatar_key && AVATAR_VIDEOS[student.avatar_key] && (
+            <View style={styles.heroAvatar}>
+              <Video
+                source={AVATAR_VIDEOS[student.avatar_key]}
+                style={StyleSheet.absoluteFill}
+                resizeMode={ResizeMode.CONTAIN}
+                shouldPlay
+                isLooping
+                isMuted
+              />
+            </View>
           )}
         </View>
 
@@ -248,11 +254,11 @@ const styles = StyleSheet.create({
   },
   heroGreeting: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
   },
   heroName: {
     fontSize: 26,
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     lineHeight: 32,
     letterSpacing: -0.5,
   },
@@ -266,11 +272,12 @@ const styles = StyleSheet.create({
   },
   avatarBadgeText: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   heroAvatar: {
-    width: 140,
-    height: 160,
+    width: 190,
+    height: 210,
+    marginBottom: -30,
   },
 
   // ── Module grid ──────────────────────────────────────────────
@@ -299,7 +306,7 @@ const styles = StyleSheet.create({
   },
   moduleLabel: {
     fontSize: Layout.fontSize.lg,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
     paddingHorizontal: 8,
     marginTop: 10,

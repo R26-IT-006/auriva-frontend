@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,7 +33,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
   const concept    = getConceptItem(category.key, conceptKey);
   const allItems   = getConceptItemsForCategory(category.key);
   const theme      = getAvatarTheme(student?.avatar_key);
-  const { width }  = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   // 3 options: target + next 2 in sequence (wrapping)
   const options = useRef(() => {
@@ -53,10 +53,13 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
   const thumbsAnim   = useRef(new Animated.Value(0)).current;
   const thumbsOffset = useRef(new Animated.Value(60)).current;
-  const hintPulse    = useRef(new Animated.Value(1)).current;
   const attemptStart = useRef(Date.now());
 
-  const CARD_W = (width - Layout.spacing.md * 2 - 16) / 3;
+  const CARD_GAP = 12;
+  const H_PAD    = Layout.spacing.md;
+  const CARD_W   = ((width  - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
+  const CARD_H   = CARD_W;
+  const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
 
   const speakPrompt = useCallback(() => {
     if (!concept) return;
@@ -66,21 +69,6 @@ export default function ConceptMatchScreen({ route, navigation }) {
       Speech.speak(concept.labelSi || concept.label, { language: 'si-LK', rate: 0.7 });
     }, 1500);
   }, [concept]);
-
-  // Hint pulse on attempt 1
-  useEffect(() => {
-    if (currentAttempt === 1) {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(hintPulse, { toValue: 1.08, duration: 500, useNativeDriver: true }),
-          Animated.timing(hintPulse, { toValue: 1,    duration: 500, useNativeDriver: true }),
-        ]),
-      );
-      loop.start();
-      const t = setTimeout(() => loop.stop(), 1500);
-      return () => { clearTimeout(t); loop.stop(); };
-    }
-  }, [currentAttempt]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Speak on each attempt
   useEffect(() => {
@@ -234,13 +222,12 @@ export default function ConceptMatchScreen({ route, navigation }) {
         </View>
 
         {/* Options */}
-        <View style={[styles.optionsRow, { paddingHorizontal: Layout.spacing.md }]}>
+        <View style={styles.optionsContainer}>
+        <View style={[styles.optionsRow, { paddingHorizontal: H_PAD, gap: CARD_GAP }]}>
           {displayOrder.map((option) => {
-            const isTarget   = option.key === conceptKey;
             const isTapped   = feedbackKey === option.key;
             const isCorrect  = isTapped && feedbackResult === 'correct';
             const isWrong    = isTapped && feedbackResult === 'wrong';
-            const isHint     = currentAttempt === 1 && isTarget && !locked;
 
             let borderColor  = theme.cardOutline;
             if (isCorrect)   borderColor = '#4CAF50';
@@ -253,11 +240,10 @@ export default function ConceptMatchScreen({ route, navigation }) {
                   styles.optionCard,
                   {
                     width:           CARD_W,
+                    height:          CARD_H,
                     backgroundColor: theme.cardSurface,
                     borderColor,
-                    transform: [
-                      { scale: isHint ? hintPulse : 1 },
-                    ],
+                    transform: [{ scale: 1 }],
                   },
                   isCorrect && styles.optionCardCorrect,
                   isWrong   && styles.optionCardWrong,
@@ -269,22 +255,18 @@ export default function ConceptMatchScreen({ route, navigation }) {
                   onPress={() => handleOptionTap(option)}
                   style={styles.optionTouchable}
                 >
-                  <Image
-                    source={option.real}
-                    style={styles.optionImage}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.optionLabel}>{option.label}</Text>
-
-                  {isHint && (
-                    <View style={[styles.hintBadge, { backgroundColor: theme.button }]}>
-                      <Ionicons name="hand-left-outline" size={14} color="#FFF" />
-                    </View>
-                  )}
+                  <View style={{ width: IMG_SIZE, height: IMG_SIZE, marginBottom: 10 }}>
+                    <Image
+                      source={option.real}
+                      style={styles.optionImage}
+                      resizeMode="contain"
+                    />
+                  </View>
                 </TouchableOpacity>
               </Animated.View>
             );
           })}
+        </View>
         </View>
 
         {/* Thumbs feedback popup */}
@@ -338,7 +320,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: -0.3,
   },
 
@@ -354,25 +336,26 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 
-  optionsRow: {
+  optionsContainer: {
+    flex: 1,
     width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 8,
+    width: '100%',
+    justifyContent: 'center',
   },
   optionCard: {
     borderRadius: 18,
     borderWidth: 2.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
-    overflow: 'hidden',
   },
   optionCardCorrect: {
     shadowColor: '#4CAF50',
@@ -386,17 +369,18 @@ const styles = StyleSheet.create({
   },
   optionTouchable: {
     width: '100%',
+    height: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 8,
   },
   optionImage: {
-    width: '85%',
-    aspectRatio: 1,
-    marginBottom: 6,
+    width: '100%',
+    height: '100%',
   },
   optionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
     color: '#1A1A1A',
   },
@@ -431,7 +415,7 @@ const styles = StyleSheet.create({
   },
   feedbackText: {
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#FFF',
   },
 });
