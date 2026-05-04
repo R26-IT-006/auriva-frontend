@@ -11,8 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
+import { playConceptAudio, stopConceptAudio } from '../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem } from '../../../constants/conceptData';
+import { getConceptItem, getConceptPhrase } from '../../../constants/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
@@ -36,10 +37,14 @@ export default function ConceptImageScreen({ route, navigation }) {
   const sessionStart = useRef(Date.now());
   const tapHintLoop  = useRef(null);
 
-  const speak = useCallback((text) => {
-    Speech.stop();
-    Speech.speak(text, { language: 'en-US', rate: 0.75, pitch: 1.0 });
-  }, []);
+  const playIntro = useCallback(() => {
+    if (concept?.introAudio) {
+      playConceptAudio(concept.introAudio);
+    } else {
+      Speech.stop();
+      Speech.speak(getConceptPhrase(concept), { language: 'en-US', rate: 0.75, pitch: 1.0 });
+    }
+  }, [concept]);
 
   // Tap-hint animation loop (hand press + ripple)
   useEffect(() => {
@@ -87,7 +92,7 @@ export default function ConceptImageScreen({ route, navigation }) {
       }).catch(() => {});
     }
 
-    const t = setTimeout(() => speak(concept.label), 800);
+    const t = setTimeout(() => playIntro(), 800);
     return () => clearTimeout(t);
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -97,7 +102,7 @@ export default function ConceptImageScreen({ route, navigation }) {
 
     if (newCount === 1) tapHintLoop.current?.stop();
 
-    speak(concept.label);
+    playIntro();
 
     Animated.sequence([
       Animated.spring(imageScale, { toValue: 0.93, useNativeDriver: true, speed: 60 }),
@@ -125,12 +130,14 @@ export default function ConceptImageScreen({ route, navigation }) {
 
   function handleForward() {
     Speech.stop();
-    navigation.navigate('ConceptMatch', {
-      student,
-      category,
-      conceptKey,
-      sessionId: sessionId || null,
-    });
+    stopConceptAudio();
+    if (isRelearn) {
+      // Already seen the demo — go straight to the quiz
+      navigation.navigate('ConceptMatch', { student, category, conceptKey, sessionId: sessionId || null });
+    } else {
+      // First attempt — show the demo first
+      navigation.navigate('ConceptDemo', { student, category, conceptKey, sessionId: sessionId || null });
+    }
   }
 
   if (!concept) return null;
@@ -160,7 +167,7 @@ export default function ConceptImageScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={() => speak(concept.label)}
+            onPress={playIntro}
             activeOpacity={0.7}
           >
             <Ionicons name="volume-high-outline" size={20} color={theme.headingText} />
@@ -175,7 +182,7 @@ export default function ConceptImageScreen({ route, navigation }) {
         )}
 
         <Text style={[styles.instruction, { color: theme.headingText }]}>
-          Tap the picture to hear its name
+          {getConceptPhrase(concept)}
         </Text>
 
         {/* Main image — tappable */}
@@ -279,10 +286,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_700Bold',
   },
   instruction: {
-    fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
-    opacity: 0.55,
-    marginTop: 4,
+    fontSize: 24,
+    fontFamily: 'Nunito_900Black',
+    letterSpacing: -0.3,
+    marginTop: 8,
     marginBottom: 16,
   },
   imageContainer: {
@@ -325,7 +332,9 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    borderRadius: 30,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,

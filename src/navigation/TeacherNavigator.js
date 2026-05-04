@@ -14,6 +14,7 @@ import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelect
 import ConceptCategoriesScreen        from '../screens/teacher/concept/ConceptCategoriesScreen';
 import ConceptItemsScreen            from '../screens/teacher/concept/ConceptItemsScreen';
 import ConceptImageScreen            from '../screens/teacher/concept/ConceptImageScreen';
+import ConceptDemoScreen             from '../screens/teacher/concept/ConceptDemoScreen';
 import ConceptMatchScreen            from '../screens/teacher/concept/ConceptMatchScreen';
 import ConceptCongratulationsScreen  from '../screens/teacher/concept/ConceptCongratulationsScreen';
 
@@ -97,6 +98,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="ConceptCategories" component={ConceptCategoriesScreen} />
       <Stack.Screen name="ConceptItems"      component={ConceptItemsScreen} />
       <Stack.Screen name="ConceptImage"      component={ConceptImageScreen} />
+      <Stack.Screen name="ConceptDemo"       component={ConceptDemoScreen} />
       <Stack.Screen name="ConceptMatch"      component={ConceptMatchScreen} />
       <Stack.Screen name="ConceptCongrats"   component={ConceptCongratulationsScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />

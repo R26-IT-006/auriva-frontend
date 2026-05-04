@@ -1,8 +1,7 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Animated,
@@ -15,16 +14,16 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItem } from '../../../constants/conceptData';
 import { Layout } from '../../../constants/layout';
 
-const AVATAR_IMAGES = {
-  boba:     require('../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../assets/avatar-images/Megatron.png'),
+const AVATAR_CONGRATS_IMAGES = {
+  boba:     require('../../../../assets/avatar-images/BobaCongratulations.png'),
+  glitter:  require('../../../../assets/avatar-images/GlitterCongratulations.png'),
+  lily:     require('../../../../assets/avatar-images/LilyCongratulations.png'),
+  megatron: require('../../../../assets/avatar-images/MegatronCongratulations.png'),
 };
 
 const STAR_COUNT = 8;
 
-function Star({ delay, startX, style }) {
+function FallingStar({ delay, startX }) {
   const translateY = useRef(new Animated.Value(-20)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
   const rotate     = useRef(new Animated.Value(0)).current;
@@ -34,9 +33,9 @@ function Star({ delay, startX, style }) {
       Animated.loop(
         Animated.sequence([
           Animated.parallel([
-            Animated.timing(translateY, { toValue: 120, duration: 1800, useNativeDriver: true }),
+            Animated.timing(translateY, { toValue: 140, duration: 1900, useNativeDriver: true }),
             Animated.timing(opacity,    { toValue: 1,   duration: 300,  useNativeDriver: true }),
-            Animated.timing(rotate,     { toValue: 1,   duration: 1800, useNativeDriver: true }),
+            Animated.timing(rotate,     { toValue: 1,   duration: 1900, useNativeDriver: true }),
           ]),
           Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
           Animated.parallel([
@@ -48,16 +47,15 @@ function Star({ delay, startX, style }) {
       ).start();
     }, delay);
     return () => clearTimeout(t);
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const spin = rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
     <Animated.Text
       style={[
-        styles.star,
-        style,
-        { transform: [{ translateY }, { rotate: spin }], opacity },
+        styles.fallingStar,
+        { left: startX, top: 0, transform: [{ translateY }, { rotate: spin }], opacity },
       ]}
     >
       ⭐
@@ -66,53 +64,77 @@ function Star({ delay, startX, style }) {
 }
 
 export default function ConceptCongratulationsScreen({ route, navigation }) {
-  const { student, category, conceptKey } = route.params;
+  const { student, category, conceptKey, correctCount = 3 } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
   const theme   = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
 
+  const avatarScale  = useRef(new Animated.Value(0)).current;
   const avatarBounce = useRef(new Animated.Value(0)).current;
-  const contentScale = useRef(new Animated.Value(0.7)).current;
-  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const cardScale    = useRef(new Animated.Value(0.82)).current;
+  const cardOpacity  = useRef(new Animated.Value(0)).current;
+  const burstScale   = useRef(new Animated.Value(0)).current;
+
+  const starScales = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
 
   useEffect(() => {
-    // Entrance animation
     Animated.parallel([
-      Animated.spring(contentScale,   { toValue: 1, useNativeDriver: true, bounciness: 10, speed: 5 }),
-      Animated.timing(contentOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(cardScale,   { toValue: 1, useNativeDriver: true, bounciness: 10, speed: 5 }),
+      Animated.timing(cardOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
 
-    // Avatar continuous bounce
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(avatarBounce, { toValue: -18, duration: 400, useNativeDriver: true }),
-        Animated.timing(avatarBounce, { toValue: 0,   duration: 350, useNativeDriver: true }),
-        Animated.delay(200),
-      ]),
-    ).start();
-
-    // TTS celebration
     setTimeout(() => {
-      Speech.speak(`Well done! You found the ${concept?.label}!`, { language: 'en-US', rate: 0.8 });
+      Animated.spring(burstScale, { toValue: 1, useNativeDriver: true, bounciness: 24, speed: 5 }).start();
+    }, 200);
+
+    Animated.spring(avatarScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      bounciness: 24,
+      speed: 4,
+    }).start(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(avatarBounce, { toValue: -18, duration: 420, useNativeDriver: true }),
+          Animated.timing(avatarBounce, { toValue: 0,   duration: 360, useNativeDriver: true }),
+          Animated.delay(280),
+        ]),
+      ).start();
+    });
+
+    starScales.forEach((s, i) => {
+      setTimeout(() => {
+        Animated.spring(s, { toValue: 1, useNativeDriver: true, bounciness: 20, speed: 7 }).start();
+      }, 450 + i * 200);
+    });
+
+    setTimeout(() => {
+      Speech.speak(
+        `Well done! You got ${correctCount} out of 3!`,
+        { language: 'en-US', rate: 0.8 },
+      );
     }, 600);
 
-    // Auto-navigate after 3.5s
-    const t = setTimeout(() => handleContinue(), 3500);
+    const t = setTimeout(() => handleContinue(), 4500);
     return () => clearTimeout(t);
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleContinue() {
     Speech.stop();
     navigation.navigate('ConceptItems', { student, category });
   }
 
-  const stars = Array.from({ length: STAR_COUNT }, (_, i) => ({
-    delay:  i * 250,
-    startX: (width / STAR_COUNT) * i + Math.random() * 20,
+  const fallingStars = Array.from({ length: STAR_COUNT }, (_, i) => ({
+    delay:  i * 260,
+    startX: (width / STAR_COUNT) * i + Math.random() * 18,
   }));
 
-  const avatarSource = student?.avatar_key ? AVATAR_IMAGES[student.avatar_key] : null;
+  const avatarSource = student?.avatar_key ? AVATAR_CONGRATS_IMAGES[student.avatar_key] : null;
 
   return (
     <LinearGradient
@@ -123,50 +145,78 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
     >
       <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
 
-        {/* Falling stars */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {stars.map((s, i) => (
-            <Star key={i} delay={s.delay} startX={s.startX} style={{ left: s.startX, top: 0 }} />
+          {fallingStars.map((s, i) => (
+            <FallingStar key={i} delay={s.delay} startX={s.startX} />
           ))}
         </View>
 
-        <Animated.View
-          style={[
-            styles.content,
-            { transform: [{ scale: contentScale }], opacity: contentOpacity },
-          ]}
-        >
-          {/* Avatar */}
+        <View style={styles.stack}>
+
           {avatarSource && (
             <Animated.Image
               source={avatarSource}
-              style={[styles.avatar, { transform: [{ translateY: avatarBounce }] }]}
+              style={[
+                styles.avatar,
+                { transform: [{ scale: avatarScale }, { translateY: avatarBounce }] },
+              ]}
               resizeMode="contain"
             />
           )}
 
-          {/* Well done card */}
-          <View style={[styles.card, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-            <Text style={styles.emoji}>🌟</Text>
-            <Text style={[styles.heading, { color: theme.headingText }]}>Well Done!</Text>
+          <Animated.View
+            style={[
+              styles.card,
+              { backgroundColor: theme.cardSurface, transform: [{ scale: cardScale }], opacity: cardOpacity },
+            ]}
+          >
+            <Animated.Text style={[styles.burst, { transform: [{ scale: burstScale }] }]}>
+              🌟
+            </Animated.Text>
+
+            <Text style={[styles.heading, { color: theme.headingText }]}>
+              {correctCount >= 3 ? 'Well Done!' : 'Good Job!'}
+            </Text>
+
             {concept && (
               <Text style={[styles.conceptName, { color: theme.button }]}>{concept.label}</Text>
             )}
-            <Text style={[styles.sub, { color: theme.headingText }]}>
-              You passed Tier 1!
-            </Text>
-          </View>
 
-          <TouchableOpacity
-            style={[styles.continueBtn, { backgroundColor: theme.button }]}
-            onPress={handleContinue}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>
-              Keep Going!
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
+            <View style={[styles.scorePill, { borderColor: theme.button }]}>
+              {[0, 1, 2].map((i) => (
+                <Animated.Text
+                  key={i}
+                  style={[
+                    styles.pillStar,
+                    {
+                      opacity:   i < correctCount ? 1 : 0.2,
+                      transform: [{ scale: starScales[i] }],
+                    },
+                  ]}
+                >
+                  ⭐
+                </Animated.Text>
+              ))}
+              <Text style={[styles.pillCount, { color: theme.headingText }]}>
+                {correctCount} / 3
+              </Text>
+              <Text style={[styles.pillLabel, { color: theme.headingText }]}>
+                Correct!
+              </Text>
+            </View>
+          </Animated.View>
+
+        </View>
+
+        <TouchableOpacity
+          style={[styles.continueBtn, { backgroundColor: theme.button }]}
+          onPress={handleContinue}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>
+            Keep Going!  🎊
+          </Text>
+        </TouchableOpacity>
 
       </SafeAreaView>
     </LinearGradient>
@@ -175,68 +225,92 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   safe:      { flex: 1 },
-  safeInner: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  safeInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
 
-  content: {
+  stack: {
     alignItems: 'center',
-    gap: Layout.spacing.lg,
-    paddingHorizontal: Layout.spacing.xl,
+    width: '80%',
   },
 
   avatar: {
-    width: 180,
-    height: 180,
+    width: 220,
+    height: 220,
+    marginBottom: -75,
+    zIndex: 10,
   },
 
   card: {
     width: '100%',
-    borderRadius: 24,
-    borderWidth: 2.5,
+    borderRadius: 28,
     alignItems: 'center',
-    paddingVertical: Layout.spacing.xl,
-    paddingHorizontal: Layout.spacing.lg,
-    gap: 8,
+    paddingTop: 90,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+    gap: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.10,
-    shadowRadius: 16,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
   },
-  emoji: {
-    fontSize: 48,
+
+  burst: {
+    fontSize: 44,
+    marginBottom: 4,
   },
+
   heading: {
-    fontSize: 32,
+    fontSize: 30,
     fontFamily: 'Nunito_900Black',
-    letterSpacing: -0.8,
+    letterSpacing: -0.5,
   },
   conceptName: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: 'Nunito_800ExtraBold',
   },
-  sub: {
+
+  scorePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.8,
+    borderRadius: 32,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    gap: 5,
+    marginTop: 10,
+  },
+  pillStar: {
+    fontSize: 20,
+  },
+  pillCount: {
+    fontSize: 17,
+    fontFamily: 'Nunito_800ExtraBold',
+    marginLeft: 4,
+  },
+  pillLabel: {
     fontSize: 14,
     fontFamily: 'Nunito_600SemiBold',
-    opacity: 0.6,
-    marginTop: 4,
+    opacity: 0.65,
   },
 
   continueBtn: {
-    paddingHorizontal: 40,
-    paddingVertical: 14,
-    borderRadius: 30,
+    paddingHorizontal: 44,
+    paddingVertical: 16,
+    borderRadius: 36,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
     shadowRadius: 10,
-    elevation: 5,
+    elevation: 6,
   },
   continueBtnText: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: 'Nunito_800ExtraBold',
   },
 
-  star: {
+  fallingStar: {
     position: 'absolute',
     fontSize: 22,
   },

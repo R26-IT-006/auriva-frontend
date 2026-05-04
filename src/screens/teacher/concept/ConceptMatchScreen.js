@@ -12,8 +12,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
+import { playConceptAudio, stopConceptAudio } from '../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptItemsForCategory } from '../../../constants/conceptData';
+import { getConceptItem, getConceptItemsForCategory, getConceptQuestion, getConceptQuestionSi } from '../../../constants/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
@@ -63,11 +64,15 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
   const speakPrompt = useCallback(() => {
     if (!concept) return;
-    Speech.stop();
-    Speech.speak(`Find the ${concept.label}!`, { language: 'en-US', rate: 0.8 });
-    setTimeout(() => {
-      Speech.speak(concept.labelSi || concept.label, { language: 'si-LK', rate: 0.7 });
-    }, 1500);
+    if (concept.t1Audio) {
+      playConceptAudio(concept.t1Audio);
+    } else {
+      Speech.stop();
+      Speech.speak(getConceptQuestion(concept), { language: 'en-US', rate: 0.8 });
+      setTimeout(() => {
+        Speech.speak(concept.labelSi || concept.label, { language: 'si-LK', rate: 0.7 });
+      }, 1500);
+    }
   }, [concept]);
 
   // Speak on each attempt
@@ -126,7 +131,13 @@ export default function ConceptMatchScreen({ route, navigation }) {
       hideFeedback(() => {
         setFeedbackKey(null);
         setFeedbackResult(null);
-        setDisplayOrder(shuffle(options.current()));
+        setDisplayOrder(prev => {
+          const base = options.current();
+          let next;
+          do { next = shuffle(base); }
+          while (next.every((item, i) => item.key === prev[i].key));
+          return next;
+        });
         attemptStart.current = Date.now();
         setCurrentAttempt((n) => n + 1);
         setLocked(false);
@@ -155,8 +166,9 @@ export default function ConceptMatchScreen({ route, navigation }) {
           } catch { /* progress saved locally anyway */ }
 
           Speech.stop();
+          stopConceptAudio();
           if (passed) {
-            navigation.replace('ConceptCongrats', { student, category, conceptKey });
+            navigation.replace('ConceptCongrats', { student, category, conceptKey, correctCount });
           } else {
             navigation.replace('ConceptImage', { student, category, conceptKey, sessionId, isRelearn: true });
           }
@@ -186,9 +198,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
 
-          <Text style={[styles.title, { color: theme.headingText }]}>
-            Find the {concept.label}!
-          </Text>
+          <View style={{ flex: 1 }} />
 
           {/* Replay TTS */}
           <TouchableOpacity
@@ -198,6 +208,18 @@ export default function ConceptMatchScreen({ route, navigation }) {
           >
             <Ionicons name="volume-high-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
+        </View>
+
+        {/* Bilingual question */}
+        <View style={styles.questionBlock}>
+          <Text style={[styles.questionEn, { color: theme.headingText }]}>
+            {getConceptQuestion(concept)}
+          </Text>
+          {concept.labelSi && (
+            <Text style={[styles.questionSi, { color: theme.headingText }]}>
+              {getConceptQuestionSi(concept)}
+            </Text>
+          )}
         </View>
 
         {/* Attempt indicator */}
@@ -241,7 +263,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
                   {
                     width:           CARD_W,
                     height:          CARD_H,
-                    backgroundColor: theme.cardSurface,
+                    backgroundColor: isCorrect ? '#C8F0CC' : isWrong ? '#FFD6D6' : theme.cardSurface,
                     borderColor,
                     transform: [{ scale: 1 }],
                   },
@@ -318,17 +340,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
+  questionBlock: {
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 6,
+    paddingHorizontal: Layout.spacing.lg,
+    gap: 4,
+  },
+  questionEn: {
+    fontSize: 26,
+    fontFamily: 'Nunito_900Black',
+    letterSpacing: -0.4,
+    textAlign: 'center',
+  },
+  questionSi: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
-    letterSpacing: -0.3,
+    fontFamily: 'Nunito_700Bold',
+    opacity: 0.65,
+    textAlign: 'center',
   },
 
   attemptRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 4,
-    marginBottom: 24,
+    marginTop: 10,
+    marginBottom: 20,
   },
   attemptDot: {
     width: 12,

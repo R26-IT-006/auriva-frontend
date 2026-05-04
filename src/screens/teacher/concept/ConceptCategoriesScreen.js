@@ -108,7 +108,7 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
 
       <ParentGateModal
         visible={gateVisible}
-        onSuccess={() => { setGateVisible(false); navigation.goBack(); }}
+        onSuccess={() => { setGateVisible(false); navigation.navigate('StudentDashboard', { student }); }}
         onCancel={() => setGateVisible(false)}
       />
     </LinearGradient>

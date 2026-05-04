@@ -5,25 +5,31 @@ export const CONCEPT_CATEGORIES = {
     label: 'Fruits',
     items: [
       {
-        key:      'apple',
-        label:    'Apple',
-        labelSi:  'ඇපල්',
-        real:     require('../../assets/concepts/categories/Fruits/Apple/Apple_Real.png'),
-        io:       require('../../assets/concepts/categories/Fruits/Apple/Apple_IO.png'),
-        animated: require('../../assets/concepts/categories/Fruits/Apple/Apple_Animated.png'),
+        key:         'apple',
+        label:       'Apple',
+        labelSi:     'ඇපල්',
+        real:        require('../../assets/concepts/categories/Fruits/Apple/Apple_Real.png'),
+        io:          require('../../assets/concepts/categories/Fruits/Apple/Apple_IO.png'),
+        animated:    require('../../assets/concepts/categories/Fruits/Apple/Apple_Animated.png'),
+        introAudio:  require('../../assets/concepts/audio/Fruits/Apple/AppleIntro.m4a'),
+        t1Audio:     require('../../assets/concepts/audio/Fruits/Apple/AppleT1Qestion.m4a'),
       },
       {
-        key:      'banana',
-        label:    'Banana',
-        labelSi:  'කෙසෙල්',
-        real:     require('../../assets/concepts/categories/Fruits/Banana/Banana_Real.png'),
-        io:       require('../../assets/concepts/categories/Fruits/Banana/Banana_IO.png'),
-        animated: require('../../assets/concepts/categories/Fruits/Banana/Banana_Animated.png'),
+        key:        'banana',
+        label:      'Bananas',
+        labelSi:    'කෙසෙල්',
+        plural:     true,
+        real:       require('../../assets/concepts/categories/Fruits/Banana/Banana_Real.png'),
+        io:         require('../../assets/concepts/categories/Fruits/Banana/Banana_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Banana/Banana_Animated.png'),
+        introAudio: require('../../assets/concepts/audio/Fruits/Banana/BananaIntro.m4a'),
+        t1Audio:    require('../../assets/concepts/audio/Fruits/Banana/BananaT1Question.m4a'),
       },
       {
         key:      'cherry',
-        label:    'Cherry',
+        label:    'Cherries',
         labelSi:  'චෙරි',
+        plural:   true,
         real:     require('../../assets/concepts/categories/Fruits/Cherry/Cherry_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Cherry/Cherry_IO.jpg'),
         animated: require('../../assets/concepts/categories/Fruits/Cherry/Cherry_Animated.png'),
@@ -32,6 +38,7 @@ export const CONCEPT_CATEGORIES = {
         key:      'grapes',
         label:    'Grapes',
         labelSi:  'මිදි',
+        plural:   true,
         real:     require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Grapes/Grapes_IO.png'),
         animated: require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Animated.png'),
@@ -95,6 +102,28 @@ export const CONCEPT_CATEGORIES = {
     ],
   },
 };
+
+const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
+
+export function getConceptPhrase(concept) {
+  if (!concept) return '';
+  if (concept.plural) return `These are ${concept.label}`;
+  const article = VOWELS.has(concept.label[0].toLowerCase()) ? 'an' : 'a';
+  return `This is ${article} ${concept.label}`;
+}
+
+export function getConceptQuestion(concept) {
+  if (!concept) return '';
+  if (concept.plural) return `Can you find ${concept.label} here?`;
+  const article = VOWELS.has(concept.label[0].toLowerCase()) ? 'an' : 'a';
+  return `Can you find ${article} ${concept.label} here?`;
+}
+
+// Sinhala has no articles — structure is the same for singular and plural
+export function getConceptQuestionSi(concept) {
+  if (!concept?.labelSi) return '';
+  return `ඔයාට ${concept.labelSi} හොයාගන්න පුළුවන්ද?`;
+}
 
 export function getConceptItem(categoryKey, conceptKey) {
   const cat = CONCEPT_CATEGORIES[categoryKey];

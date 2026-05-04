@@ -123,7 +123,7 @@ export default function StudentPickerScreen({ navigation }) {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.navigate('WorkspaceSelect')}
             activeOpacity={0.7}
           >
             <Ionicons name="chevron-back" size={22} color="#2A5A48" />

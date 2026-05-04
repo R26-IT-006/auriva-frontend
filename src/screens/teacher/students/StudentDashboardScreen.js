@@ -83,13 +83,6 @@ export default function StudentDashboardScreen({ route, navigation }) {
         </TouchableOpacity>
 
         <View style={styles.topRight}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('StudentSession', { student })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="person-outline" size={20} color={theme.headingText} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => setLogoutVisible(true)} activeOpacity={0.7}>
             <Ionicons name="log-out-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
@@ -187,7 +180,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
       <ParentGateModal
         visible={gateVisible}
-        onSuccess={() => { setGateVisible(false); navigation.goBack(); }}
+        onSuccess={() => { setGateVisible(false); navigation.navigate('StudentPicker'); }}
         onCancel={() => setGateVisible(false)}
       />
 
