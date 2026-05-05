@@ -44,10 +44,91 @@ const ACTIVITIES = {
     {
       id: 3,
       image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context2.png'),
-      prompt: 'Someone gives you a gift.\nYou should say...',
+      prompt: 'Anjalie helps you carry your bag.\nYou should say...',
       cards:  [
-        { label: 'Thank You', correct: true  },
-        { label: 'Sorry',     correct: false },
+        { label: 'Thank You',  correct: true  },
+        { label: "I'm Sorry",  correct: false },
+      ],
+    },
+  ],
+
+  im_sorry: [
+    {
+      id: 1,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/scene.png'),
+      prompt: 'Saman bumps into Anjalie.\nHe should say...',
+      cards:  [{ label: "I'm Sorry", correct: true }],
+    },
+    {
+      id: 2,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/scene.png'),
+      prompt: 'Saman bumps into Anjalie.\nHe should say...',
+      cards:  [
+        { label: "I'm Sorry", correct: true  },
+        { label: 'Thank You', correct: false },
+      ],
+    },
+    {
+      id: 3,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
+      prompt: 'Anjalie spills Saman\'s juice.\nShe should say...',
+      cards:  [
+        { label: "I'm Sorry", correct: true  },
+        { label: 'Goodbye',   correct: false },
+      ],
+    },
+  ],
+
+  youre_welcome: [
+    {
+      id: 1,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
+      prompt: "Anjalie says 'Thank you' to Saman.\nHe should say...",
+      cards:  [{ label: "You're Welcome", correct: true }],
+    },
+    {
+      id: 2,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context2.png'),
+      prompt: "Anjalie says 'Thank you' to Saman.\nHe should say...",
+      cards:  [
+        { label: "You're Welcome", correct: true  },
+        { label: "I'm Sorry",      correct: false },
+      ],
+    },
+    {
+      id: 3,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context3.png'),
+      prompt: "Saman thanks Anjalie for her help.\nShe should say...",
+      cards:  [
+        { label: "You're Welcome", correct: true  },
+        { label: 'Goodbye',        correct: false },
+      ],
+    },
+  ],
+
+  excuse_me: [
+    {
+      id: 1,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/scene.png'),
+      prompt: 'Saman needs to pass by Anjalie.\nHe should say...',
+      cards:  [{ label: 'Excuse Me', correct: true }],
+    },
+    {
+      id: 2,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/scene.png'),
+      prompt: 'Saman needs to pass by Anjalie.\nHe should say...',
+      cards:  [
+        { label: 'Excuse Me',  correct: true  },
+        { label: 'Thank You',  correct: false },
+      ],
+    },
+    {
+      id: 3,
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
+      prompt: 'Anjalie needs to walk through\na crowd. She should say...',
+      cards:  [
+        { label: 'Excuse Me',  correct: true  },
+        { label: "I'm Sorry",  correct: false },
       ],
     },
   ],
@@ -309,7 +390,7 @@ export default function DragToLineScreen({ route, navigation }) {
 
             {/* Left: scene image */}
             <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
-              <Image source={current.image} style={styles.sceneImage} resizeMode="cover" />
+              <Image source={current.image} style={styles.sceneImage} resizeMode={wordKey === 'youre_welcome' ? 'contain' : 'cover'} />
             </View>
 
             {/* Right: prompt card + drop zone + word cards */}
