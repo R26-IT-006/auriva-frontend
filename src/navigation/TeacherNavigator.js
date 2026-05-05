@@ -21,9 +21,18 @@ import Phase1CompleteScreen       from '../screens/teacher/dialogue/magic-words/
 import Phase2ProductionScreen    from '../screens/teacher/dialogue/magic-words/Phase2ProductionScreen';
 import Phase2NonVerbalScreen     from '../screens/teacher/dialogue/magic-words/Phase2NonVerbalScreen';
 import Phase3ContextualScreen    from '../screens/teacher/dialogue/magic-words/Phase3ContextualScreen';
+import WordCompleteScreen         from '../screens/teacher/dialogue/WordCompleteScreen';
 import VerbActivityScreen         from '../screens/teacher/dialogue/abilities/VerbActivityScreen';
 import ClapActivityScreen         from '../screens/teacher/dialogue/abilities/ClapActivityScreen';
 import RunActivityScreen          from '../screens/teacher/dialogue/abilities/RunActivityScreen';
+import DaysLandingScreen          from '../screens/teacher/dialogue/days-of-week/DaysLandingScreen';
+import DaysPhase1CalendarScreen   from '../screens/teacher/dialogue/days-of-week/DaysPhase1CalendarScreen';
+import DaysDragToLineScreen       from '../screens/teacher/dialogue/days-of-week/DaysDragToLineScreen';
+import DaysPhase2ProductionScreen from '../screens/teacher/dialogue/days-of-week/DaysPhase2ProductionScreen';
+import DaysPhase2NonVerbalScreen  from '../screens/teacher/dialogue/days-of-week/DaysPhase2NonVerbalScreen';
+import DaysPhase3SequenceScreen   from '../screens/teacher/dialogue/days-of-week/DaysPhase3SequenceScreen';
+import DaysSpinningWheelScreen    from '../screens/teacher/dialogue/days-of-week/DaysSpinningWheelScreen';
+import DaysMenuScreen             from '../screens/teacher/dialogue/days-of-week/DaysMenuScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -113,9 +122,20 @@ export default function TeacherNavigator() {
       <Stack.Screen name="Phase2Production"  component={Phase2ProductionScreen} />
       <Stack.Screen name="Phase2NonVerbal"   component={Phase2NonVerbalScreen} />
       <Stack.Screen name="Phase3Contextual"  component={Phase3ContextualScreen} />
+      <Stack.Screen name="WordComplete"      component={WordCompleteScreen} />
       <Stack.Screen name="VerbActivity"      component={VerbActivityScreen} />
       <Stack.Screen name="ClapActivity"      component={ClapActivityScreen} />
       <Stack.Screen name="RunActivity"       component={RunActivityScreen} />
+
+      {/* Days of the Week */}
+      <Stack.Screen name="DaysMenuScreen"        component={DaysMenuScreen} />
+      <Stack.Screen name="DaysLanding"          component={DaysLandingScreen} />
+      <Stack.Screen name="DaysPhase1Calendar"   component={DaysPhase1CalendarScreen} />
+      <Stack.Screen name="DaysDragToLine"       component={DaysDragToLineScreen} />
+      <Stack.Screen name="DaysPhase2Production" component={DaysPhase2ProductionScreen} />
+      <Stack.Screen name="DaysPhase2NonVerbal"  component={DaysPhase2NonVerbalScreen} />
+      <Stack.Screen name="DaysPhase3Sequence"   component={DaysPhase3SequenceScreen} />
+      <Stack.Screen name="DaysSpinningWheel"    component={DaysSpinningWheelScreen} />
 
     </Stack.Navigator>
   );

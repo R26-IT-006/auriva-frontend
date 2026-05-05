@@ -120,7 +120,9 @@ export default function DialogueCategoryScreen({ route, navigation }) {
                   ]}
                   activeOpacity={0.82}
                   onPress={() =>
-                    navigation.navigate('Level1Overview', { student, categoryKey: cat.key })
+                    cat.key === 'days_of_week'
+                      ? navigation.navigate('DaysMenuScreen', { student })
+                      : navigation.navigate('Level1Overview', { student, categoryKey: cat.key })
                   }
                 >
                   {/* Coloured icon circle */}

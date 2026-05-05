@@ -63,12 +63,6 @@ export const DIALOGUE_WORD_ASSETS = {
   },
 
   // ── Magic Words ──────────────────────────────────────────────────────────
-  please: {
-    scene:          require('../../assets/dialogue-images/words/magic_words/please/scene.png'),
-    contextCorrect: require('../../assets/dialogue-images/words/magic_words/please/context_correct.png'),
-    contextWrong:   require('../../assets/dialogue-images/words/magic_words/please/context_wrong.png'),
-    contextWrong2:  require('../../assets/dialogue-images/words/magic_words/please/context_wrong_2.png'),
-  },
   // thank_you uses its own naming scheme (correct_contextN / context_wrongN)
   thank_you: {
     scene:          require('../../assets/dialogue-images/words/magic_words/thank_you/scene.png'),
@@ -90,17 +84,23 @@ export const DIALOGUE_WORD_ASSETS = {
     contextWrong:   require('../../assets/dialogue-images/words/magic_words/sorry/context_wrong.png'),
     contextWrong2:  require('../../assets/dialogue-images/words/magic_words/sorry/context_wrong_2.png'),
   },
+  // youre_welcome uses comic-strip naming (correct_contextN / context_wrongN)
   youre_welcome: {
-    scene:          require('../../assets/dialogue-images/words/magic_words/youre_welcome/scene.png'),
-    contextCorrect: require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_correct.png'),
-    contextWrong:   require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong.png'),
-    contextWrong2:  require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong_2.png'),
+    scene:           require('../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
+    correctContext1: require('../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
+    correctContext2: require('../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context2.png'),
+    correctContext3: require('../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context3.png'),
+    correctContext4: require('../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context4.png'),
+    contextWrong1:   require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong1.png'),
+    contextWrong2:   require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong2.png'),
+    contextWrong3:   require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong3.png'),
+    contextWrong4:   require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong4.png'),
   },
-  please_excuse_me: {
-    scene:          require('../../assets/dialogue-images/words/magic_words/please_excuse_me/scene.png'),
-    contextCorrect: require('../../assets/dialogue-images/words/magic_words/please_excuse_me/context_correct.png'),
-    contextWrong:   require('../../assets/dialogue-images/words/magic_words/please_excuse_me/context_wrong.png'),
-    contextWrong2:  require('../../assets/dialogue-images/words/magic_words/please_excuse_me/context_wrong_2.png'),
+  excuse_me: {
+    scene:          require('../../assets/dialogue-images/words/magic_words/excuse_me/scene.png'),
+    contextCorrect: require('../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
+    contextWrong:   require('../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+    contextWrong2:  require('../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
   },
 
   // ── Abilities ────────────────────────────────────────────────────────────
