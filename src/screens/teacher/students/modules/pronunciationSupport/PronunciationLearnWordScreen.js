@@ -1,13 +1,18 @@
 import React from "react";
-import { View, Text, StyleSheet, useWindowDimensions, Image, Alert, Linking } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, Image, Alert } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { WORD_BANK } from "./wordBank.js";
+
+const PRONUNCIATION_AUDIO_ASSETS = {
+  cat: require("../../../../../../assets/pronounciation-audios/cat.mp3"),
+};
 
 export default function PronunciationLearnWordScreen({ navigation, route }) {
   const student = route.params?.student;
@@ -15,6 +20,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   const categoryId = route.params?.categoryId;
   const selectedWordId = route.params?.wordId;
   const { width } = useWindowDimensions();
+  const pronunciationSoundRef = React.useRef(null);
 
   const words = WORD_BANK[categoryId] || [];
   const selectedWord =
@@ -33,11 +39,60 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     });
   }
 
-  function handleHearSounds() {
-    setIsPlaying(true);
-    const label = selectedWord?.word || "word";
-    setTimeout(() => setIsPlaying(false), 900);
-    Alert.alert("Hear Sounds", `Practise the sounds for ${label}.`);
+  React.useEffect(() => {
+    return () => {
+      if (pronunciationSoundRef.current) {
+        pronunciationSoundRef.current.unloadAsync().catch(() => {});
+        pronunciationSoundRef.current = null;
+      }
+    };
+  }, []);
+
+  async function handleHearSounds() {
+    const audioAsset = PRONUNCIATION_AUDIO_ASSETS[selectedWord?.id];
+
+    if (!audioAsset) {
+      Alert.alert(
+        "Audio unavailable",
+        `No pronunciation audio has been added for ${selectedWord?.word || "this word"} yet.`,
+      );
+      return;
+    }
+
+    try {
+      setIsPlaying(true);
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+      });
+
+      if (pronunciationSoundRef.current) {
+        await pronunciationSoundRef.current.unloadAsync().catch(() => {});
+        pronunciationSoundRef.current = null;
+      }
+
+      const { sound } = await Audio.Sound.createAsync(audioAsset, {
+        shouldPlay: true,
+        volume: 1,
+      });
+
+      pronunciationSoundRef.current = sound;
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlaying(false);
+          sound.unloadAsync().catch(() => {});
+          if (pronunciationSoundRef.current === sound) {
+            pronunciationSoundRef.current = null;
+          }
+        }
+      });
+    } catch (error) {
+      console.log("Pronunciation audio playback error:", error);
+      setIsPlaying(false);
+      Alert.alert("Playback error", "Unable to play this pronunciation audio right now.");
+    }
   }
 
   return (
