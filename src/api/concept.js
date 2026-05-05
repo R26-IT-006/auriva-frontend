@@ -58,4 +58,31 @@ export const conceptApi = {
     });
     return data;
   },
+
+  async logAdaptiveAttempt({ studentId, sessionId, categoryKey, conceptKey, confusedConceptKey, roundNumber, wasCorrect, timeTakenMs }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_ADAPTIVE_ATTEMPT, {
+      student_id:           studentId,
+      session_id:           sessionId           || null,
+      category_key:         categoryKey,
+      concept_key:          conceptKey,
+      confused_concept_key: confusedConceptKey,
+      round_number:         roundNumber,
+      was_correct:          wasCorrect,
+      time_taken_ms:        timeTakenMs         || null,
+    });
+    return data;
+  },
+
+  async completeAdaptive({ studentId, sessionId, categoryKey, conceptKey, confusedKeys, roundResults, allPassed }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_ADAPTIVE_COMPLETE, {
+      student_id:    studentId,
+      session_id:    sessionId    || null,
+      category_key:  categoryKey,
+      concept_key:   conceptKey,
+      confused_keys: confusedKeys || [],
+      round_results: roundResults || [],
+      all_passed:    allPassed,
+    });
+    return data;
+  },
 };

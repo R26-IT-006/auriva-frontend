@@ -3,7 +3,7 @@
 // For physical device: use your machine's local IP
 // Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.19:3000/api
 // Android emulator → 10.0.2.2 maps to host machine's localhost
-export const API_BASE_URL = 'http://10.0.2.2:3000/api';
+export const API_BASE_URL = 'http://192.168.1.19:3000/api';
 
 export const ENDPOINTS = {
   // Auth
@@ -30,9 +30,11 @@ export const ENDPOINTS = {
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
 
   // Concept Learning
-  CONCEPT_ITEMS:            (cat) => `/teacher/concepts/${cat}/items`,
-  CONCEPT_TIER1_START:       '/teacher/concepts/tier1/start',
-  CONCEPT_TIER1_INTERACTION: '/teacher/concepts/tier1/interaction',
-  CONCEPT_TIER1_ATTEMPT:     '/teacher/concepts/tier1/attempt',
-  CONCEPT_TIER1_COMPLETE:    '/teacher/concepts/tier1/complete',
+  CONCEPT_ITEMS:              (cat) => `/teacher/concepts/${cat}/items`,
+  CONCEPT_TIER1_START:        '/teacher/concepts/tier1/start',
+  CONCEPT_TIER1_INTERACTION:  '/teacher/concepts/tier1/interaction',
+  CONCEPT_TIER1_ATTEMPT:      '/teacher/concepts/tier1/attempt',
+  CONCEPT_TIER1_COMPLETE:     '/teacher/concepts/tier1/complete',
+  CONCEPT_ADAPTIVE_ATTEMPT:   '/teacher/concepts/adaptive/attempt',
+  CONCEPT_ADAPTIVE_COMPLETE:  '/teacher/concepts/adaptive/complete',
 };

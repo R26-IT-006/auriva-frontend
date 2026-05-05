@@ -157,7 +157,7 @@ export default function CreateStudentScreen({ navigation }) {
     setLoadingTeachers(true);
     try {
       const data = await principalApi.getTeachers();
-      setAvailableTeachers(data.filter((t) => !t.is_first_login && (t.students?.length ?? 0) < 3));
+      setAvailableTeachers(data.filter((t) => (t.students?.length ?? 0) < 3));
     } catch {
       setAvailableTeachers([]);
     } finally {

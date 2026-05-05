@@ -1,13 +1,13 @@
-﻿import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
   StyleSheet,
-  Animated,
   useWindowDimensions,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,9 @@ import { getConceptItem, getConceptItemsForCategory, getConceptQuestion, getConc
 import { conceptApi } from '../../../api/concept';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
+
+const CORRECT_GIF = require('../../../../assets/feedback/correct.gif');
+const WRONG_GIF   = require('../../../../assets/feedback/wrong.gif');
 
 function shuffle(arr) {
   const a = [...arr];
@@ -34,31 +37,29 @@ export default function ConceptMatchScreen({ route, navigation }) {
   const concept    = getConceptItem(category.key, conceptKey);
   const allItems   = getConceptItemsForCategory(category.key);
   const theme      = getAvatarTheme(student?.avatar_key);
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  // 3 options: target + next 2 in sequence (wrapping)
   const options = useRef(() => {
-    const idx = allItems.findIndex((it) => it.key === conceptKey);
+    const idx  = allItems.findIndex((it) => it.key === conceptKey);
     const next1 = allItems[(idx + 1) % allItems.length];
     const next2 = allItems[(idx + 2) % allItems.length];
     return [concept, next1, next2];
   });
 
-  const [currentAttempt, setCurrentAttempt] = useState(1);
-  const [displayOrder,   setDisplayOrder]   = useState(() => shuffle(options.current()));
-  const [locked,         setLocked]         = useState(false);
-  const [feedbackKey,    setFeedbackKey]     = useState(null); // key of tapped option
-  const [feedbackResult, setFeedbackResult] = useState(null); // 'correct' | 'wrong'
-  const [attempts,       setAttempts]       = useState([]);
-  const [gateVisible,    setGateVisible]    = useState(false);
+  const [currentAttempt,  setCurrentAttempt]  = useState(1);
+  const [displayOrder,    setDisplayOrder]    = useState(() => shuffle(options.current()));
+  const [locked,          setLocked]          = useState(false);
+  const [feedbackKey,     setFeedbackKey]     = useState(null);
+  const [feedbackResult,  setFeedbackResult]  = useState(null); // 'correct' | 'wrong'
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [attempts,        setAttempts]        = useState([]);
+  const [gateVisible,     setGateVisible]     = useState(false);
 
-  const thumbsAnim   = useRef(new Animated.Value(0)).current;
-  const thumbsOffset = useRef(new Animated.Value(60)).current;
   const attemptStart = useRef(Date.now());
 
   const CARD_GAP = 12;
   const H_PAD    = Layout.spacing.md;
-  const CARD_W   = ((width  - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
+  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
   const CARD_H   = CARD_W;
   const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
 
@@ -75,45 +76,28 @@ export default function ConceptMatchScreen({ route, navigation }) {
     }
   }, [concept]);
 
-  // Speak on each attempt
   useEffect(() => {
     const t = setTimeout(speakPrompt, 400);
     return () => clearTimeout(t);
-  }, [currentAttempt]);  // eslint-disable-line react-hooks/exhaustive-deps
-
-  function showFeedback(correct) {
-    thumbsAnim.setValue(0);
-    thumbsOffset.setValue(60);
-    Animated.parallel([
-      Animated.spring(thumbsAnim,   { toValue: 1, useNativeDriver: true, bounciness: 12, speed: 8 }),
-      Animated.spring(thumbsOffset, { toValue: 0, useNativeDriver: true, bounciness: 8,  speed: 10 }),
-    ]).start();
-  }
-
-  function hideFeedback(cb) {
-    Animated.parallel([
-      Animated.timing(thumbsAnim,   { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(thumbsOffset, { toValue: 60, duration: 200, useNativeDriver: true }),
-    ]).start(cb);
-  }
+  }, [currentAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleOptionTap(option) {
     if (locked) return;
     setLocked(true);
     Speech.stop();
+    stopConceptAudio();
 
-    const wasCorrect    = option.key === conceptKey;
-    const timeTakenMs   = Date.now() - attemptStart.current;
-    const newAttempt    = { attemptNumber: currentAttempt, selectedKey: option.key, correctKey: conceptKey, wasCorrect, timeTakenMs };
+    const wasCorrect  = option.key === conceptKey;
+    const timeTakenMs = Date.now() - attemptStart.current;
+    const newAttempt  = { attemptNumber: currentAttempt, selectedKey: option.key, correctKey: conceptKey, wasCorrect, timeTakenMs };
 
     setFeedbackKey(option.key);
     setFeedbackResult(wasCorrect ? 'correct' : 'wrong');
-    showFeedback(wasCorrect);
+    setFeedbackVisible(true);
 
     const updatedAttempts = [...attempts, newAttempt];
     setAttempts(updatedAttempts);
 
-    // Log attempt (fire-and-forget)
     conceptApi.logMatchAttempt({
       studentId:     student.sid,
       sessionId:     sessionId || null,
@@ -127,8 +111,8 @@ export default function ConceptMatchScreen({ route, navigation }) {
     }).catch(() => {});
 
     if (currentAttempt < 3) {
-      // Advance to next attempt after feedback
-      hideFeedback(() => {
+      setTimeout(() => {
+        setFeedbackVisible(false);
         setFeedbackKey(null);
         setFeedbackResult(null);
         setDisplayOrder(prev => {
@@ -141,39 +125,48 @@ export default function ConceptMatchScreen({ route, navigation }) {
         attemptStart.current = Date.now();
         setCurrentAttempt((n) => n + 1);
         setLocked(false);
-      });
+      }, 1500);
     } else {
-      // Final attempt — complete after brief feedback display
-      setTimeout(() => {
-        hideFeedback(async () => {
-          const correctCount  = updatedAttempts.filter((a) => a.wasCorrect).length;
-          const score         = correctCount / 3;
-          const passed        = score >= 2 / 3;
-          const confusedWith  = updatedAttempts
-            .filter((a) => !a.wasCorrect)
-            .map((a) => ({ selected_key: a.selectedKey, correct_key: a.correctKey }));
+      // Final attempt — complete after GIF display
+      setTimeout(async () => {
+        setFeedbackVisible(false);
 
-          try {
-            await conceptApi.completeTier1({
-              studentId:    student.sid,
-              categoryKey:  category.key,
-              conceptKey,
-              passed,
-              score,
-              attemptCount: 3,
-              confusedWith,
-            });
-          } catch { /* progress saved locally anyway */ }
+        const correctCount = updatedAttempts.filter((a) => a.wasCorrect).length;
+        const score        = correctCount / 3;
+        const passed       = score >= 2 / 3;
+        const confusedWith = updatedAttempts
+          .filter((a) => !a.wasCorrect)
+          .map((a) => ({ selected_key: a.selectedKey, correct_key: a.correctKey }));
 
-          Speech.stop();
-          stopConceptAudio();
-          if (passed) {
-            navigation.replace('ConceptCongrats', { student, category, conceptKey, correctCount });
-          } else {
-            navigation.replace('ConceptImage', { student, category, conceptKey, sessionId, isRelearn: true });
-          }
-        });
-      }, 800);
+        // Unique confused concept keys for adaptive quiz
+        const confusedKeys = [...new Set(
+          updatedAttempts.filter((a) => !a.wasCorrect).map((a) => a.selectedKey)
+        )];
+
+        try {
+          await conceptApi.completeTier1({
+            studentId:    student.sid,
+            categoryKey:  category.key,
+            conceptKey,
+            passed,
+            score,
+            attemptCount: 3,
+            confusedWith,
+          });
+        } catch { /* progress saved locally */ }
+
+        Speech.stop();
+        stopConceptAudio();
+
+        if (passed) {
+          navigation.replace('ConceptCongrats', { student, category, conceptKey, correctCount });
+        } else {
+          navigation.replace('ConceptImage', {
+            student, category, conceptKey, sessionId,
+            isRelearn: true, confusedKeys,
+          });
+        }
+      }, 1500);
     }
   }
 
@@ -200,7 +193,6 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
           <View style={{ flex: 1 }} />
 
-          {/* Replay TTS */}
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
             onPress={speakPrompt}
@@ -222,7 +214,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* Attempt indicator */}
+        {/* Attempt dots */}
         <View style={styles.attemptRow}>
           {[1, 2, 3].map((n) => (
             <View
@@ -245,71 +237,53 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
         {/* Options */}
         <View style={styles.optionsContainer}>
-        <View style={[styles.optionsRow, { paddingHorizontal: H_PAD, gap: CARD_GAP }]}>
-          {displayOrder.map((option) => {
-            const isTapped   = feedbackKey === option.key;
-            const isCorrect  = isTapped && feedbackResult === 'correct';
-            const isWrong    = isTapped && feedbackResult === 'wrong';
+          <View style={[styles.optionsRow, { paddingHorizontal: H_PAD, gap: CARD_GAP }]}>
+            {displayOrder.map((option) => {
+              const isTapped  = feedbackKey === option.key;
+              const isCorrect = isTapped && feedbackResult === 'correct';
+              const isWrong   = isTapped && feedbackResult === 'wrong';
 
-            let borderColor  = theme.cardOutline;
-            if (isCorrect)   borderColor = '#4CAF50';
-            if (isWrong)     borderColor = '#F44336';
-
-            return (
-              <Animated.View
-                key={option.key}
-                style={[
-                  styles.optionCard,
-                  {
-                    width:           CARD_W,
-                    height:          CARD_H,
-                    backgroundColor: isCorrect ? '#C8F0CC' : isWrong ? '#FFD6D6' : theme.cardSurface,
-                    borderColor,
-                    transform: [{ scale: 1 }],
-                  },
-                  isCorrect && styles.optionCardCorrect,
-                  isWrong   && styles.optionCardWrong,
-                ]}
-              >
-                <TouchableOpacity
-                  activeOpacity={locked ? 1 : 0.8}
-                  disabled={locked}
-                  onPress={() => handleOptionTap(option)}
-                  style={styles.optionTouchable}
+              return (
+                <View
+                  key={option.key}
+                  style={[
+                    styles.optionCard,
+                    {
+                      width:           CARD_W,
+                      height:          CARD_H,
+                      backgroundColor: isCorrect ? '#C8F0CC' : isWrong ? '#FFD6D6' : theme.cardSurface,
+                      borderColor:     isCorrect ? '#4CAF50' : isWrong ? '#F44336' : theme.cardOutline,
+                    },
+                    isCorrect && styles.optionCardCorrect,
+                    isWrong   && styles.optionCardWrong,
+                  ]}
                 >
-                  <View style={{ width: IMG_SIZE, height: IMG_SIZE, marginBottom: 10 }}>
-                    <Image
-                      source={option.real}
-                      style={styles.optionImage}
-                      resizeMode="contain"
-                    />
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-            );
-          })}
-        </View>
+                  <TouchableOpacity
+                    activeOpacity={locked ? 1 : 0.8}
+                    disabled={locked}
+                    onPress={() => handleOptionTap(option)}
+                    style={styles.optionTouchable}
+                  >
+                    <View style={{ width: IMG_SIZE, height: IMG_SIZE }}>
+                      <Image source={option.real} style={styles.optionImage} resizeMode="contain" />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
         </View>
 
-        {/* Thumbs feedback popup */}
-        <Animated.View
-          style={[
-            styles.feedbackBubble,
-            {
-              opacity:   thumbsAnim,
-              transform: [{ translateY: thumbsOffset }],
-              backgroundColor: feedbackResult === 'correct' ? '#4CAF50' : '#F44336',
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <Text style={styles.feedbackEmoji}>
-            {feedbackResult === 'correct' ? '👍' : '👎'}
-          </Text>
-          <Text style={styles.feedbackText}>
-            {feedbackResult === 'correct' ? 'Great job!' : 'Try again!'}
-          </Text>
-        </Animated.View>
+        {/* GIF feedback overlay */}
+        {feedbackVisible && (
+          <View style={styles.gifOverlay} pointerEvents="none">
+            <ExpoImage
+              source={feedbackResult === 'correct' ? CORRECT_GIF : WRONG_GIF}
+              style={styles.gifImage}
+              contentFit="contain"
+            />
+          </View>
+        )}
 
       </SafeAreaView>
 
@@ -340,6 +314,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   questionBlock: {
     alignItems: 'center',
     marginTop: 6,
@@ -414,44 +389,16 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  optionLabel: {
-    fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
-    textAlign: 'center',
-    color: '#1A1A1A',
-  },
-  hintBadge: {
+
+  gifOverlay: {
     position: 'absolute',
-    top: -4,
-    right: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
-
-  feedbackBubble: {
-    position: 'absolute',
-    bottom: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  feedbackEmoji: {
-    fontSize: 26,
-  },
-  feedbackText: {
-    fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
-    color: '#FFF',
+  gifImage: {
+    width: 320,
+    height: 320,
   },
 });

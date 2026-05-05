@@ -35,9 +35,10 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
     return () => clearTimeout(t);
   }, [isResume]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isLocked   = !item.is_unlocked;
-  const isPassed   = item.tier1_status === 'passed';
-  const isProgress = item.tier1_status === 'in_progress';
+  const isLocked     = !item.is_unlocked;
+  const isPassed     = item.tier1_status === 'passed';
+  const isProgress   = item.tier1_status === 'in_progress';
+  const isPriority   = item.is_priority && !isPassed;
 
   return (
     <Animated.View style={{ transform: [{ scale: popAnim }] }}>
@@ -50,11 +51,12 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
             width: cardW,
             height: cardH,
             backgroundColor: isLocked ? '#F0F0F0' : theme.cardSurface,
-            borderColor:     isPassed  ? '#4CAF50'
-                           : isResume  ? theme.button
-                           : isLocked  ? '#D0D0D0'
+            borderColor:     isPassed    ? '#4CAF50'
+                           : isPriority  ? '#FF9800'
+                           : isResume    ? theme.button
+                           : isLocked    ? '#D0D0D0'
                            : theme.cardOutline,
-            borderWidth: isResume ? 5 : 4,
+            borderWidth: isResume || isPriority ? 5 : 4,
           },
         ]}
         onPress={onPress}
@@ -62,9 +64,9 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
         {/* Fruit image */}
         <View style={styles.cardImageBox}>
           <Image
-            source={item.real}
+            source={item.icon ?? item.real}
             style={[styles.cardImage, isLocked && styles.cardImageLocked]}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </View>
 
@@ -84,6 +86,13 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
         {isPassed && (
           <View style={styles.passedBadge}>
             <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+          </View>
+        )}
+
+        {/* Priority (focus) badge — star icon in orange */}
+        {isPriority && !isResume && (
+          <View style={styles.priorityBadge}>
+            <Ionicons name="star" size={13} color="#FF9800" />
           </View>
         )}
 
@@ -110,7 +119,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
   const theme    = getAvatarTheme(student?.avatar_key);
   const H_PAD    = Layout.spacing.md;
   const GAP      = 18;
-  const COLS     = 5;
+  const COLS     = 6;
   const cardW    = (width - H_PAD * 2 - GAP * (COLS - 1)) / COLS;
   const cardH    = cardW * 1.05;
 
@@ -128,13 +137,30 @@ export default function ConceptItemsScreen({ route, navigation }) {
     }, [category.key, student.sid])
   );
 
-  const merged = localItems.map((local) => {
-    const progress = progressItems.find((p) => p.concept_key === local.key);
+  // Build a quick-lookup map from server items
+  const serverMap = {};
+  progressItems.forEach((item) => { serverMap[item.concept_key] = item; });
+
+  // Sort localItems by the server's adaptive sequence_index when available,
+  // otherwise keep the original local order.
+  const sortedLocal = progressItems.length > 0
+    ? [...localItems].sort((a, b) => {
+        const ai = serverMap[a.key]?.sequence_index ?? localItems.indexOf(a);
+        const bi = serverMap[b.key]?.sequence_index ?? localItems.indexOf(b);
+        return ai - bi;
+      })
+    : localItems;
+
+  // Merge server progress data into (adaptively) sorted local items.
+  // Always produces exactly localItems.length entries — never filtered.
+  const merged = sortedLocal.map((local) => {
+    const s = serverMap[local.key];
     return {
       ...local,
-      is_unlocked:  progress?.is_unlocked  ?? (local.key === localItems[0]?.key),
-      tier1_status: progress?.tier1_status ?? 'not_started',
-      tier1_score:  progress?.tier1_score  ?? null,
+      is_unlocked:  s?.is_unlocked  ?? (local.key === localItems[0]?.key),
+      is_priority:  s?.is_priority  || false,
+      tier1_status: s?.tier1_status || 'not_started',
+      tier1_score:  s?.tier1_score  ?? null,
     };
   });
 
@@ -300,6 +326,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
+  },
+  priorityBadge: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
   },
   resumeBadge: {
     position: 'absolute',

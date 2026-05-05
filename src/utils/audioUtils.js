@@ -1,50 +1,37 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-let _currentSound = null;
+let _currentPlayer = null;
 
-// Call once at app start (or lazily on first play) to allow audio in silent mode on iOS
 async function _ensureAudioMode() {
   try {
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS:   false,
-      playsInSilentModeIOS: true,
-      shouldDuckAndroid:    true,
-    });
+    await setAudioModeAsync({ playsInSilentMode: true });
   } catch {}
+}
+
+// Synchronous — pauses then releases the current player immediately
+function _stopCurrent() {
+  if (_currentPlayer) {
+    try { _currentPlayer.pause(); } catch {}
+    try { _currentPlayer.remove(); } catch {}
+    _currentPlayer = null;
+  }
 }
 
 export async function playConceptAudio(source) {
   if (!source) return false;
   try {
+    _stopCurrent(); // stop old audio synchronously before any await
     await _ensureAudioMode();
 
-    // Stop anything already playing
-    if (_currentSound) {
-      try { await _currentSound.stopAsync(); } catch {}
-      try { await _currentSound.unloadAsync(); } catch {}
-      _currentSound = null;
-    }
-
-    const { sound } = await Audio.Sound.createAsync(source, { shouldPlay: true });
-    _currentSound = sound;
-
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (status.didJustFinish) {
-        sound.unloadAsync().catch(() => {});
-        if (_currentSound === sound) _currentSound = null;
-      }
-    });
-
-    return true; // audio played — caller can skip TTS fallback
+    const player = createAudioPlayer(source);
+    _currentPlayer = player;
+    player.play();
+    return true;
   } catch {
-    return false; // audio failed — caller should fall back to TTS
+    return false;
   }
 }
 
-export async function stopConceptAudio() {
-  if (_currentSound) {
-    try { await _currentSound.stopAsync(); } catch {}
-    try { await _currentSound.unloadAsync(); } catch {}
-    _currentSound = null;
-  }
+export function stopConceptAudio() {
+  _stopCurrent();
 }

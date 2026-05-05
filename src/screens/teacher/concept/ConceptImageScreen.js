@@ -19,7 +19,7 @@ import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
 
 export default function ConceptImageScreen({ route, navigation }) {
-  const { student, category, conceptKey, sessionId, isRelearn } = route.params;
+  const { student, category, conceptKey, sessionId, isRelearn, confusedKeys } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
   const theme   = getAvatarTheme(student?.avatar_key);
@@ -132,10 +132,18 @@ export default function ConceptImageScreen({ route, navigation }) {
     Speech.stop();
     stopConceptAudio();
     if (isRelearn) {
-      // Already seen the demo — go straight to the quiz
-      navigation.navigate('ConceptMatch', { student, category, conceptKey, sessionId: sessionId || null });
+      if (confusedKeys?.length > 0) {
+        // Adaptive 2-card quiz targeting exactly the fruits the student confused
+        navigation.navigate('ConceptAdaptiveQuiz', {
+          student, category, conceptKey,
+          sessionId: sessionId || null,
+          confusedKeys,
+        });
+      } else {
+        // Relearn without confusion data — fall back to standard quiz
+        navigation.navigate('ConceptMatch', { student, category, conceptKey, sessionId: sessionId || null });
+      }
     } else {
-      // First attempt — show the demo first
       navigation.navigate('ConceptDemo', { student, category, conceptKey, sessionId: sessionId || null });
     }
   }
