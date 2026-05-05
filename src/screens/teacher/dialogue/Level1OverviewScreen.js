@@ -29,6 +29,17 @@ export default function Level1OverviewScreen({ route, navigation }) {
         } else if (categoryKey === 'days_of_week') {
           navigation.replace('DaysMenuScreen', { student });
 
+        } else if (categoryKey === 'greetings') {
+          if (nextWord) {
+            navigation.replace('GreetingLanding', {
+              student,
+              wordKey: nextWord.asset_key,
+              wordId:  nextWord.id,
+            });
+          } else {
+            navigation.replace('DialogueCategory', { student });
+          }
+
         } else if (categoryKey === 'abilities') {
           navigation.replace('VerbActivity', { student, verb: 'jump' });
         }

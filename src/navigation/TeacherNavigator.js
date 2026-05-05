@@ -33,6 +33,13 @@ import DaysPhase2NonVerbalScreen  from '../screens/teacher/dialogue/days-of-week
 import DaysPhase3SequenceScreen   from '../screens/teacher/dialogue/days-of-week/DaysPhase3SequenceScreen';
 import DaysSpinningWheelScreen    from '../screens/teacher/dialogue/days-of-week/DaysSpinningWheelScreen';
 import DaysMenuScreen             from '../screens/teacher/dialogue/days-of-week/DaysMenuScreen';
+import GreetingLandingScreen      from '../screens/teacher/dialogue/greetings/GreetingLandingScreen';
+import GreetingPhase1VideoScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase1VideoScreen';
+import GreetingDragToLineScreen   from '../screens/teacher/dialogue/greetings/GreetingDragToLineScreen';
+import GreetingPhase1CompleteScreen from '../screens/teacher/dialogue/greetings/GreetingPhase1CompleteScreen';
+import GreetingPhase2ProductionScreen from '../screens/teacher/dialogue/greetings/GreetingPhase2ProductionScreen';
+import GreetingPhase2NonVerbalScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase2NonVerbalScreen';
+import GreetingPhase3ContextualScreen from '../screens/teacher/dialogue/greetings/GreetingPhase3ContextualScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -126,6 +133,15 @@ export default function TeacherNavigator() {
       <Stack.Screen name="VerbActivity"      component={VerbActivityScreen} />
       <Stack.Screen name="ClapActivity"      component={ClapActivityScreen} />
       <Stack.Screen name="RunActivity"       component={RunActivityScreen} />
+
+      {/* Greetings */}
+      <Stack.Screen name="GreetingLanding"           component={GreetingLandingScreen} />
+      <Stack.Screen name="GreetingPhase1Video"        component={GreetingPhase1VideoScreen} />
+      <Stack.Screen name="GreetingDragToLine"         component={GreetingDragToLineScreen} />
+      <Stack.Screen name="GreetingPhase1Complete"     component={GreetingPhase1CompleteScreen} />
+      <Stack.Screen name="GreetingPhase2Production"   component={GreetingPhase2ProductionScreen} />
+      <Stack.Screen name="GreetingPhase2NonVerbal"    component={GreetingPhase2NonVerbalScreen} />
+      <Stack.Screen name="GreetingPhase3Contextual"   component={GreetingPhase3ContextualScreen} />
 
       {/* Days of the Week */}
       <Stack.Screen name="DaysMenuScreen"        component={DaysMenuScreen} />
