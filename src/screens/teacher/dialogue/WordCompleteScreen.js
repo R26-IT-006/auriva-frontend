@@ -17,6 +17,7 @@ import { dialogueApi } from '../../../api/dialogue';
 function getCategoryStartScreen(category) {
   switch (category) {
     case 'days_of_week': return 'DaysPhase1Calendar';
+    case 'greetings':    return 'GreetingPhase1Video';
     case 'magic_words':
     default:             return 'Phase1Video';
   }

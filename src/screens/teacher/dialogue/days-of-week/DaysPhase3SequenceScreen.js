@@ -198,14 +198,14 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
       if (isCorrect) {
         setSettled(true);
         setCloudText('Well done!');
-        dialogueApi.recordPhase3Scenario(student?.sid, wordId, {
+        dialogueApi.submitPhase3Scenario(student?.sid, wordId, {
           scenarioLabel: 'A', selectedCorrect: true, sessionId,
         }).catch(() => {});
         await playSound(AUDIO_GOOD_JOB).catch(() => {});
         await completePhase3(true);
       } else {
         setCloudText('Try again!');
-        dialogueApi.recordPhase3Scenario(student?.sid, wordId, {
+        dialogueApi.submitPhase3Scenario(student?.sid, wordId, {
           scenarioLabel: 'A', selectedCorrect: false, sessionId,
         }).catch(() => {});
         setTimeout(() => {
@@ -221,7 +221,7 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
       setSettled(true);
       setSelectedId(option.word_id);
       setCloudText('Good job!');
-      dialogueApi.recordPhase3Scenario(student?.sid, wordId, {
+      dialogueApi.submitPhase3Scenario(student?.sid, wordId, {
         scenarioLabel: 'B', selectedCorrect: isCorrect, sessionId,
       }).catch(() => {});
       await playSound(AUDIO_GOOD_JOB).catch(() => {});
