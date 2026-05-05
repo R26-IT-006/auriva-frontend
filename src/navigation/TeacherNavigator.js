@@ -1,4 +1,3 @@
-import React from "react"; // required for JSX
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,9 +11,12 @@ import WorkspaceSelectScreen from "../screens/teacher/WorkspaceSelectScreen";
 import StudentPickerScreen from "../screens/teacher/students/StudentPickerScreen";
 import StudentDashboardScreen from "../screens/teacher/students/StudentDashboardScreen";
 import AvatarSelectionScreen from "../screens/teacher/students/AvatarSelectionScreen";
+import DialogueLandingScreen from "../screens/teacher/students/DialogueLandingScreen";
+import HandwritingNavigator from "./HandwritingNavigator";
 import PronunciationSessionSetupScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSessionSetupScreen";
 import PronunciationWordSelectionScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationWordSelectionScreen";
 import PronunciationLearnWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationLearnWordScreen";
+import PronunciationMouthShapeScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationMouthShapeScreen";
 import PronunciationSpeakWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSpeakWordScreen";
 import PronunciationResultScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultScreen";
 
@@ -124,6 +126,8 @@ export default function TeacherNavigator() {
         name="StudentSession"
         component={TeacherStudentDetailScreen}
       />
+      <Stack.Screen name="HandwritingModule" component={HandwritingNavigator} />
+      <Stack.Screen name="DialogueLanding" component={DialogueLandingScreen} />
       <Stack.Screen
         name="PronunciationSessionSetup"
         component={PronunciationSessionSetupScreen}
@@ -135,6 +139,10 @@ export default function TeacherNavigator() {
       <Stack.Screen
         name="PronunciationLearnWord"
         component={PronunciationLearnWordScreen}
+      />
+      <Stack.Screen
+        name="PronunciationMouthShape"
+        component={PronunciationMouthShapeScreen}
       />
       <Stack.Screen
         name="PronunciationSpeakWord"
