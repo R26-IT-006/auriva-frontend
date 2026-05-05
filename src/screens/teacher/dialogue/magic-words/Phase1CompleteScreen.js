@@ -7,11 +7,10 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 
 const WORD_LABELS = {
-  thank_you:        'Thank You',
-  please:           'Please',
-  sorry:            "I'm Sorry",
-  youre_welcome:    "You're Welcome",
-  please_excuse_me: 'Please Excuse Me',
+  thank_you:     'Thank You',
+  im_sorry:      "I'm Sorry",
+  youre_welcome: "You're Welcome",
+  excuse_me:     'Excuse Me',
 };
 
 export default function Phase1CompleteScreen({ route, navigation }) {

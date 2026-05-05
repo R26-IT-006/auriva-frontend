@@ -5,7 +5,7 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Modal,
+  ScrollView,
   Animated,
   useWindowDimensions,
 } from 'react-native';
@@ -22,10 +22,9 @@ const PROGRESS_FRACTION = 0.90;
 
 const WORD_DISPLAY = {
   thank_you:        'Thank You',
-  please:           'Please',
-  sorry:            "I'm Sorry",
+  im_sorry:         "I'm Sorry",
   youre_welcome:    "You're Welcome",
-  please_excuse_me: 'Please Excuse Me',
+  excuse_me: 'Excuse Me',
 };
 
 const AVATAR_IMAGES = {
@@ -37,22 +36,36 @@ const AVATAR_IMAGES = {
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
-// Non-verbal activity images — sourced from the dedicated Non-verbal asset folder
 const NV_IMAGES = {
   thank_you: {
     correct: require('../../../../../assets/dialogue-images/Non-verbal/thankyou_NV_correct.png'),
     wrong1:  require('../../../../../assets/dialogue-images/Non-verbal/thankyou_NV_wrong1.png'),
     wrong2:  require('../../../../../assets/dialogue-images/Non-verbal/thankyou_NV_wrong2.png'),
   },
+  im_sorry: {
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+  },
+  // youre_welcome uses comic-strip images stacked vertically
+  youre_welcome: {
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong2.png'),
+  },
+  excuse_me: {
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+  },
 };
 
 // Image captions per word — update once artwork filenames are confirmed
 const NV_CAPTIONS = {
-  thank_you:        ['Anjalie receives\na present', 'Saman is eating\nbreakfast',   'Saman is crying\nafter he fell'],
-  please:           ['Anjalie asks for\na pencil',   'Saman is reading\na book',     'They are playing\noutside'],
-  sorry:            ['Saman bumps into\nAnjalie',    'They are drawing\ntogether',   'Anjalie is eating\nher lunch'],
-  youre_welcome:    ["Anjalie says\n'Thank you'",    'Anjalie is sleeping',          'They are running\noutside'],
-  please_excuse_me: ['Saman needs to\npass by',     'Anjalie is drawing',           'Saman is playing\nwith toys'],
+  thank_you:        ['Anjalie receives\na present',  'Saman is eating\nbreakfast',  'Saman is crying\nafter he fell'],
+  im_sorry:         ['Saman bumps into\nAnjalie',    'They are drawing\ntogether',  'Anjalie is eating\nher lunch'],
+  youre_welcome:    ["Anjalie says\n'Thank you'",    'Anjalie is sleeping',         'They are running\noutside'],
+  excuse_me:        ['Saman needs to\npass by',     'Anjalie is drawing',          'Saman is playing\nwith toys'],
 };
 
 function shuffleArray(arr) {
@@ -72,8 +85,12 @@ export default function Phase2NonVerbalScreen({ route, navigation }) {
   const avatarImg = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
 
   const { width: screenWidth } = useWindowDimensions();
-  // 3 cards: screen - 48px (padding) - 16px (2 gaps of 8px), capped at 200px
-  const cardW = Math.min(Math.floor((screenWidth - 64) / 3), 200);
+  // comic-strip words use a full-width vertical layout
+  const isVerticalLayout = wordKey === 'youre_welcome';
+  // horizontal: 3 equal cards; vertical: full content width
+  const cardW = isVerticalLayout
+    ? screenWidth - 2 * Layout.spacing.lg
+    : Math.min(Math.floor((screenWidth - 64) / 3), 200);
 
   const nvImages = NV_IMAGES[wordKey] ?? NV_IMAGES.thank_you;
   const captions = NV_CAPTIONS[wordKey] ?? NV_CAPTIONS.thank_you;
@@ -243,42 +260,81 @@ export default function Phase2NonVerbalScreen({ route, navigation }) {
             </Text>
 
             {/* ── 3 image cards ── */}
-            <View style={styles.cardsRow}>
-              {imageItems.map(item => {
-                const isSelected        = selectedId === item.id;
-                const isRevealedCorrect = correctRevealed && item.isCorrect;
-                const showGreenBorder   = (isSelected && item.isCorrect) || isRevealedCorrect;
-                const showRedDim        = isSelected && !item.isCorrect && !settled;
+            {isVerticalLayout ? (
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.cardsColumn}
+                showsVerticalScrollIndicator={false}
+              >
+                {imageItems.map(item => {
+                  const isSelected        = selectedId === item.id;
+                  const isRevealedCorrect = correctRevealed && item.isCorrect;
+                  const showGreenBorder   = (isSelected && item.isCorrect) || isRevealedCorrect;
+                  const showRedDim        = isSelected && !item.isCorrect && !settled;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => handleImageTap(item)}
+                      activeOpacity={settled ? 1 : 0.82}
+                      style={[
+                        styles.imageCard,
+                        { width: cardW, backgroundColor: theme.cardSurface },
+                        showGreenBorder && styles.cardCorrect,
+                        showRedDim      && styles.cardWrong,
+                      ]}
+                    >
+                      <View style={styles.imageWrapVertical}>
+                        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
+                        {showGreenBorder && (
+                          <View style={styles.correctBadge}>
+                            <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.cardCaption, { color: theme.headingText }]} numberOfLines={2}>
+                        {item.caption}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <View style={styles.cardsRow}>
+                {imageItems.map(item => {
+                  const isSelected        = selectedId === item.id;
+                  const isRevealedCorrect = correctRevealed && item.isCorrect;
+                  const showGreenBorder   = (isSelected && item.isCorrect) || isRevealedCorrect;
+                  const showRedDim        = isSelected && !item.isCorrect && !settled;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => handleImageTap(item)}
+                      activeOpacity={settled ? 1 : 0.82}
+                      style={[
+                        styles.imageCard,
+                        { width: cardW, backgroundColor: theme.cardSurface },
+                        showGreenBorder && styles.cardCorrect,
+                        showRedDim      && styles.cardWrong,
+                      ]}
+                    >
+                      <View style={[styles.imageWrap, { height: cardW }]}>
+                        <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
+                        {showGreenBorder && (
+                          <View style={styles.correctBadge}>
+                            <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.cardCaption, { color: theme.headingText }]} numberOfLines={2}>
+                        {item.caption}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
 
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    onPress={() => handleImageTap(item)}
-                    activeOpacity={settled ? 1 : 0.82}
-                    style={[
-                      styles.imageCard,
-                      { width: cardW, backgroundColor: theme.cardSurface },
-                      showGreenBorder && styles.cardCorrect,
-                      showRedDim      && styles.cardWrong,
-                    ]}
-                  >
-                    <View style={[styles.imageWrap, { height: cardW }]}>
-                      <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
-                      {showGreenBorder && (
-                        <View style={styles.correctBadge}>
-                          <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
-                        </View>
-                      )}
-                    </View>
-                    <Text style={[styles.cardCaption, { color: theme.headingText }]} numberOfLines={2}>
-                      {item.caption}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={{ flex: 1 }} />
+            {!isVerticalLayout && <View style={{ flex: 1 }} />}
 
             {/* ── Avatar row ── */}
             <View style={styles.avatarRow}>
@@ -385,6 +441,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap:            Layout.spacing.sm,
   },
+  cardsColumn: {
+    gap:         Layout.spacing.md,
+    paddingBottom: Layout.spacing.md,
+  },
   imageCard: {
     borderRadius:  Layout.radius.lg,
     overflow:      'hidden',
@@ -408,6 +468,12 @@ const styles = StyleSheet.create({
   imageWrap: {
     position: 'relative',
     overflow: 'hidden',
+  },
+  imageWrapVertical: {
+    position:  'relative',
+    overflow:  'hidden',
+    width:     '100%',
+    aspectRatio: 16 / 9,
   },
   cardImage: {
     width:  '100%',

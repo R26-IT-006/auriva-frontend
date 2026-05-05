@@ -22,10 +22,9 @@ const PROGRESS_FRACTION = 0.85;
 
 const WORD_DISPLAY = {
   thank_you:        'Thank You',
-  please:           'Please',
-  sorry:            "I'm Sorry",
+  im_sorry:         "I'm Sorry",
   youre_welcome:    "You're Welcome",
-  please_excuse_me: 'Please Excuse Me',
+  excuse_me: 'Excuse Me',
 };
 
 const AVATAR_IMAGES = {
@@ -43,14 +42,32 @@ const PRODUCTION_VIDEOS = {
   glitter: require('../../../../../assets/avatar-videos/GlitterDancing.mp4'),
 };
 
+// Shared audio clips used for all words
 const AUDIO = {
-  word:          require('../../../../../assets/dialogue-audios/Thankyou.mp3'),
-  canYouSay:     require('../../../../../assets/dialogue-audios/Can_you_say_Thankyou.mp3'),
   tapToListen:   require('../../../../../assets/dialogue-audios/Tap_on_the_button_to_listen_again.mp3'),
   tapRecordBtn:  require('../../../../../assets/dialogue-audios/Tap_the_record_button_and_speak.mp3'),
   youCanDoIt:    require('../../../../../assets/dialogue-audios/You_can_do_it.mp3'),
   repeatAfterMe: require('../../../../../assets/dialogue-audios/Repeat_after_me.mp3'),
   goodJob:       require('../../../../../assets/dialogue-audios/Good_job.mp3'),
+};
+
+const WORD_AUDIO = {
+  thank_you: {
+    word:      require('../../../../../assets/dialogue-audios/magic_words/Thankyou.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/magic_words/Can_you_say_Thankyou.mp3'),
+  },
+  im_sorry: {
+    word:      require('../../../../../assets/dialogue-audios/magic_words/Im_sorry.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/magic_words/Can_you_say_Im_sorry.mp3'),
+  },
+  youre_welcome: {
+    word:      require('../../../../../assets/dialogue-audios/magic_words/you_re_welcome.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/magic_words/Can_you_say_You_re_welcome.mp3'),
+  },
+  excuse_me: {
+    word:      require('../../../../../assets/dialogue-audios/magic_words/Excuse_me.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/magic_words/Can_you_say_Excuse_me.mp3'),
+  },
 };
 
 const REC_OPTIONS = {
@@ -110,6 +127,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   const { student, wordKey = 'thank_you', wordId } = route.params ?? {};
   const theme     = getAvatarTheme(student?.avatar_key);
   const wordLabel = WORD_DISPLAY[wordKey] ?? wordKey.replace(/_/g, ' ');
+  const wordAudio = WORD_AUDIO[wordKey] ?? WORD_AUDIO.thank_you;
   const avatarKey = student?.avatar_key ?? 'lily';
   const avatarImg = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
   const prodVideo = PRODUCTION_VIDEOS[avatarKey] ?? null;
@@ -181,21 +199,21 @@ export default function Phase2ProductionScreen({ route, navigation }) {
 
       // Play word audio twice with speech bubble showing the word
       say(wordLabel);
-      await playSound(AUDIO.word);
+      await playSound(wordAudio.word);
       if (cancelled) return;
 
       await delay(600);
       if (cancelled) return;
 
-      await playSound(AUDIO.word);
+      await playSound(wordAudio.word);
       if (cancelled) return;
 
       await delay(400);
       if (cancelled) return;
 
-      // "Can you say Thank You?" — bubble updates, then mic auto-starts
+      // "Can you say [word]?" — bubble updates, then mic auto-starts
       say(`Can you say "${wordLabel}"?`);
-      await playSound(AUDIO.canYouSay);
+      await playSound(wordAudio.canYouSay);
       if (cancelled) return;
 
       startListening();
@@ -262,7 +280,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setTileGlow(false);
     setBtnGlow(false);
     clearTimer();
-    await playSound(AUDIO.canYouSay);
+    await playSound(wordAudio.canYouSay);
     if (!activeRef.current) return;
     timerRef.current = setTimeout(enterReprompt2, 20_000);
   }
@@ -301,7 +319,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   // ── Word tile tap ─────────────────────────────────────────────────────────
 
   async function handleTileTap() {
-    await playSound(AUDIO.word);
+    await playSound(wordAudio.word);
 
     tileTapRef.current += 1;
 
@@ -423,11 +441,11 @@ export default function Phase2ProductionScreen({ route, navigation }) {
           await playSound(AUDIO.repeatAfterMe);
           await delay(2000);
           if (!activeRef.current) return;
-          await playSound(AUDIO.word);
+          await playSound(wordAudio.word);
         } else {
           setPhase(P.PARTIAL_1);
           say(`Can you say "${wordLabel}"?`);
-          await playSound(AUDIO.canYouSay);
+          await playSound(wordAudio.canYouSay);
         }
       } else {
         // score = 0: no recognisable speech — re-prompt

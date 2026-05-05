@@ -32,10 +32,57 @@ const THANK_YOU_VIDEOS = [
   },
 ];
 
-// Maps wordKey → video list (extend when more words are added)
+// Placeholders — swap source for the real video files when assets arrive
+const IM_SORRY_VIDEOS = [
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4'),
+    caption: 'Saman bumps into Anjalie by accident.\nHe says "I\'m sorry"',
+  },
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4'),
+    caption: 'Anjalie spills Saman\'s juice.\nShe says "I\'m sorry"',
+  },
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4'),
+    caption: 'Saman breaks Anjalie\'s pencil by mistake.\nHe says "I\'m sorry"',
+  },
+];
+
+const YOURE_WELCOME_VIDEOS = [
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4'),
+    caption: 'Anjalie says "Thank you" to Saman.\nHe says "You\'re welcome"',
+  },
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4'),
+    caption: 'Saman helps Anjalie carry her bag.\nShe says "Thank you". He says "You\'re welcome"',
+  },
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4'),
+    caption: 'Anjalie gives Saman a pencil.\nHe says "Thank you". She says "You\'re welcome"',
+  },
+];
+
+const EXCUSE_ME_VIDEOS = [
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4'),
+    caption: 'Saman needs to pass by Anjalie.\nHe says "Excuse me"',
+  },
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4'),
+    caption: 'Anjalie is walking through a crowd.\nShe says "Excuse me"',
+  },
+  {
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4'),
+    caption: 'Saman needs to reach something behind Anjalie.\nHe says "Excuse me"',
+  },
+];
+
 function getVideos(wordKey) {
-  if (wordKey === 'thank_you') return THANK_YOU_VIDEOS;
-  return THANK_YOU_VIDEOS; // fallback
+  if (wordKey === 'im_sorry')      return IM_SORRY_VIDEOS;
+  if (wordKey === 'youre_welcome') return YOURE_WELCOME_VIDEOS;
+  if (wordKey === 'excuse_me')     return EXCUSE_ME_VIDEOS;
+  return THANK_YOU_VIDEOS;
 }
 
 export default function Phase1VideoScreen({ route, navigation }) {

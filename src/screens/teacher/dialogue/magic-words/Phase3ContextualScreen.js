@@ -5,6 +5,7 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  ScrollView,
   Animated,
   useWindowDimensions,
 } from 'react-native';
@@ -21,10 +22,9 @@ const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.m
 
 const WORD_DISPLAY = {
   thank_you:        'Thank You',
-  please:           'Please',
-  sorry:            "I'm Sorry",
+  im_sorry:         "I'm Sorry",
   youre_welcome:    "You're Welcome",
-  please_excuse_me: 'Please Excuse Me',
+  excuse_me: 'Excuse Me',
 };
 
 const AVATAR_IMAGES = {
@@ -35,6 +35,8 @@ const AVATAR_IMAGES = {
 };
 
 // Per-scenario images and captions (static require — React Native bundle constraint)
+// im_sorry, youre_welcome, please_excuse_me use thank_you images as placeholders;
+// swap each source for the real asset file once artwork is added.
 const PHASE3_SCENARIOS = {
   thank_you: {
     A: {
@@ -68,6 +70,112 @@ const PHASE3_SCENARIOS = {
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong4.png'),
       },
       captions: { correct: 'Someone receives\na kind gift', wrong1: 'Saman is crying\nafter he fell', wrong2: 'Anjalie is reading\na book' },
+    },
+  },
+
+  im_sorry: {
+    A: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+      },
+      captions: { correct: 'Saman bumps into\nAnjalie', wrong1: 'They are laughing\ntogether', wrong2: 'Anjalie is reading\na book' },
+    },
+    B: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+      },
+      captions: { correct: 'Anjalie knocks over\nSaman\'s cup', wrong1: 'Saman is eating\nlunch', wrong2: 'They are playing\noutside' },
+    },
+    C: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+      },
+      captions: { correct: 'Saman breaks\nAnjalie\'s toy', wrong1: 'They are singing\ntogether', wrong2: 'Anjalie is drawing' },
+    },
+    checkpoint: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+      },
+      captions: { correct: 'Someone steps on\nanother\'s foot', wrong1: 'They are playing\na game', wrong2: 'Saman is reading\na book' },
+    },
+  },
+
+  // youre_welcome has 4 distinct correct and wrong images (comic strips)
+  youre_welcome: {
+    A: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong2.png'),
+      },
+      captions: { correct: 'Anjalie says\n"Thank you"', wrong1: 'Anjalie is sleeping', wrong2: 'They are running\noutside' },
+    },
+    B: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context2.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong3.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong4.png'),
+      },
+      captions: { correct: 'Saman says\n"Thank you"', wrong1: 'They are drawing\ntogether', wrong2: 'Anjalie is eating\nbreakfast' },
+    },
+    C: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context3.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong3.png'),
+      },
+      captions: { correct: 'Anjalie thanks Saman\nfor his help', wrong1: 'Anjalie is sleeping', wrong2: 'They are drawing\ntogether' },
+    },
+    checkpoint: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context4.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong4.png'),
+      },
+      captions: { correct: 'Someone receives\na kind thank you', wrong1: 'They are running\noutside', wrong2: 'Anjalie is eating\nbreakfast' },
+    },
+  },
+
+  excuse_me: {
+    A: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+      },
+      captions: { correct: 'Saman needs to\npass by Anjalie', wrong1: 'They are laughing\ntogether', wrong2: 'Saman is eating\nlunch' },
+    },
+    B: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+      },
+      captions: { correct: 'Anjalie walks through\na crowd', wrong1: 'Saman is reading\na book', wrong2: 'They are drawing\ntogether' },
+    },
+    C: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+      },
+      captions: { correct: 'Saman needs to reach\nsomething behind Anjalie', wrong1: 'They are laughing\ntogether', wrong2: 'They are drawing\ntogether' },
+    },
+    checkpoint: {
+      images: {
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+      },
+      captions: { correct: 'Someone politely\npasses through a group', wrong1: 'Saman is eating\nlunch', wrong2: 'Saman is reading\na book' },
     },
   },
 };
@@ -104,6 +212,7 @@ export default function Phase3ContextualScreen({ route, navigation }) {
   const avatarImg = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
 
   const { width: screenWidth } = useWindowDimensions();
+  const isVerticalLayout = wordKey === 'youre_welcome';
 
   // ── Scenario state ────────────────────────────────────────────────────────
   const [scenario,     setScenario]     = useState('A');
@@ -156,25 +265,36 @@ export default function Phase3ContextualScreen({ route, navigation }) {
 
   // ── Scenario completion logic ─────────────────────────────────────────────
 
-  function finalize() {
+  async function finalize() {
     const { A, B, C, checkpoint } = resultsRef.current;
     const phase3Passed = (A && B && C) || (checkpoint === true);
     const allWrong     = A === false && B === false && C === false;
 
-    dialogueApi.submitPhase3(
-      student?.sid, wordId,
-      { phase3Passed: !!phase3Passed, sessionId }
-    ).catch(() => {});
+    let result = { session_passed: false, mastered: false, status: 'in_progress' };
+    try {
+      result = await dialogueApi.submitPhase3(
+        student?.sid, wordId,
+        { phase3Passed: !!phase3Passed, sessionId }
+      );
+    } catch { /* ignore */ }
 
-    setTimeout(() => {
-      if (!activeRef.current) return;
-      if (allWrong) {
-        // Re-familiarize: send back to Phase 1 video flow
-        navigation.navigate('Phase1Video', { student, wordKey, wordId });
-      } else {
-        navigation.navigate('DialogueCategory', { student });
-      }
-    }, 1800);
+    await new Promise(r => setTimeout(r, 1800));
+    if (!activeRef.current) return;
+
+    if (allWrong) {
+      navigation.navigate('Phase1Video', { student, wordKey, wordId });
+    } else {
+      navigation.navigate('WordComplete', {
+        student,
+        wordKey,
+        wordId,
+        wordLabel,
+        category:      'magic_words',
+        mastered:      result.mastered      ?? false,
+        sessionPassed: result.session_passed ?? false,
+        status:        result.status         ?? 'in_progress',
+      });
+    }
   }
 
   function advanceFromScenario(label, wasCorrect) {
@@ -276,8 +396,9 @@ export default function Phase3ContextualScreen({ route, navigation }) {
 
   const progressFraction = SCENARIO_PROGRESS[scenario] ?? 0.92;
   const scenarioLabel    = scenario === 'checkpoint' ? 'Checkpoint' : `Scenario ${scenario}`;
-  // All scenarios use 3 cards: (screen - 48px padding - 16px gaps) / 3, capped at 220px
-  const cardW = Math.min(Math.floor((screenWidth - 64) / 3), 220);
+  const cardW = isVerticalLayout
+    ? screenWidth - 2 * Layout.spacing.lg
+    : Math.min(Math.floor((screenWidth - 64) / 3), 220);
 
   return (
     <View style={styles.root}>
@@ -320,41 +441,79 @@ export default function Phase3ContextualScreen({ route, navigation }) {
             </Text>
 
             {/* ── Image cards ── */}
-            <View style={styles.cardsRow}>
-              {imageItems.map(item => {
-                const isSelected      = selectedId === item.id;
-                const showGreenBorder = isSelected && item.isCorrect;
-                const showRedDim      = isSelected && !item.isCorrect;
+            {isVerticalLayout ? (
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.cardsColumn}
+                showsVerticalScrollIndicator={false}
+              >
+                {imageItems.map(item => {
+                  const isSelected      = selectedId === item.id;
+                  const showGreenBorder = isSelected && item.isCorrect;
+                  const showRedDim      = isSelected && !item.isCorrect;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => handleImageTap(item)}
+                      activeOpacity={settled ? 1 : 0.82}
+                      style={[
+                        styles.imageCard,
+                        { width: cardW, backgroundColor: theme.cardSurface },
+                        showGreenBorder && styles.cardCorrect,
+                        showRedDim      && styles.cardWrong,
+                      ]}
+                    >
+                      <View style={styles.imageWrapVertical}>
+                        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
+                        {showGreenBorder && (
+                          <View style={styles.correctBadge}>
+                            <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.cardCaption, { color: theme.headingText }]} numberOfLines={2}>
+                        {item.caption}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <View style={styles.cardsRow}>
+                {imageItems.map(item => {
+                  const isSelected      = selectedId === item.id;
+                  const showGreenBorder = isSelected && item.isCorrect;
+                  const showRedDim      = isSelected && !item.isCorrect;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => handleImageTap(item)}
+                      activeOpacity={settled ? 1 : 0.82}
+                      style={[
+                        styles.imageCard,
+                        { width: cardW, backgroundColor: theme.cardSurface },
+                        showGreenBorder && styles.cardCorrect,
+                        showRedDim      && styles.cardWrong,
+                      ]}
+                    >
+                      <View style={[styles.imageWrap, { height: cardW }]}>
+                        <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
+                        {showGreenBorder && (
+                          <View style={styles.correctBadge}>
+                            <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.cardCaption, { color: theme.headingText }]} numberOfLines={2}>
+                        {item.caption}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
 
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    onPress={() => handleImageTap(item)}
-                    activeOpacity={settled ? 1 : 0.82}
-                    style={[
-                      styles.imageCard,
-                      { width: cardW, backgroundColor: theme.cardSurface },
-                      showGreenBorder && styles.cardCorrect,
-                      showRedDim      && styles.cardWrong,
-                    ]}
-                  >
-                    <View style={[styles.imageWrap, { height: cardW }]}>
-                      <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
-                      {showGreenBorder && (
-                        <View style={styles.correctBadge}>
-                          <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
-                        </View>
-                      )}
-                    </View>
-                    <Text style={[styles.cardCaption, { color: theme.headingText }]} numberOfLines={2}>
-                      {item.caption}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={{ flex: 1 }} />
+            {!isVerticalLayout && <View style={{ flex: 1 }} />}
 
             {/* ── Avatar row ── */}
             <View style={styles.avatarRow}>
@@ -496,6 +655,16 @@ const styles = StyleSheet.create({
     borderColor: '#FF4D6D',
     borderWidth: 2,
     opacity:     0.55,
+  },
+  cardsColumn: {
+    gap:           Layout.spacing.md,
+    paddingBottom: Layout.spacing.md,
+  },
+  imageWrapVertical: {
+    position:    'relative',
+    overflow:    'hidden',
+    width:       '100%',
+    aspectRatio: 16 / 9,
   },
   imageWrap: {
     position: 'relative',

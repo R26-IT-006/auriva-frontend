@@ -13,16 +13,22 @@ export default function Level1OverviewScreen({ route, navigation }) {
   useEffect(() => {
     async function loadNextWord() {
       try {
-        const nextWord = await dialogueApi.getNextWord(student.sid, categoryKey);
-        if (categoryKey === 'magic_words' && nextWord) {
-          navigation.replace('MagicWordLanding', {
-            student,
-            wordKey: nextWord.asset_key,
-            wordId:  nextWord.id,
-          });
-        } else if (categoryKey === 'magic_words') {
-          // All magic words mastered — go back to category screen
-          navigation.replace('DialogueCategory', { student });
+        const nextWord = await dialogueApi.getNextWord(student.sid, { category: categoryKey });
+
+        if (categoryKey === 'magic_words') {
+          if (nextWord) {
+            navigation.replace('MagicWordLanding', {
+              student,
+              wordKey: nextWord.asset_key,
+              wordId:  nextWord.id,
+            });
+          } else {
+            navigation.replace('DialogueCategory', { student });
+          }
+
+        } else if (categoryKey === 'days_of_week') {
+          navigation.replace('DaysMenuScreen', { student });
+
         } else if (categoryKey === 'abilities') {
           navigation.replace('VerbActivity', { student, verb: 'jump' });
         }

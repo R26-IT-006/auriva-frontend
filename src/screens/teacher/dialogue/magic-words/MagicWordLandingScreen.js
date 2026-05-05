@@ -18,10 +18,9 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 
 const WORD_LABELS = {
   thank_you:        'THANK YOU',
-  please:           'PLEASE',
-  sorry:            "I'M SORRY",
+  im_sorry:         "I'M SORRY",
   youre_welcome:    "YOU'RE WELCOME",
-  please_excuse_me: 'PLEASE EXCUSE ME',
+  excuse_me: 'EXCUSE ME',
 };
 
 const AVATAR_DANCING_VIDEOS = {
