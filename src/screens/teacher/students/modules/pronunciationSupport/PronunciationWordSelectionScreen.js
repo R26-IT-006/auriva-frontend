@@ -9,6 +9,10 @@ import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { SESSION_CATEGORIES } from "./sessionCategories.js";
 import { WORD_BANK } from "./wordBank.js";
+import {
+  PRONUNCIATION_STEPS,
+  usePronunciationSessionStore,
+} from "./pronunciationSessionStore.js";
 
 function Step({ label, active, done, theme }) {
   return (
@@ -109,6 +113,12 @@ export default function PronunciationWordSelectionScreen({
   const theme = getAvatarTheme(student?.avatar_key);
   const categoryId = route.params?.categoryId;
   const [selectedWord, setSelectedWord] = useState(null);
+  const setSelectedWordInSession = usePronunciationSessionStore(
+    (state) => state.setSelectedWord,
+  );
+  const setCurrentActivityStep = usePronunciationSessionStore(
+    (state) => state.setCurrentActivityStep,
+  );
   const [moreOpen, setMoreOpen] = useState(false);
   const [expandedWordKey, setExpandedWordKey] = useState(null);
   const { width } = useWindowDimensions();
@@ -120,7 +130,8 @@ export default function PronunciationWordSelectionScreen({
     ) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
-  }, []);
+    setCurrentActivityStep(PRONUNCIATION_STEPS.WORD_SELECTION);
+  }, [setCurrentActivityStep]);
 
   const scrollRef = useRef(null);
   const cardRefs = useRef({});
@@ -148,6 +159,7 @@ export default function PronunciationWordSelectionScreen({
 
   function handleStartSession() {
     if (!selectedWord) return;
+    setSelectedWordInSession(selectedWord);
     navigation.navigate("PronunciationLearnWord", {
       student,
       categoryId,
@@ -169,6 +181,7 @@ export default function PronunciationWordSelectionScreen({
     } else {
       setExpandedWordKey(key);
       setSelectedWord(item);
+      setSelectedWordInSession(item);
       // measure and scroll expanded card into view after layout settles
       setTimeout(() => {
         try {
@@ -311,7 +324,11 @@ export default function PronunciationWordSelectionScreen({
                     item={item}
                     width={moreCardWidth}
                     selected={selectedWord?.id === item.id}
-                    onPress={() => setSelectedWord(item)}
+                    onPress={() => {
+                      setSelectedWord(item);
+                      setSelectedWordInSession(item);
+                      setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
+                    }}
                     theme={theme}
                   />
                 ))}

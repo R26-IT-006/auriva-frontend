@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,6 +8,11 @@ import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { SESSION_CATEGORIES } from "./sessionCategories.js";
+import {
+  PRONUNCIATION_MODES,
+  PRONUNCIATION_STEPS,
+  usePronunciationSessionStore,
+} from "./pronunciationSessionStore.js";
 
 function Step({ label, active, done, theme }) {
   return (
@@ -65,7 +70,22 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const startSession = usePronunciationSessionStore((state) => state.startSession);
+  const setSelectedStudent = usePronunciationSessionStore(
+    (state) => state.setSelectedStudent,
+  );
+  const setSelectedCategoryInSession = usePronunciationSessionStore(
+    (state) => state.setSelectedCategory,
+  );
+  const setCurrentActivityStep = usePronunciationSessionStore(
+    (state) => state.setCurrentActivityStep,
+  );
   const { width } = useWindowDimensions();
+
+  useEffect(() => {
+    setSelectedStudent(student);
+    setCurrentActivityStep(PRONUNCIATION_STEPS.SETUP);
+  }, [setCurrentActivityStep, setSelectedStudent, student]);
 
   const cardWidth = useMemo(() => {
     if (width >= 1180) return 220;
@@ -85,6 +105,11 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
       return;
     }
 
+    startSession({
+      student,
+      mode: PRONUNCIATION_MODES.WORD,
+      category: selectedCategory,
+    });
     navigation.navigate("PronunciationWordSelection", {
       student,
       categoryId: selectedCategory,
@@ -137,7 +162,10 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
                 key={item.id}
                 item={item}
                 selected={selectedCategory === item.id}
-                onPress={() => setSelectedCategory(item.id)}
+                onPress={() => {
+                  setSelectedCategory(item.id);
+                  setSelectedCategoryInSession(item.id);
+                }}
                 cardWidth={cardWidth}
                 theme={theme}
               />

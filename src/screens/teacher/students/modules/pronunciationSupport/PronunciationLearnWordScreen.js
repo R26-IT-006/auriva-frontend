@@ -9,6 +9,10 @@ import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { WORD_BANK } from "./wordBank.js";
+import {
+  PRONUNCIATION_STEPS,
+  usePronunciationSessionStore,
+} from "./pronunciationSessionStore.js";
 
 const PRONUNCIATION_AUDIO_ASSETS = {
   cat: require("../../../../../../assets/pronounciation-audios/cat.mp3"),
@@ -21,17 +25,26 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   const selectedWordId = route.params?.wordId;
   const { width } = useWindowDimensions();
   const pronunciationSoundRef = React.useRef(null);
+  const sessionSelectedWord = usePronunciationSessionStore(
+    (state) => state.selectedWord,
+  );
+  const setCurrentActivityStep = usePronunciationSessionStore(
+    (state) => state.setCurrentActivityStep,
+  );
 
   const words = WORD_BANK[categoryId] || [];
   const selectedWord =
-    words.find((word) => word.id === selectedWordId) || route.params?.word;
+    words.find((word) => word.id === selectedWordId) ||
+    route.params?.word ||
+    sessionSelectedWord;
   const [isPlaying, setIsPlaying] = React.useState(false);
 
   const cardWidth = Math.min(Math.max(width * 0.56, 640), 980);
   const sounds = selectedWord?.sounds || [];
 
   function handleNext() {
-    navigation.navigate("PronunciationMouthShape", {
+    setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
+    navigation.navigate("PronunciationSpeakWord", {
       student,
       categoryId,
       wordId: selectedWord?.id,
@@ -40,13 +53,15 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   }
 
   React.useEffect(() => {
+    setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
+
     return () => {
       if (pronunciationSoundRef.current) {
         pronunciationSoundRef.current.unloadAsync().catch(() => {});
         pronunciationSoundRef.current = null;
       }
     };
-  }, []);
+  }, [setCurrentActivityStep]);
 
   async function handleHearSounds() {
     const audioAsset = PRONUNCIATION_AUDIO_ASSETS[selectedWord?.id];

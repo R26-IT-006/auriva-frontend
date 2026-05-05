@@ -8,6 +8,10 @@ import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { WORD_BANK } from "./wordBank.js";
+import {
+  PRONUNCIATION_STEPS,
+  usePronunciationSessionStore,
+} from "./pronunciationSessionStore.js";
 
 function ProgressRow({ label, value, barColor }) {
   return (
@@ -39,18 +43,51 @@ function FeedbackButton({ onPress, style, activeOpacity = 0.92, children }) {
 export default function PronunciationResultScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
-  const categoryId = route.params?.categoryId || "animals";
-  const wordId = route.params?.wordId || "cat";
+  const sessionCategory = usePronunciationSessionStore(
+    (state) => state.selectedCategory,
+  );
+  const sessionWord = usePronunciationSessionStore((state) => state.selectedWord);
+  const mockWordScore = usePronunciationSessionStore(
+    (state) => state.mockWordScore,
+  );
+  const mockPhonemeScores = usePronunciationSessionStore(
+    (state) => state.mockPhonemeScores,
+  );
+  const storedResponseDuration = usePronunciationSessionStore(
+    (state) => state.responseDuration,
+  );
+  const hesitationTime = usePronunciationSessionStore(
+    (state) => state.hesitationTime,
+  );
+  const recommendation = usePronunciationSessionStore(
+    (state) => state.adaptiveRecommendation,
+  );
+  const setSelectedWord = usePronunciationSessionStore(
+    (state) => state.setSelectedWord,
+  );
+  const setCurrentActivityStep = usePronunciationSessionStore(
+    (state) => state.setCurrentActivityStep,
+  );
+  const categoryId = route.params?.categoryId || sessionCategory || "animals";
+  const wordId = route.params?.wordId || sessionWord?.id || "cat";
 
   const words = WORD_BANK[categoryId] || [];
-  const currentWord = words.find((item) => item.id === wordId) || words[0];
+  const currentWord =
+    words.find((item) => item.id === wordId) || sessionWord || words[0];
+  const displayScore = mockWordScore ?? 69;
+  const phonemeScores = mockPhonemeScores?.length
+    ? mockPhonemeScores
+    : null;
+  const responseDuration = storedResponseDuration ?? 1.3;
 
   const nextWord = useMemo(() => {
     const currentIndex = words.findIndex((item) => item.id === currentWord?.id);
-    if (currentIndex >= 0 && words[currentIndex + 1])
+    if (recommendation?.word) return recommendation.word;
+    if (currentIndex >= 0 && words[currentIndex + 1]) {
       return words[currentIndex + 1];
+    }
     return words.find((item) => item.id === "dog") || words[0];
-  }, [currentWord?.id, words]);
+  }, [currentWord?.id, recommendation?.word, words]);
 
   const sounds = currentWord?.sounds || [
     { text: "/k/" },
@@ -67,6 +104,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
   }
 
   function handleTryAgain() {
+    setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
     navigation.navigate("PronunciationLearnWord", {
       student,
       categoryId,
@@ -76,6 +114,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
   }
 
   function handleNextWord() {
+    setSelectedWord(nextWord);
     navigation.navigate("PronunciationLearnWord", {
       student,
       categoryId,
@@ -119,11 +158,13 @@ export default function PronunciationResultScreen({ navigation, route }) {
           <View style={[styles.leftPanel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
             <View style={styles.scoreRow}>
               <View style={[styles.scoreCircle, { borderColor: theme.button }]}>
-                <Text style={[styles.scoreText, { color: theme.headingText }]}>69 %</Text>
+                <Text style={[styles.scoreText, { color: theme.headingText }]}>{displayScore} %</Text>
               </View>
 
               <View style={styles.summaryWrap}>
-                <Text style={[styles.feedbackTitle, { color: theme.headingText }]}>Good Try!</Text>
+                <Text style={[styles.feedbackTitle, { color: theme.headingText }]}>
+                  {displayScore >= 80 ? "Great Job!" : "Good Try!"}
+                </Text>
                 <View style={styles.starsRow}>
                   {[0, 1, 2, 3, 4].map((star) => (
                     <Ionicons
@@ -136,7 +177,10 @@ export default function PronunciationResultScreen({ navigation, route }) {
                 </View>
                 <View style={styles.responseChip}>
                   <Ionicons name="time-outline" size={14} color="#6B7C95" />
-                  <Text style={styles.responseChipText}>1.3 s response</Text>
+                  <Text style={styles.responseChipText}>
+                    {responseDuration} s response
+                    {hesitationTime ? ` - ${hesitationTime} s pause` : ""}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -144,18 +188,18 @@ export default function PronunciationResultScreen({ navigation, route }) {
             <Text style={styles.breakdownTitle}>Sound Breakdown</Text>
 
             <ProgressRow
-              label={sounds[0]?.text || "/k/"}
-              value={91}
+              label={phonemeScores?.[0]?.text || sounds[0]?.text || "/k/"}
+              value={phonemeScores?.[0]?.score || 91}
               barColor="#9ECC9F"
             />
             <ProgressRow
-              label={sounds[1]?.text || "/æ/"}
-              value={40}
+              label={phonemeScores?.[1]?.text || sounds[1]?.text || "/æ/"}
+              value={phonemeScores?.[1]?.score || 40}
               barColor="#E09A8F"
             />
             <ProgressRow
-              label={sounds[2]?.text || "/t/"}
-              value={76}
+              label={phonemeScores?.[2]?.text || sounds[2]?.text || "/t/"}
+              value={phonemeScores?.[2]?.score || 76}
               barColor="#E6C47A"
             />
           </View>
@@ -171,7 +215,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
                     Adaptive Suggestion
                   </Text>
                   <Text style={styles.suggestionCopy}>
-                    Let's try another word at the same level.
+                    {recommendation?.message || "Let's try another word at the same level."}
                   </Text>
                 </View>
               </View>

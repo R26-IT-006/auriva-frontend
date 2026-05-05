@@ -8,15 +8,32 @@ import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
+import {
+  PRONUNCIATION_STEPS,
+  usePronunciationSessionStore,
+} from "./pronunciationSessionStore.js";
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
   const categoryId = route.params?.categoryId || "animals";
-  const word = route.params?.word;
+  const sessionSelectedWord = usePronunciationSessionStore(
+    (state) => state.selectedWord,
+  );
+  const word = route.params?.word || sessionSelectedWord;
   const { width } = useWindowDimensions();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [savedRecordingUri, setSavedRecordingUri] = useState(null);
+  const [lastRecordingDuration, setLastRecordingDuration] = useState(null);
+  const setSelectedWord = usePronunciationSessionStore((state) => state.setSelectedWord);
+  const setCurrentActivityStep = usePronunciationSessionStore(
+    (state) => state.setCurrentActivityStep,
+  );
+  const setRecordingUri = usePronunciationSessionStore((state) => state.setRecordingUri);
+  const submitMockAttempt = usePronunciationSessionStore(
+    (state) => state.submitMockAttempt,
+  );
   const recordingRef = useRef(null);
   const pulseLoopRef = useRef(null);
   const waveLoopRef = useRef(null);
@@ -32,6 +49,13 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     () => [barAnimA, barAnimB, barAnimC],
     [barAnimA, barAnimB, barAnimC],
   );
+
+  useEffect(() => {
+    if (word) {
+      setSelectedWord(word);
+    }
+    setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
+  }, [setCurrentActivityStep, setSelectedWord, word]);
 
   useEffect(() => {
     if (isRecording) {
@@ -148,10 +172,14 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   async function stopRecording() {
     const currentRecording = recordingRef.current;
     if (!currentRecording) return;
+    const durationSeconds = Math.max(recordingSeconds, 1);
 
     try {
       await currentRecording.stopAndUnloadAsync();
       const uri = currentRecording.getURI();
+      setSavedRecordingUri(uri);
+      setLastRecordingDuration(durationSeconds);
+      setRecordingUri(uri, durationSeconds);
       Alert.alert(
         "Recording saved",
         uri
@@ -170,6 +198,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   }
 
   function handleNext() {
+    submitMockAttempt({
+      recordingUri: savedRecordingUri,
+      responseDuration: lastRecordingDuration || recordingSeconds || 2,
+    });
     navigation.navigate("PronunciationResult", {
       student,
       categoryId,
