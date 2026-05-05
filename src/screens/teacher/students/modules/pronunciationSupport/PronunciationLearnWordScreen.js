@@ -10,6 +10,7 @@ import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { WORD_BANK } from "./wordBank.js";
 import {
+  PRONUNCIATION_MODES,
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
@@ -21,6 +22,9 @@ const PRONUNCIATION_AUDIO_ASSETS = {
 export default function PronunciationLearnWordScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
+  const sessionMode = usePronunciationSessionStore((state) => state.selectedMode);
+  const mode = route.params?.mode || sessionMode || PRONUNCIATION_MODES.WORD;
+  const isAlphabetMode = mode === PRONUNCIATION_MODES.ALPHABET;
   const categoryId = route.params?.categoryId;
   const selectedWordId = route.params?.wordId;
   const { width } = useWindowDimensions();
@@ -46,6 +50,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
     navigation.navigate("PronunciationSpeakWord", {
       student,
+      mode,
       categoryId,
       wordId: selectedWord?.id,
       word: selectedWord,
@@ -115,7 +120,9 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <View style={styles.container}>
         <View style={styles.centerStage}>
-          <Text style={[styles.headline, { color: theme.headingText }]}>Listen to the sounds</Text>
+          <Text style={[styles.headline, { color: theme.headingText }]}>
+            {isAlphabetMode ? "Listen to the letter sound" : "Listen to the sounds"}
+          </Text>
 
           <View style={[styles.wordCard, { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
             <View style={styles.soundStage}>
@@ -141,7 +148,13 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
             </View>
 
             <View style={styles.imagePane}>
-              {selectedWord?.imageUri ? (
+              {isAlphabetMode ? (
+                <View style={[styles.wordImage, styles.letterPane, { backgroundColor: selectedWord?.color || theme.cardSurface }]}>
+                  <Text style={styles.letterPaneText}>
+                    {selectedWord?.letter || selectedWord?.word || "A"}
+                  </Text>
+                </View>
+              ) : selectedWord?.imageUri ? (
                 <Image
                   source={{ uri: selectedWord.imageUri }}
                   resizeMode="cover"
@@ -285,6 +298,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8EDF4",
     alignItems: "center",
     justifyContent: "center",
+  },
+  letterPane: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  letterPaneText: {
+    fontSize: 116,
+    lineHeight: 124,
+    color: "#263752",
+    fontWeight: "800",
   },
   wordPane: {
     flex: 1,

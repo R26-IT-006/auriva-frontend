@@ -9,6 +9,8 @@ import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { WORD_BANK } from "./wordBank.js";
 import {
+  ALPHABET_BANK,
+  PRONUNCIATION_MODES,
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
@@ -40,12 +42,19 @@ function FeedbackButton({ onPress, style, activeOpacity = 0.92, children }) {
   );
 }
 
+function getScoreBarColor(score) {
+  if (score >= 80) return "#9ECC9F";
+  if (score >= 60) return "#E6C47A";
+  return "#E09A8F";
+}
+
 export default function PronunciationResultScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
   const sessionCategory = usePronunciationSessionStore(
     (state) => state.selectedCategory,
   );
+  const sessionMode = usePronunciationSessionStore((state) => state.selectedMode);
   const sessionWord = usePronunciationSessionStore((state) => state.selectedWord);
   const mockWordScore = usePronunciationSessionStore(
     (state) => state.mockWordScore,
@@ -68,10 +77,13 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
   );
+  const mode = route.params?.mode || sessionMode || PRONUNCIATION_MODES.WORD;
+  const isAlphabetMode = mode === PRONUNCIATION_MODES.ALPHABET;
   const categoryId = route.params?.categoryId || sessionCategory || "animals";
+  const navigationCategoryId = isAlphabetMode ? undefined : categoryId;
   const wordId = route.params?.wordId || sessionWord?.id || "cat";
 
-  const words = WORD_BANK[categoryId] || [];
+  const words = isAlphabetMode ? ALPHABET_BANK : WORD_BANK[categoryId] || [];
   const currentWord =
     words.find((item) => item.id === wordId) || sessionWord || words[0];
   const displayScore = mockWordScore ?? 69;
@@ -89,10 +101,10 @@ export default function PronunciationResultScreen({ navigation, route }) {
     return words.find((item) => item.id === "dog") || words[0];
   }, [currentWord?.id, recommendation?.word, words]);
 
-  const sounds = currentWord?.sounds || [
-    { text: "/k/" },
-    { text: "/æ/" },
-    { text: "/t/" },
+  const sounds = phonemeScores || currentWord?.sounds || [
+    { text: "/k/", score: 91 },
+    { text: "/æ/", score: 40 },
+    { text: "/t/", score: 76 },
   ];
 
   function handleGoDashboard() {
@@ -107,7 +119,8 @@ export default function PronunciationResultScreen({ navigation, route }) {
     setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
     navigation.navigate("PronunciationLearnWord", {
       student,
-      categoryId,
+      mode,
+      categoryId: navigationCategoryId,
       wordId: currentWord?.id,
       word: currentWord,
     });
@@ -117,7 +130,8 @@ export default function PronunciationResultScreen({ navigation, route }) {
     setSelectedWord(nextWord);
     navigation.navigate("PronunciationLearnWord", {
       student,
-      categoryId,
+      mode,
+      categoryId: navigationCategoryId,
       wordId: nextWord?.id,
       word: nextWord,
     });
@@ -187,21 +201,17 @@ export default function PronunciationResultScreen({ navigation, route }) {
 
             <Text style={styles.breakdownTitle}>Sound Breakdown</Text>
 
-            <ProgressRow
-              label={phonemeScores?.[0]?.text || sounds[0]?.text || "/k/"}
-              value={phonemeScores?.[0]?.score || 91}
-              barColor="#9ECC9F"
-            />
-            <ProgressRow
-              label={phonemeScores?.[1]?.text || sounds[1]?.text || "/æ/"}
-              value={phonemeScores?.[1]?.score || 40}
-              barColor="#E09A8F"
-            />
-            <ProgressRow
-              label={phonemeScores?.[2]?.text || sounds[2]?.text || "/t/"}
-              value={phonemeScores?.[2]?.score || 76}
-              barColor="#E6C47A"
-            />
+            {sounds.map((sound, index) => {
+              const value = sound.score || [91, 40, 76][index] || displayScore;
+              return (
+                <ProgressRow
+                  key={`${sound.text}-${index}`}
+                  label={sound.text || "/-/"}
+                  value={value}
+                  barColor={getScoreBarColor(value)}
+                />
+              );
+            })}
           </View>
 
           <View style={styles.rightPanel}>
@@ -215,15 +225,20 @@ export default function PronunciationResultScreen({ navigation, route }) {
                     Adaptive Suggestion
                   </Text>
                   <Text style={styles.suggestionCopy}>
-                    {recommendation?.message || "Let's try another word at the same level."}
+                    {recommendation?.message ||
+                      (isAlphabetMode
+                        ? "Let's try another letter at the same level."
+                        : "Let's try another word at the same level.")}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.nextWordCard}>
-                <Text style={styles.nextWordHint}>Next Word</Text>
+                <Text style={styles.nextWordHint}>
+                  {isAlphabetMode ? "Next Letter" : "Next Word"}
+                </Text>
                 <Text style={styles.nextWordText}>
-                  {nextWord?.word || "dog"}
+                  {isAlphabetMode ? nextWord?.letter || "B" : nextWord?.word || "dog"}
                 </Text>
               </View>
             </View>
@@ -242,7 +257,9 @@ export default function PronunciationResultScreen({ navigation, route }) {
               activeOpacity={0.9}
               onPress={handleNextWord}
             >
-              <Text style={styles.nextWordBtnText}>Next Word</Text>
+              <Text style={styles.nextWordBtnText}>
+                {isAlphabetMode ? "Next Letter" : "Next Word"}
+              </Text>
               <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
             </FeedbackButton>
           </View>

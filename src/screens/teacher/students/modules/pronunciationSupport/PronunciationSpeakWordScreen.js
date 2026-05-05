@@ -9,6 +9,7 @@ import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import {
+  PRONUNCIATION_MODES,
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
@@ -16,7 +17,10 @@ import {
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
-  const categoryId = route.params?.categoryId || "animals";
+  const sessionMode = usePronunciationSessionStore((state) => state.selectedMode);
+  const mode = route.params?.mode || sessionMode || PRONUNCIATION_MODES.WORD;
+  const isAlphabetMode = mode === PRONUNCIATION_MODES.ALPHABET;
+  const categoryId = route.params?.categoryId;
   const sessionSelectedWord = usePronunciationSessionStore(
     (state) => state.selectedWord,
   );
@@ -204,6 +208,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     });
     navigation.navigate("PronunciationResult", {
       student,
+      mode,
       categoryId,
       wordId: word?.id || "cat",
       word,
@@ -231,12 +236,20 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <View style={styles.container}>
-        <Text style={[styles.title, { color: theme.headingText }]}>What is this?</Text>
+        <Text style={[styles.title, { color: theme.headingText }]}>
+          {isAlphabetMode ? "Say this letter" : "What is this?"}
+        </Text>
 
         <View style={[styles.contentRow, { width: cardWidth }]}>
           <View style={styles.imageCard}>
             <View style={[styles.imageFrame, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-              {word?.imageUri ? (
+              {isAlphabetMode ? (
+                <View style={[styles.image, styles.letterImage, { backgroundColor: word?.color || theme.cardSurface }]}>
+                  <Text style={styles.letterImageText}>
+                    {word?.letter || word?.word || "A"}
+                  </Text>
+                </View>
+              ) : word?.imageUri ? (
                 <Image
                   source={{ uri: word.imageUri }}
                   resizeMode="cover"
@@ -375,6 +388,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8EDF4",
     alignItems: "center",
     justifyContent: "center",
+  },
+  letterImage: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  letterImageText: {
+    fontSize: 112,
+    lineHeight: 120,
+    color: "#263752",
+    fontWeight: "800",
   },
   voiceCard: {
     width: "44%",

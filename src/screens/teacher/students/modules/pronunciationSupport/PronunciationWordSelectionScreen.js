@@ -10,6 +10,8 @@ import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { SESSION_CATEGORIES } from "./sessionCategories.js";
 import { WORD_BANK } from "./wordBank.js";
 import {
+  ALPHABET_BANK,
+  PRONUNCIATION_MODES,
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
@@ -67,7 +69,10 @@ function WordCard({
   width,
   refCallback,
   theme,
+  isAlphabetMode,
 }) {
+  const label = isAlphabetMode ? item.letter || item.word : item.word;
+
   return (
     <View
       ref={refCallback}
@@ -79,7 +84,9 @@ function WordCard({
         style={styles.wordHeader}
       >
         <View style={styles.wordMetaCompact}>
-          <Text style={styles.wordText}>{item.word}</Text>
+          <Text style={[styles.wordText, isAlphabetMode && styles.letterText]}>
+            {label}
+          </Text>
         </View>
         <Ionicons
           name={expanded ? "chevron-up" : "chevron-down"}
@@ -90,7 +97,9 @@ function WordCard({
 
       {expanded && selected && (
         <View style={[styles.wordVisual, { backgroundColor: item.color }]}>
-          {item.imageUri ? (
+          {isAlphabetMode ? (
+            <Text style={styles.letterVisualText}>{label}</Text>
+          ) : item.imageUri ? (
             <Image
               source={{ uri: item.imageUri }}
               resizeMode="cover"
@@ -112,6 +121,8 @@ export default function PronunciationWordSelectionScreen({
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
   const categoryId = route.params?.categoryId;
+  const mode = route.params?.mode || PRONUNCIATION_MODES.WORD;
+  const isAlphabetMode = mode === PRONUNCIATION_MODES.ALPHABET;
   const [selectedWord, setSelectedWord] = useState(null);
   const setSelectedWordInSession = usePronunciationSessionStore(
     (state) => state.setSelectedWord,
@@ -137,8 +148,8 @@ export default function PronunciationWordSelectionScreen({
   const cardRefs = useRef({});
 
   const category = SESSION_CATEGORIES.find((c) => c.id === categoryId);
-  const words = WORD_BANK[categoryId] || [];
-  const moreWords = WORD_BANK.moreAnimals || [];
+  const words = isAlphabetMode ? ALPHABET_BANK : WORD_BANK[categoryId] || [];
+  const moreWords = isAlphabetMode ? [] : WORD_BANK.moreAnimals || [];
 
   const cardWidth = useMemo(() => {
     if (width >= 1180) return 186;
@@ -162,6 +173,7 @@ export default function PronunciationWordSelectionScreen({
     setSelectedWordInSession(selectedWord);
     navigation.navigate("PronunciationLearnWord", {
       student,
+      mode,
       categoryId,
       wordId: selectedWord.id,
       word: selectedWord,
@@ -175,7 +187,7 @@ export default function PronunciationWordSelectionScreen({
 
   function handleToggleExpand(item) {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    const key = `${categoryId || "cat"}-${item.id}`;
+    const key = `${isAlphabetMode ? "alphabet" : categoryId || "cat"}-${item.id}`;
     if (expandedWordKey === key) {
       setExpandedWordKey(null);
     } else {
@@ -235,7 +247,9 @@ export default function PronunciationWordSelectionScreen({
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: theme.headingText }]}>New Session Setup</Text>
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
-              Configure the learning environment
+              {isAlphabetMode
+                ? "Choose a starting letter"
+                : "Configure the learning environment"}
             </Text>
           </View>
         </View>
@@ -250,7 +264,9 @@ export default function PronunciationWordSelectionScreen({
 
         <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
           <View style={styles.panelTopRow}>
-            <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Starting Word</Text>
+            <Text style={[styles.panelTitle, { color: theme.headingText }]}>
+              {isAlphabetMode ? "Select Starting Letter" : "Select Starting Word"}
+            </Text>
             <ButtonFeedback
               activeOpacity={0.86}
               onPress={handleStartSession}
@@ -267,18 +283,22 @@ export default function PronunciationWordSelectionScreen({
                   !selectedWord && styles.startBtnTextDisabled,
                 ]}
               >
-                Start Session
+                {isAlphabetMode ? "Start Alphabet" : "Start Session"}
               </Text>
             </ButtonFeedback>
           </View>
 
           <Text style={[styles.contextText, { color: theme.headingText }]}>
-            {category ? `${category.title} category` : "Selected category"}
+            {isAlphabetMode
+              ? "Alphabet pronunciation"
+              : category
+                ? `${category.title} category`
+                : "Selected category"}
           </Text>
 
           <View style={styles.wordGrid}>
             {words.map((item) => {
-              const key = `${categoryId || "cat"}-${item.id}`;
+              const key = `${isAlphabetMode ? "alphabet" : categoryId || "cat"}-${item.id}`;
               return (
                 <WordCard
                   key={key}
@@ -289,11 +309,13 @@ export default function PronunciationWordSelectionScreen({
                   onToggleExpand={handleToggleExpand}
                   refCallback={(r) => (cardRefs.current[key] = r)}
                   theme={theme}
+                  isAlphabetMode={isAlphabetMode}
                 />
               );
             })}
           </View>
 
+          {!isAlphabetMode ? (
           <View style={styles.moreWordsSection}>
             <ButtonFeedback
               activeOpacity={0.86}
@@ -335,6 +357,7 @@ export default function PronunciationWordSelectionScreen({
               </View>
             )}
           </View>
+          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -536,6 +559,15 @@ const styles = StyleSheet.create({
     fontWeight: Layout.fontWeight.bold,
     textTransform: "lowercase",
     lineHeight: 36,
+  },
+  letterText: {
+    textTransform: "uppercase",
+  },
+  letterVisualText: {
+    fontSize: 86,
+    lineHeight: 94,
+    color: "#263752",
+    fontWeight: "800",
   },
   wordHeader: {
     flexDirection: "row",

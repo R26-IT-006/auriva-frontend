@@ -14,6 +14,23 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 
+const PRONUNCIATION_MODE_OPTIONS = [
+  {
+    id: PRONUNCIATION_MODES.WORD,
+    title: "Word Pronunciation",
+    subtitle: "Practise full words by category",
+    icon: "chatbubble-ellipses-outline",
+    panelColor: "#DCEEFE",
+  },
+  {
+    id: PRONUNCIATION_MODES.ALPHABET,
+    title: "Alphabet Pronunciation",
+    subtitle: "Practise letter sounds one by one",
+    icon: "text-outline",
+    panelColor: "#DFF3E2",
+  },
+];
+
 function Step({ label, active, done, theme }) {
   return (
     <View style={styles.stepWrap}>
@@ -69,6 +86,7 @@ function CategoryCard({ item, selected, onPress, cardWidth, theme }) {
 export default function PronunciationSessionSetupScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
+  const [selectedMode, setSelectedMode] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const startSession = usePronunciationSessionStore((state) => state.startSession);
   const setSelectedStudent = usePronunciationSessionStore(
@@ -76,6 +94,9 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   );
   const setSelectedCategoryInSession = usePronunciationSessionStore(
     (state) => state.setSelectedCategory,
+  );
+  const setSelectedModeInSession = usePronunciationSessionStore(
+    (state) => state.setSelectedMode,
   );
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
@@ -95,6 +116,21 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   }, [width]);
 
   function handleContinue() {
+    if (!selectedMode) return;
+
+    if (selectedMode === PRONUNCIATION_MODES.ALPHABET) {
+      startSession({
+        student,
+        mode: PRONUNCIATION_MODES.ALPHABET,
+        category: null,
+      });
+      navigation.navigate("PronunciationWordSelection", {
+        student,
+        mode: PRONUNCIATION_MODES.ALPHABET,
+      });
+      return;
+    }
+
     if (!selectedCategory) return;
 
     if (selectedCategory !== "animals") {
@@ -107,11 +143,12 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
 
     startSession({
       student,
-      mode: PRONUNCIATION_MODES.WORD,
+      mode: selectedMode,
       category: selectedCategory,
     });
     navigation.navigate("PronunciationWordSelection", {
       student,
+      mode: selectedMode,
       categoryId: selectedCategory,
     });
   }
@@ -154,17 +191,21 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
         </View>
 
         <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-          <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Category</Text>
+          <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Mode</Text>
 
           <View style={styles.cardsRow}>
-            {SESSION_CATEGORIES.map((item) => (
+            {PRONUNCIATION_MODE_OPTIONS.map((item) => (
               <CategoryCard
                 key={item.id}
                 item={item}
-                selected={selectedCategory === item.id}
+                selected={selectedMode === item.id}
                 onPress={() => {
-                  setSelectedCategory(item.id);
-                  setSelectedCategoryInSession(item.id);
+                  setSelectedMode(item.id);
+                  setSelectedModeInSession(item.id);
+                  if (item.id === PRONUNCIATION_MODES.ALPHABET) {
+                    setSelectedCategory(null);
+                    setSelectedCategoryInSession(null);
+                  }
                 }}
                 cardWidth={cardWidth}
                 theme={theme}
@@ -172,20 +213,53 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
             ))}
           </View>
 
+          {selectedMode === PRONUNCIATION_MODES.WORD ? (
+            <>
+              <Text style={[styles.panelTitle, styles.categoryPanelTitle, { color: theme.headingText }]}>
+                Select Category
+              </Text>
+
+              <View style={styles.cardsRow}>
+                {SESSION_CATEGORIES.map((item) => (
+                  <CategoryCard
+                    key={item.id}
+                    item={item}
+                    selected={selectedCategory === item.id}
+                    onPress={() => {
+                      setSelectedCategory(item.id);
+                      setSelectedCategoryInSession(item.id);
+                    }}
+                    cardWidth={cardWidth}
+                    theme={theme}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+
           <View style={styles.panelFooter}>
             <Text style={[styles.selectionText, { color: theme.headingText }]}>
-              {selectedCategory
-                ? `Selected: ${SESSION_CATEGORIES.find((c) => c.id === selectedCategory)?.title}`
-                : "Choose one category to continue to activity setup"}
+              {selectedMode === PRONUNCIATION_MODES.ALPHABET
+                ? "Selected: Alphabet Pronunciation"
+                : selectedCategory
+                  ? `Selected: ${SESSION_CATEGORIES.find((c) => c.id === selectedCategory)?.title}`
+                  : selectedMode
+                    ? "Choose one category to continue to word selection"
+                    : "Choose word or alphabet pronunciation to continue"}
             </Text>
             <ButtonFeedback
               activeOpacity={0.85}
               style={[
                 styles.continueBtn,
                 { backgroundColor: theme.button },
-                !selectedCategory && styles.continueBtnDisabled,
+                (!selectedMode ||
+                  (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory)) &&
+                  styles.continueBtnDisabled,
               ]}
-              disabled={!selectedCategory}
+              disabled={
+                !selectedMode ||
+                (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory)
+              }
               onPress={handleContinue}
             >
               <Text style={styles.continueText}>Continue</Text>
@@ -297,6 +371,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: Colors.text.primary,
     marginBottom: Layout.spacing.md,
+  },
+  categoryPanelTitle: {
+    marginTop: Layout.spacing.xl,
   },
   cardsRow: {
     flexDirection: "row",
