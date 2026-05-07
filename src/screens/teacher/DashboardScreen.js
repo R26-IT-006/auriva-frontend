@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   headerName: {
     fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: '#FFF',
     marginTop: 1,
   },
@@ -287,13 +287,13 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: Layout.fontSize.xxl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#FFF',
   },
   statLabel: {
     fontSize: Layout.fontSize.xs,
     color: 'rgba(255,255,255,0.6)',
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
   statDivider: {
     width: 1,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
     marginTop: Layout.spacing.xs,
   },
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   lastSessionBody: { flex: 1 },
   lastSessionName: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.primary,
   },
   lastSessionCode: {
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   lastSessionBadgeText: {
     fontSize: 10,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.status.success,
   },
 
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
     textAlign: 'center',
   },
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   overviewLeft: { flex: 1, gap: 6 },
   overviewTitle: {
     fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#FFF',
   },
   overviewSub: {

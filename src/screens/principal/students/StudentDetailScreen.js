@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Modal,
+  FlatList,
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
@@ -58,7 +60,8 @@ export default function StudentDetailScreen({ route, navigation }) {
   const [deleting, setDeleting] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [confirmVisible,     setConfirmVisible]     = useState(false);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
 
   const fetch = useCallback(async () => {
     try {
@@ -84,7 +87,7 @@ export default function StudentDetailScreen({ route, navigation }) {
 
   function handleAssign() {
     const availableTeachers = teachers.filter(
-      (t) => !t.is_first_login && (t.students?.length ?? 0) < 3
+      (t) => (t.students?.length ?? 0) < 3
     );
 
     if (availableTeachers.length === 0) {
@@ -92,17 +95,10 @@ export default function StudentDetailScreen({ route, navigation }) {
       return;
     }
 
-    const options = [
-      ...availableTeachers.map((t) => ({
-        text: `${t.full_name} (${t.students?.length ?? 0}/3)`,
-        onPress: () => doAssign(t.tid),
-      })),
-      ...(student.teacher_id ? [{ text: 'Unassign Teacher', style: 'destructive', onPress: () => doAssign(null) }] : []),
-      { text: 'Cancel', style: 'cancel' },
-    ];
-
-    Alert.alert('Assign Teacher', 'Select a teacher for this student:', options);
+    setAssignModalVisible(true);
   }
+
+  const availableTeachers = teachers.filter((t) => (t.students?.length ?? 0) < 3);
 
   async function doAssign(teacherId) {
     setAssigning(true);
@@ -265,6 +261,80 @@ export default function StudentDetailScreen({ route, navigation }) {
         onConfirm={confirmDelete}
         onCancel={() => setConfirmVisible(false)}
       />
+
+      {/* Teacher picker modal */}
+      <Modal
+        visible={assignModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAssignModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setAssignModalVisible(false)}
+        >
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assign Teacher</Text>
+              <TouchableOpacity onPress={() => setAssignModalVisible(false)}>
+                <Ionicons name="close" size={22} color={Colors.text.muted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>Select a teacher for {student.full_name}</Text>
+
+            <FlatList
+              data={availableTeachers}
+              keyExtractor={(t) => String(t.tid)}
+              style={styles.teacherList}
+              ItemSeparatorComponent={() => <View style={styles.teacherDivider} />}
+              renderItem={({ item: t }) => (
+                <TouchableOpacity
+                  style={styles.teacherRow}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setAssignModalVisible(false);
+                    doAssign(t.tid);
+                  }}
+                >
+                  <View style={styles.teacherAvatar}>
+                    <Text style={styles.teacherAvatarText}>
+                      {t.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.teacherInfo}>
+                    <Text style={styles.teacherName}>{t.full_name}</Text>
+                    <Text style={styles.teacherMeta}>{t.teacher_code}</Text>
+                  </View>
+                  <View style={styles.slotBadge}>
+                    <Text style={styles.slotText}>{t.students?.length ?? 0}/3</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.text.muted} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>No teachers with available slots.</Text>
+              }
+            />
+
+            {student.teacher_id && (
+              <>
+                <View style={styles.teacherDivider} />
+                <TouchableOpacity
+                  style={styles.unassignRow}
+                  onPress={() => {
+                    setAssignModalVisible(false);
+                    doAssign(null);
+                  }}
+                >
+                  <Ionicons name="person-remove-outline" size={18} color={Colors.status.error} />
+                  <Text style={styles.unassignText}>Unassign Teacher</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -286,17 +356,17 @@ const styles = StyleSheet.create({
   },
   profileHeaderLandscape: { padding: Layout.spacing.md },
   profileMeta: { flex: 1, marginLeft: Layout.spacing.lg },
-  profileName: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, color: Colors.text.primary },
+  profileName: { fontSize: Layout.fontSize.xl, fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
   profileCode: { fontSize: Layout.fontSize.sm, color: Colors.text.link, marginTop: 2 },
   assignCard: { marginBottom: Layout.spacing.md },
   assignRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   assignInfo: { flex: 1, marginRight: Layout.spacing.md },
   assignLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 4 },
-  assignValue: { fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.semibold, color: Colors.text.primary },
+  assignValue: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
   assignLocked: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 8, fontStyle: 'italic' },
   section: { marginBottom: Layout.spacing.md },
   sectionTitle: {
-    fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.bold,
+    fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary, marginBottom: Layout.spacing.sm,
   },
   infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Layout.spacing.sm, paddingHorizontal: Layout.spacing.md },
@@ -308,11 +378,111 @@ const styles = StyleSheet.create({
   },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
-  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontWeight: Layout.fontWeight.medium },
+  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
   divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 58 },
   actions: { flexDirection: 'row', gap: Layout.spacing.sm, marginTop: Layout.spacing.md },
   // Landscape
   landscapeLayout: { flexDirection: 'row', gap: Layout.spacing.md },
   landscapeLeft: { flex: 1 },
   landscapeRight: { flex: 1 },
+  // Teacher picker modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Layout.radius.xl,
+    borderTopRightRadius: Layout.radius.xl,
+    paddingTop: Layout.spacing.lg,
+    paddingBottom: Layout.spacing.xxl,
+    maxHeight: '75%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.lg,
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: Layout.fontSize.lg,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.text.primary,
+  },
+  modalSubtitle: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.text.muted,
+    paddingHorizontal: Layout.spacing.lg,
+    marginBottom: Layout.spacing.md,
+  },
+  teacherList: {
+    flexGrow: 0,
+  },
+  teacherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.md,
+  },
+  teacherAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '22',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Layout.spacing.md,
+  },
+  teacherAvatarText: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.primary,
+  },
+  teacherInfo: { flex: 1 },
+  teacherName: {
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.text.primary,
+  },
+  teacherMeta: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.text.muted,
+    marginTop: 2,
+  },
+  slotBadge: {
+    backgroundColor: Colors.primary + '15',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  slotText: {
+    fontSize: Layout.fontSize.xs,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.primary,
+  },
+  teacherDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginHorizontal: Layout.spacing.lg,
+  },
+  unassignRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.sm,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.md,
+  },
+  unassignText: {
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.status.error,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: Colors.text.muted,
+    padding: Layout.spacing.lg,
+    fontSize: Layout.fontSize.sm,
+  },
 });
