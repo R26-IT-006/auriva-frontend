@@ -26,4 +26,5 @@ export const ENDPOINTS = {
   TEACHER_SESSION_START: "/teacher/session/start",
   TEACHER_SESSION_END: "/teacher/session/end",
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
+  TEACHER_PRONUNCIATION_RESULT: (id) => `/teacher/students/${id}/pronunciation-results`,
 };

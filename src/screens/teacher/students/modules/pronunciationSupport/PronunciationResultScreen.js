@@ -1,9 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
@@ -50,6 +51,7 @@ function getScoreBarColor(score) {
 
 export default function PronunciationResultScreen({ navigation, route }) {
   const student = route.params?.student;
+  const hasSavedResultRef = useRef(false);
   const theme = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
   const isCompact = width < 820;
@@ -72,6 +74,12 @@ export default function PronunciationResultScreen({ navigation, route }) {
   );
   const recommendation = usePronunciationSessionStore(
     (state) => state.adaptiveRecommendation,
+  );
+  const recordingUri = usePronunciationSessionStore(
+    (state) => state.recordingUri,
+  );
+  const numberOfAttempts = usePronunciationSessionStore(
+    (state) => state.numberOfAttempts,
   );
   const setSelectedWord = usePronunciationSessionStore(
     (state) => state.setSelectedWord,
@@ -108,6 +116,54 @@ export default function PronunciationResultScreen({ navigation, route }) {
     { text: "/æ/", score: 40 },
     { text: "/t/", score: 76 },
   ];
+
+  useEffect(() => {
+    if (hasSavedResultRef.current || !student?.sid || !currentWord?.id) return;
+
+    hasSavedResultRef.current = true;
+
+    const payload = {
+      mode,
+      category_id: isAlphabetMode ? null : categoryId,
+      word_id: currentWord.id,
+      word_label: currentWord.letter || currentWord.word || currentWord.id,
+      overall_score: displayScore,
+      phoneme_scores: sounds.map((sound, index) => ({
+        text: sound.text || "",
+        type: sound.type || null,
+        score: sound.score ?? [91, 40, 76][index] ?? displayScore,
+      })),
+      response_duration: responseDuration,
+      hesitation_time: hesitationTime ?? null,
+      recommendation_type: recommendation?.type || null,
+      recommendation_message: recommendation?.message || null,
+      next_word_id: nextWord?.id || null,
+      attempt_number: Math.max(1, numberOfAttempts || 1),
+      recording_uri: recordingUri || null,
+    };
+
+    teacherApi.savePronunciationResult(student.sid, payload).catch((error) => {
+      hasSavedResultRef.current = false;
+      console.log("Unable to save pronunciation result:", error.message);
+    });
+  }, [
+    categoryId,
+    currentWord?.id,
+    currentWord?.letter,
+    currentWord?.word,
+    displayScore,
+    hesitationTime,
+    isAlphabetMode,
+    mode,
+    nextWord?.id,
+    numberOfAttempts,
+    recommendation?.message,
+    recommendation?.type,
+    recordingUri,
+    responseDuration,
+    sounds,
+    student?.sid,
+  ]);
 
   function handleGoDashboard() {
     navigation.navigate("PronunciationSessionSetup", { student });
