@@ -84,6 +84,16 @@ function SessionTab({ result, isSelected, onPress }) {
       <Text style={styles.sessionWord} numberOfLines={1}>
         {result.word_label || "Pronunciation"}
       </Text>
+      {result.workflow_completed ? (
+        <View style={styles.completedPill}>
+          <Ionicons
+            name="checkmark-circle"
+            size={13}
+            color={Colors.status.success}
+          />
+          <Text style={styles.completedPillText}>Completed</Text>
+        </View>
+      ) : null}
       <Text style={styles.sessionMeta} numberOfLines={1}>
         {formatDateTime(result.created_at)}
       </Text>
@@ -260,6 +270,18 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                       <Text style={styles.wordText}>
                         {selectedResult.word_label}
                       </Text>
+                      {selectedResult.workflow_completed ? (
+                        <View style={styles.completedPill}>
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={13}
+                            color={Colors.status.success}
+                          />
+                          <Text style={styles.completedPillText}>
+                            Completed
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                     <View
                       style={[
@@ -516,6 +538,25 @@ const styles = StyleSheet.create({
     marginTop: 3,
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
+  },
+  completedPill: {
+    alignSelf: "flex-start",
+    marginTop: Layout.spacing.xs,
+    minHeight: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.status.successLight,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    paddingHorizontal: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  completedPillText: {
+    color: Colors.status.success,
+    fontSize: 11,
+    fontWeight: Layout.fontWeight.bold,
   },
   scorePill: {
     minWidth: 50,

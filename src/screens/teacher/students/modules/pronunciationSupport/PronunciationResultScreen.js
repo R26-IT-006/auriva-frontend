@@ -245,6 +245,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
       recommendation_message: recommendation?.message || null,
       next_word_id: nextWord?.id || null,
       attempt_number: Math.max(1, numberOfAttempts || 1),
+      workflow_completed: true,
       recording_uri: recordingUri || null,
       raw_audio_base64: rawAudioBase64 || null,
       raw_audio_mime_type: rawAudioMimeType || null,
@@ -383,9 +384,19 @@ export default function PronunciationResultScreen({ navigation, route }) {
         <View style={[styles.topBar, isCompact && styles.topBarCompact, { borderColor: theme.cardOutline }]}>
           <View style={styles.studentWrap}>
             <View style={[styles.avatarDot, { backgroundColor: theme.background, borderColor: theme.cardOutline }]} />
-            <Text style={[styles.studentText, isCompact && styles.studentTextCompact, { color: theme.headingText }]}>
-              {student?.full_name || "Leo M."}'s Result
-            </Text>
+            <View style={styles.studentTitleWrap}>
+              <Text style={[styles.studentText, isCompact && styles.studentTextCompact, { color: theme.headingText }]}>
+                {student?.full_name || "Leo M."}'s Result
+              </Text>
+              <View style={styles.completedPill}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={14}
+                  color={Colors.status.success}
+                />
+                <Text style={styles.completedPillText}>Completed</Text>
+              </View>
+            </View>
           </View>
           <View style={[styles.buttonsGroup, isCompact && styles.buttonsGroupCompact]}>
             <FeedbackButton
@@ -534,6 +545,9 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 12,
   },
+  studentTitleWrap: {
+    flex: 1,
+  },
   avatarDot: {
     width: 32,
     height: 32,
@@ -543,7 +557,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8F0F9",
   },
   studentText: {
-    flex: 1,
     fontSize: 34,
     color: "#1F2F49",
     fontWeight: "700",
@@ -587,6 +600,25 @@ const styles = StyleSheet.create({
     color: "#5D6D87",
     fontWeight: "700",
     fontSize: 14,
+  },
+  completedPill: {
+    alignSelf: "flex-start",
+    marginTop: 3,
+    minHeight: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.status.successLight,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    paddingHorizontal: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  completedPillText: {
+    color: Colors.status.success,
+    fontSize: 11,
+    fontWeight: Layout.fontWeight.bold,
   },
   dashboardText: {
     color: "#5D6D87",

@@ -1,9 +1,11 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, useWindowDimensions, Image, LayoutAnimation, Platform, UIManager, findNodeHandle } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
@@ -57,6 +59,12 @@ function MoreWordCard({ item, selected, onPress, width, theme }) {
         <Ionicons name="paw-outline" size={18} color="#5F6E83" />
       </View>
       <Text style={styles.moreWordText}>{item.word}</Text>
+      {item.completed ? (
+        <View style={styles.completedPill}>
+          <Ionicons name="checkmark-circle" size={13} color={Colors.status.success} />
+          <Text style={styles.completedPillText}>Completed</Text>
+        </View>
+      ) : null}
     </ButtonFeedback>
   );
 }
@@ -87,6 +95,12 @@ function WordCard({
           <Text style={[styles.wordText, isAlphabetMode && styles.letterText]}>
             {label}
           </Text>
+          {item.completed ? (
+            <View style={styles.completedPill}>
+              <Ionicons name="checkmark-circle" size={13} color={Colors.status.success} />
+              <Text style={styles.completedPillText}>Completed</Text>
+            </View>
+          ) : null}
         </View>
         <Ionicons
           name={expanded ? "chevron-up" : "chevron-down"}
@@ -132,6 +146,7 @@ export default function PronunciationWordSelectionScreen({
   );
   const [moreOpen, setMoreOpen] = useState(false);
   const [expandedWordKey, setExpandedWordKey] = useState(null);
+  const [completedIds, setCompletedIds] = useState(() => new Set());
   const { width } = useWindowDimensions();
   const isCompact = width < 720;
 
@@ -145,12 +160,56 @@ export default function PronunciationWordSelectionScreen({
     setCurrentActivityStep(PRONUNCIATION_STEPS.WORD_SELECTION);
   }, [setCurrentActivityStep]);
 
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+
+      async function loadCompletedItems() {
+        if (!student?.sid) {
+          setCompletedIds(new Set());
+          return;
+        }
+
+        try {
+          const results = await teacherApi.getPronunciationResults(student.sid);
+          if (!isMounted) return;
+
+          const nextCompletedIds = new Set(
+            results
+              .filter((result) => {
+                if (!result.workflow_completed) return false;
+                if (result.mode !== mode) return false;
+                if (isAlphabetMode) return true;
+                return result.category_id === categoryId;
+              })
+              .map((result) => result.word_id),
+          );
+          setCompletedIds(nextCompletedIds);
+        } catch {
+          if (isMounted) setCompletedIds(new Set());
+        }
+      }
+
+      loadCompletedItems();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [categoryId, isAlphabetMode, mode, student?.sid]),
+  );
+
   const scrollRef = useRef(null);
   const cardRefs = useRef({});
 
   const category = SESSION_CATEGORIES.find((c) => c.id === categoryId);
-  const words = isAlphabetMode ? ALPHABET_BANK : WORD_BANK[categoryId] || [];
-  const moreWords = isAlphabetMode ? [] : WORD_BANK.moreAnimals || [];
+  const words = (isAlphabetMode ? ALPHABET_BANK : WORD_BANK[categoryId] || []).map((item) => ({
+    ...item,
+    completed: completedIds.has(item.id),
+  }));
+  const moreWords = (isAlphabetMode ? [] : WORD_BANK.moreAnimals || []).map((item) => ({
+    ...item,
+    completed: completedIds.has(item.id),
+  }));
 
   const cardWidth = useMemo(() => {
     if (width < 560) return width - Layout.spacing.lg * 2;
@@ -649,5 +708,23 @@ const styles = StyleSheet.create({
     fontWeight: Layout.fontWeight.bold,
     textTransform: "lowercase",
     textAlign: "center",
+  },
+  completedPill: {
+    alignSelf: "flex-start",
+    minHeight: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.status.successLight,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    paddingHorizontal: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  completedPillText: {
+    color: Colors.status.success,
+    fontSize: 11,
+    fontWeight: Layout.fontWeight.bold,
   },
 });
