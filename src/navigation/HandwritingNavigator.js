@@ -16,6 +16,7 @@ import WordVideoScreen          from '../screens/handwriting/words/WordVideoScre
 import WordActivityScreen       from '../screens/handwriting/words/WordActivityScreen';
 import WordWritingScreen        from '../screens/handwriting/words/WordWritingScreen';
 import WordProgressScreen       from '../screens/handwriting/words/WordProgressScreen';
+import WordLetterSelectScreen   from '../screens/handwriting/words/WordLetterSelectScreen';
 import TeacherReportScreen      from '../screens/handwriting/reports/TeacherReportScreen';
 
 const Stack = createNativeStackNavigator();
@@ -81,6 +82,11 @@ export default function HandwritingNavigator({ route }) {
       <Stack.Screen
         name="WordVideo"
         component={WordVideoScreen}
+        initialParams={{ student, theme }}
+      />
+      <Stack.Screen
+        name="WordLetterSelect"
+        component={WordLetterSelectScreen}
         initialParams={{ student, theme }}
       />
       <Stack.Screen
