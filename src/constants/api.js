@@ -1,7 +1,7 @@
 // For Android emulator: http://10.0.2.2:3000/api
 // For iOS simulator: http://localhost:3000/api
 // For physical device: use your machine's local IP
-export const API_BASE_URL = "http://192.168.8.186:3000/api";
+export const API_BASE_URL = "http://10.0.2.2:3000/api";
 
 export const ENDPOINTS = {
   // Auth
