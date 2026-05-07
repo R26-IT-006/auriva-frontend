@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   useWindowDimensions,
+  Vibration,
 } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -63,8 +64,11 @@ function ConfettiBurst({ pieces }) {
               backgroundColor: piece.color,
               left: piece.left,
               top: piece.top,
+              width: piece.width,
+              height: piece.height,
               opacity: piece.opacity,
               transform: [
+                { translateX: piece.translateX },
                 { translateY: piece.translateY },
                 { rotate: piece.rotate },
                 { scale: piece.scale },
@@ -149,37 +153,51 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const responseDuration = storedResponseDuration ?? 1.3;
   const confettiPieces = useMemo(
     () =>
-      Array.from({ length: 24 }, (_, index) => {
+      Array.from({ length: 28 }, (_, index) => {
+        const isLeftSide = index % 2 === 0;
+        const lane = Math.floor(index / 2);
         const progress = new Animated.Value(0);
+        const translateX = progress.interpolate({
+          inputRange: [0, 0.72, 1],
+          outputRange: [isLeftSide ? -220 : 220, isLeftSide ? 10 : -10, 0],
+        });
         const translateY = progress.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 120 + (index % 4) * 18],
+          inputRange: [0, 0.55, 1],
+          outputRange: [0, lane % 2 === 0 ? -18 : 18, 76 + (lane % 4) * 14],
         });
         const rotate = progress.interpolate({
           inputRange: [0, 1],
-          outputRange: ["0deg", `${180 + index * 24}deg`],
+          outputRange: [
+            isLeftSide ? "-18deg" : "18deg",
+            `${isLeftSide ? 130 + index * 7 : -130 - index * 7}deg`,
+          ],
         });
         const opacity = progress.interpolate({
-          inputRange: [0, 0.2, 0.82, 1],
-          outputRange: [0, 1, 1, 0],
+          inputRange: [0, 0.12, 0.84, 1],
+          outputRange: [0, 0.95, 0.95, 0],
         });
         const scale = progress.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.8, 1.08],
+          inputRange: [0, 0.7, 1],
+          outputRange: [0.72, 1.08, 0.92],
         });
 
         return {
           id: index,
           progress,
+          translateX,
           translateY,
           rotate,
           opacity,
           scale,
-          left: `${8 + ((index * 17) % 84)}%`,
-          top: 12 + (index % 3) * 10,
+          left: isLeftSide
+            ? `${10 + ((lane * 9) % 32)}%`
+            : `${58 + ((lane * 9) % 32)}%`,
+          top: 28 + (lane % 5) * 28,
           color: ["#F7C948", "#5CC9A7", "#7FA8F8", "#F28B82", "#B794F4"][
             index % 5
           ],
+          width: index % 3 === 0 ? 12 : 9,
+          height: index % 4 === 0 ? 12 : 18,
         };
       }),
     [],
@@ -261,12 +279,14 @@ export default function PronunciationResultScreen({ navigation, route }) {
 
   useEffect(() => {
     if (isHighScore) {
+      Vibration.vibrate(35);
+
       const animations = confettiPieces.map((piece, index) => {
         piece.progress.setValue(0);
         return Animated.timing(piece.progress, {
           toValue: 1,
-          duration: 1700 + (index % 4) * 120,
-          delay: index * 28,
+          duration: 1550 + (index % 4) * 110,
+          delay: Math.floor(index / 2) * 34,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         });
