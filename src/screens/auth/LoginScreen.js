@@ -1,14 +1,14 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View,
   Text,
   Image,
+  Modal,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   useWindowDimensions,
   Pressable,
   ActivityIndicator,
@@ -44,6 +44,7 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [errorModal, setErrorModal] = useState({ visible: false, message: '' });
 
   const login = useAuthStore((s) => s.login);
 
@@ -62,7 +63,7 @@ export default function LoginScreen({ navigation }) {
     try {
       await login(role, identifier.trim(), password);
     } catch (err) {
-      Alert.alert('Login Failed', err.message || 'Invalid ID or password. Please try again.');
+      setErrorModal({ visible: true, message: err.message || 'Invalid ID or password. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -145,6 +146,34 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <LinearGradient colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']} style={styles.safe}>
+
+      {/* ── Error Modal ── */}
+      <Modal visible={errorModal.visible} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.overlay}>
+          <View style={styles.errorCard}>
+            <View style={styles.errorIconCircle}>
+              <Ionicons name="alert-circle" size={52} color="#E05C48" />
+            </View>
+            <Text style={styles.errorTitle}>Login Failed</Text>
+            <Text style={styles.errorMessage}>{errorModal.message}</Text>
+            <TouchableOpacity
+              style={styles.errorBtn}
+              onPress={() => setErrorModal({ visible: false, message: '' })}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['#4AABB8', '#52C07C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.errorBtnGradient}
+              >
+                <Text style={styles.errorBtnText}>Try Again</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -238,7 +267,7 @@ const styles = StyleSheet.create({
   },
   rolePillActive: { backgroundColor: '#4AABB8' },
   rolePillText: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
+    fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.secondary,
   },
   rolePillTextActive: { color: '#FFFFFF' },
@@ -261,7 +290,7 @@ const styles = StyleSheet.create({
   loginBtnText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
   forgotPasswordRow: {
@@ -270,13 +299,13 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: '#3A9BA8',
   },
 
   footer: {
     textAlign: 'center', fontSize: 10, letterSpacing: 1.5,
-    color: Colors.text.muted, fontWeight: Layout.fontWeight.medium,
+    color: Colors.text.muted, fontFamily: 'Nunito_600SemiBold',
     paddingBottom: Layout.spacing.sm,
   },
 
@@ -298,4 +327,53 @@ const styles = StyleSheet.create({
     paddingBottom: Layout.spacing.xl,
     justifyContent: 'center',
   },
+
+  // ── Error Modal ──────────────────────────────────────────────
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  errorCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#FFF',
+    borderRadius: 28,
+    paddingVertical: 40,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+  errorIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#FDF0EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  errorTitle: {
+    fontSize: Layout.fontSize.xl,
+    fontFamily: 'Nunito_900Black',
+    color: '#1A1A2E',
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: Layout.fontSize.sm,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 4,
+  },
+  errorBtn: { width: '100%', borderRadius: 14, overflow: 'hidden', marginTop: 8 },
+  errorBtnGradient: { height: 52, alignItems: 'center', justifyContent: 'center' },
+  errorBtnText: { color: '#FFF', fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', letterSpacing: 0.2 },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   photoName: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
     marginTop: Layout.spacing.xs,
   },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
 

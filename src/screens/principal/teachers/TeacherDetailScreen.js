@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   activeBadgeText: {
     fontSize: 9,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: '#FFFFFF',
   },
   profileInfo: {
@@ -290,13 +290,13 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: Colors.text.primary,
   },
   profileCode: {
     fontSize: Layout.fontSize.sm,
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
   capacityRow: {
     flexDirection: 'row',
@@ -307,11 +307,11 @@ const styles = StyleSheet.create({
   capacityLabel: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
   capacityCount: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
   },
   capacityTrack: {
     height: 7,
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
   },
   infoItem: {
@@ -367,13 +367,13 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 9,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.muted,
     letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.primary,
     marginTop: 1,
   },
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: Colors.text.primary,
   },
   cohortBadge: {
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   },
   cohortBadgeText: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: K.purple,
   },
   studentsList: {
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   studentInfo: { flex: 1 },
   studentName: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
   },
   studentMeta: {
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   studentCode: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
   studentDot: {
     fontSize: Layout.fontSize.xs,
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   },
   studentStatus: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: K.teal,
   },
   emptyStudents: {

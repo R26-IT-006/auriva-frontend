@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   Modal,
   View,
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: K.text,
     textAlign: 'center',
   },
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   btnConfirmText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.3,
   },
   btnCancel: {
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   btnCancelText: {
     color: K.text,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     letterSpacing: 0.3,
   },
 });
