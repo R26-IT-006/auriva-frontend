@@ -28,6 +28,7 @@ import {
   Modal,
   Animated,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -94,6 +95,7 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
   const [cloudText,    setCloudText]    = useState('');
   const [showGate,     setShowGate]     = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [gatePurpose,  setGatePurpose]  = useState('settings');
 
   const soundRef      = useRef(null);
   const activeRef     = useRef(true);
@@ -102,8 +104,14 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
 
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setGatePurpose('back');
+      setShowGate(true);
+      return true;
+    });
     return () => {
       activeRef.current = false;
+      sub.remove();
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
     };
@@ -128,21 +136,6 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Play question audio after question loads
-  useEffect(() => {
-    if (!question) return;
-    let cancelled = false;
-    async function playIntro() {
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
-      if (cancelled) return;
-      const src = question.type === 'sequence'
-        ? (SEQUENCE_QUESTION_AUDIO[question.previous_day_asset_key] ?? PLACEHOLDER_AUDIO)
-        : (PHRASE_QUESTION_AUDIO[wordKey] ?? PLACEHOLDER_AUDIO);
-      await playSound(src);
-    }
-    playIntro();
-    return () => { cancelled = true; };
-  }, [question]);
 
   async function playSound(source) {
     try {
@@ -231,10 +224,14 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
-  function openSettings() { setShowGate(true); }
+  function openSettings() { setGatePurpose('settings'); setShowGate(true); }
 
   function onGateSuccess() {
     setShowGate(false);
+    if (gatePurpose === 'back') {
+      navigation.navigate('DialogueCategory', { student });
+      return;
+    }
     setShowSettings(true);
     Animated.timing(settingsFade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   }
@@ -259,18 +256,21 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
 
   function renderOptions() {
     if (!question?.options?.length) return null;
+    const isPhraseCompletion = question.type === 'phrase_completion';
 
     return question.options.map(opt => {
       const isCorrectOpt  = opt.word_id === question.correct_word_id;
       const isSelected    = selectedId === opt.word_id;
       const dimmed        = attempt === 2 && !isCorrectOpt && !settled;
       const glowing       = attempt === 2 && isCorrectOpt && !settled;
+      const displayText   = isPhraseCompletion ? (opt.label ?? `Today is ${opt.word}`) : opt.word;
 
       return (
         <TouchableOpacity
           key={opt.word_id}
           style={[
             styles.optionBtn,
+            isPhraseCompletion && styles.optionBtnPhrase,
             { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline ?? 'transparent' },
             isSelected && isCorrectOpt && styles.optionCorrect,
             isSelected && !isCorrectOpt && styles.optionWrong,
@@ -283,12 +283,13 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
         >
           <Text style={[
             styles.optionText,
+            isPhraseCompletion && styles.optionTextPhrase,
             { color: theme.button },
             isSelected && isCorrectOpt && { color: '#22C55E' },
             isSelected && !isCorrectOpt && { color: '#FF4D6D' },
             dimmed && { opacity: 0.35 },
           ]}>
-            {opt.word}
+            {displayText}
           </Text>
         </TouchableOpacity>
       );
@@ -322,7 +323,7 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
@@ -343,6 +344,11 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
             {/* Scene image */}
             <View style={[styles.sceneCard, { backgroundColor: theme.cardSurface }]}>
               <Image source={renderSceneImage()} style={styles.sceneImage} resizeMode="contain" />
+              {question?.type === 'phrase_completion' && question.board_day_word ? (
+                <View style={styles.boardOverlay}>
+                  <Text style={styles.boardText}>{question.board_day_word}</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* Question text */}
@@ -357,7 +363,10 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
             )}
 
             {/* Options */}
-            <View style={styles.optionsRow}>
+            <View style={[
+              styles.optionsRow,
+              question?.type === 'phrase_completion' && styles.optionsColumn,
+            ]}>
               {renderOptions()}
             </View>
 
@@ -454,15 +463,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center', gap: Layout.spacing.md,
     width: '100%',
   },
+  optionsColumn: {
+    flexDirection: 'column', alignItems: 'stretch',
+  },
   optionBtn: {
     paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md,
     borderRadius: Layout.radius.xl, borderWidth: 2,
     ...Layout.shadow.sm, minWidth: 110, alignItems: 'center',
   },
+  optionBtnPhrase: {
+    minWidth: 0, width: '100%', alignItems: 'flex-start',
+    paddingHorizontal: Layout.spacing.lg,
+  },
   optionCorrect: { borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,0.08)' },
   optionWrong:   { borderColor: '#FF4D6D', backgroundColor: 'rgba(255,77,109,0.08)' },
   optionDimmed:  { opacity: 0.4 },
   optionText:    { fontSize: Layout.fontSize.lg, fontWeight: '900' },
+  optionTextPhrase: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+
+  boardOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    paddingVertical: Layout.spacing.sm,
+    alignItems: 'center',
+  },
+  boardText: {
+    color: '#FFFFFF', fontSize: Layout.fontSize.lg, fontWeight: '900',
+    letterSpacing: 1,
+  },
 
   avatarRow:  { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end', width: '100%' },
   bubbleWrap: { alignItems: 'flex-end', marginBottom: 6, marginRight: -4 },

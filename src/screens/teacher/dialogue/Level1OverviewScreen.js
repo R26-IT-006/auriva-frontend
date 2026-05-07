@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { dialogueApi } from '../../../api/dialogue';
+import { cat3Api } from '../../../api/cat3';
 
 export default function Level1OverviewScreen({ route, navigation }) {
   const { student, categoryKey } = route.params ?? {};
@@ -41,7 +42,18 @@ export default function Level1OverviewScreen({ route, navigation }) {
           }
 
         } else if (categoryKey === 'abilities') {
-          navigation.replace('VerbActivity', { student, verb: 'jump' });
+          const word = await cat3Api.getNextWord(student.sid);
+          if (word && word.id) {
+            navigation.replace('Cat3Phase1', {
+              student,
+              wordId:    word.id,
+              wordKey:   word.asset_key,
+              wordLabel: word.word,
+              sessionId: null,
+            });
+          } else {
+            navigation.replace('DialogueCategory', { student });
+          }
         }
       } catch (err) {
         setError('Could not load next word. Please try again.');

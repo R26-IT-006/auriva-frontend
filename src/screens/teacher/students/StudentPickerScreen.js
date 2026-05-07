@@ -94,7 +94,7 @@ export default function StudentPickerScreen({ navigation }) {
       <SafeAreaView style={styles.safeInner}>
 
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => navigation.navigate('WorkspaceSelect')} style={styles.backBtn} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={20} color={Colors.text.primary} />
           </TouchableOpacity>
           <View style={styles.headerText}>

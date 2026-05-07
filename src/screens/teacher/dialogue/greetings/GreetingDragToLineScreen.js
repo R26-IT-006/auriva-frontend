@@ -8,9 +8,11 @@ import {
   Modal,
   Animated,
   PanResponder,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
@@ -373,6 +375,7 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
   const [feedbackMsg,  setFeedbackMsg]  = useState('');
   const [showGate,     setShowGate]     = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
 
   const dropZoneRef = useRef(null);
@@ -387,6 +390,15 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
 
   const current          = activities[activityIdx];
   const progressFraction = 0.75 + (activityIdx / activities.length) * 0.15;
+
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setGatePurpose('back');
+      setShowGate(true);
+      return true;
+    });
+    return () => { sub.remove(); };
+  }, []));
 
   function measureDropZone() {
     dropZoneRef.current?.measure((x, y, width, height, pageX, pageY) => {
@@ -465,10 +477,14 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
     }
   }, [activityIdx]);
 
-  function openSettings() { setShowGate(true); }
+  function openSettings() { setGatePurpose('settings'); setShowGate(true); }
 
   function onGateSuccess() {
     setShowGate(false);
+    if (gatePurpose === 'back') {
+      navigation.navigate('DialogueCategory', { student });
+      return;
+    }
     setShowSettings(true);
     Animated.timing(settingsFade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   }
@@ -496,7 +512,7 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>

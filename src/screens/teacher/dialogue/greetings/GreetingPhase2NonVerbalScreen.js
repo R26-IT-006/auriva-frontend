@@ -8,6 +8,7 @@ import {
   ScrollView,
   Animated,
   useWindowDimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -138,6 +139,7 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
   const [settled,         setSettled]         = useState(false);
   const [showGate,        setShowGate]        = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
+  const [gatePurpose,     setGatePurpose]     = useState('settings');
 
   const soundRef      = useRef(null);
   const activeRef     = useRef(true);
@@ -146,8 +148,14 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
 
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setGatePurpose('back');
+      setShowGate(true);
+      return true;
+    });
     return () => {
       activeRef.current = false;
+      sub.remove();
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
     };
@@ -219,10 +227,14 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
     }
   }
 
-  function openSettings() { setShowGate(true); }
+  function openSettings() { setGatePurpose('settings'); setShowGate(true); }
 
   function onGateSuccess() {
     setShowGate(false);
+    if (gatePurpose === 'back') {
+      navigation.navigate('DialogueCategory', { student });
+      return;
+    }
     setShowSettings(true);
     Animated.timing(settingsFade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   }
@@ -247,7 +259,7 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
     <View style={styles.root}>
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>

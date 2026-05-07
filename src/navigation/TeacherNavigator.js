@@ -22,9 +22,15 @@ import Phase2ProductionScreen    from '../screens/teacher/dialogue/magic-words/P
 import Phase2NonVerbalScreen     from '../screens/teacher/dialogue/magic-words/Phase2NonVerbalScreen';
 import Phase3ContextualScreen    from '../screens/teacher/dialogue/magic-words/Phase3ContextualScreen';
 import WordCompleteScreen         from '../screens/teacher/dialogue/WordCompleteScreen';
-import VerbActivityScreen         from '../screens/teacher/dialogue/abilities/VerbActivityScreen';
-import ClapActivityScreen         from '../screens/teacher/dialogue/abilities/ClapActivityScreen';
-import RunActivityScreen          from '../screens/teacher/dialogue/abilities/RunActivityScreen';
+import VerbActivityScreen              from '../screens/teacher/dialogue/abilities/VerbActivityScreen';
+import ClapActivityScreen             from '../screens/teacher/dialogue/abilities/ClapActivityScreen';
+import RunActivityScreen              from '../screens/teacher/dialogue/abilities/RunActivityScreen';
+import Cat3Phase1Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase1Screen';
+import Cat3DragToLineScreen           from '../screens/teacher/dialogue/abilities/Cat3DragToLineScreen';
+import Cat3Phase2Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase2Screen';
+import Cat3Phase2NonVerbalScreen      from '../screens/teacher/dialogue/abilities/Cat3Phase2NonVerbalScreen';
+import Cat3Phase3Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase3Screen';
+import Cat3WordCompleteScreen         from '../screens/teacher/dialogue/abilities/Cat3WordCompleteScreen';
 import DaysLandingScreen          from '../screens/teacher/dialogue/days-of-week/DaysLandingScreen';
 import DaysPhase1CalendarScreen   from '../screens/teacher/dialogue/days-of-week/DaysPhase1CalendarScreen';
 import DaysDragToLineScreen       from '../screens/teacher/dialogue/days-of-week/DaysDragToLineScreen';
@@ -40,6 +46,16 @@ import GreetingPhase1CompleteScreen from '../screens/teacher/dialogue/greetings/
 import GreetingPhase2ProductionScreen from '../screens/teacher/dialogue/greetings/GreetingPhase2ProductionScreen';
 import GreetingPhase2NonVerbalScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase2NonVerbalScreen';
 import GreetingPhase3ContextualScreen from '../screens/teacher/dialogue/greetings/GreetingPhase3ContextualScreen';
+
+// Level 2 – Sentence Construction
+import L2TopicSelectionScreen  from '../screens/teacher/dialogue/level2/L2TopicSelectionScreen';
+import L2QuestionnaireScreen   from '../screens/teacher/dialogue/level2/L2QuestionnaireScreen';
+import L2LoadingScreen         from '../screens/teacher/dialogue/level2/L2LoadingScreen';
+import L2ContrastiveScreen     from '../screens/teacher/dialogue/level2/L2ContrastiveScreen';
+import L2SentenceTeachScreen   from '../screens/teacher/dialogue/level2/L2SentenceTeachScreen';
+import L2ListenTogetherScreen  from '../screens/teacher/dialogue/level2/L2ListenTogetherScreen';
+import L2ProductionScreen      from '../screens/teacher/dialogue/level2/L2ProductionScreen';
+import L2SessionCompleteScreen from '../screens/teacher/dialogue/level2/L2SessionCompleteScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -130,9 +146,15 @@ export default function TeacherNavigator() {
       <Stack.Screen name="Phase2NonVerbal"   component={Phase2NonVerbalScreen} />
       <Stack.Screen name="Phase3Contextual"  component={Phase3ContextualScreen} />
       <Stack.Screen name="WordComplete"      component={WordCompleteScreen} />
-      <Stack.Screen name="VerbActivity"      component={VerbActivityScreen} />
-      <Stack.Screen name="ClapActivity"      component={ClapActivityScreen} />
-      <Stack.Screen name="RunActivity"       component={RunActivityScreen} />
+      <Stack.Screen name="VerbActivity"         component={VerbActivityScreen} />
+      <Stack.Screen name="ClapActivity"         component={ClapActivityScreen} />
+      <Stack.Screen name="RunActivity"          component={RunActivityScreen} />
+      <Stack.Screen name="Cat3Phase1"           component={Cat3Phase1Screen} />
+      <Stack.Screen name="Cat3DragToLine"       component={Cat3DragToLineScreen} />
+      <Stack.Screen name="Cat3Phase2"           component={Cat3Phase2Screen} />
+      <Stack.Screen name="Cat3Phase2NonVerbal"  component={Cat3Phase2NonVerbalScreen} />
+      <Stack.Screen name="Cat3Phase3"           component={Cat3Phase3Screen} />
+      <Stack.Screen name="Cat3WordComplete"     component={Cat3WordCompleteScreen} />
 
       {/* Greetings */}
       <Stack.Screen name="GreetingLanding"           component={GreetingLandingScreen} />
@@ -152,6 +174,16 @@ export default function TeacherNavigator() {
       <Stack.Screen name="DaysPhase2NonVerbal"  component={DaysPhase2NonVerbalScreen} />
       <Stack.Screen name="DaysPhase3Sequence"   component={DaysPhase3SequenceScreen} />
       <Stack.Screen name="DaysSpinningWheel"    component={DaysSpinningWheelScreen} />
+
+      {/* Level 2 – Sentence Construction */}
+      <Stack.Screen name="L2TopicSelection"  component={L2TopicSelectionScreen} />
+      <Stack.Screen name="L2Questionnaire"   component={L2QuestionnaireScreen} />
+      <Stack.Screen name="L2Loading"         component={L2LoadingScreen} />
+      <Stack.Screen name="L2Contrastive"     component={L2ContrastiveScreen} />
+      <Stack.Screen name="L2SentenceTeach"   component={L2SentenceTeachScreen} />
+      <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />
+      <Stack.Screen name="L2Production"      component={L2ProductionScreen} />
+      <Stack.Screen name="L2SessionComplete" component={L2SessionCompleteScreen} />
 
     </Stack.Navigator>
   );

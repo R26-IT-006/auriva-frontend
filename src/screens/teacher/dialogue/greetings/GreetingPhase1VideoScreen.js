@@ -7,10 +7,12 @@ import {
   Modal,
   Animated,
   useWindowDimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
+import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
@@ -92,6 +94,7 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
   const [showReplay,   setShowReplay]   = useState(false);
   const [showGate,     setShowGate]     = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
   const videoRef     = useRef(null);
   const current      = videos[videoIndex];
@@ -104,6 +107,15 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
       dialogueApi.recordPhase1Exposure(student.sid, wordId).catch(() => {});
     }
   }, [videoIndex]);
+
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setGatePurpose('back');
+      setShowGate(true);
+      return true;
+    });
+    return () => { sub.remove(); };
+  }, []));
 
   function onPlaybackStatusUpdate(status) {
     if (!status.isLoaded) return;
@@ -130,7 +142,8 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
     if (videoIndex > startIndex) {
       setVideoIndex(videoIndex - 1);
     } else {
-      navigation.goBack();
+      setGatePurpose('back');
+      setShowGate(true);
     }
   }
 
@@ -142,10 +155,14 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
     }
   }
 
-  function openSettings() { setShowGate(true); }
+  function openSettings() { setGatePurpose('settings'); setShowGate(true); }
 
   function onGateSuccess() {
     setShowGate(false);
+    if (gatePurpose === 'back') {
+      navigation.navigate('DialogueCategory', { student });
+      return;
+    }
     setShowSettings(true);
     Animated.timing(settingsFade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   }

@@ -173,7 +173,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
       <ParentGateModal
         visible={gateVisible}
-        onSuccess={() => { setGateVisible(false); navigation.goBack(); }}
+        onSuccess={() => { setGateVisible(false); navigation.navigate('StudentPicker'); }}
         onCancel={() => setGateVisible(false)}
       />
 

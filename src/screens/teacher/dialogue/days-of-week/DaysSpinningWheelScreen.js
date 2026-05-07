@@ -25,6 +25,7 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,6 +84,7 @@ export default function DaysSpinningWheelScreen({ route, navigation }) {
   const [cloudText,     setCloudText]     = useState('Tap SPIN to start!');
   const [showGate,      setShowGate]      = useState(false);
   const [showSettings,  setShowSettings]  = useState(false);
+  const [gatePurpose,   setGatePurpose]   = useState('settings');
 
   const spinAnim     = useRef(new Animated.Value(0)).current;
   const soundRef     = useRef(null);
@@ -93,8 +95,14 @@ export default function DaysSpinningWheelScreen({ route, navigation }) {
 
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setGatePurpose('back');
+      setShowGate(true);
+      return true;
+    });
     return () => {
       activeRef.current = false;
+      sub.remove();
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
     };
@@ -211,10 +219,14 @@ export default function DaysSpinningWheelScreen({ route, navigation }) {
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
-  function openSettings() { setShowGate(true); }
+  function openSettings() { setGatePurpose('settings'); setShowGate(true); }
 
   function onGateSuccess() {
     setShowGate(false);
+    if (gatePurpose === 'back') {
+      navigation.navigate('DaysMenuScreen', { student });
+      return;
+    }
     setShowSettings(true);
     Animated.timing(settingsFade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   }
@@ -239,9 +251,37 @@ export default function DaysSpinningWheelScreen({ route, navigation }) {
 
   const segments = roundData?.options ?? [];
 
-  const WHEEL_SIZE = 240;
+  const WHEEL_SIZE = 300;
   const CENTER     = WHEEL_SIZE / 2;
   const RADIUS     = CENTER - 10;
+
+  // Renders a single pie wedge using a clipped rectangle rotated around the wheel centre.
+  // Works for any segDeg <= 180° (always true for N >= 2 segments).
+  function renderPieSlice(color, startDeg, segDeg, key) {
+    const half = CENTER;
+    return (
+      <View
+        key={key}
+        style={{ position: 'absolute', width: WHEEL_SIZE, height: WHEEL_SIZE, transform: [{ rotate: `${startDeg - 90}deg` }] }}
+      >
+        <View style={{ position: 'absolute', left: half, top: 0, width: half, height: WHEEL_SIZE, overflow: 'hidden' }}>
+          <View
+            style={{
+              position: 'absolute',
+              left: 0, top: 0,
+              width: half, height: WHEEL_SIZE,
+              backgroundColor: color,
+              transform: [
+                { translateX: -(half / 2) },
+                { rotate: `${180 - segDeg}deg` },
+                { translateX: half / 2 },
+              ],
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
 
   function renderWheel() {
     if (!segments.length) {
@@ -261,64 +301,40 @@ export default function DaysSpinningWheelScreen({ route, navigation }) {
           { width: WHEEL_SIZE, height: WHEEL_SIZE, transform: [{ rotate: spinInterpolate }] },
         ]}
       >
+        {/* Coloured pie slices */}
+        {segments.map((seg, i) =>
+          renderPieSlice(DAY_COLORS[i % DAY_COLORS.length], segAngle * i, segAngle, `slice-${seg.word_id}`)
+        )}
+
+        {/* Labels at each segment midpoint */}
         {segments.map((seg, i) => {
-          const angle = segAngle * i - 90; // start from top
-          const rad   = (angle * Math.PI) / 180;
-          const midRad = ((angle + segAngle / 2) * Math.PI) / 180;
-          const labelR = RADIUS * 0.65;
-          const lx     = CENTER + labelR * Math.cos(midRad);
-          const ly     = CENTER + labelR * Math.sin(midRad);
+          const midAngle = segAngle * i + segAngle / 2 - 90;
+          const midRad   = (midAngle * Math.PI) / 180;
+          const labelR   = RADIUS * 0.60;
+          const lx       = CENTER + labelR * Math.cos(midRad);
+          const ly       = CENTER + labelR * Math.sin(midRad);
 
           return (
-            <View
-              key={seg.word_id}
+            <Text
+              key={`label-${seg.word_id}`}
               style={[
-                styles.wheelSegment,
+                styles.wheelLabel,
                 {
-                  backgroundColor: DAY_COLORS[i % DAY_COLORS.length],
-                  width:  WHEEL_SIZE,
-                  height: WHEEL_SIZE,
-                  borderRadius: CENTER,
                   position: 'absolute',
-                  // Clip to wedge via overflow — simplified: use colored arcs as labels only
+                  left: lx - 36,
+                  top:  ly - 10,
+                  transform: [{ rotate: `${midAngle + 90}deg` }],
+                  color: '#FFF',
                 },
               ]}
-            />
+              numberOfLines={1}
+            >
+              {seg.word}
+            </Text>
           );
         })}
 
-        {/* Overlay labels */}
-        <View style={[styles.wheelLabelOverlay, { width: WHEEL_SIZE, height: WHEEL_SIZE }]}>
-          {segments.map((seg, i) => {
-            const segAngleDeg = 360 / segments.length;
-            const midAngle    = segAngleDeg * i + segAngleDeg / 2 - 90;
-            const midRad      = (midAngle * Math.PI) / 180;
-            const labelR      = RADIUS * 0.60;
-            const lx          = CENTER + labelR * Math.cos(midRad);
-            const ly          = CENTER + labelR * Math.sin(midRad);
-
-            return (
-              <Text
-                key={seg.word_id}
-                style={[
-                  styles.wheelLabel,
-                  {
-                    position: 'absolute',
-                    left: lx - 36,
-                    top:  ly - 10,
-                    transform: [{ rotate: `${midAngle + 90}deg` }],
-                    color: '#FFF',
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                {seg.word}
-              </Text>
-            );
-          })}
-        </View>
-
-        {/* Center circle */}
+        {/* Centre cap */}
         <View style={[styles.wheelCenter, { left: CENTER - 20, top: CENTER - 20 }]} />
       </Animated.View>
     );
@@ -338,7 +354,7 @@ export default function DaysSpinningWheelScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>Spinning Wheel</Text>
@@ -492,12 +508,13 @@ const styles = StyleSheet.create({
   wheelArea: { alignItems: 'center', marginBottom: Layout.spacing.lg },
   wheelPointer: { alignItems: 'center', marginBottom: -4, zIndex: 10 },
 
-  wheelContainer: { position: 'relative', overflow: 'hidden', borderRadius: 9999 },
-  wheelSegment:   {},
-  wheelLabelOverlay: { position: 'absolute', top: 0, left: 0 },
+  wheelContainer: {
+    position: 'relative', overflow: 'hidden', borderRadius: 9999,
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.6)',
+  },
   wheelLabel: {
-    fontSize: 11, fontWeight: '800', width: 72, textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+    fontSize: 13, fontWeight: '800', width: 72, textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
   wheelCenter: {
     position: 'absolute', width: 40, height: 40, borderRadius: 20,

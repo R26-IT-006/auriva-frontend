@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Modal,
   Animated,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -226,8 +227,14 @@ export default function Phase2ProductionScreen({ route, navigation }) {
 
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setGatePurpose('back');
+      setShowGate(true);
+      return true;
+    });
     return () => {
       activeRef.current = false;
+      sub.remove();
       clearTimer();
       if (tileTapTimer.current) clearTimeout(tileTapTimer.current);
       soundRef.current?.stopAsync().catch(() => {});
@@ -464,6 +471,10 @@ export default function Phase2ProductionScreen({ route, navigation }) {
 
   function onGateSuccess() {
     setShowGate(false);
+    if (gatePurpose === 'back') {
+      navigation.navigate('DialogueCategory', { student });
+      return;
+    }
     if (gatePurpose === 'next') {
       navigation.navigate('Phase3Contextual', { student, wordKey, wordId, sessionId: sessionIdRef.current });
       return;
@@ -499,7 +510,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
       {/* ── Header ──────────────────────────────────────────── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
