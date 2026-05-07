@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Image, Alert, useWindowDimensions, Animated, Easing } from "react-native";
+import { View, Text, StyleSheet, Image, Alert, useWindowDimensions, Animated, Easing, ScrollView } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -47,7 +47,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const barAnimB = useRef(new Animated.Value(0.4)).current;
   const barAnimC = useRef(new Animated.Value(0.3)).current;
 
-  const cardWidth = Math.min(Math.max(width * 0.62, 700), 940);
+  const isCompact = width < 760;
+  const cardWidth = isCompact
+    ? width - Layout.spacing.lg * 2
+    : Math.min(Math.max(width * 0.62, 700), 940);
 
   const barAnimations = useMemo(
     () => [barAnimA, barAnimB, barAnimC],
@@ -235,13 +238,16 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: theme.headingText }]}>
+      <ScrollView
+        contentContainerStyle={[styles.container, isCompact && styles.containerCompact]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={[styles.title, isCompact && styles.titleCompact, { color: theme.headingText }]}>
           {isAlphabetMode ? "Say this letter" : "What is this?"}
         </Text>
 
-        <View style={[styles.contentRow, { width: cardWidth }]}>
-          <View style={styles.imageCard}>
+        <View style={[styles.contentRow, isCompact && styles.contentRowCompact, { width: cardWidth }]}>
+          <View style={[styles.imageCard, isCompact && styles.imageCardCompact]}>
             <View style={[styles.imageFrame, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
               {isAlphabetMode ? (
                 <View style={[styles.image, styles.letterImage, { backgroundColor: word?.color || theme.cardSurface }]}>
@@ -263,7 +269,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             </View>
           </View>
 
-          <View style={[styles.voiceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+          <View style={[styles.voiceCard, isCompact && styles.voiceCardCompact, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
             <ButtonFeedback
               activeOpacity={0.88}
               onPress={handleTapToSpeak}
@@ -317,23 +323,28 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           </View>
         </View>
 
-        <ButtonFeedback
-          activeOpacity={0.82}
-          onPress={() => navigation.goBack()}
-          style={[styles.backBtn, { borderColor: theme.cardOutline }]}
+        <View
+          pointerEvents={isCompact ? "auto" : "box-none"}
+          style={isCompact ? styles.actionsRow : styles.actionsOverlay}
         >
-          <Ionicons name="arrow-back" size={26} color={theme.headingText} />
-        </ButtonFeedback>
+          <ButtonFeedback
+            activeOpacity={0.82}
+            onPress={() => navigation.goBack()}
+            style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }]}
+          >
+            <Ionicons name="arrow-back" size={26} color={theme.headingText} />
+          </ButtonFeedback>
 
-        <ButtonFeedback
-          activeOpacity={0.9}
-          onPress={handleNext}
-          style={[styles.nextBtn, { backgroundColor: theme.button }]}
-        >
-          <Text style={styles.nextText}>Next</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </ButtonFeedback>
-      </View>
+          <ButtonFeedback
+            activeOpacity={0.9}
+            onPress={handleNext}
+            style={[styles.nextBtn, isCompact && styles.nextBtnCompact, { backgroundColor: theme.button }]}
+          >
+            <Text style={styles.nextText}>Next</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+          </ButtonFeedback>
+        </View>
+      </ScrollView>
     </SafeAreaView>
     </LinearGradient>
   );
@@ -347,10 +358,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
+    minHeight: "100%",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.lg,
+  },
+  containerCompact: {
+    justifyContent: "flex-start",
   },
   title: {
     fontSize: 28,
@@ -359,18 +375,31 @@ const styles = StyleSheet.create({
     marginBottom: 26,
     textAlign: "center",
   },
+  titleCompact: {
+    fontSize: 26,
+    lineHeight: 32,
+    marginBottom: Layout.spacing.lg,
+  },
   contentRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 32,
   },
+  contentRowCompact: {
+    flexDirection: "column",
+    gap: Layout.spacing.md,
+  },
   imageCard: {
     width: "46%",
     alignItems: "center",
   },
+  imageCardCompact: {
+    width: "100%",
+  },
   imageFrame: {
-    width: 280,
+    width: "100%",
+    maxWidth: 360,
     height: 220,
     borderRadius: 18,
     padding: 8,
@@ -410,6 +439,10 @@ const styles = StyleSheet.create({
     borderColor: "#D7E1EC",
     padding: 24,
     ...Layout.shadow.sm,
+  },
+  voiceCardCompact: {
+    width: "100%",
+    minHeight: 240,
   },
   micHitArea: {
     alignItems: "center",
@@ -472,6 +505,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.34)",
   },
+  backBtnCompact: {
+    position: "relative",
+    left: 0,
+    top: 0,
+    marginTop: 0,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
   nextBtn: {
     position: "absolute",
     right: 14,
@@ -488,6 +530,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     ...Layout.shadow.md,
+  },
+  nextBtnCompact: {
+    position: "relative",
+    right: 0,
+    top: 0,
+    marginTop: 0,
+    flex: 1,
+  },
+  actionsOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  actionsRow: {
+    width: "100%",
+    maxWidth: 520,
+    marginTop: Layout.spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.md,
   },
   nextText: {
     color: "#FFFFFF",

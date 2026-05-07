@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, useWindowDimensions, Image, Alert } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, Image, Alert, ScrollView } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -43,7 +43,10 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     sessionSelectedWord;
   const [isPlaying, setIsPlaying] = React.useState(false);
 
-  const cardWidth = Math.min(Math.max(width * 0.56, 640), 980);
+  const isCompact = width < 760;
+  const cardWidth = isCompact
+    ? width - Layout.spacing.lg * 2
+    : Math.min(Math.max(width * 0.56, 640), 980);
   const sounds = selectedWord?.sounds || [];
 
   function handleNext() {
@@ -118,13 +121,16 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
-      <View style={styles.container}>
-        <View style={styles.centerStage}>
-          <Text style={[styles.headline, { color: theme.headingText }]}>
+      <ScrollView
+        contentContainerStyle={[styles.container, isCompact && styles.containerCompact]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.centerStage, isCompact && styles.centerStageCompact]}>
+          <Text style={[styles.headline, isCompact && styles.headlineCompact, { color: theme.headingText }]}>
             {isAlphabetMode ? "Listen to the letter sound" : "Listen to the sounds"}
           </Text>
 
-          <View style={[styles.wordCard, { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+          <View style={[styles.wordCard, isCompact && styles.wordCardCompact, { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
             <View style={styles.soundStage}>
               {sounds.map((sound, index) => (
                 <View key={`${sound.text}-${index}`} style={styles.soundBlock}>
@@ -147,7 +153,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
               </ButtonFeedback>
             </View>
 
-            <View style={styles.imagePane}>
+            <View style={[styles.imagePane, isCompact && styles.imagePaneCompact]}>
               {isAlphabetMode ? (
                 <View style={[styles.wordImage, styles.letterPane, { backgroundColor: selectedWord?.color || theme.cardSurface }]}>
                   <Text style={styles.letterPaneText}>
@@ -169,23 +175,28 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           </View>
         </View>
 
-        <ButtonFeedback
-          activeOpacity={0.82}
-          onPress={() => navigation.goBack()}
-          style={[styles.backBtn, { borderColor: theme.cardOutline }]}
+        <View
+          pointerEvents={isCompact ? "auto" : "box-none"}
+          style={isCompact ? styles.actionsRow : styles.actionsOverlay}
         >
-          <Ionicons name="arrow-back" size={26} color={theme.headingText} />
-        </ButtonFeedback>
+          <ButtonFeedback
+            activeOpacity={0.82}
+            onPress={() => navigation.goBack()}
+            style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }]}
+          >
+            <Ionicons name="arrow-back" size={26} color={theme.headingText} />
+          </ButtonFeedback>
 
-        <ButtonFeedback
-          activeOpacity={0.9}
-          onPress={handleNext}
-          style={[styles.nextBtn, { backgroundColor: theme.button }]}
-        >
-          <Text style={styles.nextText}>Next</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </ButtonFeedback>
-      </View>
+          <ButtonFeedback
+            activeOpacity={0.9}
+            onPress={handleNext}
+            style={[styles.nextBtn, isCompact && styles.nextBtnCompact, { backgroundColor: theme.button }]}
+          >
+            <Text style={styles.nextText}>Next</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+          </ButtonFeedback>
+        </View>
+      </ScrollView>
     </SafeAreaView>
     </LinearGradient>
   );
@@ -199,16 +210,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
+    minHeight: "100%",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.lg,
+  },
+  containerCompact: {
+    justifyContent: "flex-start",
   },
   centerStage: {
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
     marginTop: -40,
+  },
+  centerStageCompact: {
+    marginTop: 0,
   },
   headline: {
     fontSize: 46,
@@ -217,6 +236,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.6,
     marginBottom: 26,
     textAlign: "center",
+  },
+  headlineCompact: {
+    fontSize: 30,
+    lineHeight: 36,
+    marginBottom: Layout.spacing.lg,
   },
   wordCard: {
     backgroundColor: Colors.surface,
@@ -227,6 +251,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "stretch",
     gap: 16,
+  },
+  wordCardCompact: {
+    flexDirection: "column",
   },
   soundStage: {
     width: "100%",
@@ -289,6 +316,11 @@ const styles = StyleSheet.create({
     width: "34%",
     minHeight: 280,
   },
+  imagePaneCompact: {
+    width: "100%",
+    height: 220,
+    minHeight: 220,
+  },
   wordImage: {
     width: "100%",
     height: "100%",
@@ -341,6 +373,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.3)",
   },
+  backBtnCompact: {
+    position: "relative",
+    left: 0,
+    top: 0,
+    marginTop: 0,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
   nextBtn: {
     position: "absolute",
     right: 18,
@@ -357,6 +398,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     ...Layout.shadow.md,
+  },
+  nextBtnCompact: {
+    position: "relative",
+    right: 0,
+    top: 0,
+    marginTop: 0,
+    flex: 1,
+  },
+  actionsOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  actionsRow: {
+    width: "100%",
+    maxWidth: 520,
+    marginTop: Layout.spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.md,
   },
   nextText: {
     color: "#FFFFFF",

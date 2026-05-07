@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -49,6 +49,8 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
   const categoryId = route.params?.categoryId;
   const word = route.params?.word;
   const [selectedId, setSelectedId] = useState("ae");
+  const { width } = useWindowDimensions();
+  const isCompact = width < 720;
 
   const selectedItem = useMemo(
     () => MOUTH_SHAPES.find((item) => item.id === selectedId),
@@ -71,13 +73,13 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
         <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
-          style={[styles.backBtn, { borderColor: theme.cardOutline }]}
+          style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }]}
         >
           <Ionicons name="arrow-back" size={26} color={theme.headingText} />
         </ButtonFeedback>
 
-        <View style={styles.centerWrap}>
-          <Text style={[styles.title, { color: theme.headingText }]}>Watch the mouth shapes</Text>
+        <View style={[styles.centerWrap, isCompact && styles.centerWrapCompact]}>
+          <Text style={[styles.title, isCompact && styles.titleCompact, { color: theme.headingText }]}>Watch the mouth shapes</Text>
 
           <View style={styles.cardsRow}>
             {MOUTH_SHAPES.map((item) => (
@@ -92,14 +94,19 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
           </View>
         </View>
 
-        <ButtonFeedback
-          activeOpacity={0.9}
-          onPress={handleReady}
-          style={[styles.readyBtn, { backgroundColor: theme.button }]}
+        <View
+          pointerEvents={isCompact ? "auto" : "box-none"}
+          style={isCompact ? styles.actionsRow : styles.actionsOverlay}
         >
-          <Text style={styles.readyText}>I&apos;m Ready!</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </ButtonFeedback>
+          <ButtonFeedback
+            activeOpacity={0.9}
+            onPress={handleReady}
+            style={[styles.readyBtn, isCompact && styles.readyBtnCompact, { backgroundColor: theme.button }]}
+          >
+            <Text style={styles.readyText}>I&apos;m Ready!</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+          </ButtonFeedback>
+        </View>
       </View>
     </SafeAreaView>
     </LinearGradient>
@@ -118,6 +125,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.lg,
   },
   backBtn: {
     position: "absolute",
@@ -133,10 +141,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.34)",
   },
+  backBtnCompact: {
+    left: Layout.spacing.lg,
+    top: Layout.spacing.lg,
+    marginTop: 0,
+  },
   centerWrap: {
+    width: "100%",
+    maxWidth: 620,
     alignItems: "center",
     justifyContent: "center",
     marginTop: -18,
+  },
+  centerWrapCompact: {
+    marginTop: 0,
   },
   title: {
     fontSize: 26,
@@ -146,8 +164,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 24,
   },
+  titleCompact: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
   cardsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "center",
     gap: 14,
@@ -225,6 +248,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     ...Layout.shadow.md,
+  },
+  readyBtnCompact: {
+    position: "relative",
+    right: 0,
+    top: 0,
+    marginTop: 0,
+    width: "100%",
+  },
+  actionsOverlay: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  actionsRow: {
+    width: "100%",
+    maxWidth: 360,
+    marginTop: Layout.spacing.lg,
   },
   readyText: {
     color: "#FFFFFF",

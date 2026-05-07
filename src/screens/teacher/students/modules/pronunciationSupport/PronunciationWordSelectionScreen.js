@@ -133,6 +133,7 @@ export default function PronunciationWordSelectionScreen({
   const [moreOpen, setMoreOpen] = useState(false);
   const [expandedWordKey, setExpandedWordKey] = useState(null);
   const { width } = useWindowDimensions();
+  const isCompact = width < 720;
 
   useEffect(() => {
     if (
@@ -152,13 +153,15 @@ export default function PronunciationWordSelectionScreen({
   const moreWords = isAlphabetMode ? [] : WORD_BANK.moreAnimals || [];
 
   const cardWidth = useMemo(() => {
+    if (width < 560) return width - Layout.spacing.lg * 2;
     if (width >= 1180) return 186;
     if (width >= 980) return 170;
     if (width >= 840) return 160;
-    return Math.min(240, width - Layout.spacing.lg * 2);
+    return Math.min(240, (width - Layout.spacing.lg * 2 - Layout.spacing.sm) / 2);
   }, [width]);
 
   const moreCardWidth = useMemo(() => {
+    if (width < 420) return width - Layout.spacing.lg * 2;
     if (width >= 1180) return 150;
     if (width >= 980) return 140;
     if (width >= 840) return 132;
@@ -263,7 +266,7 @@ export default function PronunciationWordSelectionScreen({
         </View>
 
         <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-          <View style={styles.panelTopRow}>
+          <View style={[styles.panelTopRow, isCompact && styles.panelTopRowCompact]}>
             <Text style={[styles.panelTitle, { color: theme.headingText }]}>
               {isAlphabetMode ? "Select Starting Letter" : "Select Starting Word"}
             </Text>
@@ -274,6 +277,7 @@ export default function PronunciationWordSelectionScreen({
               style={[
                 styles.startBtn,
                 { backgroundColor: theme.button },
+                isCompact && styles.startBtnCompact,
                 !selectedWord && styles.startBtnDisabled,
               ]}
             >
@@ -320,7 +324,7 @@ export default function PronunciationWordSelectionScreen({
             <ButtonFeedback
               activeOpacity={0.86}
               onPress={toggleMore}
-              style={styles.moreHeaderRow}
+              style={[styles.moreHeaderRow, isCompact && styles.moreHeaderRowCompact]}
             >
               <View>
                 <Text style={[styles.moreWordsTitle, { color: theme.headingText }]}>More Words</Text>
@@ -375,8 +379,11 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: Layout.spacing.lg,
     paddingVertical: Layout.spacing.lg,
+    alignItems: "center",
   },
   headerRow: {
+    width: "100%",
+    maxWidth: 1040,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: Layout.spacing.md,
@@ -450,6 +457,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   panel: {
+    width: "100%",
+    maxWidth: 1040,
     marginTop: Layout.spacing.lg,
     backgroundColor: "#F7F8FA",
     borderRadius: 22,
@@ -463,6 +472,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: Layout.spacing.md,
+  },
+  panelTopRowCompact: {
+    alignItems: "stretch",
+    flexDirection: "column",
   },
   panelTitle: {
     fontSize: 36,
@@ -478,6 +491,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     alignItems: "center",
     justifyContent: "center",
+  },
+  startBtnCompact: {
+    width: "100%",
   },
   startBtnDisabled: {
     backgroundColor: "#DFE5ED",
@@ -500,6 +516,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "flex-start",
+    justifyContent: "center",
     gap: Layout.spacing.sm,
   },
   moreWordsSection: {
@@ -523,6 +540,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "flex-start",
+    justifyContent: "center",
     gap: Layout.spacing.sm,
   },
   wordCard: {
@@ -531,6 +549,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#B8C4D6",
     backgroundColor: Colors.surface,
+    minHeight: 62,
   },
   wordCardSelected: {
     borderWidth: 2,
@@ -579,6 +598,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E6EDF7",
   },
   wordMetaCompact: {
+    flex: 1,
     flexDirection: "column",
     alignItems: "flex-start",
     justifyContent: "center",
@@ -589,6 +609,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: Layout.spacing.sm,
+  },
+  moreHeaderRowCompact: {
+    alignItems: "flex-start",
+    gap: Layout.spacing.md,
   },
   moreToggleBtn: {
     width: 46,

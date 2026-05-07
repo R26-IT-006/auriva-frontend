@@ -102,6 +102,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
     (state) => state.setCurrentActivityStep,
   );
   const { width } = useWindowDimensions();
+  const isCompact = width < 720;
 
   useEffect(() => {
     setSelectedStudent(student);
@@ -109,10 +110,11 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   }, [setCurrentActivityStep, setSelectedStudent, student]);
 
   const cardWidth = useMemo(() => {
+    if (width < 560) return width - Layout.spacing.lg * 2;
     if (width >= 1180) return 220;
     if (width >= 1024) return 200;
     if (width >= 840) return 180;
-    return Math.min(260, width - Layout.spacing.lg * 2);
+    return Math.min(260, (width - Layout.spacing.lg * 2 - Layout.spacing.sm) / 2);
   }, [width]);
 
   function handleContinue() {
@@ -237,7 +239,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
             </>
           ) : null}
 
-          <View style={styles.panelFooter}>
+          <View style={[styles.panelFooter, isCompact && styles.panelFooterCompact]}>
             <Text style={[styles.selectionText, { color: theme.headingText }]}>
               {selectedMode === PRONUNCIATION_MODES.ALPHABET
                 ? "Selected: Alphabet Pronunciation"
@@ -252,6 +254,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               style={[
                 styles.continueBtn,
                 { backgroundColor: theme.button },
+                isCompact && styles.continueBtnCompact,
                 (!selectedMode ||
                   (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory)) &&
                   styles.continueBtnDisabled,
@@ -283,8 +286,11 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: Layout.spacing.lg,
     paddingVertical: Layout.spacing.lg,
+    alignItems: "center",
   },
   headerRow: {
+    width: "100%",
+    maxWidth: 1040,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: Layout.spacing.md,
@@ -358,6 +364,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   panel: {
+    width: "100%",
+    maxWidth: 1040,
     marginTop: Layout.spacing.lg,
     backgroundColor: "#F7F8FA",
     borderRadius: 22,
@@ -378,6 +386,8 @@ const styles = StyleSheet.create({
   cardsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "stretch",
     gap: Layout.spacing.sm,
   },
   categoryCard: {
@@ -386,6 +396,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E6ECF4",
     backgroundColor: Colors.surface,
+    minHeight: 172,
   },
   categoryCardSelected: {
     borderWidth: 2,
@@ -420,6 +431,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: Layout.spacing.md,
   },
+  panelFooterCompact: {
+    flexDirection: "column",
+    alignItems: "stretch",
+  },
   selectionText: {
     flex: 1,
     fontSize: Layout.fontSize.sm,
@@ -433,6 +448,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
+  },
+  continueBtnCompact: {
+    justifyContent: "center",
   },
   continueBtnDisabled: {
     backgroundColor: "#AAB8CB",

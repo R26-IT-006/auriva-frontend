@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -51,6 +51,8 @@ function getScoreBarColor(score) {
 export default function PronunciationResultScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
+  const { width } = useWindowDimensions();
+  const isCompact = width < 820;
   const sessionCategory = usePronunciationSessionStore(
     (state) => state.selectedCategory,
   );
@@ -140,17 +142,20 @@ export default function PronunciationResultScreen({ navigation, route }) {
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
-      <View style={styles.container}>
-        <View style={[styles.topBar, { borderColor: theme.cardOutline }]}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.topBar, isCompact && styles.topBarCompact, { borderColor: theme.cardOutline }]}>
           <View style={styles.studentWrap}>
             <View style={[styles.avatarDot, { backgroundColor: theme.background, borderColor: theme.cardOutline }]} />
-            <Text style={[styles.studentText, { color: theme.headingText }]}>
+            <Text style={[styles.studentText, isCompact && styles.studentTextCompact, { color: theme.headingText }]}>
               {student?.full_name || "Leo M."}'s Result
             </Text>
           </View>
-          <View style={styles.buttonsGroup}>
+          <View style={[styles.buttonsGroup, isCompact && styles.buttonsGroupCompact]}>
             <FeedbackButton
-              style={styles.homeBtn}
+              style={[styles.homeBtn, isCompact && styles.navBtnCompact]}
               activeOpacity={0.88}
               onPress={handleGoHome}
             >
@@ -158,7 +163,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
               <Text style={styles.btnText}>Home</Text>
             </FeedbackButton>
             <FeedbackButton
-              style={styles.dashboardBtn}
+              style={[styles.dashboardBtn, isCompact && styles.navBtnCompact]}
               activeOpacity={0.88}
               onPress={handleGoDashboard}
             >
@@ -168,15 +173,15 @@ export default function PronunciationResultScreen({ navigation, route }) {
           </View>
         </View>
 
-        <View style={styles.contentRow}>
+        <View style={[styles.contentRow, isCompact && styles.contentRowCompact]}>
           <View style={[styles.leftPanel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-            <View style={styles.scoreRow}>
+            <View style={[styles.scoreRow, isCompact && styles.scoreRowCompact]}>
               <View style={[styles.scoreCircle, { borderColor: theme.button }]}>
                 <Text style={[styles.scoreText, { color: theme.headingText }]}>{displayScore} %</Text>
               </View>
 
               <View style={styles.summaryWrap}>
-                <Text style={[styles.feedbackTitle, { color: theme.headingText }]}>
+                <Text style={[styles.feedbackTitle, isCompact && styles.feedbackTitleCompact, { color: theme.headingText }]}>
                   {displayScore >= 80 ? "Great Job!" : "Good Try!"}
                 </Text>
                 <View style={styles.starsRow}>
@@ -214,7 +219,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
             })}
           </View>
 
-          <View style={styles.rightPanel}>
+          <View style={[styles.rightPanel, isCompact && styles.rightPanelCompact]}>
             <View style={[styles.suggestionCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
               <View style={styles.suggestionTop}>
                 <View style={styles.botIconWrap}>
@@ -264,7 +269,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
             </FeedbackButton>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
     </LinearGradient>
   );
@@ -278,11 +283,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 18,
     paddingTop: 10,
+    paddingBottom: Layout.spacing.lg,
+    alignItems: "center",
   },
   topBar: {
+    width: "100%",
+    maxWidth: 1040,
     height: 60,
     backgroundColor: "rgba(255,255,255,0.5)",
     borderRadius: 2,
@@ -291,9 +300,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  topBarCompact: {
+    height: "auto",
+    minHeight: 60,
+    alignItems: "stretch",
+    flexDirection: "column",
+    gap: Layout.spacing.sm,
+    paddingVertical: Layout.spacing.sm,
+  },
   studentWrap: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
     gap: 12,
   },
   avatarDot: {
@@ -305,14 +323,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8F0F9",
   },
   studentText: {
+    flex: 1,
     fontSize: 34,
     color: "#1F2F49",
     fontWeight: "700",
+  },
+  studentTextCompact: {
+    fontSize: 24,
+    lineHeight: 30,
   },
   buttonsGroup: {
     flexDirection: "row",
     gap: 10,
     alignItems: "center",
+  },
+  buttonsGroupCompact: {
+    width: "100%",
   },
   homeBtn: {
     flexDirection: "row",
@@ -334,6 +360,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 42,
   },
+  navBtnCompact: {
+    flex: 1,
+  },
   btnText: {
     color: "#5D6D87",
     fontWeight: "700",
@@ -345,9 +374,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   contentRow: {
+    width: "100%",
+    maxWidth: 1040,
     marginTop: 16,
     flexDirection: "row",
     gap: 18,
+  },
+  contentRowCompact: {
+    flexDirection: "column",
   },
   leftPanel: {
     flex: 1,
@@ -361,6 +395,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 18,
+  },
+  scoreRowCompact: {
+    alignItems: "flex-start",
   },
   scoreCircle: {
     width: 106,
@@ -383,6 +420,10 @@ const styles = StyleSheet.create({
     fontSize: 43,
     fontWeight: "800",
     color: "#27354D",
+  },
+  feedbackTitleCompact: {
+    fontSize: 30,
+    lineHeight: 36,
   },
   starsRow: {
     flexDirection: "row",
@@ -452,6 +493,9 @@ const styles = StyleSheet.create({
   rightPanel: {
     width: 260,
     gap: 10,
+  },
+  rightPanelCompact: {
+    width: "100%",
   },
   suggestionCard: {
     backgroundColor: Colors.surface,
