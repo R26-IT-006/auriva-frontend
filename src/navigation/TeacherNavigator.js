@@ -13,11 +13,6 @@ import StudentPickerScreen from "../screens/teacher/students/StudentPickerScreen
 import StudentDashboardScreen from "../screens/teacher/students/StudentDashboardScreen";
 import AvatarSelectionScreen from "../screens/teacher/students/AvatarSelectionScreen";
 import HandwritingNavigator from "./HandwritingNavigator";
-﻿import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/colors';
-import { Layout } from '../constants/layout';
 import DialogueLandingScreen      from '../screens/teacher/students/DialogueLandingScreen';
 import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
@@ -182,7 +177,6 @@ export default function TeacherNavigator() {
       <Stack.Screen name="ConceptMatch"      component={ConceptMatchScreen} />
       <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
       <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
-      <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
       <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
       <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
       <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
