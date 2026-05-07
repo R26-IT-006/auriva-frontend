@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.primary,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,

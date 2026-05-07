@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -31,7 +31,7 @@ const K = {
   amber:      '#C9973A',
   amberLight: '#FBF4E6',
   bg:         '#F2F1F8',
-  banner:     '#3D5A9E',
+  banner:     '#0F3D2E',
 };
 
 function SectionHeader({ icon, label, color, bg }) {
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
 
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xs,
     color: K.amber,
     lineHeight: 18,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
 
   // Buttons

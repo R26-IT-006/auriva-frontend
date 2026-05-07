@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     letterSpacing: 0.3,
   },
 });

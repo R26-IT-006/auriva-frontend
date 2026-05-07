@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.xxl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: Colors.text.primary,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   reqTitle: {
     fontSize: 10,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.muted,
     letterSpacing: 1.2,
     marginBottom: Layout.spacing.sm,

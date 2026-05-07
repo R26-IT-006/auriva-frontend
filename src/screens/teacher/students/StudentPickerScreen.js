@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -13,25 +14,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Avatar } from '../../../components/common/Avatar';
-import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
 import { useToast } from '../../../context/ToastContext';
+import { getAvatarTheme } from '../../../constants/avatarThemes';
 
-const ACCENTS = [
-  { bg: '#E8F5F0', border: '#A8D8CC', text: '#0F6E56' },
-  { bg: '#EAF0FB', border: '#A8BCE8', text: '#2A4FAD' },
-  { bg: '#FDF3E7', border: '#F0C98A', text: '#9A5F10' },
-  { bg: '#F3EAF8', border: '#C9A8E0', text: '#6A2F9A' },
-];
+const COLS     = 3;
+const H_PAD    = 32;
+const CARD_GAP = 20;
 
-function StudentCard({ student, index, size, onPress }) {
-  const accent = ACCENTS[index % ACCENTS.length];
-  const scale = useRef(new Animated.Value(1)).current;
+function StudentCard({ student, cardSize, onPress }) {
+  const theme      = getAvatarTheme(student.avatar_key);
+  const initial    = (student.full_name || '?')[0].toUpperCase();
+  const circleSize = cardSize * 0.52;
+  const scale      = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
-    Animated.spring(scale, { toValue: 1.06, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+    Animated.spring(scale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
   }
   function onPressOut() {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
@@ -47,15 +46,44 @@ function StudentCard({ student, index, size, onPress }) {
         style={[
           styles.card,
           {
-            width: size,
-            height: size,
-            backgroundColor: accent.bg,
-            borderColor: accent.border,
+            width:           cardSize,
+            height:          cardSize * 1.18,
+            backgroundColor: '#FFFFFF',
+            borderColor:     theme.cardOutline,
           },
         ]}
       >
-        <Avatar name={student.full_name} uri={student.profile_photo_url} size={size * 0.62} />
-        <Text style={[styles.cardName, { color: accent.text }]} numberOfLines={2}>
+        {/* Avatar circle — photo or initial */}
+        <View
+          style={[
+            styles.circle,
+            {
+              width:        circleSize,
+              height:       circleSize,
+              borderRadius: circleSize / 2,
+              backgroundColor: theme.cardOutline,
+              borderColor:  'rgba(255,255,255,0.85)',
+            },
+          ]}
+        >
+          {student.profile_photo_url ? (
+            <Image
+              source={{ uri: student.profile_photo_url }}
+              style={{ width: circleSize, height: circleSize, borderRadius: circleSize / 2 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={[styles.initial, { fontSize: circleSize * 0.42, color: '#fff' }]}>
+              {initial}
+            </Text>
+          )}
+        </View>
+
+        {/* Name */}
+        <Text
+          style={[styles.name, { color: '#1A1A1A', fontSize: cardSize * 0.11 }]}
+          numberOfLines={1}
+        >
           {student.full_name}
         </Text>
       </TouchableOpacity>
@@ -64,10 +92,12 @@ function StudentCard({ student, index, size, onPress }) {
 }
 
 export default function StudentPickerScreen({ navigation }) {
-  const { width, height }       = useWindowDimensions();
+  const { width }               = useWindowDimensions();
   const toast                   = useToast();
   const [students, setStudents] = useState([]);
   const [loading,  setLoading]  = useState(true);
+
+  const cardSize = ((width - H_PAD * 2 - CARD_GAP * (COLS - 1)) / COLS) * 0.65;
 
   const load = useCallback(async () => {
     try {
@@ -82,35 +112,32 @@ export default function StudentPickerScreen({ navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const GAP      = Layout.spacing.lg;
-  const PADDING  = Layout.spacing.lg;
-  const cardSize = Math.min(
-    (width - PADDING * 2 - GAP) / 2,
-    Math.min(height * 0.38, 300),
-  );
-
   return (
-    <LinearGradient colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']} style={styles.safe}>
-      <SafeAreaView style={styles.safeInner}>
+    <LinearGradient
+      colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']}
+      style={styles.gradient}
+    >
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={Colors.text.primary} />
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.navigate('WorkspaceSelect')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={22} color="#2A5A48" />
           </TouchableOpacity>
-          <View style={styles.headerText}>
-            <Text style={styles.title}>My Students</Text>
-          </View>
+          <Text style={styles.title}>My Students</Text>
         </View>
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+            <ActivityIndicator size="large" color="#2A5A48" />
           </View>
         ) : students.length === 0 ? (
           <View style={styles.centered}>
-            <View style={styles.emptyIconBox}>
-              <Ionicons name="people-outline" size={48} color={Colors.icon.muted} />
-            </View>
+            <Ionicons name="people-outline" size={52} color="#2A5A48" style={{ opacity: 0.5 }} />
             <Text style={styles.emptyTitle}>No students yet</Text>
             <Text style={styles.emptySub}>
               Ask your principal to assign students to your account.
@@ -120,17 +147,17 @@ export default function StudentPickerScreen({ navigation }) {
           <FlatList
             data={students}
             keyExtractor={(s) => String(s.sid)}
-            numColumns={2}
-            columnWrapperStyle={{ gap: GAP, justifyContent: 'center' }}
-            contentContainerStyle={styles.list}
+            numColumns={COLS}
+            key={COLS}
+            columnWrapperStyle={{ gap: CARD_GAP, justifyContent: 'center' }}
+            contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD, flexGrow: 1, justifyContent: 'center' }]}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item, index }) => (
+            ItemSeparatorComponent={() => <View style={{ height: CARD_GAP }} />}
+            renderItem={({ item }) => (
               <StudentCard
                 student={item}
-                index={index}
-                size={cardSize}
+                cardSize={cardSize}
                 onPress={async () => {
-                  // avatar_key comes from API; fall back to local cache if missing
                   const avatarKey = item.avatar_key
                     ?? await AsyncStorage.getItem(`student_avatar_${item.sid}`);
                   if (!avatarKey) {
@@ -141,7 +168,6 @@ export default function StudentPickerScreen({ navigation }) {
                 }}
               />
             )}
-            ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
           />
         )}
 
@@ -151,86 +177,87 @@ export default function StudentPickerScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  safeInner: { flex: 1 },
+  gradient: { flex: 1 },
+  safe:     { flex: 1 },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.md,
-    gap: Layout.spacing.md,
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: H_PAD,
+    paddingVertical:   16,
+    gap: 10,
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
+    width: 36, height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerText: { flex: 1 },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.text.primary,
-    letterSpacing: -0.5,
-    fontFamily: 'sans-serif-rounded',
-  },
-  subtitle: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.muted,
-    marginTop: 2,
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize:   22,
+    color:      '#1A3D2E',
   },
 
   list: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xxl,
-    paddingTop: Layout.spacing.sm,
+    paddingTop:    8,
+    paddingBottom: 32,
   },
 
   card: {
-    borderRadius: 24,
-    borderWidth: 1.5,
-    alignItems: 'center',
+    borderRadius:   28,
+    borderWidth:    5,
+    alignItems:     'center',
     justifyContent: 'center',
-    gap: Layout.spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 1,
+    gap:            12,
+    shadowColor:    '#000',
+    shadowOffset:   { width: 0, height: 4 },
+    shadowOpacity:  0.08,
+    shadowRadius:   12,
+    elevation:      4,
   },
-  cardName: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: '700',
-    textAlign: 'center',
-    paddingHorizontal: Layout.spacing.sm,
+
+  circle: {
+    borderWidth:    3,
+    alignItems:     'center',
+    justifyContent: 'center',
+    overflow:       'hidden',
+    shadowColor:    '#000',
+    shadowOffset:   { width: 0, height: 2 },
+    shadowOpacity:  0.12,
+    shadowRadius:   6,
+    elevation:      3,
+  },
+
+  initial: {
+    fontFamily: 'Nunito_900Black',
+  },
+
+  name: {
+    fontFamily:        'Nunito_800ExtraBold',
+    textAlign:         'center',
+    paddingHorizontal: 8,
   },
 
   centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Layout.spacing.xl,
-    gap: Layout.spacing.md,
-  },
-  emptyIconBox: {
-    width: 90, height: 90, borderRadius: 24,
-    backgroundColor: Colors.surfaceAlt,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: Layout.spacing.sm,
+    flex:              1,
+    alignItems:        'center',
+    justifyContent:    'center',
+    paddingHorizontal: 32,
+    gap:               12,
   },
   emptyTitle: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.secondary,
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize:   18,
+    color:      '#1A3D2E',
   },
   emptySub: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.muted,
-    textAlign: 'center',
-    lineHeight: 20,
+    fontFamily: 'Nunito_700Bold',
+    fontSize:   14,
+    color:      '#2A5A48',
+    textAlign:  'center',
+    opacity:    0.7,
+    lineHeight: 22,
   },
 });

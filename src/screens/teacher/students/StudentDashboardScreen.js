@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
@@ -19,19 +20,21 @@ import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { useToast } from '../../../context/ToastContext';
 
-const AVATAR_MAP = {
-  boba:     require('../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../assets/avatar-images/Megatron.png'),
+const AVATAR_VIDEOS = {
+  boba:     require('../../../../assets/avatar-videos/BobaGreeting.mp4'),
+  lily:     require('../../../../assets/avatar-videos/LilyGreeting.mp4'),
+  glitter:  require('../../../../assets/avatar-videos/GlitterGreeting.mp4'),
+  megatron: require('../../../../assets/avatar-videos/MegatronGreeting.mp4'),
 };
 
 const AVATAR_NAMES = {
   boba: 'Boba', glitter: 'Glitter', lily: 'Lily', megatron: 'Megatron',
 };
 
+const CONCEPT_ICON = require('../../../../assets/concepts/Concept Learning Module Icon.png');
+
 const MODULES = [
-  { key: 'concept',       label: 'Concept Learning',    icon: 'bulb-outline' },
+  { key: 'concept',       label: 'Concept Learning',    icon: 'bulb-outline',        image: CONCEPT_ICON },
   { key: 'writing',       label: 'Writing Module',       icon: 'pencil-outline' },
   { key: 'pronunciation', label: 'Pronunciation Module', icon: 'mic-outline' },
   { key: 'dialogue',      label: 'Dialogue Module',      icon: 'chatbubbles-outline' },
@@ -41,7 +44,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
   const initialStudent    = route.params?.student;
   const toast             = useToast();
   const logout            = useAuthStore((s) => s.logout);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const [student,       setStudent]       = useState(initialStudent);
   const [logoutVisible, setLogoutVisible] = useState(false);
@@ -63,9 +66,11 @@ export default function StudentDashboardScreen({ route, navigation }) {
   const firstName = student.full_name?.split(' ')[0] ?? student.full_name;
 
   // Card dimensions
-  const H_PAD    = Layout.spacing.lg;
-  const GAP      = 12;
-  const cardSize  = Math.min((width - H_PAD * 2 - GAP) / 2, 175);
+  const isLandscape = width > height;
+  const H_PAD   = Layout.spacing.lg;
+  const GAP     = 12;
+  const COLS    = isLandscape ? 4 : 2;
+  const cardSize = (width - H_PAD * 2 - GAP * (COLS - 1)) / COLS;
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
@@ -78,13 +83,6 @@ export default function StudentDashboardScreen({ route, navigation }) {
         </TouchableOpacity>
 
         <View style={styles.topRight}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('StudentSession', { student })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="person-outline" size={20} color={theme.headingText} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => setLogoutVisible(true)} activeOpacity={0.7}>
             <Ionicons name="log-out-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
@@ -110,13 +108,18 @@ export default function StudentDashboardScreen({ route, navigation }) {
             )}
           </View>
 
-          {/* Avatar image */}
-          {student.avatar_key && (
-            <Image
-              source={AVATAR_MAP[student.avatar_key]}
-              style={styles.heroAvatar}
-              resizeMode="contain"
-            />
+          {/* Avatar image / video */}
+          {student.avatar_key && AVATAR_VIDEOS[student.avatar_key] && (
+            <View style={styles.heroAvatar}>
+              <Video
+                source={AVATAR_VIDEOS[student.avatar_key]}
+                style={StyleSheet.absoluteFill}
+                resizeMode={ResizeMode.CONTAIN}
+                shouldPlay
+                isLooping
+                isMuted
+              />
+            </View>
           )}
         </View>
 
@@ -139,6 +142,8 @@ export default function StudentDashboardScreen({ route, navigation }) {
                 onPress={() => {
                   if (m.key === 'writing') {
                     navigation.navigate('HandwritingModule', { student });
+                  if (m.key === 'concept') {
+                    navigation.navigate('ConceptCategories', { student });
                   } else {
                     setActiveModule(isActive ? null : m.key);
                     toast.show('Coming soon!', 'info');
@@ -150,11 +155,15 @@ export default function StudentDashboardScreen({ route, navigation }) {
                   styles.moduleIconWrap,
                   { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : theme.background },
                 ]}>
-                  <Ionicons
-                    name={m.icon}
-                    size={28}
-                    color={isActive ? theme.buttonText : theme.cardOutline}
-                  />
+                  {m.image ? (
+                    <Image source={m.image} style={styles.moduleIconImage} resizeMode="contain" />
+                  ) : (
+                    <Ionicons
+                      name={m.icon}
+                      size={28}
+                      color={isActive ? theme.buttonText : theme.cardOutline}
+                    />
+                  )}
                 </View>
                 <Text style={[
                   styles.moduleLabel,
@@ -173,7 +182,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
       <ParentGateModal
         visible={gateVisible}
-        onSuccess={() => { setGateVisible(false); navigation.goBack(); }}
+        onSuccess={() => { setGateVisible(false); navigation.navigate('StudentPicker'); }}
         onCancel={() => setGateVisible(false)}
       />
 
@@ -240,11 +249,11 @@ const styles = StyleSheet.create({
   },
   heroGreeting: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
   },
   heroName: {
     fontSize: 26,
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     lineHeight: 32,
     letterSpacing: -0.5,
   },
@@ -258,11 +267,12 @@ const styles = StyleSheet.create({
   },
   avatarBadgeText: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   heroAvatar: {
-    width: 140,
-    height: 160,
+    width: 190,
+    height: 210,
+    marginBottom: -30,
   },
 
   // ── Module grid ──────────────────────────────────────────────
@@ -282,17 +292,19 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  moduleIconImage: { width: 150, height: 150 },
   moduleIconWrap: {
-    width: 52, height: 52,
-    borderRadius: 16,
+    width: 154, height: 154,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
   moduleLabel: {
-    fontSize: Layout.fontSize.sm,
-    fontWeight: '700',
+    fontSize: Layout.fontSize.lg,
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
     paddingHorizontal: 8,
+    marginTop: 10,
     lineHeight: 18,
   },
 

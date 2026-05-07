@@ -1,4 +1,4 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+﻿import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
@@ -12,6 +12,13 @@ import StudentPickerScreen       from '../screens/teacher/students/StudentPicker
 import HandwritingNavigator from './HandwritingNavigator';
 import StudentDashboardScreen     from '../screens/teacher/students/StudentDashboardScreen';
 import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelectionScreen';
+import ConceptCategoriesScreen        from '../screens/teacher/concept/ConceptCategoriesScreen';
+import ConceptItemsScreen            from '../screens/teacher/concept/ConceptItemsScreen';
+import ConceptImageScreen            from '../screens/teacher/concept/ConceptImageScreen';
+import ConceptDemoScreen             from '../screens/teacher/concept/ConceptDemoScreen';
+import ConceptMatchScreen            from '../screens/teacher/concept/ConceptMatchScreen';
+import ConceptCongratulationsScreen  from '../screens/teacher/concept/ConceptCongratulationsScreen';
+import ConceptAdaptiveQuizScreen     from '../screens/teacher/concept/ConceptAdaptiveQuizScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -19,7 +26,7 @@ const Stack = createNativeStackNavigator();
 const stackOptions = {
   headerStyle: { backgroundColor: Colors.surface },
   headerTitleStyle: {
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
     fontSize: Layout.fontSize.lg,
   },
@@ -64,7 +71,7 @@ function TeacherTabs() {
         },
         tabBarLabelStyle: {
           fontSize:   Layout.fontSize.xs,
-          fontWeight: Layout.fontWeight.semibold,
+          fontFamily: 'Nunito_600SemiBold',
         },
         tabBarIcon: ({ color, size, focused }) => {
           const icons = {
@@ -89,7 +96,14 @@ export default function TeacherNavigator() {
       <Stack.Screen name="TeacherMain"     component={TeacherTabs} />
       <Stack.Screen name="StudentPicker"    component={StudentPickerScreen} />
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
-      <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
+      <Stack.Screen name="AvatarSelection"    component={AvatarSelectionScreen} />
+      <Stack.Screen name="ConceptCategories" component={ConceptCategoriesScreen} />
+      <Stack.Screen name="ConceptItems"      component={ConceptItemsScreen} />
+      <Stack.Screen name="ConceptImage"      component={ConceptImageScreen} />
+      <Stack.Screen name="ConceptDemo"       component={ConceptDemoScreen} />
+      <Stack.Screen name="ConceptMatch"      component={ConceptMatchScreen} />
+      <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
+      <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
       <Stack.Screen name="HandwritingModule" component={HandwritingNavigator} options={{ headerShown: false }} />
     </Stack.Navigator>
