@@ -8,10 +8,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function WelcomeScreen({ route, navigation }) {
-  const { student, selectedAvatar, theme } = route.params;
+  const { student, theme } = route.params;
+
+  // avatar_key is lowercase ('boba') — capitalise for display
+  const avatarLabel = student?.avatar_key
+    ? student.avatar_key.charAt(0).toUpperCase() + student.avatar_key.slice(1)
+    : '?';
+
+  // avatarThemes uses 'button'; handwritingThemes uses 'primaryButton' — support both
+  const buttonBg = theme.button ?? theme.primaryButton;
 
   const handleStart = () => {
-    navigation.navigate('ShapeAssessment', { student, selectedAvatar, theme });
+    navigation.navigate('Instructions', { student, theme });
   };
 
   return (
@@ -34,7 +42,7 @@ export default function WelcomeScreen({ route, navigation }) {
             </Text>
             <View style={[styles.smallCircle, { backgroundColor: theme.cardOutline }]}>
               <Text style={styles.smallInitial}>
-                {selectedAvatar.charAt(0)}
+                {avatarLabel.charAt(0)}
               </Text>
             </View>
           </View>
@@ -47,7 +55,7 @@ export default function WelcomeScreen({ route, navigation }) {
         {/* Bottom row: Start button + large avatar circle */}
         <View style={styles.bottomRow}>
           <TouchableOpacity
-            style={[styles.startButton, { backgroundColor: theme.primaryButton }]}
+            style={[styles.startButton, { backgroundColor: buttonBg }]}
             onPress={handleStart}
             activeOpacity={0.85}
           >
@@ -58,7 +66,7 @@ export default function WelcomeScreen({ route, navigation }) {
 
           <View style={[styles.largeCircle, { backgroundColor: theme.cardOutline }]}>
             <Text style={styles.largeInitial}>
-              {selectedAvatar.charAt(0)}
+              {avatarLabel.charAt(0)}
             </Text>
           </View>
         </View>
