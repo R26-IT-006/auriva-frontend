@@ -10,7 +10,6 @@ import {
   Platform,
   Alert,
   useWindowDimensions,
-  Pressable,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,10 +19,11 @@ import { Input } from '../../components/common/Input';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { useAuthStore } from '../../store/authStore';
+import { ButtonFeedback } from '../../components/common/ButtonFeedback';
 
 function RolePill({ label, active, onPress }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       onPress={onPress}
       activeOpacity={0.8}
       style={[styles.rolePill, active && styles.rolePillActive]}
@@ -31,7 +31,7 @@ function RolePill({ label, active, onPress }) {
       <Text style={[styles.rolePillText, active && styles.rolePillTextActive]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -135,9 +135,9 @@ export default function LoginScreen({ navigation }) {
         </TouchableOpacity>
 
         {role === 'teacher' && (
-          <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPasswordRow}>
+          <ButtonFeedback onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPasswordRow}>
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </Pressable>
+          </ButtonFeedback>
         )}
       </View>
     </View>
