@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   Vibration,
 } from "react-native";
+import { Audio } from "expo-av";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +25,10 @@ import {
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
+
+const EXPECTED_PRONUNCIATION_SCORE = 80;
+const WELL_DONE_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/well-done-female.mp3");
+const HOORAY_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/hooray-female.mp3");
 
 function ProgressRow({ label, value, barColor }) {
   return (
@@ -125,6 +130,8 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const rawAudioSize = usePronunciationSessionStore(
     (state) => state.rawAudioSize,
   );
+  const celebrationSoundsRef = useRef([]);
+  const hasPlayedCelebrationAudioRef = useRef(false);
   const numberOfAttempts = usePronunciationSessionStore(
     (state) => state.numberOfAttempts,
   );
@@ -146,7 +153,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const currentWord =
     words.find((item) => item.id === wordId) || sessionWord || words[0];
   const displayScore = mockWordScore ?? 69;
-  const isHighScore = displayScore >= 80;
+  const isHighScore = displayScore >= EXPECTED_PRONUNCIATION_SCORE;
   const phonemeScores = mockPhonemeScores?.length
     ? mockPhonemeScores
     : null;
@@ -223,6 +230,69 @@ export default function PronunciationResultScreen({ navigation, route }) {
     { text: "/t/", score: 76 },
   ];
 
+  async function unloadCelebrationSounds() {
+    const soundsToUnload = celebrationSoundsRef.current;
+    celebrationSoundsRef.current = [];
+
+    await Promise.all(
+      soundsToUnload.map((sound) => sound.unloadAsync().catch(() => {})),
+    );
+  }
+
+  async function playCelebrationAudio() {
+    if (hasPlayedCelebrationAudioRef.current) return;
+    hasPlayedCelebrationAudioRef.current = true;
+
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+      });
+      await unloadCelebrationSounds();
+
+      const { sound: wellDoneSound } = await Audio.Sound.createAsync(
+        WELL_DONE_AUDIO_ASSET,
+        { shouldPlay: true, volume: 1 },
+      );
+      celebrationSoundsRef.current = [wellDoneSound];
+
+      wellDoneSound.setOnPlaybackStatusUpdate(async (status) => {
+        if (!status.isLoaded || !status.didJustFinish) return;
+
+        wellDoneSound.setOnPlaybackStatusUpdate(null);
+
+        try {
+          const { sound: hooraySound } = await Audio.Sound.createAsync(
+            HOORAY_AUDIO_ASSET,
+            { shouldPlay: true, volume: 0.95 },
+          );
+          celebrationSoundsRef.current = [
+            ...celebrationSoundsRef.current,
+            hooraySound,
+          ];
+          hooraySound.setOnPlaybackStatusUpdate((hoorayStatus) => {
+            if (!hoorayStatus.isLoaded || !hoorayStatus.didJustFinish) return;
+            hooraySound.unloadAsync().catch(() => {});
+            celebrationSoundsRef.current = celebrationSoundsRef.current.filter(
+              (sound) => sound !== hooraySound,
+            );
+          });
+        } catch (error) {
+          console.log("Hooray audio playback error:", error.message);
+        } finally {
+          wellDoneSound.unloadAsync().catch(() => {});
+          celebrationSoundsRef.current = celebrationSoundsRef.current.filter(
+            (sound) => sound !== wellDoneSound,
+          );
+        }
+      });
+    } catch (error) {
+      hasPlayedCelebrationAudioRef.current = false;
+      console.log("Celebration audio playback error:", error.message);
+    }
+  }
+
   useEffect(() => {
     if (hasSavedResultRef.current || !student?.sid || !currentWord?.id) return;
 
@@ -281,6 +351,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
   useEffect(() => {
     if (isHighScore) {
       Vibration.vibrate(35);
+      playCelebrationAudio();
 
       const animations = confettiPieces.map((piece, index) => {
         piece.progress.setValue(0);
@@ -294,7 +365,10 @@ export default function PronunciationResultScreen({ navigation, route }) {
       });
 
       Animated.stagger(8, animations).start();
-      return;
+      return () => {
+        hasPlayedCelebrationAudioRef.current = false;
+        unloadCelebrationSounds();
+      };
     }
 
     const pulseLoop = Animated.loop(
