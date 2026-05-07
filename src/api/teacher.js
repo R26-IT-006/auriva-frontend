@@ -52,4 +52,11 @@ export const teacherApi = {
     );
     return data;
   },
+
+  async getPronunciationResultAudio(resultId) {
+    const { data } = await client.get(
+      ENDPOINTS.TEACHER_PRONUNCIATION_RESULT_AUDIO(resultId)
+    );
+    return data;
+  },
 };

@@ -14,6 +14,42 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result || "";
+      resolve(String(result).split(",")[1] || "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function uriToBlob(uri) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = () => resolve(xhr.response);
+    xhr.onerror = reject;
+    xhr.responseType = "blob";
+    xhr.open("GET", uri, true);
+    xhr.send(null);
+  });
+}
+
+async function readAudioClip(uri) {
+  if (!uri) return null;
+
+  const blob = await uriToBlob(uri);
+  const rawAudioBase64 = await blobToBase64(blob);
+
+  return {
+    rawAudioBase64,
+    rawAudioMimeType: blob.type || "audio/mp4",
+    rawAudioSize: blob.size || null,
+  };
+}
+
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
@@ -184,9 +220,16 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     try {
       await currentRecording.stopAndUnloadAsync();
       const uri = currentRecording.getURI();
+      let audioData = null;
+      try {
+        audioData = await readAudioClip(uri);
+      } catch (error) {
+        console.log("Unable to read raw pronunciation audio:", error.message);
+      }
+
       setSavedRecordingUri(uri);
       setLastRecordingDuration(durationSeconds);
-      setRecordingUri(uri, durationSeconds);
+      setRecordingUri(uri, durationSeconds, audioData);
       Alert.alert(
         "Recording saved",
         uri

@@ -261,6 +261,9 @@ const initialSessionState = {
   currentActivityStep: PRONUNCIATION_STEPS.SETUP,
   numberOfAttempts: 0,
   recordingUri: null,
+  rawAudioBase64: null,
+  rawAudioMimeType: null,
+  rawAudioSize: null,
   mockWordScore: null,
   mockPhonemeScores: [],
   responseDuration: null,
@@ -428,6 +431,9 @@ export const usePronunciationSessionStore = create((set, get) => ({
     set({
       selectedWord: word || null,
       recordingUri: null,
+      rawAudioBase64: null,
+      rawAudioMimeType: null,
+      rawAudioSize: null,
       mockWordScore: null,
       mockPhonemeScores: [],
       responseDuration: null,
@@ -441,9 +447,12 @@ export const usePronunciationSessionStore = create((set, get) => ({
     set({ currentActivityStep: step });
   },
 
-  setRecordingUri(recordingUri, responseDuration = null) {
+  setRecordingUri(recordingUri, responseDuration = null, audioData = {}) {
     set({
       recordingUri: recordingUri || null,
+      rawAudioBase64: audioData.rawAudioBase64 || null,
+      rawAudioMimeType: audioData.rawAudioMimeType || null,
+      rawAudioSize: audioData.rawAudioSize || null,
       responseDuration,
     });
   },
