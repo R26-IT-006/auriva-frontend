@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -55,6 +56,10 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
 
   function handleStartSession() {
     navigation.navigate("PronunciationSessionSetup", { student });
+  }
+
+  function handleViewPronunciationResults() {
+    navigation.navigate("PronunciationResultsHistory", { student });
   }
 
   if (!student) return null;
@@ -116,12 +121,25 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
               />
             </View>
           ) : (
-            <View style={styles.progressBlock}>
-              <Text style={styles.progressTitle}>Session Progress</Text>
-              <Text style={styles.progressHint}>
-                Completed words for this student will appear here.
-              </Text>
-            </View>
+            <TouchableOpacity
+              style={styles.progressAction}
+              activeOpacity={0.82}
+              onPress={handleViewPronunciationResults}
+            >
+              <View style={styles.progressBlock}>
+                <Text style={styles.progressTitle}>Pronunciation Sessions</Text>
+                <Text style={styles.progressHint}>
+                  Review saved session scores and sound breakdowns.
+                </Text>
+              </View>
+              <View style={styles.progressIcon}>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={Colors.primary}
+                />
+              </View>
+            </TouchableOpacity>
           )}
         </Card>
 
@@ -237,7 +255,22 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   progressBlock: {
+    flex: 1,
     minHeight: 54,
+    justifyContent: "center",
+  },
+  progressAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Layout.spacing.md,
+  },
+  progressIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.status.infoLight,
+    alignItems: "center",
     justifyContent: "center",
   },
   progressTitle: {

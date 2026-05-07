@@ -45,4 +45,11 @@ export const teacherApi = {
     );
     return data;
   },
+
+  async getPronunciationResults(studentId) {
+    const { data } = await client.get(
+      ENDPOINTS.TEACHER_PRONUNCIATION_RESULTS(studentId)
+    );
+    return data;
+  },
 };

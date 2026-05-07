@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
+import {
+  Animated,
+  Easing,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  useWindowDimensions,
+} from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -43,6 +51,32 @@ function FeedbackButton({ onPress, style, activeOpacity = 0.92, children }) {
   );
 }
 
+function ConfettiBurst({ pieces }) {
+  return (
+    <View pointerEvents="none" style={styles.confettiLayer}>
+      {pieces.map((piece) => (
+        <Animated.View
+          key={piece.id}
+          style={[
+            styles.confettiPiece,
+            {
+              backgroundColor: piece.color,
+              left: piece.left,
+              top: piece.top,
+              opacity: piece.opacity,
+              transform: [
+                { translateY: piece.translateY },
+                { rotate: piece.rotate },
+                { scale: piece.scale },
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
 function getScoreBarColor(score) {
   if (score >= 80) return "#9ECC9F";
   if (score >= 60) return "#E6C47A";
@@ -81,6 +115,8 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const numberOfAttempts = usePronunciationSessionStore(
     (state) => state.numberOfAttempts,
   );
+  const lowScorePulse = useRef(new Animated.Value(1)).current;
+  const lowScoreShake = useRef(new Animated.Value(0)).current;
   const setSelectedWord = usePronunciationSessionStore(
     (state) => state.setSelectedWord,
   );
@@ -97,10 +133,53 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const currentWord =
     words.find((item) => item.id === wordId) || sessionWord || words[0];
   const displayScore = mockWordScore ?? 69;
+  const isHighScore = displayScore >= 80;
   const phonemeScores = mockPhonemeScores?.length
     ? mockPhonemeScores
     : null;
   const responseDuration = storedResponseDuration ?? 1.3;
+  const confettiPieces = useMemo(
+    () =>
+      Array.from({ length: 24 }, (_, index) => {
+        const progress = new Animated.Value(0);
+        const translateY = progress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 120 + (index % 4) * 18],
+        });
+        const rotate = progress.interpolate({
+          inputRange: [0, 1],
+          outputRange: ["0deg", `${180 + index * 24}deg`],
+        });
+        const opacity = progress.interpolate({
+          inputRange: [0, 0.2, 0.82, 1],
+          outputRange: [0, 1, 1, 0],
+        });
+        const scale = progress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.8, 1.08],
+        });
+
+        return {
+          id: index,
+          progress,
+          translateY,
+          rotate,
+          opacity,
+          scale,
+          left: `${8 + ((index * 17) % 84)}%`,
+          top: 12 + (index % 3) * 10,
+          color: ["#F7C948", "#5CC9A7", "#7FA8F8", "#F28B82", "#B794F4"][
+            index % 5
+          ],
+        };
+      }),
+    [],
+  );
+
+  const lowScoreTranslateX = lowScoreShake.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-8, 8],
+  });
 
   const nextWord = useMemo(() => {
     const currentIndex = words.findIndex((item) => item.id === currentWord?.id);
@@ -164,6 +243,70 @@ export default function PronunciationResultScreen({ navigation, route }) {
     sounds,
     student?.sid,
   ]);
+
+  useEffect(() => {
+    if (isHighScore) {
+      const animations = confettiPieces.map((piece, index) => {
+        piece.progress.setValue(0);
+        return Animated.timing(piece.progress, {
+          toValue: 1,
+          duration: 1700 + (index % 4) * 120,
+          delay: index * 28,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        });
+      });
+
+      Animated.stagger(8, animations).start();
+      return;
+    }
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(lowScorePulse, {
+          toValue: 1.08,
+          duration: 420,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(lowScorePulse, {
+          toValue: 1,
+          duration: 420,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    const shakeLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(lowScoreShake, {
+          toValue: 1,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(lowScoreShake, {
+          toValue: -1,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(lowScoreShake, {
+          toValue: 0,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+        Animated.delay(850),
+      ]),
+    );
+
+    pulseLoop.start();
+    shakeLoop.start();
+
+    return () => {
+      pulseLoop.stop();
+      shakeLoop.stop();
+    };
+  }, [confettiPieces, isHighScore, lowScorePulse, lowScoreShake]);
 
   function handleGoDashboard() {
     navigation.navigate("PronunciationSessionSetup", { student });
@@ -229,87 +372,73 @@ export default function PronunciationResultScreen({ navigation, route }) {
           </View>
         </View>
 
-        <View style={[styles.contentRow, isCompact && styles.contentRowCompact]}>
-          <View style={[styles.leftPanel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-            <View style={[styles.scoreRow, isCompact && styles.scoreRowCompact]}>
-              <View style={[styles.scoreCircle, { borderColor: theme.button }]}>
-                <Text style={[styles.scoreText, { color: theme.headingText }]}>{displayScore} %</Text>
-              </View>
+        <View style={styles.studentResultWrap}>
+          <View
+            style={[
+              styles.studentResultCard,
+              {
+                backgroundColor: theme.cardSurface,
+                borderColor: isHighScore ? theme.cardOutline : "#FFB7C4",
+              },
+            ]}
+          >
+            {isHighScore && <ConfettiBurst pieces={confettiPieces} />}
 
-              <View style={styles.summaryWrap}>
-                <Text style={[styles.feedbackTitle, isCompact && styles.feedbackTitleCompact, { color: theme.headingText }]}>
-                  {displayScore >= 80 ? "Great Job!" : "Good Try!"}
+            {isHighScore ? (
+              <View style={styles.celebrationContent}>
+                <View
+                  style={[
+                    styles.resultIconWrap,
+                    { backgroundColor: theme.background },
+                  ]}
+                >
+                  <Ionicons name="sparkles" size={44} color={theme.button} />
+                </View>
+                <Text
+                  style={[
+                    styles.studentResultTitle,
+                    isCompact && styles.studentResultTitleCompact,
+                    { color: theme.headingText },
+                  ]}
+                >
+                  Great Job
                 </Text>
-                <View style={styles.starsRow}>
-                  {[0, 1, 2, 3, 4].map((star) => (
-                    <Ionicons
-                      key={star}
-                      name={star < 3 ? "star-outline" : "star-outline"}
-                      size={24}
-                      color={star < 3 ? "#E9BC63" : "#D8DEE8"}
-                    />
-                  ))}
-                </View>
-                <View style={styles.responseChip}>
-                  <Ionicons name="time-outline" size={14} color="#6B7C95" />
-                  <Text style={styles.responseChipText}>
-                    {responseDuration} s response
-                    {hesitationTime ? ` - ${hesitationTime} s pause` : ""}
-                  </Text>
-                </View>
               </View>
-            </View>
-
-            <Text style={styles.breakdownTitle}>Sound Breakdown</Text>
-
-            {sounds.map((sound, index) => {
-              const value = sound.score || [91, 40, 76][index] || displayScore;
-              return (
-                <ProgressRow
-                  key={`${sound.text}-${index}`}
-                  label={sound.text || "/-/"}
-                  value={value}
-                  barColor={getScoreBarColor(value)}
-                />
-              );
-            })}
+            ) : (
+              <Animated.View
+                style={[
+                  styles.lowScoreContent,
+                  {
+                    transform: [
+                      { translateX: lowScoreTranslateX },
+                      { scale: lowScorePulse },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.lowScoreIconWrap}>
+                  <Ionicons name="refresh-circle" size={52} color="#FF4D6D" />
+                </View>
+                <Text
+                  style={[
+                    styles.studentResultTitle,
+                    styles.lowScoreTitle,
+                    isCompact && styles.studentResultTitleCompact,
+                  ]}
+                >
+                  Keep Practicing
+                </Text>
+              </Animated.View>
+            )}
           </View>
 
-          <View style={[styles.rightPanel, isCompact && styles.rightPanelCompact]}>
-            <View style={[styles.suggestionCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-              <View style={styles.suggestionTop}>
-                <View style={styles.botIconWrap}>
-                  <Ionicons name="happy-outline" size={16} color="#4587AF" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.suggestionTitle}>
-                    Adaptive Suggestion
-                  </Text>
-                  <Text style={styles.suggestionCopy}>
-                    {recommendation?.message ||
-                      (isAlphabetMode
-                        ? "Let's try another letter at the same level."
-                        : "Let's try another word at the same level.")}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.nextWordCard}>
-                <Text style={styles.nextWordHint}>
-                  {isAlphabetMode ? "Next Letter" : "Next Word"}
-                </Text>
-                <Text style={styles.nextWordText}>
-                  {isAlphabetMode ? nextWord?.letter || "B" : nextWord?.word || "dog"}
-                </Text>
-              </View>
-            </View>
-
+          <View style={[styles.studentActions, isCompact && styles.studentActionsCompact]}>
             <FeedbackButton
               style={styles.tryAgainBtn}
               activeOpacity={0.9}
               onPress={handleTryAgain}
             >
-              <Ionicons name="refresh-outline" size={26} color="#4B5B72" />
+              <Ionicons name="refresh-outline" size={24} color="#4B5B72" />
               <Text style={styles.tryAgainText}>Try Again</Text>
             </FeedbackButton>
 
@@ -438,6 +567,80 @@ const styles = StyleSheet.create({
   },
   contentRowCompact: {
     flexDirection: "column",
+  },
+  studentResultWrap: {
+    width: "100%",
+    maxWidth: 760,
+    marginTop: 22,
+    alignItems: "center",
+  },
+  studentResultCard: {
+    width: "100%",
+    minHeight: 360,
+    borderRadius: 24,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    padding: Layout.spacing.lg,
+  },
+  celebrationContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Layout.spacing.lg,
+  },
+  lowScoreContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Layout.spacing.lg,
+  },
+  resultIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lowScoreIconWrap: {
+    width: 106,
+    height: 106,
+    borderRadius: 53,
+    backgroundColor: "#FFF0F3",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFB7C4",
+  },
+  studentResultTitle: {
+    fontSize: 58,
+    lineHeight: 68,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  studentResultTitleCompact: {
+    fontSize: 38,
+    lineHeight: 46,
+  },
+  lowScoreTitle: {
+    color: "#FF4D6D",
+  },
+  studentActions: {
+    width: "100%",
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  studentActionsCompact: {
+    flexDirection: "column",
+  },
+  confettiLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  confettiPiece: {
+    position: "absolute",
+    width: 10,
+    height: 18,
+    borderRadius: 3,
   },
   leftPanel: {
     flex: 1,

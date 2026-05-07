@@ -19,6 +19,7 @@ import PronunciationLearnWordScreen from "../screens/teacher/students/modules/pr
 import PronunciationMouthShapeScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationMouthShapeScreen";
 import PronunciationSpeakWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSpeakWordScreen";
 import PronunciationResultScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultScreen";
+import PronunciationResultsHistoryScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultsHistoryScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -151,6 +152,10 @@ export default function TeacherNavigator() {
       <Stack.Screen
         name="PronunciationResult"
         component={PronunciationResultScreen}
+      />
+      <Stack.Screen
+        name="PronunciationResultsHistory"
+        component={PronunciationResultsHistoryScreen}
       />
     </Stack.Navigator>
   );
