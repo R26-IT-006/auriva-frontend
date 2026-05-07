@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -51,6 +52,42 @@ function PhonemeRow({ item }) {
       </View>
       <Text style={styles.phonemeScore}>{score}%</Text>
     </View>
+  );
+}
+
+function SessionTab({ result, isSelected, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[styles.sessionTab, isSelected && styles.sessionTabActive]}
+      activeOpacity={0.82}
+      onPress={onPress}
+    >
+      <View style={styles.sessionTabTop}>
+        <Text
+          style={[
+            styles.sessionTitle,
+            isSelected && styles.sessionTitleActive,
+          ]}
+          numberOfLines={1}
+        >
+          Session {result.session_number}
+        </Text>
+        <View
+          style={[
+            styles.scorePill,
+            { backgroundColor: getScoreColor(result.overall_score) },
+          ]}
+        >
+          <Text style={styles.scorePillText}>{result.overall_score}%</Text>
+        </View>
+      </View>
+      <Text style={styles.sessionWord} numberOfLines={1}>
+        {result.word_label || "Pronunciation"}
+      </Text>
+      <Text style={styles.sessionMeta} numberOfLines={1}>
+        {formatDateTime(result.created_at)}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -189,51 +226,31 @@ export default function PronunciationResultsHistoryScreen({ route }) {
           </View>
         ) : (
           <>
-            <Text style={styles.sectionTitle}>Sessions</Text>
-            <View style={styles.sessionList}>
-              {results.map((result) => {
-                const isSelected = selectedResult?.id === result.id;
-                return (
-                  <TouchableOpacity
-                    key={result.id}
-                    style={[
-                      styles.sessionCard,
-                      isSelected && styles.sessionCardActive,
-                    ]}
-                    activeOpacity={0.82}
-                    onPress={() => setSelectedId(result.id)}
-                  >
-                    <View>
-                      <Text
-                        style={[
-                          styles.sessionTitle,
-                          isSelected && styles.sessionTitleActive,
-                        ]}
-                      >
-                        Session {result.session_number}
-                      </Text>
-                      <Text style={styles.sessionMeta}>
-                        {formatDateTime(result.created_at)}
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.scorePill,
-                        { backgroundColor: getScoreColor(result.overall_score) },
-                      ]}
-                    >
-                      <Text style={styles.scorePillText}>
-                        {result.overall_score}%
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Sessions</Text>
+              <Text style={styles.sectionHint}>Tap a session to view it</Text>
             </View>
+            <FlatList
+              horizontal
+              data={results}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => (
+                <SessionTab
+                  result={item}
+                  isSelected={selectedResult?.id === item.id}
+                  onPress={() => setSelectedId(item.id)}
+                />
+              )}
+              contentContainerStyle={styles.sessionTabs}
+              showsHorizontalScrollIndicator={false}
+              initialNumToRender={8}
+              maxToRenderPerBatch={8}
+              windowSize={5}
+            />
 
             {selectedResult && (
               <>
-                <Text style={styles.sectionTitle}>Session Details</Text>
+                <Text style={styles.detailSectionTitle}>Session Details</Text>
                 <View style={styles.detailCard}>
                   <View style={styles.detailTop}>
                     <View>
@@ -324,17 +341,23 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                     <TouchableOpacity
                       style={[
                         styles.playButton,
-                        !selectedResult.has_raw_audio && styles.playButtonDisabled,
+                        !selectedResult.has_raw_audio &&
+                          styles.playButtonDisabled,
                       ]}
                       activeOpacity={0.82}
-                      disabled={!selectedResult.has_raw_audio || loadingAudioId === selectedResult.id}
+                      disabled={
+                        !selectedResult.has_raw_audio ||
+                        loadingAudioId === selectedResult.id
+                      }
                       onPress={() => handlePlayAudio(selectedResult)}
                     >
                       {loadingAudioId === selectedResult.id ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
                         <Ionicons
-                          name={playingId === selectedResult.id ? "stop" : "play"}
+                          name={
+                            playingId === selectedResult.id ? "stop" : "play"
+                          }
                           size={16}
                           color="#FFFFFF"
                         />
@@ -410,7 +433,26 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
     fontWeight: Layout.fontWeight.bold,
+  },
+  detailSectionTitle: {
+    fontSize: Layout.fontSize.md,
+    color: Colors.text.primary,
+    fontWeight: Layout.fontWeight.bold,
     marginBottom: Layout.spacing.sm,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Layout.spacing.md,
+    marginBottom: Layout.spacing.sm,
+  },
+  sectionHint: {
+    flexShrink: 1,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    fontWeight: Layout.fontWeight.semibold,
+    textAlign: "right",
   },
   emptyCard: {
     minHeight: 180,
@@ -434,38 +476,54 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.sm,
   },
-  sessionList: { gap: Layout.spacing.sm, marginBottom: Layout.spacing.lg },
-  sessionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  sessionTabs: {
+    gap: Layout.spacing.sm,
+    paddingBottom: Layout.spacing.lg,
+  },
+  sessionTab: {
+    width: 188,
     borderWidth: 1,
     borderColor: Colors.borderLight,
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surface,
     padding: Layout.spacing.md,
   },
-  sessionCardActive: {
+  sessionTabActive: {
     borderColor: Colors.primary,
     backgroundColor: Colors.status.infoLight,
   },
+  sessionTabTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Layout.spacing.sm,
+  },
   sessionTitle: {
-    fontSize: Layout.fontSize.md,
+    flex: 1,
+    fontSize: Layout.fontSize.sm,
     color: Colors.text.primary,
     fontWeight: Layout.fontWeight.bold,
   },
   sessionTitleActive: { color: Colors.primary },
+  sessionWord: {
+    marginTop: Layout.spacing.sm,
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.md,
+    fontWeight: Layout.fontWeight.bold,
+    textTransform: "capitalize",
+  },
   sessionMeta: {
     marginTop: 3,
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
   },
   scorePill: {
-    minWidth: 58,
-    height: 34,
-    borderRadius: 17,
+    minWidth: 50,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: Layout.spacing.sm,
   },
   scorePillText: {
     color: "#FFFFFF",
