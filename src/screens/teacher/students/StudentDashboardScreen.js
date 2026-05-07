@@ -140,6 +140,8 @@ export default function StudentDashboardScreen({ route, navigation }) {
                   },
                 ]}
                 onPress={() => {
+                  if (m.key === 'writing') {
+                    navigation.navigate('HandwritingModule', { student });
                   if (m.key === 'concept') {
                     navigation.navigate('ConceptCategories', { student });
                   } else {

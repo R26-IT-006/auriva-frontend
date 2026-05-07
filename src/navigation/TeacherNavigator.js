@@ -7,8 +7,9 @@ import { Layout } from '../constants/layout';
 import TeacherDashboardScreen    from '../screens/teacher/DashboardScreen';
 import TeacherStudentListScreen  from '../screens/teacher/students/StudentListScreen';
 import TeacherStudentDetailScreen from '../screens/teacher/students/StudentDetailScreen';
-import WorkspaceSelectScreen      from '../screens/teacher/WorkspaceSelectScreen';
-import StudentPickerScreen        from '../screens/teacher/students/StudentPickerScreen';
+import WorkspaceSelectScreen     from '../screens/teacher/WorkspaceSelectScreen';
+import StudentPickerScreen       from '../screens/teacher/students/StudentPickerScreen';
+import HandwritingNavigator from './HandwritingNavigator';
 import StudentDashboardScreen     from '../screens/teacher/students/StudentDashboardScreen';
 import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelectionScreen';
 import ConceptCategoriesScreen        from '../screens/teacher/concept/ConceptCategoriesScreen';
@@ -104,6 +105,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
       <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
+      <Stack.Screen name="HandwritingModule" component={HandwritingNavigator} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
