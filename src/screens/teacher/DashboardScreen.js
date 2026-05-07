@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../../components/common/Avatar';
@@ -65,7 +66,11 @@ export default function TeacherDashboardScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useFocusEffect(
+    useCallback(() => {
+      fetch();
+    }, [fetch])
+  );
 
   const profile = data?.profile;
   const stats   = data?.stats;
@@ -153,6 +158,14 @@ export default function TeacherDashboardScreen({ navigation }) {
               <View style={styles.lastSessionBody}>
                 <Text style={styles.lastSessionName}>{stats.lastSession.studentName}</Text>
                 <Text style={styles.lastSessionCode}>{stats.lastSession.studentCode}</Text>
+                {!!stats.lastSession.wordLabel && (
+                  <Text style={styles.lastSessionWord}>
+                    {stats.lastSession.wordLabel}
+                    {Number.isInteger(stats.lastSession.score)
+                      ? ` - ${stats.lastSession.score}%`
+                      : ''}
+                  </Text>
+                )}
                 <Text style={styles.lastSessionDate}>{formatDateTime(stats.lastSession.date)}</Text>
               </View>
               <View style={styles.lastSessionBadge}>
@@ -343,6 +356,12 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xs,
     color: Colors.text.link,
     marginTop: 2,
+  },
+  lastSessionWord: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.text.secondary,
+    marginTop: 3,
+    textTransform: 'capitalize',
   },
   lastSessionDate: {
     fontSize: Layout.fontSize.xs,
