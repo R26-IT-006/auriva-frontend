@@ -44,7 +44,7 @@ export default function DialogueLandingScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <TouchableOpacity
             style={[styles.iconBtn, { borderColor: theme.cardOutline }]}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.navigate('StudentDashboard', { student })}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
@@ -80,7 +80,13 @@ export default function DialogueLandingScreen({ route, navigation }) {
                     },
                   ]}
                   activeOpacity={0.82}
-                  onPress={() => { /* navigate to level screen when built */ }}
+                  onPress={() => {
+                    if (level.key === 'level1') {
+                      navigation.navigate('DialogueCategory', { student });
+                    } else if (level.key === 'level2') {
+                      navigation.navigate('L2TopicSelection', { student });
+                    }
+                  }}
                 >
                   <Text style={[styles.levelLabel, { color: c.text }]}>
                     {level.label}

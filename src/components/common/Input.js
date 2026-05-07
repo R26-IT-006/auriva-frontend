@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   TextInput,
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.secondary,
     marginBottom: Layout.spacing.xs,
     letterSpacing: 0.2,

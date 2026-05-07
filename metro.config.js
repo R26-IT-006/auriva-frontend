@@ -9,5 +9,7 @@ if (!config.resolver.assetExts.includes('mp4')) {
 if (!config.resolver.assetExts.includes('mov')) {
   config.resolver.assetExts.push('mov');
 }
+// Allow Metro to bundle 3D model files
+config.resolver.assetExts = [...config.resolver.assetExts, 'glb', 'gltf', 'bin'];
 
 module.exports = config;
