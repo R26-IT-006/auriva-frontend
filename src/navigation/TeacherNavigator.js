@@ -10,6 +10,7 @@ import TeacherStudentListScreen  from '../screens/teacher/students/StudentListSc
 import TeacherStudentDetailScreen from '../screens/teacher/students/StudentDetailScreen';
 import WorkspaceSelectScreen     from '../screens/teacher/WorkspaceSelectScreen';
 import StudentPickerScreen       from '../screens/teacher/students/StudentPickerScreen';
+import HandwritingNavigator from './HandwritingNavigator';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -86,7 +87,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="WorkspaceSelect" component={WorkspaceSelectScreen} />
       <Stack.Screen name="TeacherMain"     component={TeacherTabs} />
       <Stack.Screen name="StudentPicker"   component={StudentPickerScreen} />
-      <Stack.Screen name="StudentSession"  component={TeacherStudentDetailScreen} />
+      <Stack.Screen name="StudentSession"  component={HandwritingNavigator} />
     </Stack.Navigator>
   );
 }
