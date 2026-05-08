@@ -9,20 +9,12 @@ import {
   BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
-
-const WORD_LABELS = {
-  thank_you:        'THANK YOU',
-  im_sorry:         "I'M SORRY",
-  youre_welcome:    "YOU'RE WELCOME",
-  excuse_me: 'EXCUSE ME',
-};
 
 const AVATAR_DANCING_VIDEOS = {
   lily:     require('../../../../../assets/avatar-videos/LilyDancing.mp4'),
@@ -33,22 +25,19 @@ const AVATAR_DANCING_VIDEOS = {
 
 const PROGRESS_FRACTION = 0.08;
 
-export default function MagicWordLandingScreen({ route, navigation }) {
-  const { student, wordKey = 'thank_you', wordId } = route.params ?? {};
+export default function Cat3LandingScreen({ route, navigation }) {
+  const { student, wordId, wordKey, wordLabel = '' } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
-  const wordLabel = WORD_LABELS[wordKey] ?? wordKey.replace(/_/g, ' ').toUpperCase();
 
-  const avatarKey = student?.avatar_key ?? 'lily';
+  const avatarKey   = student?.avatar_key ?? 'lily';
   const videoSource = AVATAR_DANCING_VIDEOS[avatarKey] ?? AVATAR_DANCING_VIDEOS.lily;
 
   const videoRef = useRef(null);
-
-  const [showGate, setShowGate]         = useState(false);
+  const [showGate,     setShowGate]     = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [gatePurpose, setGatePurpose]   = useState('settings');
+  const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
 
-  // Stop audio when navigating away; also intercept Android hardware back
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -63,10 +52,7 @@ export default function MagicWordLandingScreen({ route, navigation }) {
     }, [])
   );
 
-  function openSettings() {
-    setGatePurpose('settings');
-    setShowGate(true);
-  }
+  function openSettings() { setGatePurpose('settings'); setShowGate(true); }
 
   function onGateSuccess() {
     setShowGate(false);
@@ -79,14 +65,9 @@ export default function MagicWordLandingScreen({ route, navigation }) {
   }
 
   function closeSettings() {
-    Animated.timing(settingsFade, { toValue: 0, duration: 150, useNativeDriver: true }).start(() =>
-      setShowSettings(false)
+    Animated.timing(settingsFade, { toValue: 0, duration: 150, useNativeDriver: true }).start(
+      () => setShowSettings(false)
     );
-  }
-
-  function handleSkipWord() {
-    closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
 
   function handleExitSession() {
@@ -94,13 +75,14 @@ export default function MagicWordLandingScreen({ route, navigation }) {
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
 
+  const isStandalone = wordKey === 'cat3_yes' || wordKey === 'cat3_no';
+  const wordDisplay  = isStandalone
+    ? `"${wordLabel}"`
+    : `Can you ${wordLabel}?`;
+
   return (
     <View style={styles.root}>
-      {/* ── Header ─────────────────────────────────────────── */}
-      <SafeAreaView
-        style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]}
-        edges={['top']}
-      >
+      <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <TouchableOpacity
             onPress={() => { setGatePurpose('back'); setShowGate(true); }}
@@ -110,34 +92,26 @@ export default function MagicWordLandingScreen({ route, navigation }) {
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
 
-          {/* Progress bar */}
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />
           </View>
 
-          <TouchableOpacity
-            onPress={openSettings}
-            activeOpacity={0.7}
-            style={styles.headerSide}
-          >
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="settings-outline" size={22} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
-      {/* ── Body ──────────────────────────────────────────── */}
-      <View style={[styles.gradient, { backgroundColor: theme.background }]}>
+      <View style={[styles.body, { backgroundColor: theme.background }]}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
-          <View style={styles.body}>
-            {/* Title */}
+          <View style={styles.content}>
             <Text style={[styles.title, { color: theme.headingText }]}>
               {"Let's learn the word"}
             </Text>
             <Text style={[styles.wordHighlight, { color: theme.button }]}>
-              "{wordLabel}"
+              {wordDisplay}
             </Text>
 
-            {/* Avatar dancing video */}
             <View style={styles.videoWrapper}>
               <Video
                 ref={videoRef}
@@ -150,12 +124,11 @@ export default function MagicWordLandingScreen({ route, navigation }) {
               />
             </View>
 
-            {/* Next button */}
             <TouchableOpacity
               style={[styles.nextBtn, { backgroundColor: theme.button }]}
               activeOpacity={0.85}
               onPress={() =>
-                navigation.navigate('Phase1Video', { student, wordKey, wordId, startIndex: 0 })
+                navigation.navigate('Cat3Phase1', { student, wordId, wordKey, wordLabel, sessionId: null })
               }
             >
               <Text style={[styles.nextBtnText, { color: theme.buttonText }]}>Next</Text>
@@ -165,27 +138,17 @@ export default function MagicWordLandingScreen({ route, navigation }) {
         </SafeAreaView>
       </View>
 
-      {/* ── Parent Gate ────────────────────────────────────── */}
       <ParentGateModal
         visible={showGate}
         onSuccess={onGateSuccess}
         onCancel={() => setShowGate(false)}
       />
 
-      {/* ── Settings Sheet ─────────────────────────────────── */}
       <Modal visible={showSettings} transparent animationType="none" onRequestClose={closeSettings}>
         <TouchableOpacity style={styles.settingsOverlay} activeOpacity={1} onPress={closeSettings}>
           <Animated.View style={[styles.settingsSheet, { opacity: settingsFade }]}>
             <TouchableOpacity activeOpacity={1}>
               <Text style={styles.settingsTitle}>Session Options</Text>
-
-              <TouchableOpacity style={styles.settingsOption} onPress={handleSkipWord} activeOpacity={0.7}>
-                <Ionicons name="play-skip-forward-outline" size={20} color="#555" />
-                <Text style={styles.settingsOptionText}>Skip this word</Text>
-              </TouchableOpacity>
-
-              <View style={styles.settingsDivider} />
-
               <TouchableOpacity style={styles.settingsOption} onPress={handleExitSession} activeOpacity={0.7}>
                 <Ionicons name="exit-outline" size={20} color="#FF4D6D" />
                 <Text style={[styles.settingsOptionText, { color: '#FF4D6D' }]}>Exit session</Text>
@@ -200,10 +163,9 @@ export default function MagicWordLandingScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   root:     { flex: 1 },
-  gradient: { flex: 1 },
+  body:     { flex: 1 },
   safe:     { flex: 1 },
 
-  /* Header */
   headerWrap: {},
   header: {
     flexDirection: 'row',
@@ -212,25 +174,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
-  headerSide: {
-    width: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressTrack: {
-    flex: 1,
-    height: 8,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
+  headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
+  progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: 4 },
 
-  /* Body */
-  body: {
+  content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -251,7 +199,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: Layout.spacing.md,
   },
-
   videoWrapper: {
     width: '100%',
     maxWidth: 320,
@@ -262,12 +209,7 @@ const styles = StyleSheet.create({
     marginBottom: Layout.spacing.xl,
     ...Layout.shadow.sm,
   },
-  video: {
-    width: '100%',
-    height: '100%',
-  },
-
-  /* Next button */
+  video: { width: '100%', height: '100%' },
   nextBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -276,17 +218,9 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.full,
     ...Layout.shadow.md,
   },
-  nextBtnText: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: '700',
-  },
+  nextBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
 
-  /* Settings modal */
-  settingsOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
+  settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   settingsSheet: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 24,
@@ -294,27 +228,7 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
-  settingsTitle: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: Layout.spacing.lg,
-    textAlign: 'center',
-  },
-  settingsOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.md,
-    paddingVertical: Layout.spacing.md,
-  },
-  settingsOptionText: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: '600',
-    color: '#333',
-  },
-  settingsDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#EEE',
-    marginVertical: 4,
-  },
+  settingsTitle:      { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
+  settingsOption:     { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
+  settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
 });

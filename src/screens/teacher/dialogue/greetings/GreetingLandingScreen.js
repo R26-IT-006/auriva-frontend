@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Modal,
   Animated,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,20 +48,32 @@ export default function GreetingLandingScreen({ route, navigation }) {
   const videoRef = useRef(null);
   const [showGate,     setShowGate]     = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
 
+  // Stop audio when navigating away; also intercept Android hardware back
   useFocusEffect(
     useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        setGatePurpose('back');
+        setShowGate(true);
+        return true;
+      });
       return () => {
+        sub.remove();
         videoRef.current?.pauseAsync().catch(() => {});
       };
     }, [])
   );
 
-  function openSettings() { setShowGate(true); }
+  function openSettings() { setGatePurpose('settings'); setShowGate(true); }
 
   function onGateSuccess() {
     setShowGate(false);
+    if (gatePurpose === 'back') {
+      navigation.navigate('DialogueCategory', { student });
+      return;
+    }
     setShowSettings(true);
     Animated.timing(settingsFade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   }
@@ -89,7 +102,7 @@ export default function GreetingLandingScreen({ route, navigation }) {
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={() => { setGatePurpose('back'); setShowGate(true); }}
             activeOpacity={0.7}
             style={styles.headerSide}
           >

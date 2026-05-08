@@ -52,15 +52,15 @@ const IM_SORRY_VIDEOS = [
 
 const YOURE_WELCOME_VIDEOS = [
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/youre_welcome/You_re_welcome_V1.mp4'),
     caption: 'Anjalie says "Thank you" to Saman.\nHe says "You\'re welcome"',
   },
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/youre_welcome/You_re_welcome_V2.mp4'),
     caption: 'Saman helps Anjalie carry her bag.\nShe says "Thank you". He says "You\'re welcome"',
   },
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/youre_welcome/You_re_welcome_V3.mp4'),
     caption: 'Anjalie gives Saman a pencil.\nHe says "Thank you". She says "You\'re welcome"',
   },
 ];

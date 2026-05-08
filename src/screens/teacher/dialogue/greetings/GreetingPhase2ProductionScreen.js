@@ -54,16 +54,22 @@ const AUDIO = {
   goodJob:       require('../../../../../assets/dialogue-audios/Good_job.mp3'),
 };
 
-// Greetings word audio — swap each source for the real file when assets arrive:
-//   assets/dialogue-audios/greetings/{word_key}.mp3
-//   assets/dialogue-audios/greetings/Can_you_say_{word_key}.mp3
 const PLACEHOLDER_WORD    = require('../../../../../assets/dialogue-audios/magic_words/Thankyou.mp3');
 const PLACEHOLDER_CAN_SAY = require('../../../../../assets/dialogue-audios/magic_words/Can_you_say_Thankyou.mp3');
 
 const WORD_AUDIO = {
-  hello:          { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
-  goodbye:        { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
-  good_morning:   { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
+  hello: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/hello.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_hello.mp3'),
+  },
+  goodbye: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/goodbye.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_goodbye.mp3'),
+  },
+  good_morning: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/good_morning.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_goodmorning.mp3'),
+  },
   good_afternoon: { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
   good_night:     { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
   happy_birthday: { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
