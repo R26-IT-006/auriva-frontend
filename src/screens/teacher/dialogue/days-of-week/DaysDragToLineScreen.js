@@ -32,31 +32,29 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 
-// ─ Phrase keys still need dedicated scene images ─────────────────────────────
 const PLACEHOLDER_IMG = require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png');
-const CALENDAR_SCENES = {
-  monday:    require('../../../../../assets/dialogue-videos/words/days_of_week/monday/scene.png'),
-  tuesday:   require('../../../../../assets/dialogue-videos/words/days_of_week/tuesday/scene.png'),
-  wednesday: require('../../../../../assets/dialogue-videos/words/days_of_week/wednesday/scene.png'),
-  thursday:  require('../../../../../assets/dialogue-videos/words/days_of_week/thursday/scene.png'),
-  friday:    require('../../../../../assets/dialogue-videos/words/days_of_week/friday/scene.png'),
-  saturday:  require('../../../../../assets/dialogue-videos/words/days_of_week/saturday/scene.png'),
-  sunday:    require('../../../../../assets/dialogue-videos/words/days_of_week/sunday/scene.png'),
+const DD_SCENES_P1_P2 = {
+  monday:    require('../../../../../assets/dialogue-images/words/days_of_week/monday/DD_P1_P2.png'),
+  tuesday:   require('../../../../../assets/dialogue-images/words/days_of_week/tuesday/DD_P1_P2.png'),
+  wednesday: require('../../../../../assets/dialogue-images/words/days_of_week/wednesday/DD_P1_P2.png'),
+  thursday:  require('../../../../../assets/dialogue-images/words/days_of_week/thursday/DD_P1_P2.png'),
+  friday:    require('../../../../../assets/dialogue-images/words/days_of_week/friday/DD_P1_P2.png'),
+  saturday:  require('../../../../../assets/dialogue-images/words/days_of_week/saturday/DD_P1_P2.png'),
+  sunday:    require('../../../../../assets/dialogue-images/words/days_of_week/sunday/DD_P1_P2.png'),
   whats_the_day_today: PLACEHOLDER_IMG,
   today_is:            PLACEHOLDER_IMG,
 };
-const CALENDAR_SCENES_ALT = {
-  monday:    require('../../../../../assets/dialogue-videos/words/days_of_week/monday/context_correct.png'),
-  tuesday:   require('../../../../../assets/dialogue-videos/words/days_of_week/tuesday/context_correct.png'),
-  wednesday: require('../../../../../assets/dialogue-videos/words/days_of_week/wednesday/context_correct.png'),
-  thursday:  require('../../../../../assets/dialogue-videos/words/days_of_week/thursday/context_correct.png'),
-  friday:    require('../../../../../assets/dialogue-videos/words/days_of_week/friday/context_correct.png'),
-  saturday:  require('../../../../../assets/dialogue-videos/words/days_of_week/saturday/context_correct.png'),
-  sunday:    require('../../../../../assets/dialogue-videos/words/days_of_week/sunday/context_correct.png'),
+const DD_SCENES_P3 = {
+  monday:    require('../../../../../assets/dialogue-images/words/days_of_week/monday/DD_P3.png'),
+  tuesday:   require('../../../../../assets/dialogue-images/words/days_of_week/tuesday/DD_P3.png'),
+  wednesday: require('../../../../../assets/dialogue-images/words/days_of_week/wednesday/DD_P3.png'),
+  thursday:  require('../../../../../assets/dialogue-images/words/days_of_week/thursday/DD_P3.png'),
+  friday:    require('../../../../../assets/dialogue-images/words/days_of_week/friday/DD_P3.png'),
+  saturday:  require('../../../../../assets/dialogue-images/words/days_of_week/saturday/DD_P3.png'),
+  sunday:    require('../../../../../assets/dialogue-images/words/days_of_week/sunday/DD_P3.png'),
   whats_the_day_today: PLACEHOLDER_IMG,
   today_is:            PLACEHOLDER_IMG,
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
@@ -78,8 +76,8 @@ function buildAttempts(wordKey) {
   const dayIdx  = DAY_SEQUENCE.indexOf(wordKey);
   const nextDay = dayIdx !== -1 ? DAY_LABELS[DAY_SEQUENCE[(dayIdx + 1) % 7]] : 'Tuesday';
   const prevDay = dayIdx !== -1 ? DAY_LABELS[DAY_SEQUENCE[(dayIdx + 6) % 7]] : 'Monday';
-  const scene   = CALENDAR_SCENES[wordKey]    ?? PLACEHOLDER_IMG;
-  const sceneAlt = CALENDAR_SCENES_ALT[wordKey] ?? PLACEHOLDER_IMG;
+  const scene    = DD_SCENES_P1_P2[wordKey] ?? PLACEHOLDER_IMG;
+  const sceneAlt = DD_SCENES_P3[wordKey]    ?? PLACEHOLDER_IMG;
 
   return [
     {
@@ -321,7 +319,7 @@ export default function DaysDragToLineScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      navigation.navigate('DaysMenuScreen', { student });
       return;
     }
     setShowSettings(true);
@@ -336,12 +334,12 @@ export default function DaysDragToLineScreen({ route, navigation }) {
 
   function handleSkipWord() {
     closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+    setTimeout(() => navigation.navigate('DaysMenuScreen', { student }), 300);
   }
 
   function handleExitSession() {
     closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+    setTimeout(() => navigation.navigate('DaysMenuScreen', { student }), 300);
   }
 
   return (

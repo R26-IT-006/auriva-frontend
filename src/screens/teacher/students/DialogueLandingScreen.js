@@ -1,13 +1,16 @@
+import { useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 
@@ -21,6 +24,15 @@ export default function DialogueLandingScreen({ route, navigation }) {
   const student   = route.params?.student;
   const theme     = getAvatarTheme(student?.avatar_key);
   const firstName = student?.full_name?.split(' ')[0] ?? student?.full_name ?? 'Student';
+
+  // Intercept Android hardware back → same destination as the UI back arrow
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.navigate('StudentDashboard', { student });
+      return true;
+    });
+    return () => sub.remove();
+  }, [student]));
 
   const { width } = useWindowDimensions();
   const cardWidth = Math.min(width * 0.78, 420);

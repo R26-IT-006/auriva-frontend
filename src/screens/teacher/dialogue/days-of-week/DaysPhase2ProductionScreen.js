@@ -386,7 +386,7 @@ export default function DaysPhase2ProductionScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      navigation.navigate('DaysMenuScreen', { student });
       return;
     }
     if (gatePurpose === 'next') {
@@ -405,12 +405,12 @@ export default function DaysPhase2ProductionScreen({ route, navigation }) {
 
   function handleSkipWord() {
     closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+    setTimeout(() => navigation.navigate('DaysMenuScreen', { student }), 300);
   }
 
   function handleExitSession() {
     closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+    setTimeout(() => navigation.navigate('DaysMenuScreen', { student }), 300);
   }
 
   // ── Render ────────────────────────────────────────────────────────────────

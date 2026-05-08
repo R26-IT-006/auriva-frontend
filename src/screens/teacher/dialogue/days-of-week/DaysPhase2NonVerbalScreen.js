@@ -234,7 +234,7 @@ export default function DaysPhase2NonVerbalScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      navigation.navigate('DaysMenuScreen', { student });
       return;
     }
     setShowSettings(true);
@@ -249,12 +249,12 @@ export default function DaysPhase2NonVerbalScreen({ route, navigation }) {
 
   function handleSkipWord() {
     closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+    setTimeout(() => navigation.navigate('DaysMenuScreen', { student }), 300);
   }
 
   function handleExitSession() {
     closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+    setTimeout(() => navigation.navigate('DaysMenuScreen', { student }), 300);
   }
 
   return (

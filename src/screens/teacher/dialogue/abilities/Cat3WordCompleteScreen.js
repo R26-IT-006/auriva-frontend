@@ -64,7 +64,7 @@ export default function Cat3WordCompleteScreen({ route, navigation }) {
   }, []);
 
   function tryAgain() {
-    navigation.navigate('Cat3Phase1', { student, wordId, wordKey, wordLabel, sessionId: null });
+    navigation.navigate('Cat3Landing', { student, wordId, wordKey, wordLabel });
   }
 
   async function goNextWord() {
@@ -75,12 +75,11 @@ export default function Cat3WordCompleteScreen({ route, navigation }) {
         navigation.navigate('DialogueCategory', { student });
         return;
       }
-      navigation.navigate('Cat3Phase1', {
+      navigation.navigate('Cat3Landing', {
         student,
         wordId:    nextWord.id,
         wordKey:   nextWord.asset_key,
         wordLabel: nextWord.word,
-        sessionId: null,
       });
     } catch {
       navigation.navigate('DialogueCategory', { student });

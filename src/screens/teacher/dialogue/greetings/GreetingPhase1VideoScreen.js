@@ -18,28 +18,25 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 
-// Phase 1 videos are not yet available — placeholder videos used until assets arrive.
-// Replace each source with the real file when ready:
-//   assets/dialogue-videos/words/greetings/{word_key}/Video_V1.mp4 etc.
 const PLACEHOLDER_V1 = require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4');
 const PLACEHOLDER_V2 = require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4');
 const PLACEHOLDER_V3 = require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4');
 
 const WORD_VIDEOS = {
   hello: [
-    { source: PLACEHOLDER_V1, caption: 'Saman arrives at school.\nHe sees Anjalie and says "Hello"' },
-    { source: PLACEHOLDER_V2, caption: 'Anjalie meets her neighbour.\nShe says "Hello"' },
-    { source: PLACEHOLDER_V3, caption: 'Saman waves at a friend across the road.\nHe says "Hello"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V1.mp4'), caption: 'Saman arrives at school.\nHe sees Anjalie and says "Hello"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V2.mp4'), caption: 'Anjalie meets her neighbour.\nShe says "Hello"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V3.mp4'), caption: 'Saman waves at a friend across the road.\nHe says "Hello"' },
   ],
   goodbye: [
-    { source: PLACEHOLDER_V1, caption: 'School is over.\nAnjalie waves at her teacher and says "Goodbye"' },
-    { source: PLACEHOLDER_V2, caption: 'Saman leaves his friend\'s house.\nHe says "Goodbye"' },
-    { source: PLACEHOLDER_V3, caption: 'Anjalie\'s mum is going to work.\nShe says "Goodbye"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V1.mp4'), caption: 'School is over.\nAnjalie waves at her teacher and says "Goodbye"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V2.mp4'), caption: 'Saman leaves his friend\'s house.\nHe says "Goodbye"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V3.mp4'), caption: 'Anjalie\'s mum is going to work.\nShe says "Goodbye"' },
   ],
   good_morning: [
-    { source: PLACEHOLDER_V1, caption: 'Saman arrives at school.\nHe greets his teacher: "Good Morning"' },
-    { source: PLACEHOLDER_V2, caption: 'Anjalie sees her parents at breakfast.\nShe says "Good Morning"' },
-    { source: PLACEHOLDER_V3, caption: 'Saman meets his friend at the park in the morning.\nHe says "Good Morning"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_morning/Good-morning_V1.mp4'), caption: 'Saman arrives at school.\nHe greets his teacher: "Good Morning"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_morning/Good-morning_V2.mp4'), caption: 'Anjalie sees her parents at breakfast.\nShe says "Good Morning"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_morning/Good-morning_V3.mp4'), caption: 'Saman meets his friend at the park in the morning.\nHe says "Good Morning"' },
   ],
   good_afternoon: [
     { source: PLACEHOLDER_V1, caption: 'Anjalie comes home after school.\nShe greets her mum: "Good Afternoon"' },

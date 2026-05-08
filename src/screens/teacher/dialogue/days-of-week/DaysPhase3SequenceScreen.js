@@ -44,14 +44,14 @@ const PROGRESS_FRACTION = 0.93;
 const PLACEHOLDER_IMG   = require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png');
 const PLACEHOLDER_AUDIO = require('../../../../../assets/dialogue-audios/magic_words/Thankyou.mp3');
 
-const SEQUENCE_SCENE_IMAGES = {
-  monday:    require('../../../../../assets/dialogue-videos/words/days_of_week/monday/scene.png'),
-  tuesday:   require('../../../../../assets/dialogue-videos/words/days_of_week/tuesday/scene.png'),
-  wednesday: require('../../../../../assets/dialogue-videos/words/days_of_week/wednesday/scene.png'),
-  thursday:  require('../../../../../assets/dialogue-videos/words/days_of_week/thursday/scene.png'),
-  friday:    require('../../../../../assets/dialogue-videos/words/days_of_week/friday/scene.png'),
-  saturday:  require('../../../../../assets/dialogue-videos/words/days_of_week/saturday/scene.png'),
-  sunday:    require('../../../../../assets/dialogue-videos/words/days_of_week/sunday/scene.png'),
+const PHASE3_SCENE_IMAGES = {
+  monday:    require('../../../../../assets/dialogue-images/words/days_of_week/monday/Phase3.png'),
+  tuesday:   require('../../../../../assets/dialogue-images/words/days_of_week/tuesday/Phase3.png'),
+  wednesday: require('../../../../../assets/dialogue-images/words/days_of_week/wednesday/Phase3.png'),
+  thursday:  require('../../../../../assets/dialogue-images/words/days_of_week/thursday/Phase3.png'),
+  friday:    require('../../../../../assets/dialogue-images/words/days_of_week/friday/Phase3.png'),
+  saturday:  require('../../../../../assets/dialogue-images/words/days_of_week/saturday/Phase3.png'),
+  sunday:    require('../../../../../assets/dialogue-images/words/days_of_week/sunday/Phase3.png'),
 };
 const CLASSROOM_SCENE_IMAGE = PLACEHOLDER_IMG;
 
@@ -229,7 +229,7 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      navigation.navigate('DaysMenuScreen', { student });
       return;
     }
     setShowSettings(true);
@@ -244,12 +244,12 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
 
   function handleSkipWord() {
     closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+    setTimeout(() => navigation.navigate('DaysMenuScreen', { student }), 300);
   }
 
   function handleExitSession() {
     closeSettings();
-    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+    setTimeout(() => navigation.navigate('DaysMenuScreen', { student }), 300);
   }
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -299,7 +299,7 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
   function renderSceneImage() {
     if (!question) return null;
     if (question.type === 'sequence') {
-      return SEQUENCE_SCENE_IMAGES[question.previous_day_asset_key] ?? PLACEHOLDER_IMG;
+      return PHASE3_SCENE_IMAGES[question.previous_day_asset_key] ?? PLACEHOLDER_IMG;
     }
     return CLASSROOM_SCENE_IMAGE;
   }

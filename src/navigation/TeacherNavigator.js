@@ -25,6 +25,7 @@ import WordCompleteScreen         from '../screens/teacher/dialogue/WordComplete
 import VerbActivityScreen              from '../screens/teacher/dialogue/abilities/VerbActivityScreen';
 import ClapActivityScreen             from '../screens/teacher/dialogue/abilities/ClapActivityScreen';
 import RunActivityScreen              from '../screens/teacher/dialogue/abilities/RunActivityScreen';
+import Cat3LandingScreen              from '../screens/teacher/dialogue/abilities/Cat3LandingScreen';
 import Cat3Phase1Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase1Screen';
 import Cat3DragToLineScreen           from '../screens/teacher/dialogue/abilities/Cat3DragToLineScreen';
 import Cat3Phase2Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase2Screen';
@@ -149,6 +150,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="VerbActivity"         component={VerbActivityScreen} />
       <Stack.Screen name="ClapActivity"         component={ClapActivityScreen} />
       <Stack.Screen name="RunActivity"          component={RunActivityScreen} />
+      <Stack.Screen name="Cat3Landing"          component={Cat3LandingScreen} />
       <Stack.Screen name="Cat3Phase1"           component={Cat3Phase1Screen} />
       <Stack.Screen name="Cat3DragToLine"       component={Cat3DragToLineScreen} />
       <Stack.Screen name="Cat3Phase2"           component={Cat3Phase2Screen} />

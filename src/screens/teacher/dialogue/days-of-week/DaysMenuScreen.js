@@ -9,15 +9,13 @@
  * with live state without an extra loading screen.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Modal,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,7 +23,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
-import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi, daysApi } from '../../../../api/dialogue';
 
 const PHASE1_REQUIRED_EXPOSURES = 3; // default; mastery algorithm may reduce to 2
@@ -37,8 +34,6 @@ export default function DaysMenuScreen({ route, navigation }) {
   const [loading,        setLoading]        = useState(true);
   const [nextWord,       setNextWord]       = useState(null);
   const [wheelAvailable, setWheelAvailable] = useState(false);
-  const [showGate,       setShowGate]       = useState(false);
-  const [pendingAction,  setPendingAction]  = useState(null); // 'activities' | 'assessment'
 
   // Reload data every time screen comes into focus (e.g. returning from a completed word)
   useFocusEffect(useCallback(() => {
@@ -91,7 +86,7 @@ export default function DaysMenuScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={() => navigation.navigate('DialogueCategory', { student })} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>Days of the Week</Text>
@@ -215,13 +210,6 @@ export default function DaysMenuScreen({ route, navigation }) {
           </View>
         </SafeAreaView>
       </LinearGradient>
-
-      {/* ── Parent Gate (unused here but keeps pattern consistent) ── */}
-      <ParentGateModal
-        visible={showGate}
-        onSuccess={() => setShowGate(false)}
-        onCancel={() => setShowGate(false)}
-      />
 
     </View>
   );

@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import {
   View,
   Text,
@@ -5,10 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 
@@ -55,6 +58,15 @@ export default function DialogueCategoryScreen({ route, navigation }) {
   // Cap each row so tiles don't over-stretch on tall screens
   const rowH = Math.min(Math.round(height * 0.25), 175);
 
+  // Intercept Android hardware back → same destination as the UI back arrow
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.navigate('DialogueLanding', { student });
+      return true;
+    });
+    return () => sub.remove();
+  }, [student]));
+
   return (
     <View style={styles.root}>
 
@@ -65,7 +77,7 @@ export default function DialogueCategoryScreen({ route, navigation }) {
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.navigate('DialogueLanding', { student })}
             activeOpacity={0.7}
             style={styles.backBtn}
           >
