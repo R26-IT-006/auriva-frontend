@@ -1,6 +1,8 @@
 /**
  * reportEngine.js — Explainable AI (XAI) report generator
  *
+ * Extended with motor difficulty analysis via explainabilityEngine.
+ *
  * Every public function returns both the computed VALUE and an EXPLANATION
  * string so the teacher always knows exactly HOW and WHY a metric was derived.
  *
@@ -12,6 +14,8 @@
  *  - completedLetters: string[]                                   from AsyncStorage
  *  - student         : { full_name, sid, ... }
  */
+
+import { analyzeMotorDifficulty } from './explainabilityEngine';
 
 // ─── Smoothness → quality label ───────────────────────────────────────────────
 // Lower smoothness score is BETTER (less jitter in the stroke)
@@ -420,21 +424,44 @@ export function generateRecommendations({ motorScore, letterMetrics, wordMastery
   return recs;
 }
 
+// ─── Motor Difficulty Analysis ────────────────────────────────────────────────
+
+/**
+ * Wraps explainabilityEngine.analyzeMotorDifficulty with report-style output.
+ * Accepts the same inputs as the rest of the report pipeline.
+ *
+ * @param {Array}  assessmentData
+ * @param {Object} letterMetrics  already-computed letter metrics object
+ * @param {number} motorScore     already-computed 0-100 score
+ * @returns {Object}  difficulty analysis result
+ */
+export function computeMotorDifficulty(assessmentData, letterMetrics, motorScore) {
+  return analyzeMotorDifficulty(
+    assessmentData,
+    {
+      avgPauses: letterMetrics?.avgPauses ?? null,
+      avgTime:   letterMetrics?.avgTime   ?? null,
+    },
+    typeof motorScore === 'number' ? motorScore : null
+  );
+}
+
 // ─── Full report bundle ────────────────────────────────────────────────────────
 
 /**
  * Master entry point — computes the complete report.
  */
 export function generateReport({ assessmentData, motorProfile, letterProgressMap, wordProgress, completedLetters, student }) {
-  const motorScore      = computeMotorComfortScore(assessmentData, motorProfile);
-  const letterMetrics   = computeLetterMetrics(letterProgressMap);
-  const wordMastery     = computeWordMastery(wordProgress);
+  const motorScore         = computeMotorComfortScore(assessmentData, motorProfile);
+  const letterMetrics      = computeLetterMetrics(letterProgressMap);
+  const wordMastery        = computeWordMastery(wordProgress);
   const progressIndicators = computeProgressIndicators({ motorScore, letterMetrics, wordMastery, completedLetters });
-  const recommendations = generateRecommendations({ motorScore, letterMetrics, wordMastery, completedLetters });
+  const recommendations    = generateRecommendations({ motorScore, letterMetrics, wordMastery, completedLetters });
+  const difficultyAnalysis = computeMotorDifficulty(assessmentData, letterMetrics, motorScore?.score);
 
-  const totalWords     = Object.values(wordProgress ?? {}).reduce((s, arr) => s + arr.length, 0);
-  const lettersDone    = completedLetters?.length ?? 0;
-  const wordLettersDone= Object.keys(wordProgress ?? {}).length;
+  const totalWords      = Object.values(wordProgress ?? {}).reduce((s, arr) => s + arr.length, 0);
+  const lettersDone     = completedLetters?.length ?? 0;
+  const wordLettersDone = Object.keys(wordProgress ?? {}).length;
 
   return {
     motorScore,
@@ -442,8 +469,9 @@ export function generateReport({ assessmentData, motorProfile, letterProgressMap
     wordMastery,
     progressIndicators,
     recommendations,
+    difficultyAnalysis,
     summary: {
-      lettersPracticed:   lettersDone,
+      lettersPracticed:    lettersDone,
       wordLettersDone,
       totalWordsPracticed: totalWords,
       totalAttempts: (letterMetrics.letters?.reduce((s, l) => s + l.attempts, 0) ?? 0)

@@ -13,6 +13,7 @@ import StudentPickerScreen from "../screens/teacher/students/StudentPickerScreen
 import StudentDashboardScreen from "../screens/teacher/students/StudentDashboardScreen";
 import AvatarSelectionScreen from "../screens/teacher/students/AvatarSelectionScreen";
 import HandwritingNavigator from "./HandwritingNavigator";
+import TeacherReportScreen from "../screens/handwriting/reports/TeacherReportScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -54,6 +55,11 @@ function StudentsStack() {
         name="TeacherStudentDetail"
         component={TeacherStudentDetailScreen}
         options={{ title: "Student Profile" }}
+      />
+      <Stack.Screen
+        name="StudentHandwritingReport"
+        component={TeacherReportScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

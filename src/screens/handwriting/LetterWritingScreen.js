@@ -256,7 +256,6 @@ export default function LetterWritingScreen({ route, navigation }) {
   const tracerX          = useRef(new Animated.Value(0)).current;
   const tracerY          = useRef(new Animated.Value(0)).current;
   const [tracerVisible, setTracerVisible] = useState(false);
-  const isTracingRef     = useRef(false);
 
   // â”€â”€ Celebration animation refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const celebScale    = useRef(new Animated.Value(0.5)).current;
@@ -293,46 +292,36 @@ export default function LetterWritingScreen({ route, navigation }) {
   useEffect(() => {
     const path = LETTER_PATHS[letter];
     if (attempt !== 1 || hasDrawn || !path || path.length < 2) {
-      isTracingRef.current = false;
       setTracerVisible(false);
-      tracerX.stopAnimation();
-      tracerY.stopAnimation();
       return;
     }
 
     const startX = path[0].fx * CANVAS_W;
     const startY = path[0].fy * CANVAS_H;
-    isTracingRef.current = true;
+    tracerX.setValue(startX);
+    tracerY.setValue(startY);
     setTracerVisible(true);
 
-    const runLoop = () => {
-      if (!isTracingRef.current) return;
-      tracerX.setValue(startX);
-      tracerY.setValue(startY);
+    const steps = path.slice(1).map(pt =>
+      Animated.parallel([
+        Animated.timing(tracerX, { toValue: pt.fx * CANVAS_W, duration: 420, useNativeDriver: false }),
+        Animated.timing(tracerY, { toValue: pt.fy * CANVAS_H, duration: 420, useNativeDriver: false }),
+      ])
+    );
 
-      const steps = path.slice(1).map(pt =>
-        Animated.parallel([
-          Animated.timing(tracerX, { toValue: pt.fx * CANVAS_W, duration: 420, useNativeDriver: false }),
-          Animated.timing(tracerY, { toValue: pt.fy * CANVAS_H, duration: 420, useNativeDriver: false }),
-        ])
-      );
-
+    const anim = Animated.loop(
       Animated.sequence([
         Animated.delay(350),
         ...steps,
         Animated.delay(700),
-      ]).start(({ finished }) => {
-        if (finished) runLoop();
-      });
-    };
-
-    runLoop();
+      ]),
+      { resetBeforeIteration: true }
+    );
+    anim.start();
 
     return () => {
-      isTracingRef.current = false;
       setTracerVisible(false);
-      tracerX.stopAnimation();
-      tracerY.stopAnimation();
+      anim.stop();
     };
   }, [attempt, hasDrawn, letter, tracerX, tracerY]);
 
