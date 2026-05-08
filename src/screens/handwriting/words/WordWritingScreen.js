@@ -34,7 +34,7 @@ const LINE_2 = Math.round(CANVAS_H * 0.36);  // x-height     — blue solid
 const LINE_3 = Math.round(CANVAS_H * 0.70);  // baseline     — red dashed
 const LINE_4 = Math.round(CANVAS_H * 0.90);  // descender    — blue solid
 
-// ─── Attempt colours ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Attempt colours â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ATTEMPT_BADGE = {
   1: { bg: '#FFCBA8', border: '#FF8C42', text: '#7A2D00' },
   2: { bg: '#FFE97A', border: '#F0C000', text: '#5A4000' },
@@ -53,7 +53,7 @@ const ATTEMPT_HINTS = {
   3: 'Write the word from memory — no guide this time!',
 };
 
-// ─── Length-group celebrations ────────────────────────────────────────────────
+// â”€â”€â”€ Length-group celebrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const LENGTH_CELEBRATIONS = {
   3: {
     emoji: '⭐', title: 'Short Words Done!',
@@ -77,7 +77,7 @@ const LENGTH_CELEBRATIONS = {
 const GHOST_FONT_UPPER = Math.round((LINE_3 - LINE_1) / 0.71);
 const GHOST_FONT_LOWER = Math.round((LINE_3 - LINE_2) / 0.52);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getLengthGroup(word) {
   const l = word.length;
   if (l <= 3) return 3;
@@ -111,7 +111,7 @@ function getFeedback(sm) {
   return                 { label: 'Keep going!',    color: '#C62828', bg: '#FFEBEE' };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function WordWritingScreen({ route, navigation }) {
   const { student, theme, letter = 'a' } = route.params;
@@ -169,7 +169,7 @@ export default function WordWritingScreen({ route, navigation }) {
   const ghostFontSize = /[A-Z]/.test(displayWord[0]) ? GHOST_FONT_UPPER : GHOST_FONT_LOWER;
   const spelling      = getSpelling(word);
 
-  // ── Speech ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Speech â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const spellWord = useCallback((w = word) => {
     spellCancelRef.current = true;
     spellTimersRef.current.forEach(clearTimeout);
@@ -200,7 +200,7 @@ export default function WordWritingScreen({ route, navigation }) {
   // Bounce image in on each new word
   useEffect(() => {
     imageScale.setValue(0.85);
-    Animated.spring(imageScale, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }).start();
+    Animated.spring(imageScale, { toValue: 1, friction: 5, tension: 60, useNativeDriver: false }).start();
   }, [wordIdx, imageScale]);
 
   // Stop speech when leaving the screen
@@ -218,7 +218,7 @@ export default function WordWritingScreen({ route, navigation }) {
     }
   }, [hasDrawn]);
 
-  // ── PanResponder ───────────────────────────────────────────────────────────
+  // â”€â”€ PanResponder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -249,7 +249,7 @@ export default function WordWritingScreen({ route, navigation }) {
     })
   ).current;
 
-  // ── Canvas helpers ─────────────────────────────────────────────────────────
+  // â”€â”€ Canvas helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const resetCanvas = useCallback(() => {
     setAllPaths([]);
     allPathsRef.current = [];
@@ -266,8 +266,8 @@ export default function WordWritingScreen({ route, navigation }) {
     celebScale.setValue(0.5);
     celebOpacity.setValue(0);
     Animated.parallel([
-      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: true }),
-      Animated.timing(celebOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: false }),
+      Animated.timing(celebOpacity, { toValue: 1, duration: 250, useNativeDriver: false }),
     ]).start();
   }, [celebScale, celebOpacity]);
 
@@ -308,7 +308,7 @@ export default function WordWritingScreen({ route, navigation }) {
   const startDotX = CANVAS_W * 0.07;
   const startDotY = LINE_2;
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <LinearGradient
       colors={theme.backgroundGradient}
@@ -318,7 +318,7 @@ export default function WordWritingScreen({ route, navigation }) {
     >
       <SafeAreaView style={styles.safe}>
 
-        {/* ── Compact header ── */}
+        {/* â”€â”€ Compact header â”€â”€ */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -354,7 +354,7 @@ export default function WordWritingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* ── Main area: image LEFT · content RIGHT ── */}
+        {/* â”€â”€ Main area: image LEFT · content RIGHT â”€â”€ */}
         <View style={styles.mainRow}>
 
           {/* Left column — large image */}
@@ -477,7 +477,7 @@ export default function WordWritingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* ── Feedback pill ── */}
+        {/* â”€â”€ Feedback pill â”€â”€ */}
         {feedbackData && (
           <View style={[styles.feedbackPill, { backgroundColor: feedbackData.bg }]}>
             <Text style={[styles.feedbackText, { color: feedbackData.color }]}>
@@ -486,7 +486,7 @@ export default function WordWritingScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* ── Buttons ── */}
+        {/* â”€â”€ Buttons â”€â”€ */}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
             style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
@@ -511,7 +511,7 @@ export default function WordWritingScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* ── Attempt dots ── */}
+        {/* â”€â”€ Attempt dots â”€â”€ */}
         <View style={styles.bottomDots}>
           {[1, 2, 3].map(n => (
             <View
@@ -528,7 +528,7 @@ export default function WordWritingScreen({ route, navigation }) {
 
       </SafeAreaView>
 
-      {/* ── Celebration overlay ── */}
+      {/* â”€â”€ Celebration overlay â”€â”€ */}
       {celebration && (
         <View style={styles.celebOverlay}>
           <LinearGradient
@@ -565,7 +565,7 @@ export default function WordWritingScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* ── Word video modal ── */}
+      {/* â”€â”€ Word video modal â”€â”€ */}
       {showWordVideo && wordEntry && WORD_VIDEOS[wordEntry.word] && (
         <WordVideoModal
           videoSource={WORD_VIDEOS[wordEntry.word]}
@@ -578,7 +578,7 @@ export default function WordWritingScreen({ route, navigation }) {
   );
 }
 
-// ─── Word video modal ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Word video modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function WordVideoModal({ videoSource, theme, onDismiss }) {
   const player = useVideoPlayer(videoSource, p => { p.loop = false; p.play(); });
@@ -609,13 +609,13 @@ function WordVideoModal({ videoSource, theme, onDismiss }) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
-  // ── Header ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ── Main two-column layout ────────────────────────────────────────────────────
+  // â”€â”€ Main two-column layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   mainRow: {
     flexDirection: 'row',
     flex: 1,
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  // ── Feedback pill ─────────────────────────────────────────────────────────────
+  // â”€â”€ Feedback pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   feedbackPill: {
     alignSelf: 'center',
     paddingHorizontal: 18,
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
   },
   feedbackText: { fontSize: 13, fontWeight: '700' },
 
-  // ── Buttons ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   },
   nextText: { fontSize: 13, fontWeight: '800' },
 
-  // ── Attempt dots (bottom) ─────────────────────────────────────────────────────
+  // â”€â”€ Attempt dots (bottom) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bottomDots: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 
-  // ── Celebration overlay ───────────────────────────────────────────────────────
+  // â”€â”€ Celebration overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   celebOverlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -820,3 +820,4 @@ const styles = StyleSheet.create({
   celebBtn:     { paddingHorizontal: 36, paddingVertical: 14, borderRadius: 50, width: '100%', alignItems: 'center' },
   celebBtnText: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
 });
+

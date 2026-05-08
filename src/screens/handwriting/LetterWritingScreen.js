@@ -33,12 +33,12 @@ const LINE_2 = Math.round(CANVAS_H * 0.42);  // x-height     — blue solid
 const LINE_3 = Math.round(CANVAS_H * 0.72);  // baseline     — red dashed
 const LINE_4 = Math.round(CANVAS_H * 0.90);  // descender    — blue solid
 
-// Uppercase: cap-height fills LINE_1 → LINE_3.  cap-height ≈ 0.71 × font-size.
-// Lowercase: x-height fills LINE_2 → LINE_3.    x-height   ≈ 0.52 × font-size.
+// Uppercase: cap-height fills LINE_1 → LINE_3.  cap-height â‰ˆ 0.71 Ã— font-size.
+// Lowercase: x-height fills LINE_2 → LINE_3.    x-height   â‰ˆ 0.52 Ã— font-size.
 const GHOST_FONT_UPPER = Math.round((LINE_3 - LINE_1) / 0.71);
 const GHOST_FONT_LOWER = Math.round((LINE_3 - LINE_2) / 0.52);
 
-// ─── Attempt badge colours (small indicator only — theme bg is never changed) ─
+// â”€â”€â”€ Attempt badge colours (small indicator only — theme bg is never changed) â”€
 
 const ATTEMPT_BADGE = {
   1: { bg: '#FFCBA8', border: '#FF8C42', text: '#7A2D00' },  // warm orange
@@ -58,7 +58,7 @@ const ATTEMPT_HINTS = {
   3: 'Write from memory — no guide this time!',
 };
 
-// ─── Per-letter start positions (fraction of canvas) ─────────────────────────
+// â”€â”€â”€ Per-letter start positions (fraction of canvas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const START_POS = {
   // Straight
@@ -87,24 +87,24 @@ const START_POS = {
 
 const DEFAULT_START = { fx: 0.36, fy: 0.30 };
 
-// ─── Phonetics ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Phonetics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PHONETICS = {
-  a:'[eɪ]', b:'[biː]', c:'[siː]', d:'[diː]', e:'[iː]',
-  f:'[ɛf]',  g:'[dʒiː]', h:'[eɪtʃ]', i:'[aɪ]', j:'[dʒeɪ]',
-  k:'[keɪ]', l:'[ɛl]',  m:'[ɛm]',  n:'[ɛn]', o:'[oʊ]',
-  p:'[piː]', q:'[kjuː]', r:'[ɑːr]', s:'[ɛs]', t:'[tiː]',
-  u:'[juː]', v:'[viː]',  w:'[dʌbljuː]', x:'[ɛks]', y:'[waɪ]', z:'[zɛd]',
+  a:'[eÉª]', b:'[biË]', c:'[siË]', d:'[diË]', e:'[iË]',
+  f:'[É›f]',  g:'[dÊ’iË]', h:'[eÉªtÊƒ]', i:'[aÉª]', j:'[dÊ’eÉª]',
+  k:'[keÉª]', l:'[É›l]',  m:'[É›m]',  n:'[É›n]', o:'[oÊŠ]',
+  p:'[piË]', q:'[kjuË]', r:'[É‘Ër]', s:'[É›s]', t:'[tiË]',
+  u:'[juË]', v:'[viË]',  w:'[dÊŒbljuË]', x:'[É›ks]', y:'[waÉª]', z:'[zÉ›d]',
 };
 
-// ─── Letter stroke waypoints ─────────────────────────────────────────────────
+// â”€â”€â”€ Letter stroke waypoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Each array is an ordered list of (fx, fy) key points the animated tracer dot
 // follows in Attempt 1, giving children a visual "watch how to write" demo.
 // Coordinates are fractions of CANVAS_W / CANVAS_H, matching the 4-line ruling:
-//   fy ≈ 0.10 = cap line   |  fy ≈ 0.42 = x-height  |  fy ≈ 0.72 = baseline  |  fy ≈ 0.90 = descender
+//   fy â‰ˆ 0.10 = cap line   |  fy â‰ˆ 0.42 = x-height  |  fy â‰ˆ 0.72 = baseline  |  fy â‰ˆ 0.90 = descender
 
 const LETTER_PATHS = {
-  // ── Lowercase ──────────────────────────────────────────────────────────────
+  // â”€â”€ Lowercase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   a:[{fx:0.62,fy:0.42},{fx:0.50,fy:0.38},{fx:0.38,fy:0.44},{fx:0.38,fy:0.62},{fx:0.50,fy:0.70},{fx:0.62,fy:0.64},{fx:0.62,fy:0.72}],
   b:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.46},{fx:0.50,fy:0.40},{fx:0.63,fy:0.46},{fx:0.63,fy:0.62},{fx:0.50,fy:0.70},{fx:0.37,fy:0.64}],
   c:[{fx:0.64,fy:0.44},{fx:0.50,fy:0.40},{fx:0.38,fy:0.46},{fx:0.38,fy:0.62},{fx:0.50,fy:0.70},{fx:0.64,fy:0.65}],
@@ -131,7 +131,7 @@ const LETTER_PATHS = {
   x:[{fx:0.30,fy:0.42},{fx:0.48,fy:0.57},{fx:0.65,fy:0.72},{fx:0.65,fy:0.42},{fx:0.48,fy:0.57},{fx:0.30,fy:0.72}],
   y:[{fx:0.30,fy:0.42},{fx:0.50,fy:0.64},{fx:0.70,fy:0.42},{fx:0.50,fy:0.64},{fx:0.43,fy:0.82},{fx:0.38,fy:0.90}],
   z:[{fx:0.31,fy:0.42},{fx:0.65,fy:0.42},{fx:0.31,fy:0.72},{fx:0.65,fy:0.72}],
-  // ── Uppercase ──────────────────────────────────────────────────────────────
+  // â”€â”€ Uppercase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   A:[{fx:0.50,fy:0.12},{fx:0.30,fy:0.72},{fx:0.50,fy:0.12},{fx:0.70,fy:0.72},{fx:0.36,fy:0.50},{fx:0.64,fy:0.50}],
   B:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.12},{fx:0.55,fy:0.14},{fx:0.63,fy:0.24},{fx:0.63,fy:0.37},{fx:0.55,fy:0.45},{fx:0.37,fy:0.46},{fx:0.57,fy:0.48},{fx:0.64,fy:0.58},{fx:0.64,fy:0.65},{fx:0.55,fy:0.72},{fx:0.37,fy:0.72}],
   C:[{fx:0.67,fy:0.28},{fx:0.50,fy:0.12},{fx:0.33,fy:0.28},{fx:0.33,fy:0.52},{fx:0.50,fy:0.72},{fx:0.67,fy:0.58}],
@@ -160,7 +160,7 @@ const LETTER_PATHS = {
   Z:[{fx:0.32,fy:0.12},{fx:0.68,fy:0.12},{fx:0.32,fy:0.72},{fx:0.68,fy:0.72}],
 };
 
-// ─── Feature calculation ──────────────────────────────────────────────────────
+// â”€â”€â”€ Feature calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function calculateDrawingFeatures(paths) {
   const allPoints = paths.flat();
@@ -194,7 +194,7 @@ function getAttemptBadge(smoothness) {
   return                        { label: 'Keep going!',  color: '#C62828', bg: '#FFEBEE' };
 }
 
-// ─── Category celebrations ────────────────────────────────────────────────────
+// â”€â”€â”€ Category celebrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CATEGORY_CELEBRATION = {
   straight: {
@@ -224,7 +224,7 @@ const NEXT_CATEGORY_LABEL = {
   straight: 'Straight letters', curved: 'Curved letters', mixed: 'Mixed letters',
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function LetterWritingScreen({ route, navigation }) {
   const {
@@ -239,7 +239,7 @@ export default function LetterWritingScreen({ route, navigation }) {
     return filtered.length > 0 ? filtered : getAllLetters(caseType);
   }, [letterSequence, caseType]);
 
-  // ── State ──────────────────────────────────────────────────────────────────
+  // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [letterIdx,    setLetterIdx]    = useState(0);
   const [attempt,      setAttempt]      = useState(1);
   const [currentPath,  setCurrentPath]  = useState([]);
@@ -248,21 +248,20 @@ export default function LetterWritingScreen({ route, navigation }) {
   const [feedbackData, setFeedbackData] = useState(null);
   const [celebration,  setCelebration]  = useState(null);
 
-  // ── Refs ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const startTimeRef   = useRef(null);
   const allPathsRef    = useRef([]);
 
-  // ── Tracer dot animation (Attempt 1 "Watch & Trace") ─────────────────────
+  // â”€â”€ Tracer dot animation (Attempt 1 "Watch & Trace") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tracerX          = useRef(new Animated.Value(0)).current;
   const tracerY          = useRef(new Animated.Value(0)).current;
   const [tracerVisible, setTracerVisible] = useState(false);
-  const isTracingRef     = useRef(false);
 
-  // ── Celebration animation refs ────────────────────────────────────────────
+  // â”€â”€ Celebration animation refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const celebScale    = useRef(new Animated.Value(0.5)).current;
   const celebOpacity  = useRef(new Animated.Value(0)).current;
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+  // â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const letterObj     = sequence[letterIdx];
   const letter        = letterObj?.letter ?? 'a';
   const isLastLetter  = letterIdx >= sequence.length - 1;
@@ -273,7 +272,7 @@ export default function LetterWritingScreen({ route, navigation }) {
   const badge         = ATTEMPT_BADGE[attempt];
   const ghostFontSize = /[A-Z]/.test(letter) ? GHOST_FONT_UPPER : GHOST_FONT_LOWER;
 
-  // ── Speech ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Speech â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const playLetterSound = useCallback((l = letter) => {
     Speech.stop();
     Speech.speak(l.toUpperCase(), { rate: 0.8, pitch: 1.0, language: 'en-US' });
@@ -289,54 +288,44 @@ export default function LetterWritingScreen({ route, navigation }) {
     return () => Speech.stop();
   }, [letter]);
 
-  // ── Tracer dot animation for Attempt 1 ───────────────────────────────────
+  // â”€â”€ Tracer dot animation for Attempt 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const path = LETTER_PATHS[letter];
     if (attempt !== 1 || hasDrawn || !path || path.length < 2) {
-      isTracingRef.current = false;
       setTracerVisible(false);
-      tracerX.stopAnimation();
-      tracerY.stopAnimation();
       return;
     }
 
     const startX = path[0].fx * CANVAS_W;
     const startY = path[0].fy * CANVAS_H;
-    isTracingRef.current = true;
+    tracerX.setValue(startX);
+    tracerY.setValue(startY);
     setTracerVisible(true);
 
-    const runLoop = () => {
-      if (!isTracingRef.current) return;
-      tracerX.setValue(startX);
-      tracerY.setValue(startY);
+    const steps = path.slice(1).map(pt =>
+      Animated.parallel([
+        Animated.timing(tracerX, { toValue: pt.fx * CANVAS_W, duration: 420, useNativeDriver: false }),
+        Animated.timing(tracerY, { toValue: pt.fy * CANVAS_H, duration: 420, useNativeDriver: false }),
+      ])
+    );
 
-      const steps = path.slice(1).map(pt =>
-        Animated.parallel([
-          Animated.timing(tracerX, { toValue: pt.fx * CANVAS_W, duration: 420, useNativeDriver: true }),
-          Animated.timing(tracerY, { toValue: pt.fy * CANVAS_H, duration: 420, useNativeDriver: true }),
-        ])
-      );
-
+    const anim = Animated.loop(
       Animated.sequence([
         Animated.delay(350),
         ...steps,
         Animated.delay(700),
-      ]).start(({ finished }) => {
-        if (finished) runLoop();
-      });
-    };
-
-    runLoop();
+      ]),
+      { resetBeforeIteration: true }
+    );
+    anim.start();
 
     return () => {
-      isTracingRef.current = false;
       setTracerVisible(false);
-      tracerX.stopAnimation();
-      tracerY.stopAnimation();
+      anim.stop();
     };
   }, [attempt, hasDrawn, letter, tracerX, tracerY]);
 
-  // ── Show feedback badge after first stroke ─────────────────────────────────
+  // â”€â”€ Show feedback badge after first stroke â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (hasDrawn && allPathsRef.current.length > 0) {
       const { smoothness } = calculateDrawingFeatures(allPathsRef.current);
@@ -344,7 +333,7 @@ export default function LetterWritingScreen({ route, navigation }) {
     }
   }, [hasDrawn]);
 
-  // ── PanResponder ───────────────────────────────────────────────────────────
+  // â”€â”€ PanResponder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -378,7 +367,7 @@ export default function LetterWritingScreen({ route, navigation }) {
     })
   ).current;
 
-  // ── Canvas helpers ─────────────────────────────────────────────────────────
+  // â”€â”€ Canvas helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const resetCanvas = useCallback(() => {
     setAllPaths([]);
     allPathsRef.current = [];
@@ -389,18 +378,18 @@ export default function LetterWritingScreen({ route, navigation }) {
 
   const handleClear = useCallback(() => resetCanvas(), [resetCanvas]);
 
-  // ── Show celebration overlay ───────────────────────────────────────────────
+  // â”€â”€ Show celebration overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const showCelebrationFor = useCallback((data, nextCategory, isAllDone) => {
     setCelebration({ data, nextCategory, isAllDone });
     celebScale.setValue(0.5);
     celebOpacity.setValue(0);
     Animated.parallel([
-      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: true }),
-      Animated.timing(celebOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: false }),
+      Animated.timing(celebOpacity, { toValue: 1, duration: 260, useNativeDriver: false }),
     ]).start();
   }, [celebOpacity, celebScale]);
 
-  // ── Next attempt / next letter logic ──────────────────────────────────────
+  // â”€â”€ Next attempt / next letter logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleNext = useCallback(async () => {
     const features = calculateDrawingFeatures(allPathsRef.current);
     await storeLetterProgress(student.sid, letter, {
@@ -462,9 +451,9 @@ export default function LetterWritingScreen({ route, navigation }) {
     }
   }, [celebration, navigation]);
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Render
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <LinearGradient
@@ -475,7 +464,7 @@ export default function LetterWritingScreen({ route, navigation }) {
     >
       <SafeAreaView style={styles.safe}>
 
-        {/* ── Header: back · counter · attempt dots ── */}
+        {/* â”€â”€ Header: back · counter · attempt dots â”€â”€ */}
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -504,7 +493,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* ── Main area: letter card LEFT · content RIGHT ── */}
+        {/* â”€â”€ Main area: letter card LEFT · content RIGHT â”€â”€ */}
         <View style={styles.mainRow}>
 
           {/* Left column — large letter card */}
@@ -650,7 +639,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* ── Feedback pill ── */}
+        {/* â”€â”€ Feedback pill â”€â”€ */}
         {feedbackData && (
           <View style={[styles.feedbackBadge, { backgroundColor: feedbackData.bg }]}>
             <Text style={[styles.feedbackText, { color: feedbackData.color }]}>
@@ -659,7 +648,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* ── Action buttons ── */}
+        {/* â”€â”€ Action buttons â”€â”€ */}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
             style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
@@ -685,7 +674,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* ── Attempt dots ── */}
+        {/* â”€â”€ Attempt dots â”€â”€ */}
         <View style={styles.bottomDots}>
           {[1, 2, 3].map(n => (
             <View
@@ -700,7 +689,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           ))}
         </View>
 
-        {/* ── Category celebration overlay ── */}
+        {/* â”€â”€ Category celebration overlay â”€â”€ */}
         {celebration && (
           <View style={styles.celebOverlay}>
             <LinearGradient
@@ -755,13 +744,13 @@ export default function LetterWritingScreen({ route, navigation }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
-  // ── Header ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -788,7 +777,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
 
-  // ── Main two-column layout ────────────────────────────────────────────────────
+  // â”€â”€ Main two-column layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   mainRow: {
     flexDirection: 'row',
     flex: 1,
@@ -891,7 +880,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  // ── Tracer dot ────────────────────────────────────────────────────────────────
+  // â”€â”€ Tracer dot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   tracerDot: {
     position: 'absolute',
     left: -15,
@@ -908,7 +897,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
 
-  // ── Feedback ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   feedbackBadge: {
     alignSelf: 'center',
     paddingHorizontal: 18,
@@ -918,7 +907,7 @@ const styles = StyleSheet.create({
   },
   feedbackText: { fontSize: 13, fontWeight: '700' },
 
-  // ── Attempt dots (bottom) ─────────────────────────────────────────────────────
+  // â”€â”€ Attempt dots (bottom) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bottomDots: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -926,7 +915,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
 
-  // ── Buttons ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -957,7 +946,7 @@ const styles = StyleSheet.create({
   },
   nextText: { fontSize: 14, fontWeight: '800' },
 
-  // ── Celebration overlay ───────────────────────────────────────────────────────
+  // â”€â”€ Celebration overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   celebOverlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -997,3 +986,4 @@ const styles = StyleSheet.create({
   celebBtn:      { paddingHorizontal: 40, paddingVertical: 14, borderRadius: 50, width: '100%', alignItems: 'center' },
   celebBtnText:  { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
 });
+

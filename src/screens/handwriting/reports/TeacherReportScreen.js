@@ -1,20 +1,3 @@
-/**
- * TeacherReportScreen
- *
- * Sections:
- *  1. Header — student info, date, session duration, share
- *  2. Practice Summary — letters / words / attempts
- *  3. Motor Comfort Score — SVG gauge
- *  4. Motor Performance Metrics — smoothness breakdown per shape
- *  5. Letters Mastery Status — per-letter accuracy table
- *  6. Word Activities — per-letter exercise accuracy
- *  7. Learning Progress — XAI progress indicators
- *  8. Teacher Recommendations — XAI evidence-based suggestions
- *
- * Each section with a computed metric has an expandable XAI panel
- * (tap "ⓘ Why?" to see the exact formula and reasoning).
- */
-
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -30,164 +13,229 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import Svg, { Path, Line, Circle, Text as SvgText } from 'react-native-svg';
+import Svg, { Path, Line, Circle, Text as SvgText, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { getSessionProgress, getAssessmentSnapshot, getSessionDurationMinutes } from '../../../constants/sessionProgress';
 import { getMotorProfile, getCompletedLetters, getLetterProgress, getAllWordProgress } from '../../../utils/storage';
 import { generateReport } from '../../../utils/reportEngine';
+import client from '../../../api/client';
+import { ENDPOINTS } from '../../../constants/api';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
+import ContributionChart from '../../../components/handwriting/ContributionChart';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const CARD_W = Math.min(SCREEN_W - 32, 560);
 
-// ─── Colour palette ───────────────────────────────────────────────────────────
+// ─── Design tokens ────────────────────────────────────────────────────────────
 
-const COLORS = {
-  good:       { text: '#2E7D32', bg: '#E8F5E9', border: '#81C784' },
-  moderate:   { text: '#E65100', bg: '#FFF3E0', border: '#FFB74D' },
-  needsWork:  { text: '#C62828', bg: '#FFEBEE', border: '#EF9A9A' },
-  neutral:    { text: '#546E7A', bg: '#ECEFF1', border: '#B0BEC5' },
+const T = {
+  good:     { text: '#15803D', bg: '#F0FDF4', border: '#86EFAC', dot: '#22C55E' },
+  moderate: { text: '#B45309', bg: '#FFFBEB', border: '#FCD34D', dot: '#F59E0B' },
+  needs:    { text: '#B91C1C', bg: '#FEF2F2', border: '#FCA5A5', dot: '#EF4444' },
+  neutral:  { text: '#475569', bg: '#F8FAFC', border: '#CBD5E1', dot: '#94A3B8' },
 };
 
-function statusColors(status) {
-  if (status === 'good' || status === 'Mastered')         return COLORS.good;
-  if (status === 'moderate' || status === 'Moderate' || status === 'Progressing') return COLORS.moderate;
-  return COLORS.needsWork;
+const PAGE_BG  = '#F0F4FF';
+const CARD_BG  = '#FFFFFF';
+const TEXT_1   = '#0F172A';
+const TEXT_2   = '#475569';
+const TEXT_3   = '#94A3B8';
+const DIVIDER  = '#F1F5F9';
+
+// Maps a server-stored difficultyKey → UI colours/icon for the report card
+const DIFFICULTY_UI = {
+  NONE:               { color: '#22C55E', bgColor: '#F0FDF4', icon: 'checkmark-circle',  noIssueDetected: true  },
+  WEAK_CURVE_CONTROL: { color: '#F59E0B', bgColor: '#FFFBEB', icon: 'refresh-circle',    noIssueDetected: false },
+  WEAK_STRAIGHT_LINE: { color: '#EF4444', bgColor: '#FEF2F2', icon: 'remove-circle',     noIssueDetected: false },
+  ZIGZAG_INSTABILITY: { color: '#8B5CF6', bgColor: '#F5F3FF', icon: 'pulse',             noIssueDetected: false },
+  MOTOR_FATIGUE:      { color: '#6366F1', bgColor: '#EEF2FF', icon: 'battery-half',      noIssueDetected: false },
+};
+
+const DIFFICULTY_DESCRIPTIONS = {
+  NONE:               'Motor control is developing well. No significant difficulty patterns detected.',
+  WEAK_CURVE_CONTROL: 'Difficulty maintaining smooth curved strokes. Affects letters with round shapes.',
+  WEAK_STRAIGHT_LINE: 'Inconsistent straight-line control. Affects letters with verticals and horizontals.',
+  ZIGZAG_INSTABILITY: 'Direction changes cause stroke instability. Affects angular letters.',
+  MOTOR_FATIGUE:      'Signs of motor fatigue detected. Performance may drop during extended writing.',
+};
+
+function statusToken(status) {
+  if (status === 'good'     || status === 'Mastered')                          return T.good;
+  if (status === 'moderate' || status === 'Moderate' || status === 'Progressing') return T.moderate;
+  return T.needs;
 }
 
-// ─── SVG Motor Gauge ──────────────────────────────────────────────────────────
+// ─── Gauge ────────────────────────────────────────────────────────────────────
 
 function MotorGauge({ score }) {
-  const W = 200, H = 130;
-  const cx = W / 2, cy = 108, r = 80, sw = 14;
+  const W = 240, H = 150;
+  const cx = W / 2, cy = 128, r = 96, sw = 16;
 
   function pt(deg) {
     const rad = (deg * Math.PI) / 180;
     return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
   }
-
-  function arcD(aDeg, bDeg) {
-    const s = pt(aDeg), e = pt(bDeg);
-    const large = Math.abs(aDeg - bDeg) > 180 ? 1 : 0;
-    // sweep = 0: counter-clockwise in SVG (= going from higher angle to lower, through the top)
-    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 0 ${e.x} ${e.y}`;
+  function arc(a, b) {
+    const s = pt(a), e = pt(b);
+    const lg = Math.abs(a - b) > 180 ? 1 : 0;
+    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${lg} 0 ${e.x} ${e.y}`;
   }
 
-  const clampedScore = Math.max(0, Math.min(100, score ?? 0));
-  const needleDeg = (1 - clampedScore / 100) * 180; // 0%→180°(left), 100%→0°(right)
-  const needlePt  = pt(needleDeg);
-  const outerNeedle = { x: cx + (r - sw * 0.6) * Math.cos(needleDeg * Math.PI / 180),
-                        y: cy - (r - sw * 0.6) * Math.sin(needleDeg * Math.PI / 180) };
-
-  const gaugeColor = clampedScore >= 70 ? '#4CAF50' : clampedScore >= 45 ? '#FF9800' : '#EF5350';
+  const clamped   = Math.max(0, Math.min(100, score ?? 0));
+  const ndeg      = (1 - clamped / 100) * 180;
+  const nPt       = pt(ndeg);
+  const nLen      = r - sw * 0.5;
+  const nOuter    = {
+    x: cx + nLen * Math.cos((ndeg * Math.PI) / 180),
+    y: cy - nLen * Math.sin((ndeg * Math.PI) / 180),
+  };
+  const gColor    = clamped >= 70 ? '#22C55E' : clamped >= 45 ? '#F59E0B' : '#EF4444';
 
   return (
-    <Svg width={W} height={H}>
-      {/* Background track */}
-      <Path d={arcD(180, 0)} stroke="#EEEEEE" strokeWidth={sw} fill="none" strokeLinecap="butt" />
-      {/* Red zone 0-33 */}
-      <Path d={arcD(180, 121)} stroke="#EF5350" strokeWidth={sw} fill="none" strokeLinecap="butt" />
-      {/* Amber zone 33-66 */}
-      <Path d={arcD(121, 61)} stroke="#FFA726" strokeWidth={sw} fill="none" strokeLinecap="butt" />
-      {/* Green zone 66-100 */}
-      <Path d={arcD(61, 0)} stroke="#66BB6A" strokeWidth={sw} fill="none" strokeLinecap="butt" />
-      {/* Needle */}
-      <Line x1={cx} y1={cy} x2={outerNeedle.x} y2={outerNeedle.y}
-        stroke="#1A1A1A" strokeWidth={2.5} strokeLinecap="round" />
-      <Circle cx={cx} cy={cy} r={5} fill="#1A1A1A" />
-      {/* Score */}
-      <SvgText x={cx} y={cy - 14} textAnchor="middle" fontSize={28} fontWeight="bold" fill={gaugeColor}>
-        {clampedScore}
+    <Svg width={W} height={H} style={{ alignSelf: 'center' }}>
+      <Path d={arc(180, 0)}   stroke="#E2E8F0" strokeWidth={sw} fill="none" strokeLinecap="round" />
+      <Path d={arc(180, 121)} stroke="#FCA5A5" strokeWidth={sw} fill="none" strokeLinecap="round" />
+      <Path d={arc(121,  61)} stroke="#FCD34D" strokeWidth={sw} fill="none" strokeLinecap="round" />
+      <Path d={arc(61,    0)} stroke="#86EFAC" strokeWidth={sw} fill="none" strokeLinecap="round" />
+      <Line x1={cx} y1={cy} x2={nOuter.x} y2={nOuter.y}
+        stroke={TEXT_1} strokeWidth={3} strokeLinecap="round" />
+      <Circle cx={cx} cy={cy} r={7} fill={TEXT_1} />
+      <Circle cx={cx} cy={cy} r={3} fill={CARD_BG} />
+      <SvgText x={cx} y={cy - 18} textAnchor="middle" fontSize={36} fontWeight="900" fill={gColor}>
+        {clamped}
       </SvgText>
-      <SvgText x={cx} y={cy - 1} textAnchor="middle" fontSize={10} fill="#888">/ 100</SvgText>
-      {/* Zone labels */}
-      <SvgText x={8}   y={cy + 14} fontSize={9} fill="#EF5350">Low</SvgText>
-      <SvgText x={W - 8} y={cy + 14} textAnchor="end" fontSize={9} fill="#66BB6A">High</SvgText>
+      <SvgText x={cx} y={cy - 4} textAnchor="middle" fontSize={11} fill={TEXT_3}>/ 100</SvgText>
+      <SvgText x={14}   y={cy + 16} fontSize={10} fill="#EF4444">Low</SvgText>
+      <SvgText x={W-14} y={cy + 16} textAnchor="end" fontSize={10} fill="#22C55E">High</SvgText>
     </Svg>
   );
 }
 
-// ─── XAI panel ────────────────────────────────────────────────────────────────
+// ─── Section card ─────────────────────────────────────────────────────────────
 
-function XAIPanel({ explanation }) {
-  const [open, setOpen] = useState(false);
+function SectionCard({ title, icon, accentColor = '#6366F1', children, style }) {
   return (
-    <View style={xaiStyles.wrap}>
-      <TouchableOpacity onPress={() => setOpen(o => !o)} style={xaiStyles.btn} activeOpacity={0.7}>
-        <Ionicons name="information-circle-outline" size={14} color="#7B1FA2" />
-        <Text style={xaiStyles.btnText}>Why this score?</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={12} color="#7B1FA2" />
+    <View style={[sc.card, style]}>
+      <View style={[sc.accent, { backgroundColor: accentColor }]} />
+      <View style={sc.inner}>
+        {title ? (
+          <View style={sc.header}>
+            <View style={[sc.iconWrap, { backgroundColor: accentColor + '18' }]}>
+              <Ionicons name={icon} size={16} color={accentColor} />
+            </View>
+            <Text style={sc.title}>{title}</Text>
+          </View>
+        ) : null}
+        {children}
+      </View>
+    </View>
+  );
+}
+
+const sc = StyleSheet.create({
+  card: {
+    backgroundColor: CARD_BG,
+    borderRadius: 20,
+    marginBottom: 14,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#1E3A5F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+  },
+  accent: { width: 5, borderRadius: 0 },
+  inner:  { flex: 1, padding: 18 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 10 },
+  iconWrap: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  title:  { fontSize: 15, fontWeight: '800', color: TEXT_1, letterSpacing: 0.2 },
+});
+
+// ─── XAI toggle ───────────────────────────────────────────────────────────────
+
+function WhyPanel({ label = 'Why this score?', explanation }) {
+  const [open, setOpen] = useState(false);
+  if (!explanation) return null;
+  return (
+    <View style={wp.wrap}>
+      <TouchableOpacity onPress={() => setOpen(o => !o)} style={wp.btn} activeOpacity={0.7}>
+        <Ionicons name="information-circle" size={15} color="#6366F1" />
+        <Text style={wp.label}>{label}</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color="#6366F1" />
       </TouchableOpacity>
       {open && (
-        <View style={xaiStyles.panel}>
-          <Text style={xaiStyles.text}>{explanation}</Text>
+        <View style={wp.panel}>
+          <Text style={wp.text}>{explanation}</Text>
         </View>
       )}
     </View>
   );
 }
 
-const xaiStyles = StyleSheet.create({
-  wrap: { marginTop: 8 },
-  btn:  { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
-  btnText: { fontSize: 12, color: '#7B1FA2', fontWeight: '600' },
+const wp = StyleSheet.create({
+  wrap:  { marginTop: 10 },
+  btn:   { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
+  label: { fontSize: 12, color: '#6366F1', fontWeight: '700' },
   panel: {
-    marginTop: 6, backgroundColor: '#F3E5F5', borderRadius: 10,
-    padding: 12, borderLeftWidth: 3, borderLeftColor: '#AB47BC',
+    marginTop: 8, backgroundColor: '#EEF2FF', borderRadius: 12,
+    padding: 13, borderLeftWidth: 3, borderLeftColor: '#6366F1',
   },
-  text: { fontSize: 12, color: '#4A148C', lineHeight: 18 },
+  text:  { fontSize: 12, color: '#3730A3', lineHeight: 19 },
 });
 
-// ─── Card wrapper ─────────────────────────────────────────────────────────────
+// ─── Status pill ──────────────────────────────────────────────────────────────
 
-function Card({ title, icon, children, style }) {
+function Pill({ label, status }) {
+  const t = statusToken(status);
   return (
-    <View style={[cardStyles.card, style]}>
-      {title && (
-        <View style={cardStyles.header}>
-          {icon && <Ionicons name={icon} size={16} color="#555" style={{ marginRight: 6 }} />}
-          <Text style={cardStyles.title}>{title}</Text>
-        </View>
-      )}
-      {children}
+    <View style={[pill.wrap, { backgroundColor: t.bg, borderColor: t.border }]}>
+      <View style={[pill.dot, { backgroundColor: t.dot }]} />
+      <Text style={[pill.text, { color: t.text }]}>{label}</Text>
     </View>
   );
 }
 
-const cardStyles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF', borderRadius: 18, padding: 18,
-    marginBottom: 14, elevation: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07, shadowRadius: 8,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  title:  { fontSize: 14, fontWeight: '800', color: '#1A1A1A', letterSpacing: 0.3 },
+const pill = StyleSheet.create({
+  wrap: { flexDirection: 'row', alignItems: 'center', gap: 5,
+          paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1.5 },
+  dot:  { width: 6, height: 6, borderRadius: 3 },
+  text: { fontSize: 11, fontWeight: '700' },
 });
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+// ─── Score bar ────────────────────────────────────────────────────────────────
 
-function StatusBadge({ label, status }) {
-  const c = statusColors(status);
+function ScoreBar({ pct, height = 8 }) {
+  const color = pct >= 75 ? '#22C55E' : pct >= 50 ? '#F59E0B' : '#EF4444';
   return (
-    <View style={[badgeStyles.badge, { backgroundColor: c.bg, borderColor: c.border }]}>
-      <Text style={[badgeStyles.text, { color: c.text }]}>{label}</Text>
+    <View style={[bar.bg, { height, borderRadius: height / 2 }]}>
+      <View style={[bar.fill, { width: `${pct}%`, backgroundColor: color, height, borderRadius: height / 2 }]} />
     </View>
   );
 }
 
-const badgeStyles = StyleSheet.create({
-  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20, borderWidth: 1.5 },
-  text:  { fontSize: 11, fontWeight: '700' },
+const bar = StyleSheet.create({
+  bg:   { backgroundColor: '#E2E8F0', overflow: 'hidden', flex: 1 },
+  fill: {},
 });
 
-// ─── Priority badge ───────────────────────────────────────────────────────────
+// ─── Empty state ──────────────────────────────────────────────────────────────
 
-const PRIORITY = {
-  high:   { bg: '#FFEBEE', text: '#C62828', label: 'High' },
-  medium: { bg: '#FFF8E1', text: '#F57F17', label: 'Medium' },
-  low:    { bg: '#E8F5E9', text: '#2E7D32', label: 'Low' },
-};
+function Empty({ message }) {
+  return (
+    <View style={em.wrap}>
+      <View style={em.iconWrap}>
+        <Ionicons name="clipboard-outline" size={28} color={TEXT_3} />
+      </View>
+      <Text style={em.text}>{message}</Text>
+    </View>
+  );
+}
+
+const em = StyleSheet.create({
+  wrap:     { alignItems: 'center', paddingVertical: 24, gap: 10 },
+  iconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+  text:     { fontSize: 13, color: TEXT_3, textAlign: 'center', lineHeight: 19, maxWidth: 240 },
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Main screen
@@ -206,29 +254,70 @@ export default function TeacherReportScreen({ route, navigation }) {
       async function load() {
         setLoading(true);
         try {
-          const { assessmentData, motorProfile: snapProfile } = getAssessmentSnapshot();
-          // Merge persistent word history with current-session memory (session wins)
-          const persistent   = await getAllWordProgress(student?.sid ?? 0);
-          const wordProgress = { ...persistent, ...getSessionProgress() };
-          const motorProfile = snapProfile ?? (await getMotorProfile(student?.sid));
+          // 1. Fetch stored initial assessment + analysis from the server
+          let serverData = null;
+          try {
+            const res = await client.get(ENDPOINTS.HANDWRITING_INITIAL_REPORT(student?.sid));
+            if (res.data?.hasData) serverData = res.data;
+          } catch (netErr) {
+            console.warn('Could not reach server for initial report (falling back to local):', netErr?.message);
+          }
+
+          // 2. Map server shapes → client format (shape_id → shapeId)
+          const assessmentData = serverData?.assessment?.shapes?.map(s => ({
+            shapeId:  s.shape_id,
+            features: s.features,
+            strokes:  s.strokes ?? [],
+          })) ?? getAssessmentSnapshot().assessmentData ?? [];
+
+          // 3. Motor profile — prefer server, fall back to AsyncStorage / snapshot
+          const motorProfile =
+            serverData?.assessment?.motor_profile ??
+            getAssessmentSnapshot().motorProfile ??
+            (await getMotorProfile(student?.sid));
+
+          // 4. Local letter / word / session data (unchanged — these accumulate per session)
+          const persistent       = await getAllWordProgress(student?.sid ?? 0);
+          const wordProgress     = { ...persistent, ...getSessionProgress() };
           const completedLetters = await getCompletedLetters(student?.sid ?? 0);
 
-          // Load letter progress for all completed letters
           const letterProgressMap = {};
           for (const letter of (completedLetters ?? [])) {
             const lp = await getLetterProgress(student?.sid ?? 0, letter);
             if (lp) letterProgressMap[letter] = lp;
           }
 
+          // 5. Generate report using server-sourced motor data + local letter/word data
           const computed = generateReport({
             assessmentData, motorProfile, letterProgressMap,
             wordProgress, completedLetters, student,
           });
 
-          if (active) {
-            setReport(computed);
-            setDuration(getSessionDurationMinutes());
+          // 6. Override difficultyAnalysis with server-stored result if available
+          if (serverData?.explanation) {
+            const exp = serverData.explanation;
+            const ui  = DIFFICULTY_UI[exp.difficultyKey] ?? DIFFICULTY_UI.NONE;
+            computed.difficultyAnalysis = {
+              difficulty:           exp.difficulty,
+              difficultyKey:        exp.difficultyKey,
+              confidence:           exp.confidence,
+              description:          DIFFICULTY_DESCRIPTIONS[exp.difficultyKey] ?? exp.difficulty,
+              color:                ui.color,
+              bgColor:              ui.bgColor,
+              icon:                 ui.icon,
+              noIssueDetected:      ui.noIssueDetected,
+              noDataAvailable:      false,
+              featureContributions: exp.featureContributions ?? [],
+              explanation:          exp.explanation ?? [],
+              exercises:            (exp.recommendations ?? []).map(r =>
+                typeof r === 'string' ? { text: r, priority: 'medium' } : r
+              ),
+              letterFocus:          exp.letterFocus ?? [],
+              secondaryDifficulty:  exp.secondaryDifficulty ?? null,
+            };
           }
+
+          if (active) { setReport(computed); setDuration(getSessionDurationMinutes()); }
         } catch (e) {
           console.warn('Report load error:', e);
         } finally {
@@ -244,257 +333,199 @@ export default function TeacherReportScreen({ route, navigation }) {
     if (!report) return;
     const { motorScore, wordMastery, summary } = report;
     const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
     const text = [
       `STUDENT REPORT — ${date}`,
       `Student: ${student?.full_name ?? 'Unknown'}`,
       `Session time: ${duration} minutes`,
       '',
       motorScore?.score !== null
-        ? `Motor Skills    Motor Comfort Score: ${motorScore.score}/100 (${motorScore.level})`
-        : 'Motor Skills    No assessment data yet',
+        ? `Motor Comfort Score: ${motorScore.score}/100 (${motorScore.level})`
+        : 'Motor assessment: not completed',
       '',
-      summary.lettersPracticed > 0
-        ? `Letters Practiced    ${summary.lettersPracticed} letters completed`
-        : 'Letters Practiced    None yet',
-      '',
+      `Letters practiced: ${summary.lettersPracticed}`,
       summary.totalWordsPracticed > 0
-        ? `Word Activities    ${wordMastery.overall?.correct ?? 0}/${wordMastery.overall?.total ?? 0} exercises correct (${wordMastery.overall?.pct ?? 0}%)`
-        : 'Word Activities    No word activities yet',
+        ? `Word activities: ${wordMastery.overall?.correct ?? 0}/${wordMastery.overall?.total ?? 0} correct (${wordMastery.overall?.pct ?? 0}%)`
+        : 'Word activities: none yet',
       '',
-      ...(report.recommendations.slice(0, 3).map(r => `Recommendation    ${r.text}`)),
+      ...report.recommendations.slice(0, 3).map(r => `• ${r.text}`),
     ].join('\n');
-
     Share.share({ message: text, title: `Auriva Report — ${student?.full_name}` });
   }
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
   return (
     <LinearGradient
       colors={theme.backgroundGradient}
-      style={styles.gradient}
+      style={{ flex: 1 }}
       start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
+      end={{ x: 0, y: 0.3 }}
     >
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={{ flex: 1 }}>
 
         {/* ── Top bar ── */}
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+        <View style={s.topBar}>
+          <TouchableOpacity style={s.topBtn} onPress={() => navigation.goBack()} activeOpacity={0.75}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
-
           <View style={{ alignItems: 'center' }}>
-            <Text style={[styles.topTitle, { color: theme.headingText }]}>
-              End-of-Day Progress Report
-            </Text>
-            <Text style={[styles.topSub, { color: theme.headingText }]}>
-              {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </Text>
+            <Text style={[s.topTitle, { color: theme.headingText }]}>Progress Report</Text>
+            <Text style={[s.topDate,  { color: theme.headingText }]}>{dateStr}</Text>
           </View>
-
-          <TouchableOpacity
-            onPress={handleShare}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="share-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity style={s.topBtn} onPress={handleShare} activeOpacity={0.75}>
+            <Ionicons name="share-social-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
 
-        {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={theme.button} />
-            <Text style={[styles.loadingText, { color: theme.headingText }]}>
-              Generating report…
+        {/* ── Student hero strip ── */}
+        <View style={s.heroStrip}>
+          <View style={[s.heroInitial, { backgroundColor: theme.button }]}>
+            <Text style={s.heroInitialText}>
+              {(student?.full_name ?? '?').charAt(0).toUpperCase()}
             </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.heroName, { color: theme.headingText }]} numberOfLines={1}>
+              {student?.full_name ?? '—'}
+            </Text>
+            <Text style={[s.heroMeta, { color: theme.headingText }]}>
+              ID #{student?.sid ?? '—'}  ·  {duration} min session
+            </Text>
+          </View>
+        </View>
+
+        {loading ? (
+          <View style={s.loadingWrap}>
+            <ActivityIndicator size="large" color={theme.button} />
+            <Text style={[s.loadingText, { color: theme.headingText }]}>Generating report…</Text>
           </View>
         ) : (
           <ScrollView
-            contentContainerStyle={styles.scroll}
+            style={s.scrollArea}
+            contentContainerStyle={s.scroll}
             showsVerticalScrollIndicator={false}
           >
 
-            {/* ══ 1. Student Info ══════════════════════════════════════════════ */}
-            <View style={styles.infoRow}>
-              <Card style={{ flex: 1, marginRight: 8 }}>
-                <View style={styles.infoGrid}>
-                  <InfoRow label="Student"   value={student?.full_name ?? '—'} />
-                  <InfoRow label="Student ID" value={`#${student?.sid ?? '—'}`} />
-                  <InfoRow label="Session"    value={`${duration} min`} />
-                  <InfoRow label="Date"       value={new Date().toLocaleDateString()} />
-                </View>
-              </Card>
+            {/* ══ 1. Practice Summary ════════════════════════════════════════ */}
+            <SectionCard title="Practice Summary" icon="stats-chart" accentColor="#6366F1">
+              <View style={s.summaryGrid}>
+                <StatTile value={report.summary.lettersPracticed} label="Letters"       color="#6366F1" bg="#EEF2FF" />
+                <StatTile value={report.summary.totalWordsPracticed} label="Words"      color="#0891B2" bg="#ECFEFF" />
+                <StatTile value={report.summary.totalAttempts}     label="Attempts"     color="#D97706" bg="#FFFBEB" />
+                <StatTile value={report.summary.wordLettersDone}   label="In Activities" color="#059669" bg="#ECFDF5" />
+              </View>
+            </SectionCard>
 
-              <Card title="Practice Summary" icon="stats-chart-outline" style={{ flex: 1, marginLeft: 8 }}>
-                <View style={styles.summaryGrid}>
-                  <SummaryCell
-                    value={report.summary.lettersPracticed}
-                    label="Letters practiced"
-                    color={theme.button}
-                  />
-                  <SummaryCell
-                    value={report.summary.totalWordsPracticed}
-                    label="Words practiced"
-                    color="#2E7D32"
-                  />
-                  <SummaryCell
-                    value={report.summary.totalAttempts}
-                    label="Total attempts"
-                    color="#E65100"
-                  />
-                  <SummaryCell
-                    value={report.summary.wordLettersDone}
-                    label="Letters in activities"
-                    color="#1565C0"
-                  />
-                </View>
-              </Card>
-            </View>
-
-            {/* ══ 2. Motor Comfort Score + Motor Metrics ══════════════════════ */}
-            <View style={styles.infoRow}>
-
-              {/* Gauge */}
-              <Card title="Motor Comfort Score" icon="speedometer-outline" style={{ flex: 1, marginRight: 8, alignItems: 'center' }}>
-                {report.motorScore.score !== null ? (
-                  <>
-                    <MotorGauge score={report.motorScore.score} />
-                    <StatusBadge label={report.motorScore.level} status={
-                      report.motorScore.score >= 70 ? 'good' :
-                      report.motorScore.score >= 45 ? 'moderate' : 'needs-work'
-                    } />
-                    <XAIPanel explanation={report.motorScore.explanation} />
-                  </>
-                ) : (
-                  <NoData message="Complete shape assessment to see motor score" />
-                )}
-              </Card>
-
-              {/* Per-shape breakdown */}
-              <Card title="Motor Performance" icon="pulse-outline" style={{ flex: 1, marginLeft: 8 }}>
-                {report.motorScore.breakdown?.length > 0 ? (
-                  <>
-                    {report.motorScore.breakdown.map(shape => (
-                      <View key={shape.shapeId} style={styles.shapeRow}>
-                        <Text style={styles.shapeId} numberOfLines={1}>
-                          {shape.shapeId.replace(/_/g, ' ')}
-                        </Text>
-                        <View style={styles.shapeBar}>
-                          <View style={[styles.shapeBarFill, {
-                            width: `${shape.score}%`,
-                            backgroundColor: shape.score >= 70 ? '#4CAF50' : shape.score >= 45 ? '#FF9800' : '#EF5350',
-                          }]} />
-                        </View>
-                        <Text style={[styles.shapeScore, {
-                          color: shape.score >= 70 ? '#2E7D32' : shape.score >= 45 ? '#E65100' : '#C62828',
-                        }]}>
-                          {shape.score}%
-                        </Text>
-                        <Text style={styles.shapeLabel}>{shape.label}</Text>
-                      </View>
-                    ))}
-                    <View style={styles.divider} />
-                    {report.letterMetrics.avgDeviation !== null && (
-                      <>
-                        <MetricRow label="Avg stroke deviation"  value={`${report.letterMetrics.avgDeviation} px`} />
-                        <MetricRow label="Avg pauses/letter"     value={report.letterMetrics.avgPauses ?? '—'} />
-                        <MetricRow label="Avg time/letter"       value={report.letterMetrics.avgTime !== null ? `${report.letterMetrics.avgTime}s` : '—'} />
-                      </>
-                    )}
-                    <XAIPanel explanation={report.letterMetrics.explanation} />
-                  </>
-                ) : (
-                  <NoData message="No motor assessment data yet" />
-                )}
-              </Card>
-            </View>
-
-            {/* ══ 3. Letters Mastery ══════════════════════════════════════════ */}
-            <Card title="Letters Mastery Status" icon="text-outline">
-              {report.letterMetrics.letters.length > 0 ? (
+            {/* ══ 2. Motor Comfort Score ════════════════════════════════════ */}
+            <SectionCard title="Motor Comfort Score" icon="speedometer" accentColor="#7C3AED">
+              {report.motorScore.score !== null ? (
                 <>
-                  <View style={styles.tableHeader}>
-                    <Text style={[styles.thCell, { flex: 1 }]}>Letter</Text>
-                    <Text style={[styles.thCell, { width: 80 }]}>Accuracy</Text>
-                    <Text style={[styles.thCell, { width: 70 }]}>Avg Time</Text>
-                    <Text style={[styles.thCell, { width: 90 }]}>Status</Text>
+                  <MotorGauge score={report.motorScore.score} />
+                  <View style={{ alignItems: 'center', marginTop: 6, gap: 8 }}>
+                    <Pill
+                      label={report.motorScore.level}
+                      status={report.motorScore.score >= 70 ? 'good' : report.motorScore.score >= 45 ? 'moderate' : 'needs-work'}
+                    />
+                    <WhyPanel explanation={report.motorScore.explanation} />
                   </View>
-                  {report.letterMetrics.letters.map(l => (
-                    <View key={l.letter} style={styles.tableRow}>
-                      <Text style={[styles.tdLetter, { flex: 1 }]}>{l.letter.toUpperCase()}</Text>
-                      <View style={{ width: 80 }}>
-                        <AccuracyBar pct={l.accuracy} />
-                      </View>
-                      <Text style={[styles.td, { width: 70 }]}>{l.avgTimeSec}s</Text>
-                      <View style={{ width: 90 }}>
-                        <StatusBadge label={l.status} status={l.status === 'Mastered' ? 'good' : l.status === 'Progressing' ? 'moderate' : 'needs-work'} />
-                      </View>
-                    </View>
-                  ))}
-                  <XAIPanel explanation={report.letterMetrics.explanation} />
                 </>
               ) : (
-                <NoData message="No letter practice recorded this session" />
+                <Empty message="Complete the shape assessment to see the motor comfort score" />
               )}
-            </Card>
+            </SectionCard>
 
-            {/* ══ 4. Word Activities ══════════════════════════════════════════ */}
-            <Card title="Word Activities" icon="book-outline">
+            {/* ══ 3. Motor Performance (per shape) ════════════════════════ */}
+            <SectionCard title="Motor Performance" icon="pulse" accentColor="#0891B2">
+              {report.motorScore.breakdown?.length > 0 ? (
+                <>
+                  {report.motorScore.breakdown.map(shape => (
+                    <ShapeRow key={shape.shapeId} shape={shape} />
+                  ))}
+
+                  {report.letterMetrics.avgDeviation !== null && (
+                    <>
+                      <View style={s.divider} />
+                      <View style={s.metricsRow}>
+                        <MetricTile icon="move-outline"  label="Avg deviation" value={`${report.letterMetrics.avgDeviation} px`} />
+                        <MetricTile icon="hand-left-outline" label="Avg pauses"  value={report.letterMetrics.avgPauses ?? '—'} />
+                        <MetricTile icon="timer-outline" label="Avg time"     value={report.letterMetrics.avgTime !== null ? `${report.letterMetrics.avgTime}s` : '—'} />
+                      </View>
+                    </>
+                  )}
+                  <WhyPanel label="How is this measured?" explanation={report.letterMetrics.explanation} />
+                </>
+              ) : (
+                <Empty message="No motor assessment data yet" />
+              )}
+            </SectionCard>
+
+            {/* ══ 4. Motor Difficulty Analysis ════════════════════════════ */}
+            <MotorDifficultyCard analysis={report.difficultyAnalysis} />
+
+            {/* ══ 5. Letters Mastery ══════════════════════════════════════ */}
+            <SectionCard title="Letters Mastery" icon="text" accentColor="#059669">
+              {report.letterMetrics.letters.length > 0 ? (
+                <>
+                  <LetterMasteryGrid letters={report.letterMetrics.letters} />
+                  <WhyPanel label="How is mastery measured?" explanation={report.letterMetrics.explanation} />
+                </>
+              ) : (
+                <Empty message="No letter practice recorded in this session" />
+              )}
+            </SectionCard>
+
+            {/* ══ 6. Word Activities ══════════════════════════════════════ */}
+            <SectionCard title="Word Activities" icon="book" accentColor="#D97706">
               {report.wordMastery.byLetter.length > 0 ? (
                 <>
-                  {/* Overall bar */}
                   {report.wordMastery.overall && (
-                    <View style={styles.overallBar}>
-                      <Text style={styles.overallLabel}>
-                        Overall: {report.wordMastery.overall.correct}/{report.wordMastery.overall.total} correct
-                      </Text>
-                      <AccuracyBar pct={report.wordMastery.overall.pct} wide />
-                      <Text style={[styles.overallPct, {
-                        color: report.wordMastery.overall.pct >= 75 ? '#2E7D32' : report.wordMastery.overall.pct >= 50 ? '#E65100' : '#C62828',
+                    <View style={s.overallBar}>
+                      <Text style={s.overallLabel}>Overall accuracy</Text>
+                      <View style={{ flex: 1 }}>
+                        <ScoreBar pct={report.wordMastery.overall.pct} height={10} />
+                      </View>
+                      <Text style={[s.overallPct, {
+                        color: report.wordMastery.overall.pct >= 75 ? '#15803D' :
+                               report.wordMastery.overall.pct >= 50 ? '#B45309' : '#B91C1C',
                       }]}>
                         {report.wordMastery.overall.pct}%
                       </Text>
                     </View>
                   )}
-
-                  <View style={styles.divider} />
-
-                  {/* Per-letter rows */}
+                  <View style={s.divider} />
                   {report.wordMastery.byLetter.map(l => (
                     <WordLetterRow key={l.letter} data={l} />
                   ))}
-
-                  <XAIPanel explanation={report.wordMastery.explanation} />
+                  <WhyPanel label="How is word accuracy measured?" explanation={report.wordMastery.explanation} />
                 </>
               ) : (
-                <NoData message="No word activities completed yet" />
+                <Empty message="No word activities completed yet" />
               )}
-            </Card>
+            </SectionCard>
 
-            {/* ══ 5. Learning Progress ════════════════════════════════════════ */}
-            <Card title="Learning Progress" icon="trending-up-outline">
+            {/* ══ 7. Learning Progress ════════════════════════════════════ */}
+            <SectionCard title="Learning Progress" icon="trending-up" accentColor="#0284C7">
               {report.progressIndicators.length > 0 ? (
-                <View style={styles.progressList}>
+                <View style={s.progressGrid}>
                   {report.progressIndicators.map((ind, i) => (
-                    <ProgressIndicatorRow key={i} item={ind} />
+                    <ProgressTile key={i} item={ind} />
                   ))}
                 </View>
               ) : (
-                <NoData message="Complete activities to see learning trends" />
+                <Empty message="Complete activities to see learning trends" />
               )}
-            </Card>
+            </SectionCard>
 
-            {/* ══ 6. Teacher Recommendations (XAI) ═══════════════════════════ */}
-            <Card title="Teacher Recommendations" icon="bulb-outline">
-              {report.recommendations.map((rec, i) => (
-                <RecommendationRow key={i} rec={rec} />
-              ))}
-            </Card>
+            {/* ══ 8. Teacher Recommendations ══════════════════════════════ */}
+            <SectionCard title="Teacher Recommendations" icon="bulb" accentColor="#7C3AED">
+              <View style={{ gap: 10 }}>
+                {report.recommendations.map((rec, i) => (
+                  <RecommendationCard key={i} rec={rec} />
+                ))}
+              </View>
+            </SectionCard>
 
-            <View style={{ height: 32 }} />
+            <View style={{ height: 40 }} />
           </ScrollView>
         )}
       </SafeAreaView>
@@ -504,260 +535,468 @@ export default function TeacherReportScreen({ route, navigation }) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function InfoRow({ label, value }) {
+function StatTile({ value, label, color, bg }) {
   return (
-    <View style={subStyles.infoRow}>
-      <Text style={subStyles.infoLabel}>{label}</Text>
-      <Text style={subStyles.infoValue}>{value}</Text>
+    <View style={[st.tile, { backgroundColor: bg }]}>
+      <Text style={[st.value, { color }]}>{value ?? '—'}</Text>
+      <Text style={st.label}>{label}</Text>
     </View>
   );
 }
+const st = StyleSheet.create({
+  tile:  { flex: 1, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4, minWidth: '22%' },
+  value: { fontSize: 30, fontWeight: '900' },
+  label: { fontSize: 11, color: TEXT_2, fontWeight: '600', textAlign: 'center' },
+});
 
-function SummaryCell({ value, label, color }) {
+function ShapeRow({ shape }) {
+  const color = shape.score >= 70 ? '#15803D' : shape.score >= 45 ? '#B45309' : '#B91C1C';
+  const label = shape.label ?? (shape.score >= 70 ? 'Excellent' : shape.score >= 45 ? 'Good' : 'Practice');
   return (
-    <View style={subStyles.summaryCell}>
-      <Text style={[subStyles.summaryValue, { color }]}>{value}</Text>
-      <Text style={subStyles.summaryLabel}>{label}</Text>
+    <View style={sr.row}>
+      <Text style={sr.name} numberOfLines={1}>
+        {shape.shapeId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+      </Text>
+      <View style={{ flex: 1, paddingHorizontal: 10 }}>
+        <ScoreBar pct={shape.score} height={10} />
+      </View>
+      <Text style={[sr.pct, { color }]}>{shape.score}%</Text>
+      <View style={[sr.labelWrap, {
+        backgroundColor: shape.score >= 70 ? '#F0FDF4' : shape.score >= 45 ? '#FFFBEB' : '#FEF2F2',
+        borderColor: shape.score >= 70 ? '#86EFAC' : shape.score >= 45 ? '#FCD34D' : '#FCA5A5',
+      }]}>
+        <Text style={[sr.labelText, { color }]}>{label}</Text>
+      </View>
     </View>
   );
 }
+const sr = StyleSheet.create({
+  row:       { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  name:      { width: 110, fontSize: 13, color: TEXT_2, fontWeight: '500' },
+  pct:       { width: 38, fontSize: 13, fontWeight: '800', textAlign: 'right' },
+  labelWrap: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1 },
+  labelText: { fontSize: 10, fontWeight: '700' },
+});
 
-function MetricRow({ label, value }) {
+function MetricTile({ icon, label, value }) {
   return (
-    <View style={subStyles.metricRow}>
-      <Text style={subStyles.metricLabel}>{label}</Text>
-      <Text style={subStyles.metricValue}>{value}</Text>
+    <View style={mt.tile}>
+      <Ionicons name={icon} size={16} color={TEXT_3} />
+      <Text style={mt.value}>{value}</Text>
+      <Text style={mt.label}>{label}</Text>
     </View>
   );
 }
+const mt = StyleSheet.create({
+  tile:  { flex: 1, alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10 },
+  value: { fontSize: 16, fontWeight: '800', color: TEXT_1 },
+  label: { fontSize: 10, color: TEXT_3, fontWeight: '500', textAlign: 'center' },
+});
 
-function AccuracyBar({ pct, wide }) {
-  const color = pct >= 75 ? '#4CAF50' : pct >= 50 ? '#FF9800' : '#EF5350';
+function LetterMasteryGrid({ letters }) {
+  const mastered    = letters.filter(l => l.status === 'Mastered').length;
+  const progressing = letters.filter(l => l.status === 'Progressing').length;
+  const needs       = letters.filter(l => l.status === 'Needs Practice').length;
+
   return (
-    <View style={[subStyles.barBg, wide && { height: 10, borderRadius: 5 }]}>
-      <View style={[subStyles.barFill, { width: `${pct}%`, backgroundColor: color }, wide && { height: 10, borderRadius: 5 }]} />
+    <View>
+      {/* Summary row */}
+      <View style={lg.summaryRow}>
+        <LegendDot color={T.good.dot}     label={`${mastered} Mastered`} />
+        <LegendDot color={T.moderate.dot} label={`${progressing} Progressing`} />
+        <LegendDot color={T.needs.dot}    label={`${needs} Needs Practice`} />
+      </View>
+
+      {/* Letter chips */}
+      <View style={lg.grid}>
+        {letters.map(l => {
+          const t = statusToken(l.status === 'Mastered' ? 'good' : l.status === 'Progressing' ? 'moderate' : 'needs-work');
+          return (
+            <View key={l.letter} style={[lg.chip, { backgroundColor: t.bg, borderColor: t.border }]}>
+              <Text style={[lg.chipLetter, { color: t.text }]}>{l.letter.toUpperCase()}</Text>
+              <Text style={[lg.chipPct, { color: t.text }]}>{l.accuracy}%</Text>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
+function LegendDot({ color, label }) {
+  return (
+    <View style={lg.legendItem}>
+      <View style={[lg.dot, { backgroundColor: color }]} />
+      <Text style={lg.legendLabel}>{label}</Text>
+    </View>
+  );
+}
+const lg = StyleSheet.create({
+  summaryRow: { flexDirection: 'row', gap: 14, marginBottom: 14, flexWrap: 'wrap' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dot:        { width: 8, height: 8, borderRadius: 4 },
+  legendLabel:{ fontSize: 11, color: TEXT_2, fontWeight: '600' },
+  grid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    width: 52, height: 56, borderRadius: 14, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center', gap: 2,
+  },
+  chipLetter: { fontSize: 18, fontWeight: '900' },
+  chipPct:    { fontSize: 9,  fontWeight: '700' },
+});
+
+function ProgressTile({ item }) {
+  const [open, setOpen] = useState(false);
+  const t = statusToken(item.status);
+  return (
+    <View style={[pt.tile, { backgroundColor: t.bg, borderColor: t.border }]}>
+      <View style={[pt.iconCircle, { backgroundColor: t.dot + '22' }]}>
+        <Text style={{ fontSize: 18 }}>{item.icon}</Text>
+      </View>
+      <Text style={[pt.label, { color: t.text }]}>{item.label}</Text>
+      <View style={[pt.badge, { backgroundColor: t.dot + '22' }]}>
+        <Text style={[pt.badgeText, { color: t.text }]}>{item.detail}</Text>
+      </View>
+      <TouchableOpacity onPress={() => setOpen(o => !o)} style={pt.whyBtn} activeOpacity={0.7}>
+        <Ionicons name="information-circle-outline" size={14} color="#6366F1" />
+        <Text style={pt.whyText}>Why?</Text>
+      </TouchableOpacity>
+      {open && (
+        <View style={pt.panel}>
+          <Text style={pt.panelText}>{item.xai}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+const pt = StyleSheet.create({
+  tile: {
+    flex: 1, borderRadius: 16, borderWidth: 1.5, padding: 12,
+    alignItems: 'center', gap: 6, minWidth: '47%',
+  },
+  iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  label:      { fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  badge:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  badgeText:  { fontSize: 11, fontWeight: '700' },
+  whyBtn:     { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  whyText:    { fontSize: 11, color: '#6366F1', fontWeight: '600' },
+  panel:      {
+    marginTop: 4, backgroundColor: '#EEF2FF', borderRadius: 8,
+    padding: 8, width: '100%',
+  },
+  panelText:  { fontSize: 11, color: '#3730A3', lineHeight: 16 },
+});
 
 function WordLetterRow({ data }) {
   const [open, setOpen] = useState(false);
-  const c = statusColors(data.masteryStatus);
+  const t = statusToken(data.masteryStatus === 'Mastered' ? 'good' : data.masteryStatus === 'Moderate' ? 'moderate' : 'needs-work');
   return (
-    <TouchableOpacity onPress={() => setOpen(o => !o)} activeOpacity={0.8}>
-      <View style={subStyles.wordLetterRow}>
-        <View style={[subStyles.letterCircle, { backgroundColor: c.bg, borderColor: c.border }]}>
-          <Text style={[subStyles.letterCircleText, { color: c.text }]}>{data.letter.toUpperCase()}</Text>
+    <View style={wl.wrap}>
+      <TouchableOpacity onPress={() => setOpen(o => !o)} activeOpacity={0.8} style={wl.row}>
+        <View style={[wl.letterBubble, { backgroundColor: t.bg, borderColor: t.border }]}>
+          <Text style={[wl.letterText, { color: t.text }]}>{data.letter.toUpperCase()}</Text>
         </View>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={subStyles.wordLetterMeta}>
-            {data.words} word{data.words !== 1 ? 's' : ''} · {data.accuracy}% correct
-            {data.bestEx ? `  ·  Best: ${data.bestEx.name}` : ''}
-          </Text>
-          <AccuracyBar pct={data.accuracy} />
+        <View style={{ flex: 1, gap: 5 }}>
+          <View style={wl.metaRow}>
+            <Text style={wl.metaText}>{data.words} word{data.words !== 1 ? 's' : ''}</Text>
+            <Text style={[wl.pctText, { color: t.text }]}>{data.accuracy}% correct</Text>
+          </View>
+          <ScoreBar pct={data.accuracy} height={8} />
         </View>
-        <StatusBadge label={data.masteryStatus} status={data.masteryStatus === 'Mastered' ? 'good' : data.masteryStatus === 'Moderate' ? 'moderate' : 'needs-work'} />
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#888" />
-      </View>
+        <View style={{ marginLeft: 10, gap: 6, alignItems: 'flex-end' }}>
+          <Pill label={data.masteryStatus} status={data.masteryStatus === 'Mastered' ? 'good' : data.masteryStatus === 'Moderate' ? 'moderate' : 'needs-work'} />
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={TEXT_3} />
+        </View>
+      </TouchableOpacity>
 
       {open && (
-        <View style={subStyles.wordListExpanded}>
+        <View style={wl.expanded}>
           {data.wordList.map((w, i) => (
-            <View key={i} style={subStyles.wordItemRow}>
-              <WordImageDisplay imageKey={w.imageKey ?? ''} emoji={w.emoji} size={28} />
-              <Text style={subStyles.wordItemText}>{w.word}</Text>
-              {['A', 'B', 'C', 'D'].map(ex => {
-                const s = w.status[ex];
-                const col = s === 'correct' ? '#2E7D32' : s === 'good' ? '#E65100' : '#9E9E9E';
-                const icon = s === 'correct' ? '✓' : s === 'good' ? '~' : '·';
-                return (
-                  <View key={ex} style={[subStyles.exChip, { borderColor: col + '55', backgroundColor: col + '15' }]}>
-                    <Text style={[subStyles.exChipText, { color: col }]}>{ex}{icon}</Text>
-                  </View>
-                );
-              })}
-              <View style={subStyles.stars}>
-                {[0, 1, 2].map(i => <Text key={i} style={subStyles.star}>{i < w.stars ? '⭐' : '☆'}</Text>)}
+            <View key={i} style={wl.wordRow}>
+              <WordImageDisplay imageKey={w.imageKey ?? ''} emoji={w.emoji} size={30} />
+              <Text style={wl.wordText}>{w.word}</Text>
+              <View style={wl.exerciseChips}>
+                {['A', 'B', 'C', 'D'].map(ex => {
+                  const s = w.status[ex];
+                  const col = s === 'correct' ? '#15803D' : s === 'good' ? '#B45309' : '#CBD5E1';
+                  const ic  = s === 'correct' ? 'checkmark' : s === 'good' ? 'remove' : 'ellipse-outline';
+                  return (
+                    <View key={ex} style={[wl.exChip, { backgroundColor: col + '18', borderColor: col + '55' }]}>
+                      <Text style={[wl.exLabel, { color: col }]}>{ex}</Text>
+                      <Ionicons name={ic} size={9} color={col} />
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={wl.stars}>
+                {[0,1,2].map(i => (
+                  <Text key={i} style={{ fontSize: 12 }}>{i < w.stars ? '⭐' : '☆'}</Text>
+                ))}
               </View>
             </View>
           ))}
         </View>
       )}
-    </TouchableOpacity>
-  );
-}
-
-function ProgressIndicatorRow({ item }) {
-  const [open, setOpen] = useState(false);
-  const c = statusColors(item.status);
-  return (
-    <View style={subStyles.progressRow}>
-      <View style={[subStyles.progressIcon, { backgroundColor: c.bg }]}>
-        <Text style={[subStyles.progressIconText, { color: c.text }]}>{item.icon}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={subStyles.progressLabel}>{item.label}</Text>
-        <StatusBadge label={item.detail} status={item.status} />
-      </View>
-      <TouchableOpacity onPress={() => setOpen(o => !o)} style={xaiStyles.btn} activeOpacity={0.7}>
-        <Ionicons name="information-circle-outline" size={14} color="#7B1FA2" />
-        <Text style={xaiStyles.btnText}>Why?</Text>
-      </TouchableOpacity>
-      {open && (
-        <View style={[xaiStyles.panel, { marginTop: 6, width: '100%' }]}>
-          <Text style={xaiStyles.text}>{item.xai}</Text>
-        </View>
-      )}
     </View>
   );
 }
-
-function RecommendationRow({ rec }) {
-  const [open, setOpen] = useState(false);
-  const p = PRIORITY[rec.priority];
-  return (
-    <View style={subStyles.recCard}>
-      <View style={subStyles.recTop}>
-        <Text style={subStyles.recIcon}>{rec.icon}</Text>
-        <Text style={subStyles.recText}>{rec.text}</Text>
-        <View style={[subStyles.recPriority, { backgroundColor: p.bg }]}>
-          <Text style={[subStyles.recPriorityText, { color: p.text }]}>{p.label}</Text>
-        </View>
-      </View>
-      <TouchableOpacity onPress={() => setOpen(o => !o)} style={[xaiStyles.btn, { marginTop: 6 }]} activeOpacity={0.7}>
-        <Ionicons name="information-circle-outline" size={13} color="#7B1FA2" />
-        <Text style={xaiStyles.btnText}>Why this recommendation?</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={11} color="#7B1FA2" />
-      </TouchableOpacity>
-      {open && (
-        <View style={xaiStyles.panel}>
-          <Text style={xaiStyles.text}>{rec.rationale}</Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-function NoData({ message }) {
-  return (
-    <View style={subStyles.noData}>
-      <Ionicons name="alert-circle-outline" size={28} color="#BDBDBD" />
-      <Text style={subStyles.noDataText}>{message}</Text>
-    </View>
-  );
-}
-
-// ─── Sub-component styles ─────────────────────────────────────────────────────
-
-const subStyles = StyleSheet.create({
-  infoRow:    { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  infoLabel:  { fontSize: 12, color: '#888888', fontWeight: '500' },
-  infoValue:  { fontSize: 12, color: '#1A1A1A', fontWeight: '700', maxWidth: '60%', textAlign: 'right' },
-
-  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  summaryCell: { width: '47%', backgroundColor: '#F7F7F7', borderRadius: 12, padding: 12, alignItems: 'center' },
-  summaryValue:{ fontSize: 28, fontWeight: '900' },
-  summaryLabel:{ fontSize: 11, color: '#666', fontWeight: '500', textAlign: 'center', marginTop: 2 },
-
-  metricRow:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  metricLabel: { fontSize: 12, color: '#666' },
-  metricValue: { fontSize: 12, fontWeight: '700', color: '#1A1A1A' },
-
-  barBg:    { height: 6, borderRadius: 3, backgroundColor: '#EEEEEE', overflow: 'hidden', flex: 1 },
-  barFill:  { height: 6, borderRadius: 3 },
-
-  wordLetterRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F5F5F5',
-  },
-  letterCircle: {
-    width: 34, height: 34, borderRadius: 17, borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  letterCircleText: { fontSize: 16, fontWeight: '900' },
-  wordLetterMeta:   { fontSize: 11, color: '#666' },
-
-  wordListExpanded: {
-    backgroundColor: '#FAFAFA', borderRadius: 10, padding: 10,
-    marginBottom: 8, gap: 8,
-  },
-  wordItemRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  wordItemText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#222' },
-  exChip: {
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1,
-  },
-  exChipText: { fontSize: 11, fontWeight: '900' },
-  stars: { flexDirection: 'row', gap: 1 },
-  star:  { fontSize: 11 },
-
-  progressRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12, flexWrap: 'wrap' },
-  progressIcon:     { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  progressIconText: { fontSize: 16, fontWeight: '900' },
-  progressLabel:    { fontSize: 13, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
-
-  recCard: {
-    backgroundColor: '#FAFAFA', borderRadius: 14, padding: 14,
-    marginBottom: 12, borderWidth: 1, borderColor: '#EEEEEE',
-  },
-  recTop:         { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  recIcon:        { fontSize: 22 },
-  recText:        { flex: 1, fontSize: 13, fontWeight: '600', color: '#1A1A1A', lineHeight: 20 },
-  recPriority:    { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  recPriorityText:{ fontSize: 10, fontWeight: '800' },
-
-  noData: { alignItems: 'center', paddingVertical: 20, gap: 8 },
-  noDataText: { fontSize: 13, color: '#BDBDBD', textAlign: 'center' },
+const wl = StyleSheet.create({
+  wrap:         { marginBottom: 8 },
+  row:          { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  letterBubble: { width: 40, height: 40, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  letterText:   { fontSize: 18, fontWeight: '900' },
+  metaRow:      { flexDirection: 'row', justifyContent: 'space-between' },
+  metaText:     { fontSize: 11, color: TEXT_3, fontWeight: '500' },
+  pctText:      { fontSize: 11, fontWeight: '700' },
+  expanded:     { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, gap: 8, marginTop: 2, marginLeft: 52 },
+  wordRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  wordText:     { flex: 1, fontSize: 13, fontWeight: '700', color: TEXT_1, textTransform: 'capitalize' },
+  exerciseChips:{ flexDirection: 'row', gap: 4 },
+  exChip:       { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+  exLabel:      { fontSize: 10, fontWeight: '800' },
+  stars:        { flexDirection: 'row', gap: 1 },
 });
 
-// ─── Screen styles ────────────────────────────────────────────────────────────
+function RecommendationCard({ rec }) {
+  const [open, setOpen] = useState(false);
+  const colors = {
+    high:   { bg: '#FEF2F2', accent: '#EF4444', text: '#B91C1C', pill: '#FEE2E2' },
+    medium: { bg: '#FFFBEB', accent: '#F59E0B', text: '#B45309', pill: '#FEF3C7' },
+    low:    { bg: '#F0FDF4', accent: '#22C55E', text: '#15803D', pill: '#DCFCE7' },
+  };
+  const c = colors[rec.priority] ?? colors.low;
+  return (
+    <View style={[rc.card, { backgroundColor: c.bg, borderLeftColor: c.accent }]}>
+      <View style={rc.top}>
+        <Text style={rc.icon}>{rec.icon}</Text>
+        <Text style={rc.text}>{rec.text}</Text>
+        <View style={[rc.priorityBadge, { backgroundColor: c.pill }]}>
+          <Text style={[rc.priorityText, { color: c.text }]}>
+            {rec.priority.charAt(0).toUpperCase() + rec.priority.slice(1)}
+          </Text>
+        </View>
+      </View>
+      <TouchableOpacity onPress={() => setOpen(o => !o)} style={rc.why} activeOpacity={0.7}>
+        <Ionicons name="information-circle-outline" size={13} color="#6366F1" />
+        <Text style={rc.whyText}>Why this recommendation?</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={11} color="#6366F1" />
+      </TouchableOpacity>
+      {open && (
+        <View style={rc.panel}>
+          <Text style={rc.panelText}>{rec.rationale}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+const rc = StyleSheet.create({
+  card:          { borderRadius: 14, borderLeftWidth: 4, padding: 14, gap: 8 },
+  top:           { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  icon:          { fontSize: 20 },
+  text:          { flex: 1, fontSize: 13, fontWeight: '600', color: TEXT_1, lineHeight: 20 },
+  priorityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  priorityText:  { fontSize: 10, fontWeight: '800' },
+  why:           { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
+  whyText:       { fontSize: 11, color: '#6366F1', fontWeight: '600' },
+  panel:         { backgroundColor: '#EEF2FF', borderRadius: 8, padding: 10 },
+  panelText:     { fontSize: 12, color: '#3730A3', lineHeight: 18 },
+});
 
-const styles = StyleSheet.create({
-  gradient: { flex: 1 },
-  safe:     { flex: 1 },
+// ─── Motor Difficulty Analysis card ──────────────────────────────────────────
 
+function MotorDifficultyCard({ analysis }) {
+  const [showExercises, setShowExercises] = useState(false);
+  if (!analysis) return null;
+
+  const isGood  = analysis.noIssueDetected;
+  const noData  = analysis.noDataAvailable;
+  const color   = analysis.color   ?? '#7C3AED';
+  const bgColor = analysis.bgColor ?? '#F5F3FF';
+
+  return (
+    <SectionCard title="Motor Difficulty Analysis" icon="analytics" accentColor={color}>
+      {noData ? (
+        <Empty message="Complete the shape assessment to see difficulty analysis" />
+      ) : (
+        <View style={{ gap: 16 }}>
+
+          {/* Difficulty banner */}
+          <View style={[mda.banner, { backgroundColor: bgColor, borderColor: color + '40' }]}>
+            <View style={[mda.bannerIcon, { backgroundColor: color + '20' }]}>
+              <Ionicons name={analysis.icon ?? 'analytics-outline'} size={22} color={color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[mda.bannerTitle, { color }]}>{analysis.difficulty}</Text>
+              <Text style={mda.bannerDesc}>{analysis.description}</Text>
+            </View>
+            {analysis.confidence != null && (
+              <View style={[mda.confBadge, { backgroundColor: color + '18' }]}>
+                <Text style={[mda.confNum, { color }]}>{analysis.confidence}%</Text>
+                <Text style={[mda.confLabel, { color }]}>match</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Secondary difficulty */}
+          {analysis.secondaryDifficulty && (
+            <View style={mda.secondary}>
+              <Ionicons name="git-branch-outline" size={12} color={TEXT_3} />
+              <Text style={mda.secondaryText}>
+                Also present: {analysis.secondaryDifficulty.label} ({analysis.secondaryDifficulty.confidence}%)
+              </Text>
+            </View>
+          )}
+
+          {/* Contribution chart */}
+          {!isGood && analysis.featureContributions?.length > 0 && (
+            <View>
+              <Text style={mda.sectionLabel}>Contributing Factors</Text>
+              <ContributionChart contributions={analysis.featureContributions} accentColor={color} />
+            </View>
+          )}
+
+          {/* Explanation */}
+          {analysis.explanation?.length > 0 && (
+            <View style={{ gap: 7 }}>
+              <Text style={mda.sectionLabel}>Why was this detected?</Text>
+              {analysis.explanation.map((line, i) => (
+                <View key={i} style={mda.expRow}>
+                  <View style={[mda.expDot, { backgroundColor: color }]} />
+                  <Text style={mda.expText}>{line}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Letter focus */}
+          {!isGood && analysis.letterFocus?.length > 0 && (
+            <View>
+              <Text style={mda.sectionLabel}>Suggested Focus Letters</Text>
+              <View style={mda.letterRow}>
+                {analysis.letterFocus.map(l => (
+                  <View key={l} style={[mda.letterChip, { borderColor: color, backgroundColor: bgColor }]}>
+                    <Text style={[mda.letterChipText, { color }]}>{l.toUpperCase()}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Exercises */}
+          {analysis.exercises?.length > 0 && (
+            <View>
+              <TouchableOpacity onPress={() => setShowExercises(e => !e)} style={mda.exerciseToggle} activeOpacity={0.7}>
+                <Ionicons name="fitness-outline" size={14} color={color} />
+                <Text style={[mda.sectionLabel, { color, marginBottom: 0, flex: 1 }]}>Targeted Support Activities</Text>
+                <Ionicons name={showExercises ? 'chevron-up' : 'chevron-down'} size={14} color={color} />
+              </TouchableOpacity>
+              {showExercises && (
+                <View style={{ marginTop: 8, gap: 6 }}>
+                  {analysis.exercises.map((ex, i) => {
+                    const pc = ex.priority === 'high' ? '#B91C1C' : ex.priority === 'medium' ? '#B45309' : '#15803D';
+                    const pb = ex.priority === 'high' ? '#FEF2F2' : ex.priority === 'medium' ? '#FFFBEB' : '#F0FDF4';
+                    return (
+                      <View key={i} style={[mda.exRow, { backgroundColor: pb }]}>
+                        <Ionicons name="checkmark-circle" size={16} color={pc} />
+                        <Text style={mda.exText}>{ex.text}</Text>
+                        <View style={[mda.exPill, { backgroundColor: pc + '22' }]}>
+                          <Text style={[mda.exPillText, { color: pc }]}>{ex.priority}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
+
+        </View>
+      )}
+    </SectionCard>
+  );
+}
+
+const mda = StyleSheet.create({
+  banner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    borderRadius: 16, borderWidth: 1.5, padding: 14,
+  },
+  bannerIcon:  { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  bannerTitle: { fontSize: 15, fontWeight: '900', marginBottom: 3 },
+  bannerDesc:  { fontSize: 12, color: TEXT_2, lineHeight: 18 },
+  confBadge:   { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minWidth: 52 },
+  confNum:     { fontSize: 20, fontWeight: '900' },
+  confLabel:   { fontSize: 9, fontWeight: '700', opacity: 0.8 },
+
+  secondary:     { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  secondaryText: { fontSize: 11, color: TEXT_3, flex: 1 },
+
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: TEXT_3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
+
+  expRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  expDot:  { width: 6, height: 6, borderRadius: 3, marginTop: 6, flexShrink: 0 },
+  expText: { fontSize: 13, color: TEXT_2, lineHeight: 19, flex: 1 },
+
+  letterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 4 },
+  letterChip: {
+    width: 36, height: 36, borderRadius: 10, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  letterChipText: { fontSize: 15, fontWeight: '900' },
+
+  exerciseToggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  exRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+  },
+  exText:     { flex: 1, fontSize: 12, color: TEXT_1, fontWeight: '500', lineHeight: 18 },
+  exPill:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
+  exPillText: { fontSize: 10, fontWeight: '800' },
+});
+
+// ─── Screen-level styles ──────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
   topBar: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 10,
   },
-  topTitle: { fontSize: 16, fontWeight: '900', letterSpacing: 0.2 },
-  topSub:   { fontSize: 11, opacity: 0.6, fontWeight: '500', marginTop: 1 },
-
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { fontSize: 14, fontWeight: '600', opacity: 0.7 },
-
-  scroll: { paddingHorizontal: 16, paddingBottom: 32 },
-  infoRow: { flexDirection: 'row', marginBottom: 0 },
-
-  divider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 12 },
-
-  // Table
-  tableHeader: {
-    flexDirection: 'row', paddingVertical: 8,
-    borderBottomWidth: 1.5, borderBottomColor: '#EEEEEE',
-    marginBottom: 4,
+  topBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  tableRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F5F5F5', gap: 8,
+  topTitle: { fontSize: 17, fontWeight: '900', letterSpacing: 0.2 },
+  topDate:  { fontSize: 11, opacity: 0.65, fontWeight: '500', marginTop: 1 },
+
+  heroStrip: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 20, paddingBottom: 16,
   },
-  thCell:    { fontSize: 11, fontWeight: '800', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
-  tdLetter:  { fontSize: 15, fontWeight: '900', color: '#1A1A1A' },
-  td:        { fontSize: 13, color: '#555', fontWeight: '500' },
+  heroInitial: {
+    width: 48, height: 48, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6,
+  },
+  heroInitialText: { fontSize: 22, fontWeight: '900', color: '#FFF' },
+  heroName:        { fontSize: 20, fontWeight: '900' },
+  heroMeta:        { fontSize: 12, opacity: 0.7, fontWeight: '500', marginTop: 2 },
 
-  // Shape rows
-  shapeRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
-  shapeId:   { flex: 1, fontSize: 12, color: '#444', textTransform: 'capitalize' },
-  shapeBar:  { width: 70, height: 6, borderRadius: 3, backgroundColor: '#EEEEEE', overflow: 'hidden' },
-  shapeBarFill: { height: 6, borderRadius: 3 },
-  shapeScore: { width: 32, fontSize: 12, fontWeight: '700', textAlign: 'right' },
-  shapeLabel: { width: 68, fontSize: 10, color: '#888' },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
+  loadingText: { fontSize: 14, fontWeight: '600', opacity: 0.75 },
 
-  // Overall bar
+  scrollArea: { flex: 1, backgroundColor: PAGE_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  scroll:     { padding: 16, paddingTop: 20 },
+
+  summaryGrid: { flexDirection: 'row', gap: 8 },
+
+  divider: { height: 1, backgroundColor: DIVIDER, marginVertical: 12 },
+
+  metricsRow: { flexDirection: 'row', gap: 8 },
+
   overallBar: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  overallLabel: { fontSize: 13, fontWeight: '600', color: '#555', flex: 1 },
-  overallPct:   { fontSize: 16, fontWeight: '900', minWidth: 42 },
+  overallLabel: { fontSize: 13, fontWeight: '600', color: TEXT_2 },
+  overallPct:   { fontSize: 18, fontWeight: '900', minWidth: 44 },
 
-  // Progress list
-  progressList: { gap: 4 },
+  progressGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 });

@@ -11,17 +11,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const AVATAR_MAP = {
-  boba:     require('../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../assets/avatar-images/Megatron.png'),
+  boba:     require('../../../assets/handwriting-avatars/Boba.png'),
+  glitter:  require('../../../assets/handwriting-avatars/Glitter.png'),
+  lily:     require('../../../assets/handwriting-avatars/Lily.png'),
+  megatron: require('../../../assets/handwriting-avatars/Megatron.png'),
 };
 
 export default function StudentWelcomeScreen({ route, navigation }) {
   const { student, theme } = route.params;
   const { width, height } = useWindowDimensions();
 
-  const avatarSize = Math.min(width, height) * 0.38;
+  const avatarSize = Math.min(width, height) * 0.52;
 
   return (
     <LinearGradient

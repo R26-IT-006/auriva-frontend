@@ -75,7 +75,8 @@ const WORD_IMAGES = {
   hen:        require('../../assets/words/H/3-letters/hen.jpg'),
   horse:      require('../../assets/words/H/5-letters/horse.jpg'),
   house:      require('../../assets/words/H/5-letters/house.jpg'),
-  // hammer, helicopter — images not yet added, shows emoji fallback
+  hammer:     require('../../assets/words/H/More/hammer.jpg'),
+  helicopter: require('../../assets/words/H/More/helicopter.jpg'),
 
   // ── I ──────────────────────────────────────────────────────────────────────
   ink:        require('../../assets/words/I/3-letters/ink.jpg'),
@@ -101,7 +102,7 @@ const WORD_IMAGES = {
 
   // ── L ──────────────────────────────────────────────────────────────────────
   log:        require('../../assets/words/L/3-letters/log.jpg'),
-  // leg — no image yet, shows emoji fallback
+  leg:        require('../../assets/words/L/3-letters/leg.jpg'),
   lion:       require('../../assets/words/L/4-letters/lion.jpg'),
   leaf:       require('../../assets/words/L/4-letters/leaf.jpg'),
   lips:       require('../../assets/words/L/4-letters/lips.jpg'),
@@ -125,6 +126,7 @@ const WORD_IMAGES = {
 
   // ── O ──────────────────────────────────────────────────────────────────────
   one:        require('../../assets/words/O/3-letters/one.jpg'),
+  owl:        require('../../assets/words/O/3-letters/owl.jpg'),
   oval:       require('../../assets/words/O/4-letters/oval.jpg'),
   organ:      require('../../assets/words/O/5-letters/organ.jpg'),
   otter:      require('../../assets/words/O/5-letters/otter.jpg'),
@@ -198,7 +200,7 @@ const WORD_IMAGES = {
   xmastree:   require('../../assets/words/X/More/xmas-tree.jpg'),
 
   // ── Y ──────────────────────────────────────────────────────────────────────
-  // yak — no image yet, shows emoji fallback
+  yak:        require('../../assets/words/Y/3-letters/yak.jpg'),
   yarn:       require('../../assets/words/Y/4-letters/yarn.jpg'),
   yolk:       require('../../assets/words/Y/4-letters/yolk.jpg'),
   yoyo:       require('../../assets/words/Y/4-letters/yoyo.jpg'),

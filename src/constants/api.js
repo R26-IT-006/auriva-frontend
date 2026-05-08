@@ -30,9 +30,11 @@ export const ENDPOINTS = {
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
 
   // Handwriting
-  HANDWRITING_ASSESSMENT: '/handwriting/assessment',
-  LETTER_COMPLETE:        '/handwriting/letter-complete',
-  LETTER_PROGRESS: (studentId) => `/handwriting/progress/${studentId}`,
+  HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
+  HANDWRITING_FINALIZE:       (id)       => `/handwriting/assessment/${id}/finalize`,
+  HANDWRITING_INITIAL_REPORT: (studentId) => `/handwriting/initial-report/${studentId}`,
+  LETTER_COMPLETE:            '/handwriting/letter-complete',
+  LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
   // Dialogue – Level 1
   DIALOGUE_LEVEL1_OVERVIEW:        (sid) => `/teacher/student/${sid}/level1/overview`,
   DIALOGUE_LEVEL1_NEXT_WORD:       (sid) => `/teacher/student/${sid}/level1/next-word`,

@@ -11,6 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { generateAdaptiveSequence, calculateMotorProfile } from '../../utils/adaptiveSequencing';
 import { storeLetterSequence, storeMotorProfile } from '../../utils/storage';
+import client from '../../api/client';
+import { ENDPOINTS } from '../../constants/api';
+import { computeMotorComfortScore } from '../../utils/reportEngine';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -51,7 +54,7 @@ function getAccuracyScore({ accuracy, smoothness }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function AssessmentCompleteScreen({ route, navigation }) {
-  const { student, theme, assessmentData = [] } = route.params;
+  const { student, theme, assessmentData = [], assessmentId } = route.params;
 
   const scores       = assessmentData.map(s => getAccuracyScore(s.features));
   const overallScore = scores.length
@@ -146,6 +149,17 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                 // Persist both for LetterHomeScreen and future sessions
                 await storeLetterSequence(student.sid, letters);
                 await storeMotorProfile(student.sid, motorProfile);
+
+                // Persist motor profile + run analysis on the server (fire-and-forget)
+                if (assessmentId) {
+                  const { score: motor_score } = computeMotorComfortScore(assessmentData, motorProfile);
+                  if (motor_score !== null) {
+                    client.patch(ENDPOINTS.HANDWRITING_FINALIZE(assessmentId), {
+                      motor_score,
+                      motor_profile: motorProfile,
+                    }).catch(err => console.warn('Assessment finalize failed (non-fatal):', err?.message));
+                  }
+                }
 
                 navigation.navigate('LetterHome', {
                   student,

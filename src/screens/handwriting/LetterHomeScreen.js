@@ -270,7 +270,7 @@ export default function LetterHomeScreen({ route, navigation }) {
               <TouchableOpacity
                 style={[styles.wordsCard, !wordsUnlocked && { opacity: 0.6 }]}
                 activeOpacity={0.85}
-                onPress={() => navigation.navigate('WordWriting', { student, theme, letter: 'a' })}
+                onPress={() => navigation.navigate('WordLetterSelect', { student, theme })}
               >
                 <Text style={styles.wordsTitle}>Words</Text>
                 {!wordsUnlocked ? (

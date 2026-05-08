@@ -123,7 +123,7 @@ const WORD_DATA = [
 
   // ── O ─────────────────────────────────────────────────────────────────────
   { word: 'one',       letter: 'o', emoji: '1️⃣', imageKey: 'one'       },
-  { word: 'oval',      letter: 'o', emoji: '🥚', imageKey: 'oval'      },
+  { word: 'owl',       letter: 'o', emoji: '🦉', imageKey: 'owl'       },
   { word: 'organ',     letter: 'o', emoji: '🎹', imageKey: 'organ'     },
   { word: 'otter',     letter: 'o', emoji: '🦦', imageKey: 'otter'     },
   { word: 'orange',    letter: 'o', emoji: '🍊', imageKey: 'orange'    },

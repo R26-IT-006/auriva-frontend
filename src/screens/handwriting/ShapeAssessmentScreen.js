@@ -449,7 +449,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   // ── Actions ─────────────────────────────────────────────────────────────────
   const submitAssessment = useCallback(async (assessmentData) => {
     try {
-      await client.post(ENDPOINTS.HANDWRITING_ASSESSMENT, {
+      const response = await client.post(ENDPOINTS.HANDWRITING_ASSESSMENT, {
         student_id:    student.sid,
         session_start: sessionStartTime.current,
         session_end:   Date.now(),
@@ -460,8 +460,10 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
           features:     shape.features,
         })),
       });
+      return response.data?.id ?? null;
     } catch (err) {
       console.error('Failed to submit assessment data:', err);
+      return null;
     }
   }, [student.sid]);
 
@@ -493,11 +495,12 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       setCurrentPath([]);
       setShowNext(false);
     } else {
-      await submitAssessment(updated);
+      const assessmentId = await submitAssessment(updated);
       navigation.navigate('AssessmentComplete', {
         student,
         theme,
         assessmentData: updated,
+        assessmentId,
       });
     }
   }, [navigation, student, theme, submitAssessment]);
