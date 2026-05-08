@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,22 +12,31 @@ import { Layout } from '../../constants/layout';
 
 const WORDS = ['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE'];
 const CODE_LENGTH = 4;
+const ACCENT = '#4AABB8';
 
 function generateCode() {
   return Array.from({ length: CODE_LENGTH }, () => Math.floor(Math.random() * 10));
 }
 
 export function ParentGateModal({ visible, onSuccess, onCancel }) {
-  const [code,    setCode]   = useState([]);
+  const [code,    setCode]    = useState([]);
   const [entered, setEntered] = useState([]);
-  const [shake,   setShake]  = useState(false);
-  const shakeAnim            = new Animated.Value(0);
+  const [shake,   setShake]   = useState(false);
+  const shakeAnim             = useRef(new Animated.Value(0)).current;
+  const scaleAnim             = useRef(new Animated.Value(0.92)).current;
+  const opacityAnim           = useRef(new Animated.Value(0)).current;
 
-  // Fresh code every time modal opens
   useEffect(() => {
     if (visible) {
       setCode(generateCode());
       setEntered([]);
+      Animated.parallel([
+        Animated.spring(scaleAnim,   { toValue: 1, useNativeDriver: true, bounciness: 8, speed: 12 }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0.92);
+      opacityAnim.setValue(0);
     }
   }, [visible]);
 
@@ -49,14 +58,10 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
     if (entered.length >= CODE_LENGTH) return;
     const next = [...entered, d];
     setEntered(next);
-
     if (next.length === CODE_LENGTH) {
       const correct = next.every((v, i) => v === code[i]);
-      if (correct) {
-        onSuccess();
-      } else {
-        setTimeout(doShake, 100);
-      }
+      if (correct) onSuccess();
+      else setTimeout(doShake, 100);
     }
   }
 
@@ -67,29 +72,17 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
   const KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'];
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
+    <Modal visible={visible} animationType="none" transparent onRequestClose={onCancel}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <Animated.View style={[styles.sheet, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
 
-          {/* ── Header ───────────────────────────────────────── */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.closeBtn} onPress={onCancel} activeOpacity={0.7}>
-              <Ionicons name="close-circle" size={28} color="#FF4D6D" />
-            </TouchableOpacity>
-            <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>Teachers Only</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* ── Prompt ───────────────────────────────────────── */}
+          {/* Prompt */}
           <Text style={styles.prompt}>To continue, please enter the numbers</Text>
           <Text style={styles.codeWords}>
-            {code.map((n) => WORDS[n]).join(', ')}
+            {code.map((n) => WORDS[n]).join(',  ')}
           </Text>
 
-          {/* ── Input boxes ──────────────────────────────────── */}
+          {/* Input boxes */}
           <Animated.View style={[styles.boxes, { transform: [{ translateX: shakeAnim }] }]}>
             {Array.from({ length: CODE_LENGTH }).map((_, i) => (
               <View
@@ -100,31 +93,35 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
                   shake && styles.boxError,
                 ]}
               >
-                <Text style={styles.boxText}>
+                <Text style={[styles.boxText, shake && { color: '#FF4D6D' }]}>
                   {entered[i] !== undefined ? entered[i] : ''}
                 </Text>
               </View>
             ))}
           </Animated.View>
 
-          {/* ── Number pad ───────────────────────────────────── */}
+          {/* Number pad */}
           <View style={styles.pad}>
             {KEYS.map((k, idx) => {
               if (k === null) return <View key={idx} style={styles.padCell} />;
               if (k === 'del') return (
                 <TouchableOpacity key={idx} style={styles.padCell} onPress={handleDelete} activeOpacity={0.6}>
-                  <Ionicons name="backspace-outline" size={24} color="#555" />
+                  <View style={styles.delBtn}>
+                    <Ionicons name="backspace-outline" size={22} color={ACCENT} />
+                  </View>
                 </TouchableOpacity>
               );
               return (
-                <TouchableOpacity key={idx} style={styles.padCell} onPress={() => handleDigit(k)} activeOpacity={0.6}>
-                  <Text style={styles.padDigit}>{k}</Text>
+                <TouchableOpacity key={idx} style={styles.padCell} onPress={() => handleDigit(k)} activeOpacity={0.7}>
+                  <View style={styles.digitBtn}>
+                    <Text style={styles.padDigit}>{k}</Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -133,86 +130,54 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Layout.spacing.xl,
   },
   sheet: {
-    backgroundColor: '#FFF',
-    borderRadius: 28,
-    paddingBottom: Layout.spacing.xl,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingTop: Layout.spacing.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
+    paddingBottom: 24,
+    paddingHorizontal: 28,
+    paddingTop: 20,
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 400,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    elevation: 16,
   },
 
-  // ── Header ───────────────────────────────────────────────────
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Layout.spacing.sm,
-    marginBottom: Layout.spacing.md,
-  },
-  closeBtn: {
-    marginTop: 2,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: '700',
-    color: '#4AABB8',
-  },
-  headerSub: {
-    fontSize: Layout.fontSize.sm,
-    color: '#888',
-    marginTop: 2,
-    lineHeight: 18,
-  },
-
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E5E5E5',
-    marginBottom: Layout.spacing.lg,
-  },
-
-  // ── Prompt ───────────────────────────────────────────────────
   prompt: {
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
-    fontSize: Layout.fontSize.sm,
-    color: '#888',
-    marginBottom: Layout.spacing.sm,
+    fontSize: 13,
+    color: '#999',
+    marginBottom: 6,
   },
   codeWords: {
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
-    fontSize: Layout.fontSize.lg,
-    fontWeight: '800',
-    color: '#4AABB8',
-    letterSpacing: 0.5,
-    marginBottom: Layout.spacing.lg,
+    fontSize: 18,
+    color: ACCENT,
+    letterSpacing: 0.3,
+    marginBottom: 24,
   },
 
-  // ── Input boxes ──────────────────────────────────────────────
   boxes: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: Layout.spacing.sm,
-    marginBottom: Layout.spacing.xl,
+    gap: 12,
+    marginBottom: 28,
   },
   box: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#DDD',
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
@@ -220,20 +185,20 @@ const styles = StyleSheet.create({
   },
   boxFilled: {
     borderStyle: 'solid',
-    borderColor: '#4AABB8',
+    borderColor: ACCENT,
     backgroundColor: '#EBF7F9',
   },
   boxError: {
+    borderStyle: 'solid',
     borderColor: '#FF4D6D',
     backgroundColor: '#FFF0F3',
   },
   boxText: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: '700',
-    color: '#333',
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 22,
+    color: '#222',
   },
 
-  // ── Number pad ───────────────────────────────────────────────
   pad: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -241,13 +206,34 @@ const styles = StyleSheet.create({
   },
   padCell: {
     width: '33.33%',
-    paddingVertical: Layout.spacing.md,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  digitBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F4F4F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   padDigit: {
-    fontSize: 28,
-    fontWeight: '400',
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 26,
     color: '#222',
+  },
+  delBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFF0F3',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

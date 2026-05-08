@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   },
   photoName: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
     marginTop: Layout.spacing.xs,
   },
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
 
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
 
   selectLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.secondary,
     marginBottom: Layout.spacing.xs,
   },
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   },
   dropdownItemActive: { backgroundColor: K.purpleLight },
   dropdownText: { flex: 1, fontSize: Layout.fontSize.md, color: Colors.text.primary },
-  dropdownTextActive: { color: K.purple, fontWeight: Layout.fontWeight.semibold },
+  dropdownTextActive: { color: K.purple, fontFamily: 'Nunito_600SemiBold' },
 
   buttonRow: { flexDirection: 'row', gap: Layout.spacing.sm, marginTop: Layout.spacing.xl },
 });

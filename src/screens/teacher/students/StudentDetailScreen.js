@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderLight, ...Layout.shadow.md,
   },
   profileMeta: { flex: 1, marginLeft: Layout.spacing.lg },
-  profileName: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, color: Colors.text.primary },
+  profileName: { fontSize: Layout.fontSize.xl, fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
   profileCode: { fontSize: Layout.fontSize.sm, color: Colors.text.link, marginTop: 2 },
   sessionCard: { marginBottom: Layout.spacing.md },
   sessionCardActive: { borderColor: Colors.status.success, borderWidth: 1.5 },
@@ -215,15 +215,15 @@ const styles = StyleSheet.create({
   sessionIndicator: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.icon.muted },
   dotActive: { backgroundColor: Colors.status.success },
-  sessionStatus: { fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.semibold, color: Colors.text.primary },
+  sessionStatus: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
   sessionHint: { fontSize: Layout.fontSize.xs, color: Colors.status.success, marginTop: 4 },
-  sectionTitle: { fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.bold, color: Colors.text.primary, marginBottom: Layout.spacing.sm, marginTop: Layout.spacing.xs },
+  sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', color: Colors.text.primary, marginBottom: Layout.spacing.sm, marginTop: Layout.spacing.xs },
   infoCard: { marginBottom: Layout.spacing.md },
   infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Layout.spacing.sm, paddingHorizontal: Layout.spacing.md },
   infoIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.status.infoLight, alignItems: 'center', justifyContent: 'center', marginRight: Layout.spacing.sm },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
-  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontWeight: Layout.fontWeight.medium },
+  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
   divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 58 },
   reportCard: {
     flexDirection: 'row', alignItems: 'center',

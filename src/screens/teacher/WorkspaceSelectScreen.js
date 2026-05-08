@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ const WORKSPACES = [
     sub:    'Manage classes & resources',
     image:  require('../../../assets/teacher.png'),
     route:  'TeacherMain',
-    iconBg: '#E1F5EE',
+    iconBg: '#C8E8DF',
   },
   {
     key:    'student',
@@ -29,7 +29,7 @@ const WORKSPACES = [
     sub:    'Access lessons & assignments',
     image:  require('../../../assets/students.png'),
     route:  'StudentPicker',
-    iconBg: '#E8F0FB',
+    iconBg: '#C8E8DF',
   },
 ];
 
@@ -56,7 +56,10 @@ export default function WorkspaceSelectScreen({ navigation }) {
         </View>
 
         <View style={styles.container}>
-          <Text style={styles.title}>Choose Your Workspace</Text>
+          <View style={styles.titleWrap}>
+            <Text style={styles.title}>Choose Your Workspace</Text>
+            <Text style={styles.subtitle}>Select the space that's right for you</Text>
+          </View>
 
           <View style={{ gap: Layout.spacing.md, width: cardWidth }}>
             {WORKSPACES.map((ws) => (
@@ -73,11 +76,15 @@ export default function WorkspaceSelectScreen({ navigation }) {
                   <Text style={styles.cardLabel}>{ws.label}</Text>
                   <Text style={styles.cardSub}>{ws.sub}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#9FBFB8" />
+                <View style={styles.chevronCircle}>
+                  <Ionicons name="chevron-forward" size={18} color="#7AADA6" />
+                </View>
               </TouchableOpacity>
             ))}
           </View>
         </View>
+
+        <View style={styles.bottomIndicator} />
 
         <ConfirmDialog
           visible={logoutVisible}
@@ -109,15 +116,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 24,
     paddingHorizontal: Layout.spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   logoutText: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: '600',
-    color: '#555',
+    fontFamily: 'Nunito_600SemiBold',
+    color: '#444',
   },
 
   container: {
@@ -127,40 +138,50 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.lg,
     gap: Layout.spacing.xl,
   },
+  titleWrap: {
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
-    fontSize: 38,
-    fontWeight: '800',
+    fontSize: 36,
+    fontFamily: 'Nunito_800ExtraBold',
     fontFamily: 'sans-serif-rounded',
-    color: '#020f0c',
+    color: '#1A3028',
     textAlign: 'center',
     letterSpacing: 0,
-    lineHeight: 48,
+    lineHeight: 46,
+  },
+  subtitle: {
+    fontSize: Layout.fontSize.md,
+    color: '#5A7870',
+    textAlign: 'center',
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(245,252,250,0.92)',
     borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: '#E0EDE9',
+    borderWidth: 1,
+    borderColor: '#D8EDE7',
     paddingHorizontal: Layout.spacing.xl,
     paddingVertical: Layout.spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Layout.spacing.lg,
     shadowColor: '#0F6E56',
-    shadowOpacity: 0,
-    elevation: 0,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
   },
   iconBox: {
-    width: 90,
-    height: 90,
-    borderRadius: 22,
+    width: 110,
+    height: 110,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   iconImage: {
-    width: 68,
-    height: 68,
+    width: 88,
+    height: 88,
   },
   textWrap: {
     flex: 1,
@@ -168,11 +189,27 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#1A2E26',
   },
   cardSub: {
     fontSize: Layout.fontSize.md,
     color: '#6B8A80',
+  },
+  chevronCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(200,228,220,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomIndicator: {
+    width: 60,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    alignSelf: 'center',
+    marginBottom: 20,
   },
 });
