@@ -18,6 +18,8 @@ import ConceptDemoScreen             from '../screens/teacher/concept/ConceptDem
 import ConceptMatchScreen            from '../screens/teacher/concept/ConceptMatchScreen';
 import ConceptCongratulationsScreen  from '../screens/teacher/concept/ConceptCongratulationsScreen';
 import ConceptAdaptiveQuizScreen     from '../screens/teacher/concept/ConceptAdaptiveQuizScreen';
+import Tier2ImageScreen              from '../screens/teacher/concept/Tier2ImageScreen';
+import Tier2ActivityScreen           from '../screens/teacher/concept/Tier2ActivityScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -103,6 +105,8 @@ export default function TeacherNavigator() {
       <Stack.Screen name="ConceptMatch"      component={ConceptMatchScreen} />
       <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
       <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
+      <Stack.Screen name="Tier2Image"          component={Tier2ImageScreen} />
+      <Stack.Screen name="Tier2Activity"       component={Tier2ActivityScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
     </Stack.Navigator>
   );

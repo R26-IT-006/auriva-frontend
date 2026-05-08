@@ -64,7 +64,7 @@ function FallingStar({ delay, startX }) {
 }
 
 export default function ConceptCongratulationsScreen({ route, navigation }) {
-  const { student, category, conceptKey, correctCount = 3 } = route.params;
+  const { student, category, conceptKey, correctCount = 3, completedTier = 1 } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
   const theme   = getAvatarTheme(student?.avatar_key);
@@ -126,7 +126,11 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
   function handleContinue() {
     Speech.stop();
-    navigation.navigate('ConceptItems', { student, category });
+    if (completedTier === 1) {
+      navigation.navigate('Tier2Image', { student, category, conceptKey, sessionId: null });
+    } else {
+      navigation.navigate('ConceptItems', { student, category });
+    }
   }
 
   const fallingStars = Array.from({ length: STAR_COUNT }, (_, i) => ({

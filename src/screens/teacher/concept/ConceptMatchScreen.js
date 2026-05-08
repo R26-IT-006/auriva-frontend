@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  Animated,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,11 +52,19 @@ export default function ConceptMatchScreen({ route, navigation }) {
   const [locked,          setLocked]          = useState(false);
   const [feedbackKey,     setFeedbackKey]     = useState(null);
   const [feedbackResult,  setFeedbackResult]  = useState(null); // 'correct' | 'wrong'
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [attempts,        setAttempts]        = useState([]);
+  const feedbackSlide = useRef(new Animated.Value(250)).current;
   const [gateVisible,     setGateVisible]     = useState(false);
 
   const attemptStart = useRef(Date.now());
+
+  function showFeedback() {
+    Animated.spring(feedbackSlide, { toValue: 0, useNativeDriver: true, friction: 6, tension: 80 }).start();
+  }
+
+  function hideFeedbackThen(cb) {
+    Animated.timing(feedbackSlide, { toValue: 250, useNativeDriver: true, duration: 250 }).start(() => cb());
+  }
 
   const CARD_GAP = 12;
   const H_PAD    = Layout.spacing.md;
@@ -93,7 +102,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
     setFeedbackKey(option.key);
     setFeedbackResult(wasCorrect ? 'correct' : 'wrong');
-    setFeedbackVisible(true);
+    showFeedback();
 
     const updatedAttempts = [...attempts, newAttempt];
     setAttempts(updatedAttempts);
@@ -112,25 +121,25 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
     if (currentAttempt < 3) {
       setTimeout(() => {
-        setFeedbackVisible(false);
-        setFeedbackKey(null);
-        setFeedbackResult(null);
-        setDisplayOrder(prev => {
-          const base = options.current();
-          let next;
-          do { next = shuffle(base); }
-          while (next.every((item, i) => item.key === prev[i].key));
-          return next;
+        hideFeedbackThen(() => {
+          setFeedbackKey(null);
+          setFeedbackResult(null);
+          setDisplayOrder(prev => {
+            const base = options.current();
+            let next;
+            do { next = shuffle(base); }
+            while (next.every((item, i) => item.key === prev[i].key));
+            return next;
+          });
+          attemptStart.current = Date.now();
+          setCurrentAttempt((n) => n + 1);
+          setLocked(false);
         });
-        attemptStart.current = Date.now();
-        setCurrentAttempt((n) => n + 1);
-        setLocked(false);
-      }, 1500);
+      }, 1200);
     } else {
       // Final attempt — complete after GIF display
-      setTimeout(async () => {
-        setFeedbackVisible(false);
-
+      setTimeout(() => {
+        hideFeedbackThen(async () => {
         const correctCount = updatedAttempts.filter((a) => a.wasCorrect).length;
         const score        = correctCount / 3;
         const passed       = score >= 2 / 3;
@@ -166,7 +175,8 @@ export default function ConceptMatchScreen({ route, navigation }) {
             isRelearn: true, confusedKeys,
           });
         }
-      }, 1500);
+        });
+      }, 1200);
     }
   }
 
@@ -274,16 +284,19 @@ export default function ConceptMatchScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* GIF feedback overlay */}
-        {feedbackVisible && (
-          <View style={styles.gifOverlay} pointerEvents="none">
+        {/* GIF feedback popup */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.gifPopup, { transform: [{ translateY: feedbackSlide }] }]}
+        >
+          {feedbackResult && (
             <ExpoImage
               source={feedbackResult === 'correct' ? CORRECT_GIF : WRONG_GIF}
               style={styles.gifImage}
               contentFit="contain"
             />
-          </View>
-        )}
+          )}
+        </Animated.View>
 
       </SafeAreaView>
 
@@ -351,7 +364,8 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 24,
   },
   optionsRow: {
     flexDirection: 'row',
@@ -359,8 +373,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   optionCard: {
-    borderRadius: 18,
-    borderWidth: 2.5,
+    borderRadius: 36,
+    borderWidth: 3.5,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -390,15 +404,15 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  gifOverlay: {
+  gifPopup: {
     position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    bottom: 20,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   gifImage: {
-    width: 320,
-    height: 320,
+    width: 200,
+    height: 200,
   },
 });

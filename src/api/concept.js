@@ -73,6 +73,28 @@ export const conceptApi = {
     return data;
   },
 
+  async startTier2({ studentId, categoryKey, conceptKey }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_TIER2_START, {
+      student_id:   studentId,
+      category_key: categoryKey,
+      concept_key:  conceptKey,
+    });
+    return data;
+  },
+
+  async completeTier2({ studentId, categoryKey, conceptKey, passed, score, attemptCount, confusedWith }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_TIER2_COMPLETE, {
+      student_id:    studentId,
+      category_key:  categoryKey,
+      concept_key:   conceptKey,
+      passed,
+      score,
+      attempt_count: attemptCount,
+      confused_with: confusedWith || [],
+    });
+    return data;
+  },
+
   async completeAdaptive({ studentId, sessionId, categoryKey, conceptKey, confusedKeys, roundResults, allPassed }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_ADAPTIVE_COMPLETE, {
       student_id:    studentId,
