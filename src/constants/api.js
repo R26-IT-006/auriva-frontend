@@ -39,4 +39,6 @@ export const ENDPOINTS = {
   CONCEPT_ADAPTIVE_COMPLETE:  '/teacher/concepts/adaptive/complete',
   CONCEPT_TIER2_START:        '/teacher/concepts/tier2/start',
   CONCEPT_TIER2_COMPLETE:     '/teacher/concepts/tier2/complete',
+  CONCEPT_TIER3_START:        '/teacher/concepts/tier3/start',
+  CONCEPT_TIER3_COMPLETE:     '/teacher/concepts/tier3/complete',
 };

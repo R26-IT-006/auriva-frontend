@@ -128,6 +128,8 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
     Speech.stop();
     if (completedTier === 1) {
       navigation.navigate('Tier2Image', { student, category, conceptKey, sessionId: null });
+    } else if (completedTier === 2) {
+      navigation.navigate('Tier3Video', { student, category, conceptKey });
     } else {
       navigation.navigate('ConceptItems', { student, category });
     }

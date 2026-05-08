@@ -145,7 +145,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
           if (passed) {
             navigation.replace('ConceptCongrats', { student, category, conceptKey, correctCount, completedTier: 2 });
           } else {
-            navigation.replace('Tier2Image', { student, category, conceptKey, sessionId });
+            navigation.replace('Tier2DragDrop', { student, category, conceptKey, sessionId });
           }
         });
       }, 1200);

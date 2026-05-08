@@ -35,6 +35,7 @@ export default function Tier2ImageScreen({ route, navigation }) {
   const rippleScale   = useRef(new Animated.Value(0.4)).current;
   const rippleOpacity = useRef(new Animated.Value(0.7)).current;
   const sessionStart  = useRef(Date.now());
+  const lastTapTime   = useRef(null);
   const tapHintLoop   = useRef(null);
 
   const playAudio = useCallback(() => {
@@ -80,6 +81,7 @@ export default function Tier2ImageScreen({ route, navigation }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleImageTap() {
+    const now      = Date.now();
     const newCount = tapCount + 1;
     setTapCount(newCount);
     if (newCount === 1) tapHintLoop.current?.stop();
@@ -91,6 +93,9 @@ export default function Tier2ImageScreen({ route, navigation }) {
       Animated.spring(imageScale, { toValue: 1,    useNativeDriver: true, speed: 30 }),
     ]).start();
 
+    const interTapMs = lastTapTime.current ? now - lastTapTime.current : null;
+    lastTapTime.current = now;
+
     conceptApi.logInteraction({
       studentId:   student.sid,
       sessionId:   sessionId || null,
@@ -98,7 +103,7 @@ export default function Tier2ImageScreen({ route, navigation }) {
       conceptKey,
       tier:        2,
       eventType:   'image_tap',
-      eventData:   { tap_index: newCount, time_ms: Date.now() - sessionStart.current },
+      eventData:   { tap_index: newCount, time_ms: now - sessionStart.current, inter_tap_ms: interTapMs },
     }).catch(() => {});
 
     if (newCount === 2) {
@@ -107,6 +112,15 @@ export default function Tier2ImageScreen({ route, navigation }) {
   }
 
   function handleForward() {
+    conceptApi.logInteraction({
+      studentId:   student.sid,
+      sessionId:   sessionId || null,
+      categoryKey: category.key,
+      conceptKey,
+      tier:        2,
+      eventType:   'screen_exit',
+      eventData:   { total_time_ms: Date.now() - sessionStart.current },
+    }).catch(() => {});
     Speech.stop();
     stopConceptAudio();
     navigation.navigate('Tier2Activity', { student, category, conceptKey, sessionId: sessionId || null });
