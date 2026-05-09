@@ -321,7 +321,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
 
   const micBackground = isRecording ? "#E89C8E" : theme.button;
   const statusText = isRecording ? "Recording..." : "Tap to speak";
-  const canContinue = Boolean(savedRecordingUri && savedAudioData?.rawAudioBase64) && !isRecording;
+  const canContinue = !isRecording;
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
