@@ -98,9 +98,6 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
   );
-  const setSelectedWord = usePronunciationSessionStore(
-    (state) => state.setSelectedWord,
-  );
   const setListenChooseData = usePronunciationSessionStore(
     (state) => state.setListenChooseData,
   );
@@ -210,7 +207,6 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
       choice_ids: choices.map((item) => item.id),
     };
 
-    setSelectedWord(targetWord);
     setListenChooseData(nextListenChooseData);
     navigation.navigate("PronunciationResult", {
       student,

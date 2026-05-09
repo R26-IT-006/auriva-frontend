@@ -25,6 +25,7 @@ import {
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
+import { getStudentIdentifier } from "./studentIdentity.js";
 
 const EXPECTED_PRONUNCIATION_SCORE = 80;
 const WELL_DONE_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/well-done-female.mp3");
@@ -94,6 +95,7 @@ function getScoreBarColor(score) {
 
 export default function PronunciationResultScreen({ navigation, route }) {
   const student = route.params?.student;
+  const studentId = getStudentIdentifier(student);
   const hasSavedResultRef = useRef(false);
   const theme = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
@@ -299,7 +301,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
   }
 
   useEffect(() => {
-    if (hasSavedResultRef.current || !student?.sid || !currentWord?.id) return;
+    if (hasSavedResultRef.current || !studentId || !currentWord?.id) return;
 
     hasSavedResultRef.current = true;
 
@@ -328,7 +330,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
       listen_choose_data: savedListenChooseData,
     };
 
-    teacherApi.savePronunciationResult(student.sid, payload).catch((error) => {
+    teacherApi.savePronunciationResult(studentId, payload).catch((error) => {
       hasSavedResultRef.current = false;
       console.log("Unable to save pronunciation result:", error.message);
     });
@@ -352,7 +354,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
     recordingUri,
     responseDuration,
     sounds,
-    student?.sid,
+    studentId,
   ]);
 
   useEffect(() => {

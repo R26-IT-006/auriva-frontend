@@ -14,8 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { teacherApi } from "../../../../../api/teacher";
+import { API_BASE_URL, ENDPOINTS } from "../../../../../constants/api";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { storage } from "../../../../../utils/storage";
+import { getStudentIdentifier } from "./studentIdentity.js";
 
 function getScoreColor(score) {
   if (score >= 80) return Colors.status.success;
@@ -103,6 +106,7 @@ function SessionTab({ result, isSelected, onPress }) {
 
 export default function PronunciationResultsHistoryScreen({ route }) {
   const student = route.params?.student;
+  const studentId = getStudentIdentifier(student);
   const [results, setResults] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -122,10 +126,10 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   }, [selectedResult]);
 
   const fetchResults = useCallback(async () => {
-    if (!student?.sid) return;
+    if (!studentId) return;
 
     try {
-      const data = await teacherApi.getPronunciationResults(student.sid);
+      const data = await teacherApi.getPronunciationResults(studentId);
       setResults(data);
       setSelectedId((currentId) => {
         if (data.some((result) => result.id === currentId)) return currentId;
@@ -137,7 +141,7 @@ export default function PronunciationResultsHistoryScreen({ route }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [student?.sid]);
+  }, [studentId]);
 
   useEffect(() => {
     fetchResults();
@@ -175,11 +179,21 @@ export default function PronunciationResultsHistoryScreen({ route }) {
 
     try {
       await stopAudio();
-      const audio = await teacherApi.getPronunciationResultAudio(result.id);
-      const mimeType = audio.raw_audio_mime_type || "audio/mp4";
-      const dataUri = `data:${mimeType};base64,${audio.raw_audio_base64}`;
+      const token = await storage.getToken();
+      const audioUrl = `${API_BASE_URL}${ENDPOINTS.TEACHER_PRONUNCIATION_RESULT_AUDIO(result.id)}?stream=1`;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+
       const { sound } = await Audio.Sound.createAsync(
-        { uri: dataUri },
+        {
+          uri: audioUrl,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        },
         { shouldPlay: true },
       );
 

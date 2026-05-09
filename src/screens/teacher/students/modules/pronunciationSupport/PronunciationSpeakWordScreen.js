@@ -14,39 +14,58 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result || "";
-      resolve(String(result).split(",")[1] || "");
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+function arrayBufferToBase64(buffer) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const bytes = new Uint8Array(buffer);
+  let output = "";
+  let index = 0;
+
+  for (; index + 2 < bytes.length; index += 3) {
+    const triplet = (bytes[index] << 16) | (bytes[index + 1] << 8) | bytes[index + 2];
+    output += alphabet[(triplet >> 18) & 63];
+    output += alphabet[(triplet >> 12) & 63];
+    output += alphabet[(triplet >> 6) & 63];
+    output += alphabet[triplet & 63];
+  }
+
+  if (index < bytes.length) {
+    const first = bytes[index];
+    const second = index + 1 < bytes.length ? bytes[index + 1] : 0;
+    const triplet = (first << 16) | (second << 8);
+    output += alphabet[(triplet >> 18) & 63];
+    output += alphabet[(triplet >> 12) & 63];
+    output += index + 1 < bytes.length ? alphabet[(triplet >> 6) & 63] : "=";
+    output += "=";
+  }
+
+  return output;
 }
 
-function uriToBlob(uri) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.onload = () => resolve(xhr.response);
-    xhr.onerror = reject;
-    xhr.responseType = "blob";
-    xhr.open("GET", uri, true);
-    xhr.send(null);
-  });
+function getAudioMimeType(uri) {
+  const lowerUri = String(uri || "").toLowerCase();
+  if (lowerUri.endsWith(".m4a")) return "audio/mp4";
+  if (lowerUri.endsWith(".caf")) return "audio/x-caf";
+  if (lowerUri.endsWith(".wav")) return "audio/wav";
+  if (lowerUri.endsWith(".3gp")) return "audio/3gpp";
+  return "audio/mp4";
 }
 
 async function readAudioClip(uri) {
   if (!uri) return null;
 
-  const blob = await uriToBlob(uri);
-  const rawAudioBase64 = await blobToBase64(blob);
+  const response = await fetch(uri);
+  const buffer = await response.arrayBuffer();
+  const rawAudioBase64 = arrayBufferToBase64(buffer);
+  const rawAudioSize = buffer.byteLength || null;
+
+  if (!rawAudioBase64 || !rawAudioSize) {
+    throw new Error("Recorded audio file was empty.");
+  }
 
   return {
     rawAudioBase64,
-    rawAudioMimeType: blob.type || "audio/mp4",
-    rawAudioSize: blob.size || null,
+    rawAudioMimeType: getAudioMimeType(uri),
+    rawAudioSize,
   };
 }
 
@@ -65,6 +84,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [savedRecordingUri, setSavedRecordingUri] = useState(null);
+  const [savedAudioData, setSavedAudioData] = useState(null);
   const [lastRecordingDuration, setLastRecordingDuration] = useState(null);
   const setSelectedWord = usePronunciationSessionStore((state) => state.setSelectedWord);
   const setCurrentActivityStep = usePronunciationSessionStore(
@@ -227,7 +247,19 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
         console.log("Unable to read raw pronunciation audio:", error.message);
       }
 
+      if (!audioData?.rawAudioBase64) {
+        Alert.alert(
+          "Audio save error",
+          "The recording finished, but the audio file could not be prepared for saving. Please record again.",
+        );
+        setSavedRecordingUri(null);
+        setSavedAudioData(null);
+        setRecordingUri(null, null, {});
+        return;
+      }
+
       setSavedRecordingUri(uri);
+      setSavedAudioData(audioData);
       setLastRecordingDuration(durationSeconds);
       setRecordingUri(uri, durationSeconds, audioData);
       Alert.alert(
@@ -289,7 +321,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
 
   const micBackground = isRecording ? "#E89C8E" : theme.button;
   const statusText = isRecording ? "Recording..." : "Tap to speak";
-  const canContinue = Boolean(savedRecordingUri) && !isRecording;
+  const canContinue = Boolean(savedRecordingUri && savedAudioData?.rawAudioBase64) && !isRecording;
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>

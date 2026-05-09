@@ -17,6 +17,7 @@ import {
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
+import { getStudentIdentifier } from "./studentIdentity.js";
 
 function Step({ label, active, done, theme }) {
   return (
@@ -133,6 +134,7 @@ export default function PronunciationWordSelectionScreen({
   route,
 }) {
   const student = route.params?.student;
+  const studentId = getStudentIdentifier(student);
   const theme = getAvatarTheme(student?.avatar_key);
   const categoryId = route.params?.categoryId;
   const mode = route.params?.mode || PRONUNCIATION_MODES.WORD;
@@ -165,13 +167,13 @@ export default function PronunciationWordSelectionScreen({
       let isMounted = true;
 
       async function loadCompletedItems() {
-        if (!student?.sid) {
+        if (!studentId) {
           setCompletedIds(new Set());
           return;
         }
 
         try {
-          const results = await teacherApi.getPronunciationResults(student.sid);
+          const results = await teacherApi.getPronunciationResults(studentId);
           if (!isMounted) return;
 
           const nextCompletedIds = new Set(
@@ -195,7 +197,7 @@ export default function PronunciationWordSelectionScreen({
       return () => {
         isMounted = false;
       };
-    }, [categoryId, isAlphabetMode, mode, student?.sid]),
+    }, [categoryId, isAlphabetMode, mode, studentId]),
   );
 
   const scrollRef = useRef(null);
