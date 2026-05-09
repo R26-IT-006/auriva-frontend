@@ -209,6 +209,7 @@ function Step1Listen({ sentence, theme, avatarImg, onNext }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 1 · Listen</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 1 · සවන් දෙන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>
@@ -252,6 +253,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   stepBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, gap: Layout.spacing.md },
   stepTitle: { fontSize: Layout.fontSize.xs, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
+  stepTitleSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', opacity: 0.6, marginTop: -6, textAlign: 'center' },
   prompt: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', lineHeight: 30 },
   sentenceCard: { width: '100%', borderRadius: Layout.radius.xl, borderWidth: 2, paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', ...Layout.shadow.sm },
   sentenceText: { fontSize: Layout.fontSize.xl, fontWeight: '700', textAlign: 'center' },
@@ -268,6 +270,7 @@ const styles = StyleSheet.create({
   dropSlotPlaceholder: { fontSize: Layout.fontSize.xl, color: 'rgba(0,0,0,0.3)', fontWeight: '700' },
   dropSlotFilled: { fontSize: Layout.fontSize.xl, fontWeight: '900', color: '#22C55E' },
   dragHint: { fontSize: Layout.fontSize.sm, opacity: 0.5, fontWeight: '600' },
+  dragHintSinhala: { fontSize: Layout.fontSize.xs, opacity: 0.45, fontWeight: '500', textAlign: 'center', marginTop: -6 },
   tile: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', paddingVertical: 14, paddingHorizontal: Layout.spacing.xl, borderRadius: Layout.radius.xl, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)', ...Layout.shadow.md },
   tileText: { fontSize: Layout.fontSize.lg, fontWeight: '800', color: '#1A1A2E' },
   tilesRow: { flexDirection: 'row', gap: Layout.spacing.md, flexWrap: 'wrap', justifyContent: 'center' },
@@ -275,13 +278,15 @@ const styles = StyleSheet.create({
   wrongMsg: { fontSize: Layout.fontSize.sm, color: '#FF4D6D', fontWeight: '700' },
   genderBody: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.lg, paddingHorizontal: Layout.spacing.lg },
   genderPrompt: { fontSize: Layout.fontSize.xxl, fontWeight: '900', textAlign: 'center' },
+  genderPromptSinhala: { fontSize: Layout.fontSize.md, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginTop: -6 },
   genderRow: { flexDirection: 'row', gap: Layout.spacing.xl },
   genderCard: { alignItems: 'center', gap: Layout.spacing.sm, borderRadius: Layout.radius.xl, borderWidth: 3, padding: Layout.spacing.md, flex: 1, ...Layout.shadow.md, backgroundColor: '#FFF' },
   genderAvatar: { width: 110, height: 150 },
   genderLabel: { fontSize: Layout.fontSize.lg, fontWeight: '800' },
   actPreBody: { flex: 1, paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md },
   actPreTitle: { fontSize: Layout.fontSize.xs, fontWeight: '600', opacity: 0.55, textTransform: 'uppercase', textAlign: 'center', marginBottom: Layout.spacing.sm },
-  actPrePrompt: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', marginBottom: Layout.spacing.lg },
+  actPrePrompt: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', marginBottom: Layout.spacing.sm },
+  actPreSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.md },
   actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.md, justifyContent: 'center', flex: 1 },
   actCard: { alignItems: 'center', gap: 8, borderRadius: Layout.radius.xl, borderWidth: 2.5, paddingVertical: Layout.spacing.lg, paddingHorizontal: Layout.spacing.lg, width: 100, backgroundColor: '#FFF', ...Layout.shadow.sm },
   actCardSel: {},
@@ -294,6 +299,7 @@ const styles = StyleSheet.create({
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   bubble: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
   bubbleText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, marginTop: 2 },
   bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
 });
 
@@ -329,6 +335,7 @@ function Step2DragOne({ sentence, theme, onComplete }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 2 · Drag & Drop</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 2 · ඇදගෙන නවත්වන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>
@@ -342,6 +349,9 @@ function Step2DragOne({ sentence, theme, onComplete }) {
       </View>
       <Text style={[styles.dragHint, { color: theme.headingText }]}>
         <Ionicons name="hand-left-outline" size={14} /> Drag the card below into the blank
+      </Text>
+      <Text style={[styles.dragHintSinhala, { color: theme.headingText }]}>
+        පහළ ඇති කාඩ්ය හිස් ස්ථානයට ඇදගෙන යන්න
       </Text>
       {!placed && (
         <Animated.View style={[styles.tile, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] }]} {...panResponder.panHandlers}>
@@ -414,6 +424,7 @@ function Step3DragTwo({ sentence, theme, onResult }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 3 · Pick the Right One</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 3 · නිවැරදි එක තෝරන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>{before}</Text>
@@ -439,8 +450,12 @@ function Step3Gender({ theme, gender, onSelect }) {
   return (
     <View style={styles.genderBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 3 · Tap the Picture</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 3 · රූපය තෝරන්න </Text>
       <Text style={[styles.genderPrompt, { color: theme.headingText }]}>
         Tap the picture that looks like you!
+      </Text>
+      <Text style={[styles.genderPromptSinhala, { color: theme.headingText }]}>
+        ඔබට සමාන රූපය තෝරන්න!
       </Text>
       <View style={styles.genderRow}>
         {[{ g: 'boy', img: SAMAN_IMG, label: 'Boy' }, { g: 'girl', img: ANJALI_IMG, label: 'Girl' }].map(({ g, img, label }) => (
@@ -459,8 +474,9 @@ function ActivityPreScreen({ sessionData, theme, onSelect }) {
   const [selected, setSelected] = useState(null);
   return (
     <View style={styles.actPreBody}>
-      <Text style={[styles.actPreTitle, { color: theme.headingText }]}>Getting Ready · Sentence 5</Text>
+      <Text style={[styles.actPreTitle, { color: theme.headingText }]}>Getting Ready · Sentence 5  ·  සූදානම් වෙමු · වාක්‍යය 5</Text>
       <Text style={[styles.actPrePrompt, { color: theme.headingText }]}>What do you like doing?</Text>
+      <Text style={[styles.actPreSinhala, { color: theme.headingText }]}>ඔබ කිරීමට කැමති දෙය කුමක්ද?</Text>
       <View style={styles.actGrid}>
         {ALL_ACTIVITIES.map(act => {
           const sel = selected === act;
@@ -549,9 +565,11 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 4 · Say It!</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 4 · කියන්න!</Text>
       <View style={styles.bubbleRow}>
         <View style={[styles.bubble, { backgroundColor: theme.cardSurface }]}>
           <Text style={[styles.bubbleText, { color: theme.headingText }]}>Repeat after me!</Text>
+          <Text style={[styles.bubbleSinhala, { color: theme.headingText }]}>මා සමඟ නැවත කියන්න!</Text>
           <View style={[styles.bubbleTail, { borderLeftColor: theme.cardSurface }]} />
         </View>
         <Image source={avatarImg} style={styles.avatarMd} resizeMode="contain" />

@@ -65,21 +65,21 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
           <TouchableOpacity style={[styles.iconBtn, outline]} onPress={() => navigation.goBack()} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: theme.headingText }]}>Child Information</Text>
+          <Text style={[styles.title, { color: theme.headingText }]}>Child Information  ·  දරුවාගේ තොරතුරු</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.label, { color: theme.headingText }]}>Child's First Name</Text>
+          <Text style={[styles.label, { color: theme.headingText }]}>Child's First Name  ·  දරුවාගේ නම</Text>
           <TextInput style={[styles.input, outline]} value={name} onChangeText={setName} placeholder="e.g. Saman" placeholderTextColor="#999" />
 
-          <Text style={[styles.label, { color: theme.headingText }]}>Age</Text>
+          <Text style={[styles.label, { color: theme.headingText }]}>Age  ·  වයස</Text>
           <TextInput style={[styles.input, outline]} value={age} onChangeText={setAge} placeholder="e.g. 8" placeholderTextColor="#999" keyboardType="numeric" maxLength={2} />
 
-          <Text style={[styles.label, { color: theme.headingText }]}>Hometown</Text>
+          <Text style={[styles.label, { color: theme.headingText }]}>Hometown  ·  නිවසේ ප්‍රදේශය</Text>
           <TextInput style={[styles.input, outline]} value={hometown} onChangeText={setHometown} placeholder="e.g. Colombo" placeholderTextColor="#999" />
 
-          <Text style={[styles.label, { color: theme.headingText }]}>Gender</Text>
+          <Text style={[styles.label, { color: theme.headingText }]}>Gender  ·  ස්ත්‍රී/පුරුෂ</Text>
           <View style={styles.genderRow}>
             {['boy', 'girl'].map(g => (
               <TouchableOpacity key={g} style={[styles.genderBtn, outline, gender === g && { backgroundColor: theme.button, borderColor: theme.button }]} onPress={() => setGender(g)} activeOpacity={0.8}>
@@ -89,7 +89,7 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
             ))}
           </View>
 
-          <Text style={[styles.label, { color: theme.headingText }]}>Favourite Activities <Text style={styles.hint}>(choose up to 3)</Text></Text>
+          <Text style={[styles.label, { color: theme.headingText }]}>Favourite Activities  ·  ප්‍රිය ක්‍රීයා <Text style={styles.hint}>(choose up to 3  ·  3 දක්වා)</Text></Text>
           <View style={styles.actGrid}>
             {ALL_ACTIVITIES.map(act => {
               const sel = activities.includes(act);

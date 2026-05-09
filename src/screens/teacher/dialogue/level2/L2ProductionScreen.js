@@ -153,6 +153,9 @@ export default function L2ProductionScreen({ route, navigation }) {
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>
             {section === 'full' ? 'Say the Whole Paragraph! 🌟' : `Sentence ${sxsIdx + 1} of ${sentences.length}`}
           </Text>
+          <Text style={[styles.headerSinhala, { color: theme.headingText }]}>
+            {section === 'full' ? 'සම්පූර්ණ ඡේදය කියන්න! 🌟' : `වාක්‍යය ${sxsIdx + 1} / ${sentences.length}`}
+          </Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.button }]} />
           </View>
@@ -163,6 +166,9 @@ export default function L2ProductionScreen({ route, navigation }) {
             <View style={[styles.bubble, { backgroundColor: theme.cardSurface }]}>
               <Text style={[styles.bubbleText, { color: theme.headingText }]}>
                 {section === 'full' ? 'Can you say the whole paragraph?' : 'Now say this sentence!'}
+              </Text>
+              <Text style={[styles.bubbleSinhala, { color: theme.headingText }]}>
+                {section === 'full' ? 'සම්පූර්ණ ඡේදය කිව හැකිද?' : 'දැන් මෙම වාක්‍යය කියන්න!'}
               </Text>
               <View style={[styles.bubbleTail, { borderLeftColor: theme.cardSurface }]} />
             </View>
@@ -232,12 +238,14 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center' },
+  headerSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginTop: 2 },
   progressTrack: { width: '100%', height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
   scroll: { paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.md, gap: Layout.spacing.md },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   bubble: { flex: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
   bubbleText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, marginTop: 2 },
   bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
   avatar: { width: 90, height: 110 },
   textCard: { borderRadius: Layout.radius.xl, borderWidth: 2, padding: Layout.spacing.lg, gap: 8, ...Layout.shadow.sm },

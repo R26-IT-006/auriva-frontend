@@ -88,6 +88,7 @@ export default function L2LoadingScreen({ route, navigation }) {
             <>
               <Text style={[styles.heading, { color: theme.headingText }]}>Getting your lesson ready...</Text>
               <Text style={[styles.sub, { color: theme.headingText }]}>Just a moment! 🌟</Text>
+              <Text style={[styles.subSinhala, { color: theme.headingText }]}>ටිකකින් සූදානම් වෙයි!</Text>
               <View style={styles.dotsRow}>
                 {[0, 1, 2].map(i => <LoadingDot key={i} delay={i * 250} color={theme.button} />)}
               </View>
@@ -129,6 +130,7 @@ const styles = StyleSheet.create({
   avatar: { width: 180, height: 200 },
   heading: { fontSize: Layout.fontSize.xxl, fontWeight: '800', textAlign: 'center', lineHeight: 32 },
   sub: { fontSize: Layout.fontSize.md, fontWeight: '500', opacity: 0.6 },
+  subSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.55, textAlign: 'center' },
   dotsRow: { flexDirection: 'row', gap: 10, marginTop: Layout.spacing.sm },
   dot: { width: 12, height: 12, borderRadius: 6 },
   retryBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, marginTop: Layout.spacing.md },

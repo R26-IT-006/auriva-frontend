@@ -57,10 +57,13 @@ export default function L2SessionCompleteScreen({ route, navigation }) {
           <Text style={[styles.sub, { color: theme.headingText }]}>
             You practised all 5 sentences today!
           </Text>
+          <Text style={[styles.subSinhala, { color: theme.headingText }]}>
+            ඔබ අද වාක්‍ය 5 ම පුහුණු කළා!
+          </Text>
 
           {/* Sentences recap */}
           <View style={[styles.recapCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-            <Text style={[styles.recapTitle, { color: theme.headingText }]}>What we learnt today</Text>
+            <Text style={[styles.recapTitle, { color: theme.headingText }]}>What we learnt today  ·  අද ඉගෙනගත් දේ</Text>
             {sentences.map((s, i) => (
               <View key={s.index} style={styles.recapRow}>
                 <View style={[styles.checkCircle, { backgroundColor: theme.button }]}>
@@ -96,6 +99,7 @@ const styles = StyleSheet.create({
   avatar: { width: 160, height: 180 },
   heading: { fontSize: 34, fontWeight: '900', textAlign: 'center', letterSpacing: -0.5 },
   sub: { fontSize: Layout.fontSize.lg, fontWeight: '500', textAlign: 'center', opacity: 0.65 },
+  subSinhala: { fontSize: Layout.fontSize.md, fontWeight: '500', textAlign: 'center', opacity: 0.6, marginTop: -Layout.spacing.sm },
   recapCard: { width: '100%', borderRadius: Layout.radius.xl, borderWidth: 2, padding: Layout.spacing.lg, gap: Layout.spacing.sm, ...Layout.shadow.sm },
   recapTitle: { fontSize: Layout.fontSize.md, fontWeight: '800', marginBottom: 4 },
   recapRow: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },

@@ -60,7 +60,8 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
 
         <View style={styles.body}>
           <Text style={[styles.heading, { color: theme.headingText }]}>Choose a Topic</Text>
-          <Text style={[styles.sub, { color: theme.headingText }]}>Level 2 · Sentence Construction</Text>
+          <Text style={[styles.headingSinhala, { color: theme.headingText }]}>මාතෘකාවක් තෝරන්න</Text>
+          <Text style={[styles.sub, { color: theme.headingText }]}>Level 2 · Sentence Construction  ·  මට්ටම 2 · වාක්‍ය ගොඩනැගීම</Text>
 
           <View style={styles.topicList}>
             {TOPICS.map((topic) => (
@@ -107,6 +108,7 @@ const styles = StyleSheet.create({
   iconBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, backgroundColor: 'rgba(255,255,255,0.6)', alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, gap: Layout.spacing.md },
   heading: { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+  headingSinhala: { fontSize: Layout.fontSize.md, fontWeight: '600', opacity: 0.65, marginTop: -4 },
   sub: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.55, marginBottom: Layout.spacing.sm },
   topicList: { width: '100%', alignItems: 'center', gap: Layout.spacing.md },
   topicCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, borderWidth: 2, padding: Layout.spacing.lg, gap: Layout.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
