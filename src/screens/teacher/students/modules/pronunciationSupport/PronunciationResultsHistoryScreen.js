@@ -528,9 +528,21 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                         size={18}
                         color={Colors.primary}
                       />
-                      <Text style={styles.recommendationText}>
-                        {selectedResult.recommendation_message}
-                      </Text>
+                      <View style={styles.recommendationContent}>
+                        <Text style={styles.recommendationText}>
+                          {selectedResult.recommendation_message}
+                        </Text>
+                        {(selectedResult.recommendation_details?.evidence || [])
+                          .slice(0, 3)
+                          .map((item, index) => (
+                            <Text
+                              key={`${item}-${index}`}
+                              style={styles.recommendationEvidence}
+                            >
+                              {item}
+                            </Text>
+                          ))}
+                      </View>
                     </View>
                   )}
                 </View>
@@ -967,10 +979,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Layout.spacing.sm,
   },
-  recommendationText: {
+  recommendationContent: {
     flex: 1,
+    gap: 6,
+  },
+  recommendationText: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
     lineHeight: 20,
+  },
+  recommendationEvidence: {
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    lineHeight: 17,
   },
 });

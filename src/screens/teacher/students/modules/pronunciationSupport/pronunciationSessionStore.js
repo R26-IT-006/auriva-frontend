@@ -564,6 +564,7 @@ export const usePronunciationSessionStore = create((set, get) => ({
         scoringMethod: scoringResult?.scoring_method || null,
         weakPhoneme: difficultPhoneme,
         weakPosition: scoringResult?.weak_position || null,
+        details: scoringResult?.recommendation_details || null,
       },
       completedWords: completedWord
         ? [
