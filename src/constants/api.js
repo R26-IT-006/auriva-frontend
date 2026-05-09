@@ -26,7 +26,10 @@ export const ENDPOINTS = {
   TEACHER_SESSION_START: "/teacher/session/start",
   TEACHER_SESSION_END: "/teacher/session/end",
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
-  TEACHER_PRONUNCIATION_RESULT: (id) => `/teacher/students/${id}/pronunciation-results`,
-  TEACHER_PRONUNCIATION_RESULTS: (id) => `/teacher/students/${id}/pronunciation-results`,
-  TEACHER_PRONUNCIATION_RESULT_AUDIO: (id) => `/teacher/pronunciation-results/${id}/audio`,
+  TEACHER_PRONUNCIATION_RESULT: (id) =>
+    `/teacher/students/${id}/pronunciation-results`,
+  TEACHER_PRONUNCIATION_RESULTS: (id) =>
+    `/teacher/students/${id}/pronunciation-results`,
+  TEACHER_PRONUNCIATION_RESULT_AUDIO: (id) =>
+    `/teacher/pronunciation-results/${id}/audio`,
 };

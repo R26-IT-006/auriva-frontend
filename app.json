@@ -20,7 +20,7 @@
       "permissions": ["RECORD_AUDIO"]
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.auriva.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Allow Auriva to use the microphone for pronunciation practice."

@@ -1,10 +1,22 @@
 import React from "react";
-import { View, Text, StyleSheet, useWindowDimensions, Image, Alert, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  useWindowDimensions,
+  Image,
+  Alert,
+  ScrollView,
+  Animated,
+  Easing,
+  Modal,
+  Pressable,
+} from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
+import { Audio, ResizeMode, Video } from "expo-av";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
@@ -19,6 +31,9 @@ const PRONUNCIATION_AUDIO_ASSETS = {
   cat: require("../../../../../../assets/pronounciation-audios/cat.mp3"),
 };
 
+const CAT_FLASHCARD_VIDEO = require("../../../../../../assets/pronunciation-videos/whiskers_cat.mp4");
+const CAT_MEOW_AUDIO = require("../../../../../../assets/pronunciation-audios/cat_meow.wav");
+
 export default function PronunciationLearnWordScreen({ navigation, route }) {
   const student = route.params?.student;
   const theme = getAvatarTheme(student?.avatar_key);
@@ -27,8 +42,13 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   const isAlphabetMode = mode === PRONUNCIATION_MODES.ALPHABET;
   const categoryId = route.params?.categoryId;
   const selectedWordId = route.params?.wordId;
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const pronunciationSoundRef = React.useRef(null);
+  const catMeowSoundRef = React.useRef(null);
+  const catVideoRef = React.useRef(null);
+  const flashcardOverlayOpacity = React.useRef(new Animated.Value(0)).current;
+  const flashcardScale = React.useRef(new Animated.Value(0.88)).current;
+  const flashcardTranslateY = React.useRef(new Animated.Value(32)).current;
   const sessionSelectedWord = usePronunciationSessionStore(
     (state) => state.selectedWord,
   );
@@ -42,12 +62,31 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     route.params?.word ||
     sessionSelectedWord;
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const [isCatFlashcardVisible, setIsCatFlashcardVisible] = React.useState(false);
+  const [catVideoKey, setCatVideoKey] = React.useState(0);
 
-  const isCompact = width < 760;
+  const isLandscape = width > height;
+  const isWideTablet = width >= 900 && isLandscape;
+  const isCompact = width < 760 || !isLandscape;
   const cardWidth = isCompact
     ? width - Layout.spacing.lg * 2
-    : Math.min(Math.max(width * 0.56, 640), 980);
+    : Math.min(Math.max(width * 0.7, 760), 1060);
+  const flashcardWidth = isLandscape
+    ? Math.min(width - 92, 820)
+    : Math.min(width - 44, 680);
+  const flashcardStageMaxHeight = isLandscape
+    ? Math.max(240, height - 210)
+    : Math.max(280, height * 0.48);
   const sounds = selectedWord?.sounds || [];
+  const canShowCatFlashcard = selectedWord?.id === "cat";
+
+  const floatingCardStyle = {
+    opacity: flashcardOverlayOpacity,
+    transform: [
+      { translateY: flashcardTranslateY },
+      { scale: flashcardScale },
+    ],
+  };
 
   function handleNext() {
     setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
@@ -68,8 +107,128 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
         pronunciationSoundRef.current.unloadAsync().catch(() => {});
         pronunciationSoundRef.current = null;
       }
+      if (catMeowSoundRef.current) {
+        catMeowSoundRef.current.unloadAsync().catch(() => {});
+        catMeowSoundRef.current = null;
+      }
     };
   }, [setCurrentActivityStep]);
+
+  React.useEffect(() => {
+    if (!isCatFlashcardVisible) return undefined;
+
+    flashcardOverlayOpacity.setValue(0);
+    flashcardScale.setValue(0.88);
+    flashcardTranslateY.setValue(32);
+
+    Animated.parallel([
+      Animated.timing(flashcardOverlayOpacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(flashcardScale, {
+        toValue: 1,
+        speed: 16,
+        bounciness: 8,
+        useNativeDriver: true,
+      }),
+      Animated.spring(flashcardTranslateY, {
+        toValue: 0,
+        speed: 15,
+        bounciness: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [flashcardOverlayOpacity, flashcardScale, flashcardTranslateY, isCatFlashcardVisible]);
+
+  function handleOpenCatFlashcard() {
+    if (!canShowCatFlashcard) return;
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid: false,
+      playThroughEarpieceAndroid: false,
+    }).catch(() => {});
+    setCatVideoKey((key) => key + 1);
+    setIsCatFlashcardVisible(true);
+    playCatMeow();
+  }
+
+  async function handleReplayCatVideo() {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+
+      if (catVideoRef.current) {
+        await catVideoRef.current.setPositionAsync(0);
+        await catVideoRef.current.playAsync();
+      } else {
+        setCatVideoKey((key) => key + 1);
+      }
+
+      await playCatMeow();
+    } catch (error) {
+      console.log("Cat video playback error:", error);
+    }
+  }
+
+  function handleCloseCatFlashcard() {
+    Animated.parallel([
+      Animated.timing(flashcardOverlayOpacity, {
+        toValue: 0,
+        duration: 160,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(flashcardScale, {
+        toValue: 0.94,
+        duration: 160,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setIsCatFlashcardVisible(false);
+    });
+  }
+
+  async function playCatMeow() {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+
+      if (catMeowSoundRef.current) {
+        await catMeowSoundRef.current.unloadAsync().catch(() => {});
+        catMeowSoundRef.current = null;
+      }
+
+      const { sound } = await Audio.Sound.createAsync(CAT_MEOW_AUDIO, {
+        shouldPlay: true,
+        volume: 1,
+      });
+
+      catMeowSoundRef.current = sound;
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
+          if (catMeowSoundRef.current === sound) {
+            catMeowSoundRef.current = null;
+          }
+        }
+      });
+    } catch (error) {
+      console.log("Cat meow playback error:", error);
+    }
+  }
 
   async function handleHearSounds() {
     const audioAsset = PRONUNCIATION_AUDIO_ASSETS[selectedWord?.id];
@@ -88,7 +247,8 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
       });
 
       if (pronunciationSoundRef.current) {
@@ -122,7 +282,11 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <ScrollView
-        contentContainerStyle={[styles.container, isCompact && styles.containerCompact]}
+        contentContainerStyle={[
+          styles.container,
+          isCompact && styles.containerCompact,
+          isWideTablet && styles.containerLandscape,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.centerStage, isCompact && styles.centerStageCompact]}>
@@ -130,7 +294,13 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
             {isAlphabetMode ? "Listen to the letter sound" : "Listen to the sounds"}
           </Text>
 
-          <View style={[styles.wordCard, isCompact && styles.wordCardCompact, { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+          <View
+            style={[
+              styles.wordCard,
+              !isWideTablet && styles.wordCardCompact,
+              { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+            ]}
+          >
             <View style={styles.soundStage}>
               {sounds.map((sound, index) => (
                 <View key={`${sound.text}-${index}`} style={styles.soundBlock}>
@@ -153,7 +323,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
               </ButtonFeedback>
             </View>
 
-            <View style={[styles.imagePane, isCompact && styles.imagePaneCompact]}>
+            <View style={[styles.imagePane, !isWideTablet && styles.imagePaneCompact]}>
               {isAlphabetMode ? (
                 <View style={[styles.wordImage, styles.letterPane, { backgroundColor: selectedWord?.color || theme.cardSurface }]}>
                   <Text style={styles.letterPaneText}>
@@ -161,11 +331,23 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                   </Text>
                 </View>
               ) : selectedWord?.imageUri ? (
-                <Image
-                  source={{ uri: selectedWord.imageUri }}
-                  resizeMode="cover"
-                  style={styles.wordImage}
-                />
+                <ButtonFeedback
+                  activeOpacity={0.9}
+                  disabled={!canShowCatFlashcard}
+                  onPress={handleOpenCatFlashcard}
+                  style={styles.wordImageButton}
+                >
+                  <Image
+                    source={{ uri: selectedWord.imageUri }}
+                    resizeMode="cover"
+                    style={styles.wordImage}
+                  />
+                  {canShowCatFlashcard && (
+                    <View style={styles.tapHint}>
+                      <Ionicons name="play" size={22} color="#FFFFFF" />
+                    </View>
+                  )}
+                </ButtonFeedback>
               ) : (
                 <View style={[styles.wordImage, styles.placeholderPane]}>
                   <Ionicons name="image-outline" size={42} color="#76839A" />
@@ -197,6 +379,64 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           </ButtonFeedback>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={isCatFlashcardVisible}
+        transparent
+        animationType="none"
+        supportedOrientations={["portrait", "landscape", "landscape-left", "landscape-right"]}
+        onRequestClose={handleCloseCatFlashcard}
+      >
+        <View style={styles.flashcardModal}>
+          <Animated.View style={[styles.flashcardBackdrop, { opacity: flashcardOverlayOpacity }]} />
+          <Animated.View
+            style={[
+              styles.flashcardWrap,
+              isCompact && styles.flashcardWrapCompact,
+              isLandscape && styles.flashcardWrapLandscape,
+              { width: flashcardWidth },
+              floatingCardStyle,
+            ]}
+          >
+            <View style={styles.flashcardHeader}>
+              <View>
+                <Text style={styles.flashcardEyebrow}>Flashcard</Text>
+                <Text style={styles.flashcardTitle}>cat</Text>
+              </View>
+              <ButtonFeedback
+                activeOpacity={0.82}
+                onPress={handleCloseCatFlashcard}
+                style={styles.flashcardClose}
+              >
+                <Ionicons name="close" size={24} color="#35445D" />
+              </ButtonFeedback>
+            </View>
+
+            <View
+              style={[
+                styles.flashcardVideoStage,
+                isLandscape && styles.flashcardVideoStageLandscape,
+                { maxHeight: flashcardStageMaxHeight },
+              ]}
+            >
+              <Pressable onPress={handleReplayCatVideo} style={styles.flashcardVideoPressable}>
+                <Video
+                  key={catVideoKey}
+                  ref={catVideoRef}
+                  source={CAT_FLASHCARD_VIDEO}
+                  style={styles.flashcardVideo}
+                  resizeMode={ResizeMode.CONTAIN}
+                  shouldPlay={isCatFlashcardVisible}
+                  isLooping
+                  isMuted={false}
+                  volume={1}
+                  useNativeControls={false}
+                />
+              </Pressable>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
     </SafeAreaView>
     </LinearGradient>
   );
@@ -220,6 +460,9 @@ const styles = StyleSheet.create({
   containerCompact: {
     justifyContent: "flex-start",
   },
+  containerLandscape: {
+    paddingHorizontal: 88,
+  },
   centerStage: {
     width: "100%",
     alignItems: "center",
@@ -233,7 +476,7 @@ const styles = StyleSheet.create({
     fontSize: 46,
     fontWeight: "800",
     color: "#1F4C66",
-    letterSpacing: -0.6,
+    letterSpacing: 0,
     marginBottom: 26,
     textAlign: "center",
   },
@@ -247,16 +490,17 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     borderColor: "#D7E1EC",
-    padding: 16,
+    padding: 18,
     flexDirection: "row",
     alignItems: "stretch",
-    gap: 16,
+    gap: 18,
+    minHeight: 360,
   },
   wordCardCompact: {
     flexDirection: "column",
+    minHeight: 0,
   },
   soundStage: {
-    width: "100%",
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -313,18 +557,37 @@ const styles = StyleSheet.create({
     fontWeight: Layout.fontWeight.bold,
   },
   imagePane: {
-    width: "34%",
-    minHeight: 280,
+    width: "42%",
+    minHeight: 320,
   },
   imagePaneCompact: {
     width: "100%",
-    height: 220,
-    minHeight: 220,
+    height: 260,
+    minHeight: 260,
+  },
+  wordImageButton: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 18,
+    overflow: "hidden",
   },
   wordImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 16,
+    borderRadius: 18,
+  },
+  tapHint: {
+    position: "absolute",
+    right: 12,
+    bottom: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    width: 58,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "rgba(31,44,70,0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
   },
   placeholderPane: {
     backgroundColor: "#E8EDF4",
@@ -425,5 +688,84 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 30,
     fontWeight: "700",
+  },
+  flashcardModal: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+  },
+  flashcardBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(21, 30, 46, 0.62)",
+  },
+  flashcardWrap: {
+    width: "82%",
+    maxWidth: 780,
+    borderRadius: 28,
+    backgroundColor: "#FFFDF8",
+    padding: 18,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.95)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.24,
+    shadowRadius: 30,
+    elevation: 12,
+  },
+  flashcardWrapCompact: {
+    width: "100%",
+    padding: 14,
+  },
+  flashcardWrapLandscape: {
+    padding: 14,
+  },
+  flashcardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  flashcardEyebrow: {
+    color: "#2E9E78",
+    fontSize: 13,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+  flashcardTitle: {
+    color: "#263752",
+    fontSize: 42,
+    lineHeight: 46,
+    fontWeight: "900",
+  },
+  flashcardClose: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F0F4F8",
+    borderWidth: 1,
+    borderColor: "#DDE6EF",
+  },
+  flashcardVideoStage: {
+    width: "100%",
+    aspectRatio: 690 / 490,
+    overflow: "hidden",
+    borderRadius: 20,
+    backgroundColor: "#FFF8EE",
+    borderWidth: 1,
+    borderColor: "#F3DEC9",
+  },
+  flashcardVideoStageLandscape: {
+    aspectRatio: 690 / 405,
+  },
+  flashcardVideoPressable: {
+    width: "100%",
+    height: "100%",
+  },
+  flashcardVideo: {
+    width: "100%",
+    height: "100%",
   },
 });
