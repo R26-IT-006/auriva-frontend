@@ -314,6 +314,8 @@ export default function PronunciationResultScreen({ navigation, route }) {
       phoneme_scores: sounds.map((sound, index) => ({
         text: sound.text || "",
         type: sound.type || null,
+        position: sound.position || null,
+        cue: sound.cue || null,
         score: sound.score ?? [91, 40, 76][index] ?? displayScore,
       })),
       response_duration: responseDuration,

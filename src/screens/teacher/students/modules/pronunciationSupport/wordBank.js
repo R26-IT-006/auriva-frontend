@@ -1,4 +1,159 @@
-export const WORD_BANK = {
+const PHONEME_SUPPORT_CUES = {
+  æ: "Open the mouth wide for the short /a/ sound.",
+  ɒ: "Round the lips gently for the short /o/ sound.",
+  ɪ: "Use a small smile for the short /i/ sound.",
+  "ɜː": "Keep the mouth relaxed for the long middle vowel.",
+  "iː": "Smile and stretch the long /ee/ sound.",
+  "eɪ": "Start with /e/ and glide to /i/.",
+  "ɔː": "Round the lips for the long /or/ sound.",
+  "uː": "Round the lips and hold the long /oo/ sound.",
+  "ʌ": "Open the mouth slightly for the short /u/ sound.",
+  b: "Close both lips, then release with voice.",
+  p: "Close both lips, then release with a soft pop.",
+  m: "Close both lips and hum through the nose.",
+  f: "Touch teeth to lower lip and blow air.",
+  v: "Touch teeth to lower lip and add voice.",
+  s: "Keep teeth close and send air forward.",
+  z: "Keep teeth close and add a buzzing voice.",
+  t: "Tap the tongue behind the teeth.",
+  d: "Tap the tongue behind the teeth with voice.",
+  k: "Lift the back of the tongue for the back-mouth sound.",
+  g: "Lift the back of the tongue and add voice.",
+  h: "Use an open mouth with gentle breath.",
+  l: "Lift the tongue tip behind the teeth.",
+  r: "Curl or bunch the tongue without touching the teeth.",
+  w: "Round the lips first, then open.",
+  "ʃ": "Round the lips slightly and push quiet air.",
+  "tʃ": "Start with a tongue tap, then release air.",
+  "dʒ": "Start with a tongue tap, then release with voice.",
+};
+
+const WORD_METADATA = {
+  cat: {
+    ipa: "/kæt/",
+    syllableCount: 1,
+    difficulty: 1,
+    pattern: "CVC",
+    easierWords: ["ant"],
+    relatedWords: ["kangaroo", "crab"],
+    syllabusCategory: "animals",
+  },
+  dog: {
+    ipa: "/dɒg/",
+    syllableCount: 1,
+    difficulty: 1,
+    pattern: "CVC",
+    easierWords: ["deer"],
+    relatedWords: ["goose"],
+    syllabusCategory: "animals",
+  },
+  fish: {
+    ipa: "/fɪʃ/",
+    syllableCount: 1,
+    difficulty: 2,
+    pattern: "CVC",
+    easierWords: ["fox"],
+    relatedWords: ["chick", "jellyfish"],
+    syllabusCategory: "animals",
+  },
+  bird: {
+    ipa: "/bɜːd/",
+    syllableCount: 1,
+    difficulty: 2,
+    pattern: "CVC",
+    easierWords: ["book"],
+    relatedWords: ["buffalo", "butterfly"],
+    syllabusCategory: "animals",
+  },
+  worm: { ipa: "/wɜːm/", syllableCount: 1, difficulty: 2, pattern: "CVC", relatedWords: ["whale", "walk"] },
+  whale: { ipa: "/weɪl/", syllableCount: 1, difficulty: 2, pattern: "CVC", easierWords: ["worm"], relatedWords: ["walk"] },
+  turtle: { ipa: "/tɜːtəl/", syllableCount: 2, difficulty: 3, pattern: "CVCVC", easierWords: ["cat", "ant"], relatedWords: ["tiger"] },
+  tiger: { ipa: "/taɪgə/", syllableCount: 2, difficulty: 3, pattern: "CVCV", easierWords: ["dog"], relatedWords: ["turtle"] },
+  snail: { ipa: "/sneɪl/", syllableCount: 1, difficulty: 3, pattern: "CCVC", easierWords: ["goose"], relatedWords: ["desk"] },
+  pigeon: { ipa: "/pɪdʒən/", syllableCount: 2, difficulty: 3, pattern: "CVCVC", easierWords: ["hippo"], relatedWords: ["penguin"] },
+  penguin: { ipa: "/peŋgwɪn/", syllableCount: 2, difficulty: 4, pattern: "CVCCVC", easierWords: ["pigeon"], relatedWords: ["mango"] },
+  mosquito: { ipa: "/mɒskiːtəʊ/", syllableCount: 3, difficulty: 5, pattern: "CVCCVCV", easierWords: ["worm"], relatedWords: ["desk"] },
+  leopard: { ipa: "/lepəd/", syllableCount: 2, difficulty: 3, pattern: "CVCVC", easierWords: ["apple"], relatedWords: ["hippo"] },
+  kangaroo: { ipa: "/kæŋgəruː/", syllableCount: 3, difficulty: 5, pattern: "CVCCVCV", easierWords: ["cat"], relatedWords: ["crab"] },
+  jellyfish: { ipa: "/dʒelifɪʃ/", syllableCount: 3, difficulty: 5, pattern: "CVCVCVC", easierWords: ["fish"], relatedWords: ["jump"] },
+  horse: { ipa: "/hɔːs/", syllableCount: 1, difficulty: 2, pattern: "CVC", easierWords: ["goose"], relatedWords: ["hippo"] },
+  hippo: { ipa: "/hɪpəʊ/", syllableCount: 2, difficulty: 3, pattern: "CVCV", easierWords: ["horse"], relatedWords: ["pigeon"] },
+  goose: { ipa: "/guːs/", syllableCount: 1, difficulty: 2, pattern: "CVC", easierWords: ["dog"], relatedWords: ["horse"] },
+  fox: { ipa: "/fɒks/", syllableCount: 1, difficulty: 2, pattern: "CVCC", easierWords: ["fish"], relatedWords: ["book"] },
+  elephant: { ipa: "/eləfənt/", syllableCount: 3, difficulty: 5, pattern: "VCVCVC", easierWords: ["eagle", "ant"], relatedWords: ["buffalo"] },
+  eagle: { ipa: "/iːgəl/", syllableCount: 2, difficulty: 3, pattern: "VCVC", easierWords: ["goose"], relatedWords: ["deer"] },
+  deer: { ipa: "/dɪə/", syllableCount: 1, difficulty: 1, pattern: "CV", easierWords: ["dog"], relatedWords: ["desk"] },
+  crab: { ipa: "/kræb/", syllableCount: 1, difficulty: 3, pattern: "CCVC", easierWords: ["cat"], relatedWords: ["kangaroo"] },
+  cow: { ipa: "/kaʊ/", syllableCount: 1, difficulty: 1, pattern: "CV", easierWords: ["cat"], relatedWords: ["crab"] },
+  chick: { ipa: "/tʃɪk/", syllableCount: 1, difficulty: 2, pattern: "CVC", easierWords: ["cat"], relatedWords: ["fish"] },
+  butterfly: { ipa: "/bʌtəflaɪ/", syllableCount: 3, difficulty: 5, pattern: "CVCVCCV", easierWords: ["bird", "buffalo"], relatedWords: ["buffalo"] },
+  buffalo: { ipa: "/bʌfələʊ/", syllableCount: 3, difficulty: 5, pattern: "CVCVCV", easierWords: ["bird"], relatedWords: ["butterfly"] },
+  ant: { ipa: "/ænt/", syllableCount: 1, difficulty: 1, pattern: "VCC", easierWords: ["cat"], relatedWords: ["elephant"] },
+  book: { ipa: "/bʊk/", syllableCount: 1, difficulty: 1, pattern: "CVC", easierWords: ["bird"], relatedWords: ["desk"] },
+  desk: { ipa: "/desk/", syllableCount: 1, difficulty: 2, pattern: "CVCC", easierWords: ["deer"], relatedWords: ["snail"] },
+  apple: { ipa: "/apəl/", syllableCount: 2, difficulty: 2, pattern: "VCVC", easierWords: ["ant"], relatedWords: ["leopard"] },
+  mango: { ipa: "/mæŋgəʊ/", syllableCount: 2, difficulty: 3, pattern: "CVCCV", easierWords: ["worm"], relatedWords: ["penguin"] },
+  walk: { ipa: "/wɔːk/", syllableCount: 1, difficulty: 2, pattern: "CVC", easierWords: ["worm"], relatedWords: ["whale"] },
+  jump: { ipa: "/dʒʌmp/", syllableCount: 1, difficulty: 3, pattern: "CVCC", easierWords: ["jellyfish"], relatedWords: ["butterfly"] },
+};
+
+function getSoundPosition(index, total) {
+  if (total <= 1) return "single";
+  if (index === 0) return "initial";
+  if (index === total - 1) return "final";
+  return "medial";
+}
+
+function getFallbackPattern(sounds = []) {
+  return sounds
+    .map((sound) => (sound.type === "vowel" ? "V" : "C"))
+    .join("");
+}
+
+function getFallbackDifficulty(word) {
+  const phonemeCount = word.phonemeCount || word.sounds?.length || 1;
+  if (phonemeCount <= 3) return 1;
+  if (phonemeCount <= 5) return 2;
+  if (phonemeCount <= 7) return 3;
+  return 4;
+}
+
+function enrichWord(word, categoryId) {
+  const metadata = WORD_METADATA[word.id] || {};
+  const sounds = (word.sounds || []).map((sound, index, source) => ({
+    ...sound,
+    position: sound.position || getSoundPosition(index, source.length),
+    cue: sound.cue || PHONEME_SUPPORT_CUES[sound.text] || null,
+  }));
+  const targetPhonemes = sounds.map((sound) => sound.text);
+
+  return {
+    ...word,
+    ipa: metadata.ipa || `/${targetPhonemes.join("")}/`,
+    syllableCount: metadata.syllableCount || 1,
+    difficulty: metadata.difficulty || getFallbackDifficulty(word),
+    pattern: metadata.pattern || getFallbackPattern(sounds),
+    syllabusCategory: metadata.syllabusCategory || categoryId,
+    easierWords: metadata.easierWords || [],
+    relatedWords: metadata.relatedWords || [],
+    targetPhonemes,
+    supportCue:
+      metadata.supportCue ||
+      sounds.find((sound) => sound.type === "vowel")?.cue ||
+      sounds[0]?.cue ||
+      null,
+    sounds,
+  };
+}
+
+function enrichWordBank(rawWordBank) {
+  return Object.entries(rawWordBank).reduce((bank, [categoryId, words]) => {
+    bank[categoryId] = words.map((word) => enrichWord(word, categoryId));
+    return bank;
+  }, {});
+}
+
+const RAW_WORD_BANK = {
   animals: [
     {
       id: "cat",
@@ -439,3 +594,5 @@ export const WORD_BANK = {
     },
   ],
 };
+
+export const WORD_BANK = enrichWordBank(RAW_WORD_BANK);

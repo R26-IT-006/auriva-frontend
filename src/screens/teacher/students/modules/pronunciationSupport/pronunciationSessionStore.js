@@ -308,12 +308,15 @@ function createMockAttemptResult({
     return {
       text: sound.text,
       type: sound.type,
+      position: sound.position || null,
+      cue: sound.cue || null,
       score: Math.max(35, Math.min(98, mockWordScore + 8 - drop)),
     };
   });
-  const difficultPhoneme = mockPhonemeScores
+  const difficultSound = mockPhonemeScores
     .slice()
-    .sort((a, b) => a.score - b.score)[0]?.text || null;
+    .sort((a, b) => a.score - b.score)[0] || null;
+  const difficultPhoneme = difficultSound?.text || null;
   const hesitationTime = Number(
     (0.7 + numberOfAttempts * 0.35 + (mockWordScore < 65 ? 0.9 : 0.2)).toFixed(1),
   );
@@ -322,7 +325,7 @@ function createMockAttemptResult({
     selectedMode,
     selectedWord,
     mockWordScore,
-    difficultPhoneme,
+    difficultSound,
   });
 
   return {
@@ -340,13 +343,15 @@ function createAdaptiveRecommendation({
   selectedMode,
   selectedWord,
   mockWordScore,
-  difficultPhoneme,
+  difficultSound,
 }) {
   const words = selectedMode === PRONUNCIATION_MODES.WORD
     ? getCategoryWords(selectedCategory)
     : ALPHABET_BANK;
   const currentIndex = words.findIndex((word) => word.id === selectedWord?.id);
   const nextWord = words[currentIndex + 1] || words[0] || null;
+  const difficultPhoneme = difficultSound?.text || null;
+  const difficultPosition = difficultSound?.position || null;
 
   if (mockWordScore >= 80) {
     return {
@@ -367,15 +372,17 @@ function createAdaptiveRecommendation({
   const easierWord = words.find(
     (word) =>
       word.id !== selectedWord?.id &&
-      (word.phonemeCount || 4) <= (selectedWord?.phonemeCount || 4),
+      (word.difficulty || word.phonemeCount || 4) <=
+        (selectedWord?.difficulty || selectedWord?.phonemeCount || 4),
   );
+  const positionText = difficultPosition ? `${difficultPosition} ` : "";
 
   if (mockWordScore >= 60) {
     return {
       type: "reinforce",
       label: "Reinforce",
       message: selectedMode === PRONUNCIATION_MODES.WORD
-        ? `Try another word with the ${difficultPhoneme || "target"} sound.`
+        ? `Try another word with the ${positionText}${difficultPhoneme || "target"} sound.`
         : `Try another letter with the ${difficultPhoneme || "target"} sound.`,
       word: relatedWord || easierWord || selectedWord || nextWord,
     };
@@ -385,7 +392,7 @@ function createAdaptiveRecommendation({
     type: "remediate",
     label: "Remediate",
     message: selectedMode === PRONUNCIATION_MODES.WORD
-      ? "Use a simpler word before moving ahead."
+      ? `Use a simpler word before moving ahead${difficultPhoneme ? ` because ${positionText}/${difficultPhoneme}/ needs support` : ""}.`
       : "Use a simpler letter before moving ahead.",
     word: easierWord || relatedWord || selectedWord || nextWord,
   };
