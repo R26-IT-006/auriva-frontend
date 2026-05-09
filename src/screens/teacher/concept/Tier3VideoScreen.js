@@ -54,7 +54,11 @@ export default function Tier3VideoScreen({ route, navigation }) {
         timeSpentMs,
       });
     } catch { /* continue anyway */ }
-    navigation.replace('ConceptItems', { student, category });
+    if (concept?.coloring) {
+      navigation.replace('ConceptColoring', { student, category, conceptKey });
+    } else {
+      navigation.replace('ConceptItems', { student, category });
+    }
   }
 
   async function handleReplay() {
