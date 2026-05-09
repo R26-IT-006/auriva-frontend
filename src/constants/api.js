@@ -3,7 +3,7 @@
 // For physical device: use your machine's local IP
 // Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.19:3000/api
 // Android emulator → 10.0.2.2 maps to host machine's localhost
-export const API_BASE_URL = 'http://172.28.19.153:3000/api';
+export const API_BASE_URL = 'http://192.168.1.180:3000/api';
 
 export const ENDPOINTS = {
   // Auth
@@ -41,4 +41,5 @@ export const ENDPOINTS = {
   CONCEPT_TIER2_COMPLETE:     '/teacher/concepts/tier2/complete',
   CONCEPT_TIER3_START:        '/teacher/concepts/tier3/start',
   CONCEPT_TIER3_COMPLETE:     '/teacher/concepts/tier3/complete',
+  CONCEPT_DISTRACTORS:        '/teacher/concepts/distractors',
 };

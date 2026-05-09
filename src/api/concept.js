@@ -104,6 +104,13 @@ export const conceptApi = {
     return data;
   },
 
+  async getDistractors({ studentId, categoryKey, conceptKey, tier }) {
+    const { data } = await client.get(ENDPOINTS.CONCEPT_DISTRACTORS, {
+      params: { student_id: studentId, category_key: categoryKey, concept_key: conceptKey, tier: tier || 1 },
+    });
+    return data;
+  },
+
   async completeTier3({ studentId, categoryKey, conceptKey, timeSpentMs }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_TIER3_COMPLETE, {
       student_id:    studentId,

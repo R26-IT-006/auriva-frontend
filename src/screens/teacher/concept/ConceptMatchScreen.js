@@ -7,6 +7,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,15 +41,18 @@ export default function ConceptMatchScreen({ route, navigation }) {
   const theme      = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
 
-  const options = useRef(() => {
+  // Stable options list (set once after distractor fetch; reshuffled between attempts)
+  const optionsRef = useRef(null);
+
+  function buildSequentialOptions() {
     const idx  = allItems.findIndex((it) => it.key === conceptKey);
     const next1 = allItems[(idx + 1) % allItems.length];
     const next2 = allItems[(idx + 2) % allItems.length];
     return [concept, next1, next2];
-  });
+  }
 
   const [currentAttempt,  setCurrentAttempt]  = useState(1);
-  const [displayOrder,    setDisplayOrder]    = useState(() => shuffle(options.current()));
+  const [displayOrder,    setDisplayOrder]    = useState(null); // null = loading
   const [locked,          setLocked]          = useState(false);
   const [feedbackKey,     setFeedbackKey]     = useState(null);
   const [feedbackResult,  setFeedbackResult]  = useState(null); // 'correct' | 'wrong'
@@ -85,10 +89,35 @@ export default function ConceptMatchScreen({ route, navigation }) {
     }
   }, [concept]);
 
+  // Load adaptive distractors from GKB; fall back to sequential neighbours
   useEffect(() => {
+    let cancelled = false;
+    conceptApi.getDistractors({ studentId: student.sid, categoryKey: category.key, conceptKey, tier: 1 })
+      .then((res) => {
+        if (cancelled) return;
+        const keys = res?.distractors || [];
+        const d1 = keys[0] ? allItems.find((it) => it.key === keys[0]) : null;
+        const d2 = keys[1] ? allItems.find((it) => it.key === keys[1]) : null;
+        const opts = (d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey)
+          ? [concept, d1, d2]
+          : buildSequentialOptions();
+        optionsRef.current = opts;
+        setDisplayOrder(shuffle(opts));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const opts = buildSequentialOptions();
+        optionsRef.current = opts;
+        setDisplayOrder(shuffle(opts));
+      });
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!displayOrder) return;
     const t = setTimeout(speakPrompt, 400);
     return () => clearTimeout(t);
-  }, [currentAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentAttempt, displayOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleOptionTap(option) {
     if (locked) return;
@@ -125,7 +154,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
           setFeedbackKey(null);
           setFeedbackResult(null);
           setDisplayOrder(prev => {
-            const base = options.current();
+            const base = optionsRef.current || buildSequentialOptions();
             let next;
             do { next = shuffle(base); }
             while (next.every((item, i) => item.key === prev[i].key));
@@ -245,8 +274,11 @@ export default function ConceptMatchScreen({ route, navigation }) {
           ))}
         </View>
 
-        {/* Options */}
+        {/* Options — show spinner until distractors are loaded */}
         <View style={styles.optionsContainer}>
+          {!displayOrder ? (
+            <ActivityIndicator size="large" color={theme.button} style={{ marginTop: 40 }} />
+          ) : (
           <View style={[styles.optionsRow, { paddingHorizontal: H_PAD, gap: CARD_GAP }]}>
             {displayOrder.map((option) => {
               const isTapped  = feedbackKey === option.key;
@@ -282,6 +314,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
               );
             })}
           </View>
+          )}
         </View>
 
         {/* GIF feedback popup */}

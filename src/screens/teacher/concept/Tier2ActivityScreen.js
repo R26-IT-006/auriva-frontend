@@ -7,6 +7,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,15 +40,17 @@ export default function Tier2ActivityScreen({ route, navigation }) {
   const theme    = getAvatarTheme(student?.avatar_key);
   const { width, height } = useWindowDimensions();
 
-  const options = useRef(() => {
+  const optionsRef = useRef(null);
+
+  function buildSequentialOptions() {
     const idx   = allItems.findIndex((it) => it.key === conceptKey);
     const next1 = allItems[(idx + 1) % allItems.length];
     const next2 = allItems[(idx + 2) % allItems.length];
     return [concept, next1, next2];
-  });
+  }
 
   const [currentAttempt, setCurrentAttempt] = useState(1);
-  const [displayLabels,  setDisplayLabels]  = useState(() => shuffle(options.current()));
+  const [displayLabels,  setDisplayLabels]  = useState(null);
   const [locked,         setLocked]         = useState(false);
   const [feedbackKey,    setFeedbackKey]    = useState(null);
   const [feedbackResult, setFeedbackResult] = useState(null);
@@ -70,10 +73,35 @@ export default function Tier2ActivityScreen({ route, navigation }) {
     Speech.speak('What is this called?', { language: 'en-US', rate: 0.8 });
   }, []);
 
+  // Load adaptive distractors from GKB; fall back to sequential neighbours
   useEffect(() => {
+    let cancelled = false;
+    conceptApi.getDistractors({ studentId: student.sid, categoryKey: category.key, conceptKey, tier: 2 })
+      .then((res) => {
+        if (cancelled) return;
+        const keys = res?.distractors || [];
+        const d1 = keys[0] ? allItems.find((it) => it.key === keys[0]) : null;
+        const d2 = keys[1] ? allItems.find((it) => it.key === keys[1]) : null;
+        const opts = (d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey)
+          ? [concept, d1, d2]
+          : buildSequentialOptions();
+        optionsRef.current = opts;
+        setDisplayLabels(shuffle(opts));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const opts = buildSequentialOptions();
+        optionsRef.current = opts;
+        setDisplayLabels(shuffle(opts));
+      });
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!displayLabels) return;
     const t = setTimeout(speakQuestion, 400);
     return () => clearTimeout(t);
-  }, [currentAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentAttempt, displayLabels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLabelTap(option) {
     if (locked) return;
@@ -106,7 +134,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
           setFeedbackKey(null);
           setFeedbackResult(null);
           setDisplayLabels(prev => {
-            const base = options.current();
+            const base = optionsRef.current || buildSequentialOptions();
             let next;
             do { next = shuffle(base); }
             while (next.every((item, i) => item.key === prev[i].key));
@@ -207,7 +235,9 @@ export default function Tier2ActivityScreen({ route, navigation }) {
 
           {/* Name label options — vertical stack */}
           <View style={styles.labelsContainer}>
-            {displayLabels.map((option) => {
+            {!displayLabels ? (
+              <ActivityIndicator size="large" color={theme.button} />
+            ) : displayLabels.map((option) => {
               const isTapped  = feedbackKey === option.key;
               const isCorrect = isTapped && feedbackResult === 'correct';
               const isWrong   = isTapped && feedbackResult === 'wrong';

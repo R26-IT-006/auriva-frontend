@@ -17,7 +17,7 @@ import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
 export default function Tier3VideoScreen({ route, navigation }) {
-  const { student, category, conceptKey } = route.params;
+  const { student, category, conceptKey, needsReplay = false } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
   const theme   = getAvatarTheme(student?.avatar_key);
@@ -110,8 +110,18 @@ export default function Tier3VideoScreen({ route, navigation }) {
             )}
           </View>
 
-          {/* Continue button — to the right of the box, springs in when video ends */}
+          {/* Continue (and optional Watch Again) — springs in when video ends */}
           <Animated.View style={[styles.continueBtnWrap, { transform: [{ scale: btnScale }] }]}>
+            {needsReplay && (
+              <TouchableOpacity
+                style={[styles.watchAgainBtn, { borderColor: theme.button }]}
+                onPress={handleReplay}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="refresh" size={18} color={theme.button} />
+                <Text style={[styles.watchAgainText, { color: theme.button }]}>Watch Again</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={[styles.continueBtn, { backgroundColor: theme.button }]}
               onPress={handleContinue}
@@ -204,7 +214,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  continueBtnWrap: {},
+  continueBtnWrap: { alignItems: 'center', gap: 12 },
+  watchAgainBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 36,
+    borderWidth: 2.5,
+  },
+  watchAgainText: {
+    fontSize: 16,
+    fontFamily: 'Nunito_700Bold',
+  },
   continueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
