@@ -28,6 +28,18 @@ const PHONEME_SUPPORT_CUES = {
   "dʒ": "Start with a tongue tap, then release with voice.",
 };
 
+const WORD_IMAGE_ASSETS = {
+  bird: require("../../../../../../assets/bird.jpg"),
+  dog: require("../../../../../../assets/dog.jpg"),
+  fish: require("../../../../../../assets/fish.jpg"),
+};
+
+export function getWordImageSource(word) {
+  if (word?.imageAsset) return word.imageAsset;
+  if (word?.imageUri) return { uri: word.imageUri };
+  return null;
+}
+
 const WORD_METADATA = {
   cat: {
     ipa: "/kæt/",
@@ -172,32 +184,33 @@ const RAW_WORD_BANK = {
       id: "dog",
       word: "dog",
       color: "#F4C11A",
+      imageAsset: WORD_IMAGE_ASSETS.dog,
       phonemeCount: 5,
       sounds: [
         { text: "d", type: "consonant" },
         { text: "ɒ", type: "vowel" },
         { text: "g", type: "consonant" },
       ],
-      imageUri:
-        "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=900&q=80",
+      imageUri: null,
     },
     {
       id: "fish",
       word: "fish",
       color: "#2A4BD8",
+      imageAsset: WORD_IMAGE_ASSETS.fish,
       phonemeCount: 5,
       sounds: [
         { text: "f", type: "consonant" },
         { text: "ɪ", type: "vowel" },
         { text: "ʃ", type: "consonant" },
       ],
-      imageUri:
-        "https://images.unsplash.com/photo-1520302514739-ff49ca9db8c6?auto=format&fit=crop&w=900&q=80",
+      imageUri: null,
     },
     {
       id: "bird",
       word: "bird",
       color: "#E5E9EF",
+      imageAsset: WORD_IMAGE_ASSETS.bird,
       phonemeCount: 5,
       sounds: [
         { text: "b", type: "consonant" },

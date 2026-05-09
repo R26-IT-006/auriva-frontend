@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
 import { formatDateTime } from '../../utils/formatters';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+
+const BACKGROUND_REFRESH_INTERVAL_MS = 60 * 1000;
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ icon, value, label, color, bg }) {
@@ -51,25 +53,33 @@ export default function TeacherDashboardScreen({ navigation }) {
   const [data,       setData]       = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
+  const requestInFlight = useRef(false);
 
   const logout = useAuthStore((s) => s.logout);
   const toast  = useToast();
 
-  const fetch = useCallback(async () => {
+  const fetch = useCallback(async ({ showError = true } = {}) => {
+    if (requestInFlight.current) return;
+
+    requestInFlight.current = true;
     try {
       const res = await teacherApi.getDashboard();
       setData(res);
     } catch (err) {
-      toast.show(err.message, 'error');
+      if (showError) toast.show(err.message, 'error');
     } finally {
+      requestInFlight.current = false;
       setRefreshing(false);
     }
-  }, []);
+  }, [toast]);
 
   useFocusEffect(
     useCallback(() => {
       fetch();
-      const refreshTimer = setInterval(fetch, 5000);
+      const refreshTimer = setInterval(
+        () => fetch({ showError: false }),
+        BACKGROUND_REFRESH_INTERVAL_MS,
+      );
 
       return () => clearInterval(refreshTimer);
     }, [fetch])

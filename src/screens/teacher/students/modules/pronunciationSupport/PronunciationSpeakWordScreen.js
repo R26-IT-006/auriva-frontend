@@ -14,6 +14,7 @@ import {
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
+import { getWordImageSource } from "./wordBank.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
 
 function arrayBufferToBase64(buffer) {
@@ -83,6 +84,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     (state) => state.selectedWord,
   );
   const word = route.params?.word || sessionSelectedWord;
+  const wordImageSource = getWordImageSource(word);
   const { width } = useWindowDimensions();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -398,9 +400,9 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
                     {word?.letter || word?.word || "A"}
                   </Text>
                 </View>
-              ) : word?.imageUri ? (
+              ) : wordImageSource ? (
                 <Image
-                  source={{ uri: word.imageUri }}
+                  source={wordImageSource}
                   resizeMode="cover"
                   style={styles.image}
                 />

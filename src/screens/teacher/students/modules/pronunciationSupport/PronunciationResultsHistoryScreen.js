@@ -21,6 +21,8 @@ import { Layout } from "../../../../../constants/layout";
 import { storage } from "../../../../../utils/storage";
 import { getStudentIdentifier } from "./studentIdentity.js";
 
+const BACKGROUND_REFRESH_INTERVAL_MS = 60 * 1000;
+
 function getScoreColor(score) {
   if (score >= 80) return Colors.status.success;
   if (score >= 60) return Colors.status.warning;
@@ -195,6 +197,7 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   const [loadingAudioId, setLoadingAudioId] = useState(null);
   const [activitiesOpen, setActivitiesOpen] = useState(false);
   const soundRef = useRef(null);
+  const requestInFlightRef = useRef(false);
 
   const selectedResult = useMemo(
     () => results.find((result) => result.id === selectedId) || results[0],
@@ -208,7 +211,9 @@ export default function PronunciationResultsHistoryScreen({ route }) {
 
   const fetchResults = useCallback(async () => {
     if (!studentId) return;
+    if (requestInFlightRef.current) return;
 
+    requestInFlightRef.current = true;
     try {
       const data = await teacherApi.getPronunciationResults(studentId);
       setResults(data);
@@ -219,6 +224,7 @@ export default function PronunciationResultsHistoryScreen({ route }) {
     } catch {
       setResults([]);
     } finally {
+      requestInFlightRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
@@ -227,7 +233,10 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   useFocusEffect(
     useCallback(() => {
       fetchResults();
-      const refreshTimer = setInterval(fetchResults, 5000);
+      const refreshTimer = setInterval(
+        fetchResults,
+        BACKGROUND_REFRESH_INTERVAL_MS,
+      );
 
       return () => clearInterval(refreshTimer);
     }, [fetchResults]),

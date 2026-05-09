@@ -10,7 +10,7 @@ import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { SESSION_CATEGORIES } from "./sessionCategories.js";
-import { WORD_BANK } from "./wordBank.js";
+import { getWordImageSource, WORD_BANK } from "./wordBank.js";
 import {
   ALPHABET_BANK,
   PRONUNCIATION_MODES,
@@ -81,6 +81,7 @@ function WordCard({
   isAlphabetMode,
 }) {
   const label = isAlphabetMode ? item.letter || item.word : item.word;
+  const imageSource = getWordImageSource(item);
 
   return (
     <View
@@ -114,9 +115,9 @@ function WordCard({
         <View style={[styles.wordVisual, { backgroundColor: item.color }]}>
           {isAlphabetMode ? (
             <Text style={styles.letterVisualText}>{label}</Text>
-          ) : item.imageUri ? (
+          ) : imageSource ? (
             <Image
-              source={{ uri: item.imageUri }}
+              source={imageSource}
               resizeMode="cover"
               style={styles.wordImage}
             />

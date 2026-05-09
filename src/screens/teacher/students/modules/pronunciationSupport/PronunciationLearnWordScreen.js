@@ -20,16 +20,13 @@ import { Audio, ResizeMode, Video } from "expo-av";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
-import { WORD_BANK } from "./wordBank.js";
+import { getWordImageSource, WORD_BANK } from "./wordBank.js";
+import { WORD_AUDIO_ASSETS } from "./pronunciationAudioAssets.js";
 import {
   PRONUNCIATION_MODES,
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
-
-const PRONUNCIATION_AUDIO_ASSETS = {
-  cat: require("../../../../../../assets/pronounciation-audios/cat.mp3"),
-};
 
 const CAT_FLASHCARD_VIDEO = require("../../../../../../assets/pronunciation-videos/whiskers_cat.mp4");
 const CAT_MEOW_AUDIO = require("../../../../../../assets/pronunciation-audios/cat_meow.wav");
@@ -79,6 +76,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     : Math.max(280, height * 0.48);
   const sounds = selectedWord?.sounds || [];
   const canShowCatFlashcard = selectedWord?.id === "cat";
+  const selectedWordImageSource = getWordImageSource(selectedWord);
 
   const floatingCardStyle = {
     opacity: flashcardOverlayOpacity,
@@ -231,7 +229,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   }
 
   async function handleHearSounds() {
-    const audioAsset = PRONUNCIATION_AUDIO_ASSETS[selectedWord?.id];
+    const audioAsset = WORD_AUDIO_ASSETS[selectedWord?.id];
 
     if (!audioAsset) {
       Alert.alert(
@@ -330,7 +328,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                     {selectedWord?.letter || selectedWord?.word || "A"}
                   </Text>
                 </View>
-              ) : selectedWord?.imageUri ? (
+              ) : selectedWordImageSource ? (
                 <ButtonFeedback
                   activeOpacity={0.9}
                   disabled={!canShowCatFlashcard}
@@ -338,7 +336,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                   style={styles.wordImageButton}
                 >
                   <Image
-                    source={{ uri: selectedWord.imageUri }}
+                    source={selectedWordImageSource}
                     resizeMode="cover"
                     style={styles.wordImage}
                   />

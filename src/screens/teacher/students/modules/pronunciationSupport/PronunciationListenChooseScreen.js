@@ -15,18 +15,13 @@ import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback"
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
-import { WORD_BANK } from "./wordBank.js";
+import { getWordImageSource, WORD_BANK } from "./wordBank.js";
+import { WORD_AUDIO_ASSETS, WORD_AUDIO_IDS } from "./pronunciationAudioAssets.js";
 import {
   PRONUNCIATION_MODES,
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
-
-const WORD_AUDIO_ASSETS = {
-  cat: require("../../../../../../assets/pronounciation-audios/cat.mp3"),
-};
-
-const TARGET_WORD_IDS = Object.keys(WORD_AUDIO_ASSETS);
 
 function buildActivityWords(categoryId, preferredWord) {
   const categoryWords = WORD_BANK[categoryId] || WORD_BANK.animals || [];
@@ -34,7 +29,7 @@ function buildActivityWords(categoryId, preferredWord) {
     return [preferredWord];
   }
 
-  const targets = TARGET_WORD_IDS
+  const targets = WORD_AUDIO_IDS
     .map((id) => categoryWords.find((word) => word.id === id))
     .filter(Boolean);
 
@@ -50,6 +45,7 @@ function buildChoices(categoryId, targetWord) {
 function ChoiceCard({ item, state, onPress, width, disabled }) {
   const isCorrect = state === "correct";
   const isWrong = state === "wrong";
+  const imageSource = getWordImageSource(item);
 
   return (
     <ButtonFeedback
@@ -67,8 +63,8 @@ function ChoiceCard({ item, state, onPress, width, disabled }) {
       accessibilityLabel={`Choose ${item.word}`}
     >
       <View style={[styles.choiceImageWrap, { backgroundColor: item.color || "#E8EDF4" }]}>
-        {item.imageUri ? (
-          <Image source={{ uri: item.imageUri }} resizeMode="cover" style={styles.choiceImage} />
+        {imageSource ? (
+          <Image source={imageSource} resizeMode="cover" style={styles.choiceImage} />
         ) : (
           <Ionicons name="image-outline" size={36} color="#6D7890" />
         )}

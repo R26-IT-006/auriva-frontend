@@ -1,0 +1,25 @@
+export const WORD_AUDIO_ASSETS = {
+  ant: require("../../../../../../assets/pronounciation-audios/ant.mp3"),
+  buffalo: require("../../../../../../assets/pronounciation-audios/buffalo.mp3"),
+  butterfly: require("../../../../../../assets/pronounciation-audios/butterfly.mp3"),
+  cat: require("../../../../../../assets/pronounciation-audios/cat.mp3"),
+  cow: require("../../../../../../assets/pronounciation-audios/cow.mp3"),
+  crab: require("../../../../../../assets/pronounciation-audios/crab.mp3"),
+  deer: require("../../../../../../assets/pronounciation-audios/deer.mp3"),
+  eagle: require("../../../../../../assets/pronounciation-audios/eagle.mp3"),
+  elephant: require("../../../../../../assets/pronounciation-audios/elephant.mp3"),
+  fox: require("../../../../../../assets/pronounciation-audios/fox.mp3"),
+  horse: require("../../../../../../assets/pronounciation-audios/horse.mp3"),
+  jellyfish: require("../../../../../../assets/pronounciation-audios/jellyfish.mp3"),
+  kangaroo: require("../../../../../../assets/pronounciation-audios/kangaroo.mp3"),
+  leopard: require("../../../../../../assets/pronounciation-audios/leopard.mp3"),
+  mosquito: require("../../../../../../assets/pronounciation-audios/mosquito.mp3"),
+  penguin: require("../../../../../../assets/pronounciation-audios/penguin.mp3"),
+  snail: require("../../../../../../assets/pronounciation-audios/snail.mp3"),
+  tiger: require("../../../../../../assets/pronounciation-audios/tiger.mp3"),
+  turtle: require("../../../../../../assets/pronounciation-audios/turtle.mp3"),
+  whale: require("../../../../../../assets/pronounciation-audios/whale.mp3"),
+  worm: require("../../../../../../assets/pronounciation-audios/worm.mp3"),
+};
+
+export const WORD_AUDIO_IDS = Object.keys(WORD_AUDIO_ASSETS);
