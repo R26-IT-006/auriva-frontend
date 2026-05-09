@@ -48,6 +48,15 @@ import GreetingPhase2ProductionScreen from '../screens/teacher/dialogue/greeting
 import GreetingPhase2NonVerbalScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase2NonVerbalScreen';
 import GreetingPhase3ContextualScreen from '../screens/teacher/dialogue/greetings/GreetingPhase3ContextualScreen';
 
+// Level 3 – Conversation Builder
+import L3LandingScreen       from '../screens/teacher/dialogue/level3/L3LandingScreen';
+import DemoScreen            from '../screens/teacher/dialogue/level3/DemoScreen';
+import FillBlanksScreen      from '../screens/teacher/dialogue/level3/FillBlanksScreen';
+import RepeatAudioScreen     from '../screens/teacher/dialogue/level3/RepeatAudioScreen';
+import FeedbackScreen        from '../screens/teacher/dialogue/level3/FeedbackScreen';
+import TextCueScreen         from '../screens/teacher/dialogue/level3/TextCueScreen';
+import IndependentScreen     from '../screens/teacher/dialogue/level3/IndependentScreen';
+
 // Level 2 – Sentence Construction
 import L2TopicSelectionScreen  from '../screens/teacher/dialogue/level2/L2TopicSelectionScreen';
 import L2QuestionnaireScreen   from '../screens/teacher/dialogue/level2/L2QuestionnaireScreen';
@@ -176,6 +185,15 @@ export default function TeacherNavigator() {
       <Stack.Screen name="DaysPhase2NonVerbal"  component={DaysPhase2NonVerbalScreen} />
       <Stack.Screen name="DaysPhase3Sequence"   component={DaysPhase3SequenceScreen} />
       <Stack.Screen name="DaysSpinningWheel"    component={DaysSpinningWheelScreen} />
+
+      {/* Level 3 – Conversation Builder */}
+      <Stack.Screen name="L3Landing"      component={L3LandingScreen} />
+      <Stack.Screen name="L3Demo"         component={DemoScreen} />
+      <Stack.Screen name="L3FillBlanks"   component={FillBlanksScreen} />
+      <Stack.Screen name="L3RepeatAudio"  component={RepeatAudioScreen} />
+      <Stack.Screen name="L3Feedback"     component={FeedbackScreen} />
+      <Stack.Screen name="L3TextCue"      component={TextCueScreen} />
+      <Stack.Screen name="L3Independent"  component={IndependentScreen} />
 
       {/* Level 2 – Sentence Construction */}
       <Stack.Screen name="L2TopicSelection"  component={L2TopicSelectionScreen} />
