@@ -94,9 +94,26 @@ const DAY_LABELS = {
   whats_the_day_today: "What's the day today?", today_is: 'Today is...',
 };
 
+const DAY_LABELS_SINHALA = {
+  monday:              'සඳුදා',
+  tuesday:             'අඟහරුවාදා',
+  wednesday:           'බදාදා',
+  thursday:            'බ්‍රහස්පතින්දා',
+  friday:              'සිකුරාදා',
+  saturday:            'සෙනසුරාදා',
+  sunday:              'ඉරිදා',
+  whats_the_day_today: 'අද කුමන දිනයද?',
+  today_is:            'අද...',
+};
+
 const DAY_POSITIONS = {
   monday: '1st', tuesday: '2nd', wednesday: '3rd',
   thursday: '4th', friday: '5th', saturday: '6th', sunday: '7th',
+};
+
+const DAY_POSITIONS_SINHALA = {
+  monday: 'පළමු', tuesday: 'දෙවන', wednesday: 'තෙවන',
+  thursday: 'හතරවන', friday: 'පස්වන', saturday: 'හයවන', sunday: 'හත්වන',
 };
 
 export default function DaysPhase1CalendarScreen({ route, navigation }) {
@@ -108,9 +125,11 @@ export default function DaysPhase1CalendarScreen({ route, navigation }) {
     startIndex = 0,
   } = route.params ?? {};
 
-  const theme     = getAvatarTheme(student?.avatar_key);
-  const wordLabel = DAY_LABELS[wordKey] ?? wordKey;
-  const position  = DAY_POSITIONS[wordKey] ?? '';
+  const theme             = getAvatarTheme(student?.avatar_key);
+  const wordLabel         = DAY_LABELS[wordKey] ?? wordKey;
+  const wordLabelSinhala  = DAY_LABELS_SINHALA[wordKey] ?? '';
+  const position          = DAY_POSITIONS[wordKey] ?? '';
+  const positionSinhala   = DAY_POSITIONS_SINHALA[wordKey] ?? '';
   const dayImages = PHASE1_IMAGES[wordKey] ?? [PLACEHOLDER_IMG, PLACEHOLDER_IMG, PLACEHOLDER_IMG];
   const dayAudio  = DAY_AUDIO[wordKey] ?? PLACEHOLDER_AUDIO;
 
@@ -251,9 +270,16 @@ export default function DaysPhase1CalendarScreen({ route, navigation }) {
 
             {/* Day position label */}
             {position ? (
-              <Text style={[styles.positionText, { color: theme.headingText }]}>
-                {wordLabel} is the <Text style={{ fontWeight: '900', color: theme.button }}>{position}</Text> day of the week
-              </Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={[styles.positionText, { color: theme.headingText }]}>
+                  {wordLabel} is the <Text style={{ fontWeight: '900', color: theme.button }}>{position}</Text> day of the week
+                </Text>
+                {positionSinhala ? (
+                  <Text style={[styles.positionTextSinhala, { color: theme.headingText }]}>
+                    {wordLabelSinhala} සතියේ <Text style={{ fontWeight: '900', color: theme.button }}>{positionSinhala}</Text> දිනයයි
+                  </Text>
+                ) : null}
+              </View>
             ) : null}
 
             {/* Word tile with speaker icon */}
@@ -271,11 +297,16 @@ export default function DaysPhase1CalendarScreen({ route, navigation }) {
               activeOpacity={0.8}
             >
               <Ionicons name="volume-high" size={20} color={theme.button} />
-              <Text style={[styles.wordTileText, { color: theme.button }]}>{wordLabel}</Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={[styles.wordTileText, { color: theme.button }]}>{wordLabel}</Text>
+                {wordLabelSinhala ? (
+                  <Text style={[styles.wordTileSinhala, { color: theme.button }]}>{wordLabelSinhala}</Text>
+                ) : null}
+              </View>
             </TouchableOpacity>
 
             <Text style={[styles.tapHint, { color: theme.headingText }]}>
-              Tap the card to hear the day name
+              Tap the card to hear the day name  ·  දිනය ඇසීමට ස්පර්ශ කරන්න
             </Text>
 
             <View style={{ flex: 1 }} />
@@ -381,8 +412,15 @@ const styles = StyleSheet.create({
     fontSize:     Layout.fontSize.md,
     fontWeight:   '600',
     textAlign:    'center',
-    marginBottom: Layout.spacing.md,
     opacity:      0.85,
+  },
+  positionTextSinhala: {
+    fontSize:     Layout.fontSize.sm,
+    fontWeight:   '500',
+    textAlign:    'center',
+    opacity:      0.7,
+    marginBottom: Layout.spacing.md,
+    marginTop:    3,
   },
 
   wordTile: {
@@ -397,6 +435,7 @@ const styles = StyleSheet.create({
     marginBottom:      Layout.spacing.xs,
   },
   wordTileText: { fontSize: Layout.fontSize.xxl, fontWeight: '900' },
+  wordTileSinhala: { fontSize: Layout.fontSize.md, fontWeight: '600', opacity: 0.75, marginTop: 2 },
 
   tapHint: { fontSize: Layout.fontSize.xs, opacity: 0.45, fontWeight: '500' },
 

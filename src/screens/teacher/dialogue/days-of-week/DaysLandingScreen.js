@@ -118,6 +118,9 @@ export default function DaysLandingScreen({ route, navigation }) {
         <Text style={[styles.title, { color: theme.headingText }]}>
           {"Let's learn the days of the week!"}
         </Text>
+        <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
+          සතියේ දින ඉගෙනගනිමු!
+        </Text>
 
         {/* Song video — fills all remaining space */}
         <Video
@@ -208,7 +211,16 @@ const styles = StyleSheet.create({
     textAlign:         'center',
     opacity:           0.85,
     paddingHorizontal: Layout.spacing.lg,
-    paddingVertical:   Layout.spacing.md,
+    paddingTop:        Layout.spacing.md,
+    paddingBottom:     4,
+  },
+  titleSinhala: {
+    fontSize:          Layout.fontSize.md,
+    fontWeight:        '600',
+    textAlign:         'center',
+    opacity:           0.65,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingBottom:     Layout.spacing.sm,
   },
 
   video: { flex: 1, width: '100%' },

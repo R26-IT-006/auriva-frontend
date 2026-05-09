@@ -358,7 +358,7 @@ export default function DaysPhase3SequenceScreen({ route, navigation }) {
 
             {attempt === 2 && !settled && (
               <Text style={[styles.guidedHint, { color: theme.button }]}>
-                Tap the highlighted answer
+                Tap the highlighted answer  ·  ඉස්මතු කළ පිළිතුර ස්පර්ශ කරන්න
               </Text>
             )}
 

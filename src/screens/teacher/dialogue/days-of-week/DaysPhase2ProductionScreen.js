@@ -68,6 +68,12 @@ const DAY_LABELS = {
   whats_the_day_today: "What's the day today?", today_is: 'Today is...',
 };
 
+const DAY_LABELS_SINHALA = {
+  monday: 'සඳුදා', tuesday: 'අඟහරුවාදා', wednesday: 'බදාදා',
+  thursday: 'බ්‍රහස්පතින්දා', friday: 'සිකුරාදා', saturday: 'සෙනසුරාදා', sunday: 'ඉරිදා',
+  whats_the_day_today: 'අද කුමන දිනයද?', today_is: 'අද...',
+};
+
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
   megatron: require('../../../../../assets/avatar-images/Megatron.png'),
@@ -121,8 +127,9 @@ async function uriToBase64(uri) {
 
 export default function DaysPhase2ProductionScreen({ route, navigation }) {
   const { student, wordKey = 'monday', wordId } = route.params ?? {};
-  const theme      = getAvatarTheme(student?.avatar_key);
-  const wordLabel  = DAY_LABELS[wordKey] ?? wordKey;
+  const theme            = getAvatarTheme(student?.avatar_key);
+  const wordLabel        = DAY_LABELS[wordKey] ?? wordKey;
+  const wordLabelSinhala = DAY_LABELS_SINHALA[wordKey] ?? '';
   const avatarKey  = student?.avatar_key ?? 'lily';
   const avatarImg  = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
   const prodVideo  = PRODUCTION_VIDEOS[avatarKey] ?? null;
@@ -450,6 +457,11 @@ export default function DaysPhase2ProductionScreen({ route, navigation }) {
               </Text>
               {'?'}
             </Text>
+            {wordLabelSinhala ? (
+              <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
+                {`"${wordLabelSinhala}" කිව හැකිද?`}
+              </Text>
+            ) : null}
 
             <TouchableOpacity
               style={[
@@ -463,13 +475,18 @@ export default function DaysPhase2ProductionScreen({ route, navigation }) {
               <View style={[styles.speakerCircle, { backgroundColor: theme.button + '22' }]}>
                 <Ionicons name="volume-high" size={36} color={theme.button} />
               </View>
-              <Text style={[styles.wordText, { color: theme.button }]}>{wordLabel}</Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={[styles.wordText, { color: theme.button }]}>{wordLabel}</Text>
+                {wordLabelSinhala ? (
+                  <Text style={[styles.wordTextSinhala, { color: theme.button }]}>{wordLabelSinhala}</Text>
+                ) : null}
+              </View>
             </TouchableOpacity>
 
             <View style={styles.hintRow}>
               <Ionicons name="hand-left-outline" size={15} color={theme.headingText} style={{ opacity: 0.45 }} />
               <Text style={[styles.hintText, { color: theme.headingText }]}>
-                Click on the card to hear the audio
+                Click on the card to hear the audio  ·  ශ්‍රව්‍ය ඇසීමට කාඩ්පත තෝරන්න 
               </Text>
             </View>
 
@@ -493,7 +510,7 @@ export default function DaysPhase2ProductionScreen({ route, navigation }) {
                     {isRecording ? 'Stop Recording' : 'Record Audio'}
                   </Text>
                 </TouchableOpacity>
-                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK</Text>
+                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK  ·  තෝරා කතා කරන්න</Text>
               </View>
 
               <View style={styles.avatarWrap}>
@@ -581,8 +598,9 @@ const styles = StyleSheet.create({
     paddingBottom:     Layout.spacing.md,
   },
 
-  title:         { fontSize: Layout.fontSize.xl, fontWeight: '600', textAlign: 'center', marginBottom: Layout.spacing.lg },
+  title:         { fontSize: Layout.fontSize.xl, fontWeight: '600', textAlign: 'center', marginBottom: 4 },
   titleEmphasis: { fontSize: Layout.fontSize.xl, fontWeight: '900' },
+  titleSinhala:  { fontSize: Layout.fontSize.sm, fontWeight: '600', textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.lg },
 
   wordTile: {
     width: 160, borderRadius: Layout.radius.xl, padding: Layout.spacing.xl,
@@ -591,7 +609,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12, shadowRadius: 12, elevation: 4,
   },
   speakerCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  wordText:      { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', lineHeight: 28 },
+  wordText:        { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', lineHeight: 28 },
+  wordTextSinhala: { fontSize: Layout.fontSize.md, fontWeight: '600', opacity: 0.75, marginTop: 2 },
 
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Layout.spacing.sm, opacity: 0.6 },
   hintText: { fontSize: Layout.fontSize.xs, fontWeight: '500' },
