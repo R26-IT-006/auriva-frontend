@@ -398,6 +398,14 @@ function createAdaptiveRecommendation({
   };
 }
 
+function findWordById({ selectedCategory, selectedMode, wordId }) {
+  const words = selectedMode === PRONUNCIATION_MODES.WORD
+    ? getCategoryWords(selectedCategory)
+    : ALPHABET_BANK;
+
+  return words.find((word) => word.id === wordId) || null;
+}
+
 export const usePronunciationSessionStore = create((set, get) => ({
   ...initialSessionState,
 
@@ -514,5 +522,59 @@ export const usePronunciationSessionStore = create((set, get) => ({
     });
 
     return result;
+  },
+
+  submitScoredAttempt(scoringResult, { recordingUri, responseDuration } = {}) {
+    const state = get();
+    const score = scoringResult?.overall_score ?? 0;
+    const difficultPhoneme = scoringResult?.weak_phoneme || null;
+    const difficultPhonemes = { ...state.difficultPhonemes };
+    const recommendedWord = findWordById({
+      selectedCategory: state.selectedCategory,
+      selectedMode: state.selectedMode,
+      wordId: scoringResult?.next_word_id,
+    });
+    const completedWord = state.selectedWord
+      ? {
+          id: state.selectedWord.id,
+          label: getWordLabel(state.selectedWord),
+          score,
+        }
+      : null;
+
+    if (difficultPhoneme) {
+      difficultPhonemes[difficultPhoneme] =
+        (difficultPhonemes[difficultPhoneme] || 0) + 1;
+    }
+
+    set({
+      numberOfAttempts: scoringResult?.attempt_number || state.numberOfAttempts + 1,
+      recordingUri: recordingUri || state.recordingUri,
+      mockWordScore: score,
+      mockPhonemeScores: scoringResult?.phoneme_scores || [],
+      responseDuration: scoringResult?.response_duration ?? responseDuration ?? state.responseDuration,
+      hesitationTime: scoringResult?.hesitation_time ?? null,
+      adaptiveRecommendation: {
+        type: scoringResult?.recommendation_type || "reinforce",
+        label: scoringResult?.recommendation_type || "Recommendation",
+        message:
+          scoringResult?.recommendation_message ||
+          "Review the target sounds before moving ahead.",
+        word: recommendedWord,
+        scoringMethod: scoringResult?.scoring_method || null,
+        weakPhoneme: difficultPhoneme,
+        weakPosition: scoringResult?.weak_position || null,
+      },
+      completedWords: completedWord
+        ? [
+            ...state.completedWords.filter((entry) => entry.id !== completedWord.id),
+            completedWord,
+          ]
+        : state.completedWords,
+      difficultPhonemes,
+      currentActivityStep: PRONUNCIATION_STEPS.RESULT,
+    });
+
+    return scoringResult;
   },
 }));

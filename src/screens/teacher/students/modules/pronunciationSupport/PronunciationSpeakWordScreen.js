@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Image, Alert, useWindowDimensions, Animated, Easing, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Image, Alert, useWindowDimensions, Animated, Easing, ScrollView, ActivityIndicator } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
+import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
@@ -13,6 +14,7 @@ import {
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
+import { getStudentIdentifier } from "./studentIdentity.js";
 
 function arrayBufferToBase64(buffer) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -71,6 +73,7 @@ async function readAudioClip(uri) {
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
+  const studentId = getStudentIdentifier(student);
   const theme = getAvatarTheme(student?.avatar_key);
   const sessionMode = usePronunciationSessionStore((state) => state.selectedMode);
   const mode = route.params?.mode || sessionMode || PRONUNCIATION_MODES.WORD;
@@ -86,13 +89,17 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const [savedRecordingUri, setSavedRecordingUri] = useState(null);
   const [savedAudioData, setSavedAudioData] = useState(null);
   const [lastRecordingDuration, setLastRecordingDuration] = useState(null);
+  const [isScoring, setIsScoring] = useState(false);
   const setSelectedWord = usePronunciationSessionStore((state) => state.setSelectedWord);
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
   );
   const setRecordingUri = usePronunciationSessionStore((state) => state.setRecordingUri);
-  const submitMockAttempt = usePronunciationSessionStore(
-    (state) => state.submitMockAttempt,
+  const numberOfAttempts = usePronunciationSessionStore(
+    (state) => state.numberOfAttempts,
+  );
+  const submitScoredAttempt = usePronunciationSessionStore(
+    (state) => state.submitScoredAttempt,
   );
   const recordingRef = useRef(null);
   const pulseLoopRef = useRef(null);
@@ -279,11 +286,53 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     }
   }
 
-  function handleNext() {
-    submitMockAttempt({
-      recordingUri: savedRecordingUri,
-      responseDuration: lastRecordingDuration || recordingSeconds || 2,
-    });
+  async function handleNext() {
+    if (!studentId) {
+      Alert.alert("Student unavailable", "Unable to score without a selected student.");
+      return;
+    }
+
+    if (!savedAudioData?.rawAudioBase64 || !savedRecordingUri) {
+      Alert.alert(
+        "Record first",
+        "Please record the pronunciation before moving to the result.",
+      );
+      return;
+    }
+
+    const responseDuration = lastRecordingDuration || recordingSeconds || 2;
+
+    try {
+      setIsScoring(true);
+      const scoringResult = await teacherApi.scorePronunciationAttempt(studentId, {
+        mode,
+        category_id: isAlphabetMode ? null : categoryId,
+        word_id: word?.id || "cat",
+        word_label: word?.letter || word?.word || word?.id || "cat",
+        difficulty: word?.difficulty || null,
+        target_phonemes: word?.sounds || [],
+        response_duration: responseDuration,
+        attempt_number: numberOfAttempts + 1,
+        raw_audio_base64: savedAudioData.rawAudioBase64,
+        raw_audio_mime_type: savedAudioData.rawAudioMimeType,
+        raw_audio_size: savedAudioData.rawAudioSize,
+      });
+
+      submitScoredAttempt(scoringResult, {
+        recordingUri: savedRecordingUri,
+        responseDuration,
+      });
+    } catch (error) {
+      Alert.alert(
+        "Scoring error",
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to score this pronunciation right now.",
+      );
+      return;
+    } finally {
+      setIsScoring(false);
+    }
 
     if (!isAlphabetMode) {
       navigation.navigate("PronunciationListenChoose", {
@@ -320,8 +369,14 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   });
 
   const micBackground = isRecording ? "#E89C8E" : theme.button;
-  const statusText = isRecording ? "Recording..." : "Tap to speak";
-  const canContinue = !isRecording;
+  const statusText = isScoring
+    ? "Scoring..."
+    : isRecording
+      ? "Recording..."
+      : savedRecordingUri
+        ? "Recording saved"
+        : "Tap to speak";
+  const canContinue = !isRecording && !isScoring;
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
@@ -361,6 +416,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             <ButtonFeedback
               activeOpacity={0.88}
               onPress={handleTapToSpeak}
+              disabled={isScoring}
               style={styles.micHitArea}
             >
               <Animated.View
@@ -380,6 +436,13 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
               </Animated.View>
             </ButtonFeedback>
             <Text style={styles.micLabel}>{statusText}</Text>
+            {isScoring ? (
+              <ActivityIndicator
+                size="small"
+                color={theme.button}
+                style={styles.scoringIndicator}
+              />
+            ) : null}
             {isRecording ? (
               <Text style={styles.recordingTimer}>
                 00:{String(recordingSeconds).padStart(2, "0")}
@@ -406,7 +469,9 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             ) : null}
 
             <Text style={styles.helperText}>
-              Press the microphone and say the word clearly.
+              {savedRecordingUri
+                ? "Press Next to score the pronunciation."
+                : "Press the microphone and say the word clearly."}
             </Text>
           </View>
         </View>
@@ -434,8 +499,14 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
               !canContinue && styles.nextBtnDisabled,
             ]}
           >
-            <Text style={styles.nextText}>Next</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            <Text style={styles.nextText}>
+              {isScoring ? "Scoring" : "Next"}
+            </Text>
+            {isScoring ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            )}
           </ButtonFeedback>
         </View>
       </ScrollView>
@@ -570,6 +641,9 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xs,
     color: Colors.text.link,
     fontWeight: Layout.fontWeight.semibold,
+  },
+  scoringIndicator: {
+    marginTop: 8,
   },
   waveRow: {
     marginTop: 18,
