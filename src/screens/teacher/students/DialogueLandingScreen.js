@@ -97,6 +97,8 @@ export default function DialogueLandingScreen({ route, navigation }) {
                       navigation.navigate('DialogueCategory', { student });
                     } else if (level.key === 'level2') {
                       navigation.navigate('L2TopicSelection', { student });
+                    } else if (level.key === 'level3') {
+                      navigation.navigate('L3Landing', { student });
                     }
                   }}
                 >

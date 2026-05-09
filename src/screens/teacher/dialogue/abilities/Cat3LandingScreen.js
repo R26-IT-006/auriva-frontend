@@ -7,6 +7,7 @@ import {
   Modal,
   Animated,
   BackHandler,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,10 @@ export default function Cat3LandingScreen({ route, navigation }) {
 
   const avatarKey   = student?.avatar_key ?? 'lily';
   const videoSource = AVATAR_DANCING_VIDEOS[avatarKey] ?? AVATAR_DANCING_VIDEOS.lily;
+
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const videoWidth  = Math.min(screenWidth * 0.6, screenHeight * 0.45 * (3 / 4));
+  const videoHeight = videoWidth * (4 / 3);
 
   const videoRef = useRef(null);
   const [showGate,     setShowGate]     = useState(false);
@@ -112,12 +117,12 @@ export default function Cat3LandingScreen({ route, navigation }) {
               {wordDisplay}
             </Text>
 
-            <View style={styles.videoWrapper}>
+            <View style={[styles.videoWrapper, { width: videoWidth, height: videoHeight }]}>
               <Video
                 ref={videoRef}
                 source={videoSource}
                 style={styles.video}
-                resizeMode={ResizeMode.CONTAIN}
+                resizeMode={ResizeMode.COVER}
                 shouldPlay
                 isLooping
                 isMuted={false}
@@ -200,12 +205,9 @@ const styles = StyleSheet.create({
     marginBottom: Layout.spacing.md,
   },
   videoWrapper: {
-    width: '100%',
-    maxWidth: 320,
-    height: 280,
     borderRadius: Layout.radius.xl,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'transparent',
     marginBottom: Layout.spacing.xl,
     ...Layout.shadow.sm,
   },
