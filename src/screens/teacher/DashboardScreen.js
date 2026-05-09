@@ -69,6 +69,9 @@ export default function TeacherDashboardScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       fetch();
+      const refreshTimer = setInterval(fetch, 5000);
+
+      return () => clearInterval(refreshTimer);
     }, [fetch])
   );
 

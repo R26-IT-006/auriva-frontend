@@ -92,6 +92,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
   const student = route.params?.student;
   const categoryId = route.params?.categoryId || "animals";
   const routeWord = route.params?.word;
+  const assessedWordId = route.params?.wordId || routeWord?.id;
   const theme = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
   const soundRef = React.useRef(null);
@@ -193,6 +194,8 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
 
   function handleNext() {
     if (!targetWord) return;
+    const assessedWord = routeWord || targetWord;
+    const resultWordId = assessedWordId || assessedWord?.id || targetWord.id;
     const totalAttempts = Math.max(choiceAttemptsRef.current.length, selectedId ? attempts : 1);
     const nextListenChooseData = {
       activity_type: "listen_choose",
@@ -212,8 +215,8 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
       student,
       mode: PRONUNCIATION_MODES.WORD,
       categoryId,
-      wordId: targetWord.id,
-      word: targetWord,
+      wordId: resultWordId,
+      word: assessedWord,
       listenChooseData: nextListenChooseData,
     });
   }

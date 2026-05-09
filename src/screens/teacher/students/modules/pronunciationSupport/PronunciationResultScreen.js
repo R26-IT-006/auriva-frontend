@@ -154,11 +154,12 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const isAlphabetMode = mode === PRONUNCIATION_MODES.ALPHABET;
   const categoryId = route.params?.categoryId || sessionCategory || "animals";
   const navigationCategoryId = isAlphabetMode ? undefined : categoryId;
-  const wordId = route.params?.wordId || sessionWord?.id || "cat";
+  const routeWord = route.params?.word;
+  const wordId = route.params?.wordId || routeWord?.id || sessionWord?.id || "cat";
 
   const words = isAlphabetMode ? ALPHABET_BANK : WORD_BANK[categoryId] || [];
   const currentWord =
-    words.find((item) => item.id === wordId) || sessionWord || words[0];
+    words.find((item) => item.id === wordId) || routeWord || sessionWord || words[0];
   const displayScore = mockWordScore ?? 69;
   const isHighScore = displayScore >= EXPECTED_PRONUNCIATION_SCORE;
   const phonemeScores = mockPhonemeScores?.length

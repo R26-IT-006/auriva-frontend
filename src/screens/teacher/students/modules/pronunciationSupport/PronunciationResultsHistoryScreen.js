@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
+import { useFocusEffect } from "@react-navigation/native";
 import { teacherApi } from "../../../../../api/teacher";
 import { API_BASE_URL, ENDPOINTS } from "../../../../../constants/api";
 import { Colors } from "../../../../../constants/colors";
@@ -54,6 +55,85 @@ function PhonemeRow({ item }) {
         />
       </View>
       <Text style={styles.phonemeScore}>{score}%</Text>
+    </View>
+  );
+}
+
+function getAverageScore(items) {
+  if (!items.length) return 0;
+  return Math.round(
+    items.reduce((total, item) => total + Number(item.overall_score || 0), 0) /
+      items.length,
+  );
+}
+
+function getTrendText(results) {
+  if (results.length < 2) return "Need more sessions";
+
+  const chronological = [...results].reverse();
+  const firstScore = Number(chronological[0]?.overall_score || 0);
+  const latestScore = Number(chronological[chronological.length - 1]?.overall_score || 0);
+  const difference = latestScore - firstScore;
+
+  if (difference > 0) return `+${difference}% from first`;
+  if (difference < 0) return `${difference}% from first`;
+  return "No score change";
+}
+
+function buildSummary(results) {
+  const phonemeMap = new Map();
+
+  results.forEach((result) => {
+    (result.phoneme_scores || []).forEach((entry) => {
+      if (!entry?.text || Number(entry.score) >= 65) return;
+
+      const current = phonemeMap.get(entry.text) || {
+        text: entry.text,
+        count: 0,
+        totalScore: 0,
+        positions: new Set(),
+      };
+      current.count += 1;
+      current.totalScore += Number(entry.score || 0);
+      if (entry.position) current.positions.add(entry.position);
+      phonemeMap.set(entry.text, current);
+    });
+  });
+
+  const weakPhonemes = [...phonemeMap.values()]
+    .map((item) => ({
+      text: item.text,
+      count: item.count,
+      averageScore: Math.round(item.totalScore / item.count),
+      positions: [...item.positions],
+    }))
+    .sort((a, b) => b.count - a.count || a.averageScore - b.averageScore)
+    .slice(0, 4);
+
+  return {
+    averageScore: getAverageScore(results),
+    trendText: getTrendText(results),
+    masteredCount: results.filter((result) => Number(result.overall_score) >= 80).length,
+    audioCount: results.filter((result) => result.has_raw_audio).length,
+    weakPhonemes,
+    latestRecommendation:
+      results.find((result) => result.recommendation_message)?.recommendation_message ||
+      "No recommendation saved yet.",
+  };
+}
+
+function SummaryMetric({ icon, label, value, color = Colors.primary }) {
+  return (
+    <View style={styles.summaryMetric}>
+      <View style={[styles.summaryMetricIcon, { backgroundColor: `${color}1A` }]}>
+        <Ionicons name={icon} size={17} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.summaryMetricLabel}>{label}</Text>
+        <Text style={styles.summaryMetricValue} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -124,6 +204,7 @@ export default function PronunciationResultsHistoryScreen({ route }) {
     if (!selectedResult) return 0;
     return 1 + (selectedResult.listen_choose_data ? 1 : 0);
   }, [selectedResult]);
+  const summary = useMemo(() => buildSummary(results), [results]);
 
   const fetchResults = useCallback(async () => {
     if (!studentId) return;
@@ -143,9 +224,14 @@ export default function PronunciationResultsHistoryScreen({ route }) {
     }
   }, [studentId]);
 
-  useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchResults();
+      const refreshTimer = setInterval(fetchResults, 5000);
+
+      return () => clearInterval(refreshTimer);
+    }, [fetchResults]),
+  );
 
   useEffect(() => {
     setActivitiesOpen(false);
@@ -259,6 +345,83 @@ export default function PronunciationResultsHistoryScreen({ route }) {
           </View>
         ) : (
           <>
+            <View style={styles.summaryPanel}>
+              <View style={styles.summaryHeader}>
+                <View>
+                  <Text style={styles.sectionTitle}>Progress Summary</Text>
+                  <Text style={styles.summarySubtitle}>
+                    Teacher view of scores, weak sounds, and evidence
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.summaryScoreBadge,
+                    { borderColor: getScoreColor(summary.averageScore) },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.summaryScoreText,
+                      { color: getScoreColor(summary.averageScore) },
+                    ]}
+                  >
+                    {summary.averageScore}%
+                  </Text>
+                  <Text style={styles.summaryScoreLabel}>avg</Text>
+                </View>
+              </View>
+
+              <View style={styles.summaryGrid}>
+                <SummaryMetric
+                  icon="trending-up-outline"
+                  label="Trend"
+                  value={summary.trendText}
+                  color={Colors.status.success}
+                />
+                <SummaryMetric
+                  icon="checkmark-done-outline"
+                  label="Mastered"
+                  value={`${summary.masteredCount}/${results.length} sessions`}
+                  color={Colors.status.success}
+                />
+                <SummaryMetric
+                  icon="volume-high-outline"
+                  label="Audio Evidence"
+                  value={`${summary.audioCount}/${results.length} captured`}
+                  color={Colors.primary}
+                />
+                <SummaryMetric
+                  icon="sparkles-outline"
+                  label="Latest Support"
+                  value={summary.latestRecommendation}
+                  color={Colors.status.warning}
+                />
+              </View>
+
+              <View style={styles.weakSummary}>
+                <Text style={styles.weakSummaryTitle}>Recurring Weak Sounds</Text>
+                {summary.weakPhonemes.length ? (
+                  <View style={styles.weakChipRow}>
+                    {summary.weakPhonemes.map((item) => (
+                      <View key={item.text} style={styles.weakChip}>
+                        <Text style={styles.weakChipSound}>/{item.text}/</Text>
+                        <Text style={styles.weakChipMeta}>
+                          {item.count}x, avg {item.averageScore}%
+                          {item.positions.length
+                            ? `, ${item.positions.join("/")}`
+                            : ""}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.weakEmptyText}>
+                    No repeated weak phonemes detected yet.
+                  </Text>
+                )}
+              </View>
+            </View>
+
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Sessions</Text>
               <Text style={styles.sectionHint}>Tap a session to view it</Text>
@@ -542,6 +705,19 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                               {item}
                             </Text>
                           ))}
+                        {!!selectedResult.recommendation_details?.selected_candidate && (
+                          <View style={styles.candidateBox}>
+                            <Text style={styles.candidateLabel}>
+                              Recommended Word
+                            </Text>
+                            <Text style={styles.candidateValue}>
+                              {selectedResult.recommendation_details.selected_candidate.word_id}
+                            </Text>
+                            <Text style={styles.candidateReason}>
+                              {selectedResult.recommendation_details.selected_candidate.reason}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                   )}
@@ -588,6 +764,120 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: Layout.fontSize.lg,
     fontWeight: Layout.fontWeight.bold,
+  },
+  summaryPanel: {
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surface,
+    padding: Layout.spacing.lg,
+    marginBottom: Layout.spacing.lg,
+  },
+  summaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Layout.spacing.md,
+  },
+  summarySubtitle: {
+    marginTop: 4,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    fontWeight: Layout.fontWeight.semibold,
+  },
+  summaryScoreBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  summaryScoreText: {
+    fontSize: Layout.fontSize.lg,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  summaryScoreLabel: {
+    color: Colors.text.secondary,
+    fontSize: 10,
+    fontWeight: Layout.fontWeight.bold,
+    textTransform: "uppercase",
+  },
+  summaryGrid: {
+    marginTop: Layout.spacing.lg,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Layout.spacing.sm,
+  },
+  summaryMetric: {
+    width: "48%",
+    minHeight: 72,
+    borderRadius: Layout.radius.md,
+    backgroundColor: Colors.background,
+    padding: Layout.spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  summaryMetricIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  summaryMetricLabel: {
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    fontWeight: Layout.fontWeight.semibold,
+  },
+  summaryMetricValue: {
+    marginTop: 3,
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  weakSummary: {
+    marginTop: Layout.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    paddingTop: Layout.spacing.md,
+  },
+  weakSummaryTitle: {
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  weakChipRow: {
+    marginTop: Layout.spacing.sm,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Layout.spacing.sm,
+  },
+  weakChip: {
+    maxWidth: "48%",
+    borderRadius: Layout.radius.md,
+    backgroundColor: Colors.status.warningLight,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
+  },
+  weakChipSound: {
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.md,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  weakChipMeta: {
+    marginTop: 2,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    lineHeight: 16,
+  },
+  weakEmptyText: {
+    marginTop: Layout.spacing.sm,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.sm,
   },
   sectionTitle: {
     fontSize: Layout.fontSize.md,
@@ -989,6 +1279,33 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   recommendationEvidence: {
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    lineHeight: 17,
+  },
+  candidateBox: {
+    marginTop: 4,
+    borderRadius: Layout.radius.sm,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    padding: Layout.spacing.sm,
+  },
+  candidateLabel: {
+    color: Colors.text.secondary,
+    fontSize: 10,
+    fontWeight: Layout.fontWeight.bold,
+    textTransform: "uppercase",
+  },
+  candidateValue: {
+    marginTop: 2,
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.md,
+    fontWeight: Layout.fontWeight.bold,
+    textTransform: "capitalize",
+  },
+  candidateReason: {
+    marginTop: 2,
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
     lineHeight: 17,

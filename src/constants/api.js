@@ -1,7 +1,32 @@
-// For Android emulator: http://10.0.2.2:3000/api
-// For iOS simulator: http://localhost:3000/api
-// For physical device: use your machine's local IP
-export const API_BASE_URL = "http://192.168.8.186:3000/api";
+import Constants from "expo-constants";
+
+const DEFAULT_API_BASE_URL = "http://localhost:3000/api";
+
+function normalizeApiBaseUrl(value) {
+  if (!value) return DEFAULT_API_BASE_URL;
+  return String(value).replace(/\/+$/, "");
+}
+
+function getExpoHostApiBaseUrl() {
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    Constants.manifest2?.extra?.expoClient?.hostUri ||
+    Constants.manifest?.debuggerHost;
+  const host = hostUri?.split(":")?.[0];
+
+  if (!host || host === "localhost" || host === "127.0.0.1") {
+    return null;
+  }
+
+  return `http://${host}:3000/api`;
+}
+
+export const API_BASE_URL = normalizeApiBaseUrl(
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+    getExpoHostApiBaseUrl() ||
+    Constants.expoConfig?.extra?.apiBaseUrl ||
+    DEFAULT_API_BASE_URL,
+);
 
 export const ENDPOINTS = {
   // Auth
