@@ -38,6 +38,14 @@ export const teacherApi = {
     return data;
   },
 
+  async scorePronunciationAttempt(studentId, payload) {
+    const { data } = await client.post(
+      ENDPOINTS.TEACHER_PRONUNCIATION_SCORE(studentId),
+      payload
+    );
+    return data;
+  },
+
   async savePronunciationResult(studentId, payload) {
     const { data } = await client.post(
       ENDPOINTS.TEACHER_PRONUNCIATION_RESULT(studentId),
