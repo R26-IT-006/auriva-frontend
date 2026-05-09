@@ -109,12 +109,17 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [playingId, setPlayingId] = useState(null);
   const [loadingAudioId, setLoadingAudioId] = useState(null);
+  const [activitiesOpen, setActivitiesOpen] = useState(false);
   const soundRef = useRef(null);
 
   const selectedResult = useMemo(
     () => results.find((result) => result.id === selectedId) || results[0],
     [results, selectedId],
   );
+  const selectedActivityCount = useMemo(() => {
+    if (!selectedResult) return 0;
+    return 1 + (selectedResult.listen_choose_data ? 1 : 0);
+  }, [selectedResult]);
 
   const fetchResults = useCallback(async () => {
     if (!student?.sid) return;
@@ -137,6 +142,10 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
+
+  useEffect(() => {
+    setActivitiesOpen(false);
+  }, [selectedId]);
 
   useEffect(() => {
     return () => {
@@ -341,53 +350,156 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                     </View>
                   </View>
 
-                  <View style={styles.audioCard}>
-                    <View style={styles.audioInfo}>
-                      <View style={styles.audioIcon}>
-                        <Ionicons
-                          name="volume-high-outline"
-                          size={18}
-                          color={Colors.primary}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.audioTitle}>Session Recording</Text>
-                        <Text style={styles.audioMeta}>
-                          {selectedResult.has_raw_audio
-                            ? "Recorded audio is available for this session."
-                            : "No audio was captured for this session."}
-                        </Text>
-                      </View>
-                    </View>
-
+                  <View style={styles.activitiesSection}>
                     <TouchableOpacity
-                      style={[
-                        styles.playButton,
-                        !selectedResult.has_raw_audio &&
-                          styles.playButtonDisabled,
-                      ]}
                       activeOpacity={0.82}
-                      disabled={
-                        !selectedResult.has_raw_audio ||
-                        loadingAudioId === selectedResult.id
-                      }
-                      onPress={() => handlePlayAudio(selectedResult)}
+                      onPress={() => setActivitiesOpen((value) => !value)}
+                      style={styles.activitiesToggle}
                     >
-                      {loadingAudioId === selectedResult.id ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Ionicons
-                          name={
-                            playingId === selectedResult.id ? "stop" : "play"
-                          }
-                          size={16}
-                          color="#FFFFFF"
-                        />
-                      )}
-                      <Text style={styles.playButtonText}>
-                        {playingId === selectedResult.id ? "Stop" : "Play"}
-                      </Text>
+                      <View style={styles.activitiesToggleLeft}>
+                        <View style={styles.activitiesIcon}>
+                          <Ionicons
+                            name="albums-outline"
+                            size={18}
+                            color={Colors.primary}
+                          />
+                        </View>
+                        <View>
+                          <Text style={styles.activitiesTitle}>Activities</Text>
+                          <Text style={styles.activitiesSubtitle}>
+                            {selectedActivityCount} saved activit{selectedActivityCount === 1 ? "y" : "ies"}
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons
+                        name={activitiesOpen ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={Colors.text.secondary}
+                      />
                     </TouchableOpacity>
+
+                    {activitiesOpen ? (
+                      <View style={styles.activitiesBody}>
+                        <View style={styles.audioCard}>
+                          <View style={styles.audioInfo}>
+                            <View style={styles.audioIcon}>
+                              <Ionicons
+                                name="volume-high-outline"
+                                size={18}
+                                color={Colors.primary}
+                              />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.audioTitle}>Audio Capture</Text>
+                              <Text style={styles.audioMeta}>
+                                {selectedResult.has_raw_audio
+                                  ? "Recorded audio is available for this session."
+                                  : "No audio was captured for this session."}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <TouchableOpacity
+                            style={[
+                              styles.playButton,
+                              !selectedResult.has_raw_audio &&
+                                styles.playButtonDisabled,
+                            ]}
+                            activeOpacity={0.82}
+                            disabled={
+                              !selectedResult.has_raw_audio ||
+                              loadingAudioId === selectedResult.id
+                            }
+                            onPress={() => handlePlayAudio(selectedResult)}
+                          >
+                            {loadingAudioId === selectedResult.id ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <Ionicons
+                                name={
+                                  playingId === selectedResult.id ? "stop" : "play"
+                                }
+                                size={16}
+                                color="#FFFFFF"
+                              />
+                            )}
+                            <Text style={styles.playButtonText}>
+                              {playingId === selectedResult.id ? "Stop" : "Play"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {!!selectedResult.listen_choose_data && (
+                          <View style={styles.listenChooseCard}>
+                            <View style={styles.listenChooseHeader}>
+                              <View style={styles.listenChooseIcon}>
+                                <Ionicons
+                                  name="ear-outline"
+                                  size={18}
+                                  color={Colors.primary}
+                                />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.listenChooseTitle}>
+                                  Listen and Choose
+                                </Text>
+                                <Text style={styles.listenChooseMeta}>
+                                  Heard "{selectedResult.listen_choose_data.target_word_label || selectedResult.word_label}"
+                                  {selectedResult.listen_choose_data.selected_choice_label
+                                    ? `, chose "${selectedResult.listen_choose_data.selected_choice_label}"`
+                                    : ""}
+                                </Text>
+                              </View>
+                              <View
+                                style={[
+                                  styles.listenChooseStatus,
+                                  selectedResult.listen_choose_data.is_correct
+                                    ? styles.listenChooseStatusCorrect
+                                    : styles.listenChooseStatusReview,
+                                ]}
+                              >
+                                <Ionicons
+                                  name={
+                                    selectedResult.listen_choose_data.is_correct
+                                      ? "checkmark"
+                                      : "refresh"
+                                  }
+                                  size={14}
+                                  color={
+                                    selectedResult.listen_choose_data.is_correct
+                                      ? Colors.status.success
+                                      : Colors.status.warning
+                                  }
+                                />
+                                <Text
+                                  style={[
+                                    styles.listenChooseStatusText,
+                                    {
+                                      color: selectedResult.listen_choose_data.is_correct
+                                        ? Colors.status.success
+                                        : Colors.status.warning,
+                                    },
+                                  ]}
+                                >
+                                  {selectedResult.listen_choose_data.is_correct
+                                    ? "Correct"
+                                    : "Review"}
+                                </Text>
+                              </View>
+                            </View>
+
+                            <View style={styles.listenChooseStats}>
+                              <Text style={styles.listenChooseStatText}>
+                                Attempts: {selectedResult.listen_choose_data.attempts || 1}
+                              </Text>
+                              <Text style={styles.listenChooseStatText}>
+                                Choices: {(selectedResult.listen_choose_data.choice_ids || []).join(", ")}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    ) : null}
                   </View>
 
                   <Text style={styles.breakdownTitle}>Sound Breakdown</Text>
@@ -632,14 +744,121 @@ const styles = StyleSheet.create({
     fontWeight: Layout.fontWeight.bold,
     textTransform: "capitalize",
   },
-  audioCard: {
+  activitiesSection: {
     marginTop: Layout.spacing.lg,
     borderRadius: Layout.radius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
     backgroundColor: Colors.surfaceAlt,
+    overflow: "hidden",
+  },
+  activitiesToggle: {
+    minHeight: 64,
+    padding: Layout.spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Layout.spacing.md,
+  },
+  activitiesToggleLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  activitiesIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activitiesTitle: {
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.md,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  activitiesSubtitle: {
+    marginTop: 2,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    fontWeight: Layout.fontWeight.semibold,
+  },
+  activitiesBody: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    padding: Layout.spacing.md,
+  },
+  audioCard: {
+    borderRadius: Layout.radius.md,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.borderLight,
     padding: Layout.spacing.md,
     gap: Layout.spacing.md,
+  },
+  listenChooseCard: {
+    marginTop: Layout.spacing.lg,
+    borderRadius: Layout.radius.md,
+    backgroundColor: Colors.status.infoLight,
+    borderWidth: 1,
+    borderColor: "#D8E2FF",
+    padding: Layout.spacing.md,
+  },
+  listenChooseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  listenChooseIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listenChooseTitle: {
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  listenChooseMeta: {
+    marginTop: 2,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    lineHeight: 17,
+  },
+  listenChooseStatus: {
+    minHeight: 28,
+    borderRadius: 14,
+    paddingHorizontal: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+  },
+  listenChooseStatusCorrect: {
+    backgroundColor: Colors.status.successLight,
+    borderColor: "#BBF7D0",
+  },
+  listenChooseStatusReview: {
+    backgroundColor: Colors.status.warningLight,
+    borderColor: "#FDE68A",
+  },
+  listenChooseStatusText: {
+    fontSize: 11,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  listenChooseStats: {
+    marginTop: Layout.spacing.sm,
+    gap: 3,
+  },
+  listenChooseStatText: {
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    fontWeight: Layout.fontWeight.semibold,
   },
   audioInfo: {
     flexDirection: "row",

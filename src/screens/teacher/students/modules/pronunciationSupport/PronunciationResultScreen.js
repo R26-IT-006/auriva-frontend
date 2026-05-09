@@ -130,6 +130,11 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const rawAudioSize = usePronunciationSessionStore(
     (state) => state.rawAudioSize,
   );
+  const listenChooseData = usePronunciationSessionStore(
+    (state) => state.listenChooseData,
+  );
+  const routeListenChooseData = route.params?.listenChooseData;
+  const savedListenChooseData = routeListenChooseData || listenChooseData || null;
   const celebrationSoundsRef = useRef([]);
   const hasPlayedCelebrationAudioRef = useRef(false);
   const numberOfAttempts = usePronunciationSessionStore(
@@ -320,6 +325,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
       raw_audio_base64: rawAudioBase64 || null,
       raw_audio_mime_type: rawAudioMimeType || null,
       raw_audio_size: rawAudioSize || null,
+      listen_choose_data: savedListenChooseData,
     };
 
     teacherApi.savePronunciationResult(student.sid, payload).catch((error) => {
@@ -334,6 +340,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
     displayScore,
     hesitationTime,
     isAlphabetMode,
+    savedListenChooseData,
     mode,
     nextWord?.id,
     numberOfAttempts,

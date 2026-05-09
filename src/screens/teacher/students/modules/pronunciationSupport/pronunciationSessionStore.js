@@ -269,6 +269,7 @@ const initialSessionState = {
   responseDuration: null,
   hesitationTime: null,
   adaptiveRecommendation: null,
+  listenChooseData: null,
   completedWords: [],
   difficultPhonemes: {},
 };
@@ -439,6 +440,7 @@ export const usePronunciationSessionStore = create((set, get) => ({
       responseDuration: null,
       hesitationTime: null,
       adaptiveRecommendation: null,
+      listenChooseData: null,
       currentActivityStep: PRONUNCIATION_STEPS.LISTEN,
     });
   },
@@ -454,6 +456,12 @@ export const usePronunciationSessionStore = create((set, get) => ({
       rawAudioMimeType: audioData.rawAudioMimeType || null,
       rawAudioSize: audioData.rawAudioSize || null,
       responseDuration,
+    });
+  },
+
+  setListenChooseData(data) {
+    set({
+      listenChooseData: data || null,
     });
   },
 

@@ -252,6 +252,18 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       recordingUri: savedRecordingUri,
       responseDuration: lastRecordingDuration || recordingSeconds || 2,
     });
+
+    if (!isAlphabetMode) {
+      navigation.navigate("PronunciationListenChoose", {
+        student,
+        mode,
+        categoryId,
+        wordId: word?.id || "cat",
+        word,
+      });
+      return;
+    }
+
     navigation.navigate("PronunciationResult", {
       student,
       mode,
@@ -277,6 +289,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
 
   const micBackground = isRecording ? "#E89C8E" : theme.button;
   const statusText = isRecording ? "Recording..." : "Tap to speak";
+  const canContinue = Boolean(savedRecordingUri) && !isRecording;
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
@@ -380,8 +393,14 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
 
           <ButtonFeedback
             activeOpacity={0.9}
+            disabled={!canContinue}
             onPress={handleNext}
-            style={[styles.nextBtn, isCompact && styles.nextBtnCompact, { backgroundColor: theme.button }]}
+            style={[
+              styles.nextBtn,
+              isCompact && styles.nextBtnCompact,
+              { backgroundColor: theme.button },
+              !canContinue && styles.nextBtnDisabled,
+            ]}
           >
             <Text style={styles.nextText}>Next</Text>
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
@@ -580,6 +599,9 @@ const styles = StyleSheet.create({
     top: 0,
     marginTop: 0,
     flex: 1,
+  },
+  nextBtnDisabled: {
+    opacity: 0.48,
   },
   actionsOverlay: {
     position: "absolute",

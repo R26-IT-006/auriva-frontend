@@ -138,7 +138,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
     if (selectedCategory !== "animals") {
       Alert.alert(
         "Coming Soon",
-        "Word selection is currently available for Animals only.",
+        "This pronunciation activity is currently available for Animals only.",
       );
       return;
     }
@@ -246,7 +246,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
                 : selectedCategory
                   ? `Selected: ${SESSION_CATEGORIES.find((c) => c.id === selectedCategory)?.title}`
                   : selectedMode
-                    ? "Choose one category to continue to word selection"
+                    ? "Choose one category to continue"
                     : "Choose word or alphabet pronunciation to continue"}
             </Text>
             <ButtonFeedback
