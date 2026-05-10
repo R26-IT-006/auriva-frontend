@@ -21,24 +21,21 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
   function bounce(idx) {
     Animated.sequence([
       Animated.timing(scaleAnims[idx], { toValue: 1.15, duration: 120, useNativeDriver: true }),
-      Animated.timing(scaleAnims[idx], { toValue: 1, duration: 120, useNativeDriver: true }),
+      Animated.timing(scaleAnims[idx], { toValue: 1,    duration: 120, useNativeDriver: true }),
     ]).start();
   }
 
   function shake(idx) {
     Animated.sequence([
-      Animated.timing(scaleAnims[idx], { toValue: 0.88, duration: 80, useNativeDriver: true }),
-      Animated.timing(scaleAnims[idx], { toValue: 1, duration: 160, useNativeDriver: true }),
+      Animated.timing(scaleAnims[idx], { toValue: 0.88, duration: 80,  useNativeDriver: true }),
+      Animated.timing(scaleAnims[idx], { toValue: 1,    duration: 160, useNativeDriver: true }),
     ]).start();
   }
 
-  const [selectedIdx, setSelectedIdx] = useState(null);
   const showHint = wrongCount >= 2;
 
   function handlePress(opt, idx) {
     if (done) return;
-    setSelectedIdx(idx);
-
     if (opt.word === word) {
       setDone(true);
       bounce(idx);
@@ -51,83 +48,116 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.instruction}>Find the picture for this word</Text>
-
-      <View style={styles.wordChip}>
-        <Text style={styles.wordText}>{word.toUpperCase()}</Text>
+      <View style={styles.wordPane}>
+        <View style={[styles.wordChip, {
+          backgroundColor: theme.button + '18',
+          borderColor:     theme.button + '40',
+        }]}>
+          <Text style={[styles.wordText, { color: theme.headingText }]}>
+            {word.toUpperCase()}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.grid}>
-        {options.map((opt, idx) => {
-          const isCorrect = opt.word === word;
-          const isHinted  = showHint && isCorrect;
-          const isDone    = done && isCorrect;
+      <View style={styles.taskPane}>
+        <Text style={[styles.instruction, { color: theme.headingText }]}>
+          Find the picture for this word
+        </Text>
 
-          return (
-            <Animated.View
-              key={opt.word}
-              style={{ transform: [{ scale: scaleAnims[idx] }] }}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.cell,
-                  isDone   && styles.cellCorrect,
-                  isHinted && styles.cellHint,
-                ]}
-                onPress={() => handlePress(opt, idx)}
-                activeOpacity={0.8}
-                disabled={done}
+        <View style={styles.grid}>
+          {options.map((opt, idx) => {
+            const isCorrect = opt.word === word;
+            const isHinted  = showHint && isCorrect;
+            const isDone    = done && isCorrect;
+
+            return (
+              <Animated.View
+                key={opt.word}
+                style={{ transform: [{ scale: scaleAnims[idx] }] }}
               >
-                <WordImageDisplay imageKey={opt.imageKey} emoji={opt.emoji} size={100} />
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
-      </View>
+                <TouchableOpacity
+                  style={[
+                    styles.cell,
+                    isDone   && styles.cellCorrect,
+                    isHinted && styles.cellHint,
+                  ]}
+                  onPress={() => handlePress(opt, idx)}
+                  activeOpacity={0.8}
+                  disabled={done}
+                >
+                  <WordImageDisplay imageKey={opt.imageKey} emoji={opt.emoji} size={118} />
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </View>
 
-      {showHint && !done && (
-        <Text style={styles.hintLabel}>Tap the glowing picture!</Text>
-      )}
+        {showHint && !done && (
+          <Text style={styles.hintLabel}>Tap the glowing picture!</Text>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 34,
+    width: '100%',
+  },
+  wordPane: {
+    width: 240,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  taskPane: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 18,
   },
   instruction: {
-    fontSize: 16,
+    fontSize: 18,
+    lineHeight: 24,
     fontWeight: '700',
-    color: '#444444',
     textAlign: 'center',
   },
   wordChip: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 50,
+    minWidth: 190,
+    borderRadius: 26,
+    borderWidth: 2,
     paddingHorizontal: 28,
-    paddingVertical: 10,
+    paddingVertical: 22,
+    alignItems: 'center',
   },
   wordText: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: '900',
-    color: '#0D47A1',
     letterSpacing: 3,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 12,
-    maxWidth: 280,
+    gap: 14,
+    maxWidth: 320,
   },
   cell: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 3,
     borderColor: '#E0E0E0',
-    padding: 6,
+    padding: 8,
     backgroundColor: '#FAFAFA',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
   cellCorrect: {
     borderColor: '#4CAF50',
@@ -138,7 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF9C4',
   },
   hintLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#E65100',
   },

@@ -1,12 +1,3 @@
-/**
- * WordProgressScreen — Teacher's overview of word activity results.
- *
- * Shows all 26 letters. Completed letters are expanded with per-word,
- * per-exercise results. Pending letters are shown as "Not started".
- *
- * Data comes from the sessionProgress module (in-memory, current session only).
- */
-
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -14,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,9 +14,7 @@ import { getSessionProgress } from '../../../constants/sessionProgress';
 import { getAllWordProgress } from '../../../utils/storage';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-
-const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const ALPHABET  = 'abcdefghijklmnopqrstuvwxyz'.split('');
 const EXERCISES = ['A', 'B', 'C', 'D'];
 
 const EXERCISE_LABELS = {
@@ -36,15 +24,11 @@ const EXERCISE_LABELS = {
   D: 'Spell It!',
 };
 
-// ─── Status display config ────────────────────────────────────────────────────
-
 const STATUS = {
-  pending: { icon: '·', badgeBg: '#F5F5F5', badgeBorder: '#E0E0E0', iconColor: '#BDBDBD' },
-  correct: { icon: '✓', badgeBg: '#E8F5E9', badgeBorder: '#81C784', iconColor: '#2E7D32' },
-  good:    { icon: '~', badgeBg: '#FFF3E0', badgeBorder: '#FFB74D', iconColor: '#E65100' },
+  pending: { icon: 'ellipse-outline',     iconSize: 12, badgeBg: '#F5F5F5', badgeBorder: '#E0E0E0', iconColor: '#BDBDBD' },
+  correct: { icon: 'checkmark-circle',    iconSize: 14, badgeBg: '#E8F5E9', badgeBorder: '#81C784', iconColor: '#2E7D32' },
+  good:    { icon: 'help-circle-outline', iconSize: 14, badgeBg: '#FFF3E0', badgeBorder: '#FFB74D', iconColor: '#E65100' },
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function calcLetterScore(wordResults) {
   let correct = 0, total = 0;
@@ -64,17 +48,12 @@ function scoreColor(correct, total) {
   return '#C62828';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function WordProgressScreen({ route, navigation }) {
   const { student, theme } = route.params;
 
   const [progress,       setProgress]       = useState({});
   const [expandedLetter, setExpandedLetter] = useState(null);
 
-  // Reload progress every time this screen comes into focus.
-  // Merge persistent (AsyncStorage) + current-session (memory); session wins for
-  // any letter completed this session so the latest result is always shown.
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
@@ -88,7 +67,6 @@ export default function WordProgressScreen({ route, navigation }) {
     }, [student?.sid])
   );
 
-  // Overall session stats
   const sessionStats = useMemo(() => {
     const letters = Object.keys(progress);
     let totalEx = 0, correctEx = 0, goodEx = 0;
@@ -101,12 +79,8 @@ export default function WordProgressScreen({ route, navigation }) {
         });
       });
     });
-    return {
-      lettersCompleted: letters.length,
-      totalEx,
-      correctEx,
-      goodEx,
-    };
+    const accuracyPct = totalEx > 0 ? Math.round((correctEx / totalEx) * 100) : 0;
+    return { lettersCompleted: letters.length, totalEx, correctEx, goodEx, accuracyPct };
   }, [progress]);
 
   function toggleLetter(letter) {
@@ -122,13 +96,14 @@ export default function WordProgressScreen({ route, navigation }) {
     >
       <SafeAreaView style={styles.safe}>
 
-        {/* ── Top bar ── */}
+        {/* Top bar */}
         <View style={styles.topBar}>
           <TouchableOpacity
+            style={[styles.backBtn, { backgroundColor: theme.button + '18' }]}
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+            <Ionicons name="chevron-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.topMid}>
@@ -140,49 +115,71 @@ export default function WordProgressScreen({ route, navigation }) {
             </Text>
           </View>
 
-          {/* Empty right slot to balance layout */}
-          <View style={{ width: 22 }} />
+          <View style={{ width: 38 }} />
         </View>
 
-        {/* ── Session summary banner ── */}
-        <View style={[styles.banner, { borderColor: theme.button + '44' }]}>
-          <SummaryPill
-            value={sessionStats.lettersCompleted}
-            of={26}
-            label="Letters done"
-            color={theme.button}
-          />
-          <View style={styles.bannerDivider} />
-          <SummaryPill
-            value={sessionStats.correctEx}
-            of={sessionStats.totalEx || 1}
-            label="Correct"
-            color="#2E7D32"
-          />
-          <View style={styles.bannerDivider} />
-          <SummaryPill
-            value={sessionStats.goodEx}
-            of={sessionStats.totalEx || 1}
-            label="With help"
-            color="#E65100"
-          />
+        {/* Session summary banner */}
+        <View style={[styles.summaryCard, { borderColor: theme.button + '28' }]}>
+          <View style={styles.summaryIntro}>
+            <View style={[styles.summaryIcon, { backgroundColor: theme.button + '14' }]}>
+              <Ionicons name="bar-chart-outline" size={24} color={theme.button} />
+            </View>
+            <View style={styles.summaryTextBlock}>
+              <Text style={[styles.summaryTitle, { color: theme.headingText }]}>
+                Learning overview
+              </Text>
+              <Text style={styles.summarySubtitle}>
+                {student?.full_name ? `${student.full_name}'s saved word practice results` : 'Saved word practice results'}
+              </Text>
+            </View>
+            <View style={[styles.accuracyBadge, { backgroundColor: theme.button + '10', borderColor: theme.button + '28' }]}>
+              <Text style={[styles.accuracyValue, { color: theme.button }]}>
+                {sessionStats.accuracyPct}%
+              </Text>
+              <Text style={styles.accuracyLabel}>Accuracy</Text>
+            </View>
+          </View>
+
+          <View style={styles.summaryStatsRow}>
+            <SummaryPill
+              icon="book-outline"
+              value={sessionStats.lettersCompleted}
+              of={26}
+              label="Letters done"
+              color={theme.button}
+            />
+            <SummaryPill
+              icon="checkmark-circle"
+              value={sessionStats.correctEx}
+              of={sessionStats.totalEx || 1}
+              label="Correct"
+              color="#2E7D32"
+            />
+            <SummaryPill
+              icon="help-circle-outline"
+              value={sessionStats.goodEx}
+              of={sessionStats.totalEx || 1}
+              label="With help"
+              color="#E65100"
+            />
+          </View>
         </View>
 
-        {/* ── Legend ── */}
+        {/* Legend */}
         <View style={styles.legend}>
           {[
-            { icon: '✓', color: '#2E7D32', label: 'Correct on first try' },
-            { icon: '~', color: '#E65100', label: 'Correct with help'    },
-            { icon: '·', color: '#BDBDBD', label: 'Not attempted'        },
+            { icon: 'checkmark-circle',    color: '#2E7D32', label: 'Correct on first try' },
+            { icon: 'help-circle-outline', color: '#E65100', label: 'Correct with help'    },
+            { icon: 'ellipse-outline',     color: '#BDBDBD', label: 'Not attempted'        },
           ].map(item => (
             <View key={item.icon} style={styles.legendItem}>
-              <Text style={[styles.legendIcon, { color: item.color }]}>{item.icon}</Text>
+              <Ionicons name={item.icon} size={14} color={item.color} />
               <Text style={styles.legendLabel}>{item.label}</Text>
             </View>
           ))}
         </View>
 
-        {/* ── A–Z letter list ── */}
+        {/* A–Z letter list */}
         <ScrollView
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -196,16 +193,14 @@ export default function WordProgressScreen({ route, navigation }) {
             return (
               <View key={letter} style={styles.letterSection}>
 
-                {/* ── Letter header row ── */}
                 <TouchableOpacity
                   style={[
                     styles.letterRow,
-                    done && { borderColor: theme.button + '55', backgroundColor: theme.button + '08' },
+                    done && styles.letterRowDone,
                   ]}
                   onPress={() => done && toggleLetter(letter)}
                   activeOpacity={done ? 0.7 : 1}
                 >
-                  {/* Letter circle */}
                   <View style={[
                     styles.letterCircle,
                     { backgroundColor: done ? theme.button : '#E0E0E0' },
@@ -215,21 +210,28 @@ export default function WordProgressScreen({ route, navigation }) {
                     </Text>
                   </View>
 
-                  {/* Status text */}
                   {done ? (
                     <View style={styles.letterInfo}>
-                      <Text style={styles.letterDoneLabel}>
-                        {wordResults.length} {wordResults.length === 1 ? 'word' : 'words'}
-                      </Text>
+                      <View style={styles.letterTitleRow}>
+                        <Text style={styles.letterDoneLabel}>
+                          {wordResults.length} {wordResults.length === 1 ? 'word' : 'words'}
+                        </Text>
+                        <View style={styles.statusChip}>
+                          <Ionicons name="checkmark-circle" size={12} color="#2E7D32" />
+                          <Text style={styles.statusChipText}>Started</Text>
+                        </View>
+                      </View>
                       <Text style={[styles.letterScore, { color: scoreColor(score.correct, score.total) }]}>
                         {score.correct} / {score.total} correct
                       </Text>
                     </View>
                   ) : (
-                    <Text style={styles.letterPending}>Not started</Text>
+                    <View style={styles.letterInfo}>
+                      <Text style={styles.letterPending}>Not started</Text>
+                      <Text style={styles.letterPendingHint}>No word practice saved yet</Text>
+                    </View>
                   )}
 
-                  {/* Score bar */}
                   {done && (
                     <View style={styles.scoreBarWrap}>
                       <View style={styles.scoreBarBg}>
@@ -253,11 +255,9 @@ export default function WordProgressScreen({ route, navigation }) {
                   )}
                 </TouchableOpacity>
 
-                {/* ── Expanded word results ── */}
                 {done && expanded && (
                   <View style={styles.expandedSection}>
 
-                    {/* Exercise column headers */}
                     <View style={styles.tableHeader}>
                       <View style={{ width: 42 }} />
                       <Text style={[styles.thWord, { flex: 1 }]}>Word</Text>
@@ -272,7 +272,6 @@ export default function WordProgressScreen({ route, navigation }) {
                       <View style={{ width: 54 }} />
                     </View>
 
-                    {/* Word rows */}
                     {wordResults.map((item, i) => (
                       <WordRow key={`${item.word}-${i}`} item={item} />
                     ))}
@@ -292,32 +291,35 @@ export default function WordProgressScreen({ route, navigation }) {
   );
 }
 
-// ─── Word result row ──────────────────────────────────────────────────────────
-
 function WordRow({ item }) {
   const correct = Object.values(item.status).filter(s => s === 'correct').length;
   const stars   = correct === 4 ? 3 : correct >= 2 ? 2 : correct >= 1 ? 1 : 0;
 
   return (
     <View style={wordRowStyles.row}>
-      <WordImageDisplay imageKey={item.imageKey} emoji={item.emoji} size={34} />
+      <WordImageDisplay imageKey={item.imageKey} emoji={item.emoji} size={36} />
 
       <Text style={wordRowStyles.word} numberOfLines={1}>
         {item.word.charAt(0).toUpperCase() + item.word.slice(1)}
       </Text>
 
       {EXERCISES.map(ex => {
-        const cfg = STATUS[item.status[ex]];
+        const cfg = STATUS[item.status[ex]] ?? STATUS.pending;
         return (
           <View key={ex} style={[wordRowStyles.badge, { backgroundColor: cfg.badgeBg, borderColor: cfg.badgeBorder }]}>
-            <Text style={[wordRowStyles.badgeIcon, { color: cfg.iconColor }]}>{cfg.icon}</Text>
+            <Ionicons name={cfg.icon} size={cfg.iconSize} color={cfg.iconColor} />
           </View>
         );
       })}
 
       <View style={wordRowStyles.stars}>
         {[0, 1, 2].map(i => (
-          <Text key={i} style={wordRowStyles.star}>{i < stars ? '⭐' : '☆'}</Text>
+          <Ionicons
+            key={i}
+            name={i < stars ? 'star' : 'star-outline'}
+            size={13}
+            color={i < stars ? '#FFCA28' : '#CCCCCC'}
+          />
         ))}
       </View>
     </View>
@@ -328,7 +330,7 @@ const wordRowStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 9,
+    paddingVertical: 10,
     paddingHorizontal: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
@@ -342,37 +344,61 @@ const wordRowStyles = StyleSheet.create({
   },
   badge: {
     width: 30,
-    height: 28,
+    height: 30,
     borderRadius: 8,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeIcon: { fontSize: 14, fontWeight: '900' },
-  stars: { flexDirection: 'row', gap: 1 },
-  star:  { fontSize: 11 },
+  stars: { flexDirection: 'row', gap: 2 },
 });
 
-// ─── Summary pill ─────────────────────────────────────────────────────────────
-
-function SummaryPill({ value, of, label, color }) {
+function SummaryPill({ icon, value, of, label, color }) {
   return (
-    <View style={pillStyles.pill}>
-      <Text style={[pillStyles.value, { color }]}>{value}</Text>
-      <Text style={pillStyles.of}>/ {of}</Text>
-      <Text style={pillStyles.label}>{label}</Text>
+    <View style={[pillStyles.pill, { borderColor: color + '24', backgroundColor: color + '08' }]}>
+      <View style={[pillStyles.iconWrap, { backgroundColor: color + '14' }]}>
+        <Ionicons name={icon} size={18} color={color} />
+      </View>
+      <View style={pillStyles.copy}>
+        <View style={pillStyles.valueRow}>
+          <Text style={[pillStyles.value, { color }]}>{value}</Text>
+          <Text style={pillStyles.of}>/ {of}</Text>
+        </View>
+        <Text style={pillStyles.label}>{label}</Text>
+      </View>
     </View>
   );
 }
 
 const pillStyles = StyleSheet.create({
-  pill:  { flex: 1, alignItems: 'center', paddingVertical: 4 },
-  value: { fontSize: 22, fontWeight: '900' },
-  of:    { fontSize: 11, color: '#999999', fontWeight: '500' },
-  label: { fontSize: 11, color: '#666666', fontWeight: '600', marginTop: 1 },
+  pill: {
+    flex: 1,
+    minHeight: 76,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  copy: { flex: 1 },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 3,
+  },
+  value: { fontSize: 24, fontWeight: '900', lineHeight: 28 },
+  of:    { fontSize: 12, color: '#8A8A8A', fontWeight: '700', marginBottom: 3 },
+  label: { fontSize: 12, color: '#5F6368', fontWeight: '700', marginTop: 3 },
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
@@ -382,16 +408,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingBottom: 14,
+  },
+  backBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   topMid: {
     alignItems: 'center',
   },
   topTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
-    letterSpacing: 0.3,
   },
   topStudent: {
     fontSize: 12,
@@ -400,90 +433,157 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
-  // Summary banner
-  banner: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 12,
+  summaryCard: {
+    marginHorizontal: 24,
+    marginBottom: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 22,
     borderWidth: 1.5,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    elevation: 2,
+    padding: 18,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
   },
-  bannerDivider: {
-    width: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 4,
+  summaryIntro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 16,
+  },
+  summaryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryTextBlock: { flex: 1 },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  summarySubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#6E7378',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  accuracyBadge: {
+    minWidth: 92,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  accuracyValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 26,
+  },
+  accuracyLabel: {
+    fontSize: 11,
+    color: '#6E7378',
+    fontWeight: '800',
+  },
+  summaryStatsRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
 
-  // Legend
   legend: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 20,
-    marginBottom: 14,
-    paddingHorizontal: 20,
-  },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendIcon: { fontSize: 13, fontWeight: '900' },
-  legendLabel:{ fontSize: 11, color: '#777777', fontWeight: '500' },
-
-  // Letter list
-  list: {
-    paddingHorizontal: 20,
     gap: 10,
+    marginBottom: 14,
+    paddingHorizontal: 24,
+    flexWrap: 'wrap',
+  },
+  legendItem:  {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  legendLabel: { fontSize: 11, color: '#5F6368', fontWeight: '700' },
+
+  list: {
+    paddingHorizontal: 24,
+    gap: 12,
   },
   letterSection: {},
 
-  // Letter header row
   letterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: '#E8E8E8',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderColor: '#E6EBF0',
+    paddingHorizontal: 18,
+    paddingVertical: 15,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
+    minHeight: 76,
+  },
+  letterRowDone: {
+    borderColor: '#D9E4F5',
+    backgroundColor: '#FFFFFF',
+    shadowOpacity: 0.07,
   },
   letterCircle: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 48, height: 48, borderRadius: 24,
     alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
-  letterCircleText: { fontSize: 18, fontWeight: '900' },
-  letterInfo:    { flex: 1 },
-  letterDoneLabel: { fontSize: 13, fontWeight: '700', color: '#222222' },
-  letterScore:   { fontSize: 12, fontWeight: '600', marginTop: 1 },
-  letterPending: { flex: 1, fontSize: 13, color: '#BDBDBD', fontWeight: '500' },
+  letterCircleText: { fontSize: 20, fontWeight: '900' },
+  letterInfo:       { flex: 1 },
+  letterTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  letterDoneLabel:  { fontSize: 14, fontWeight: '700', color: '#222222' },
+  statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  statusChipText: { fontSize: 10, color: '#2E7D32', fontWeight: '900' },
+  letterScore:      { fontSize: 12, fontWeight: '700', marginTop: 4 },
+  letterPending:    { fontSize: 14, color: '#8F969C', fontWeight: '800' },
+  letterPendingHint:{ fontSize: 11, color: '#B4BAC0', fontWeight: '600', marginTop: 3 },
 
-  // Score bar
-  scoreBarWrap: { width: 80 },
+  scoreBarWrap: { width: 112 },
   scoreBarBg: {
-    height: 6, borderRadius: 3,
-    backgroundColor: '#EEEEEE',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EEF1F4',
     overflow: 'hidden',
   },
-  scoreBarFill: { height: '100%', borderRadius: 3 },
+  scoreBarFill: { height: '100%', borderRadius: 5 },
 
-  // Expanded section
   expandedSection: {
-    marginTop: 4,
+    marginTop: 6,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#EEEEEE',
+    borderColor: '#E6EBF0',
     overflow: 'hidden',
     elevation: 1,
   },
@@ -491,20 +591,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#F8FAFC',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
   },
-  thWord: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#888888',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  thEx: { width: 30, alignItems: 'center' },
-  thExText: { fontSize: 11, fontWeight: '900', color: '#555555' },
+  thWord:    { fontSize: 11, fontWeight: '700', color: '#888888', textTransform: 'uppercase', letterSpacing: 0.5 },
+  thEx:      { width: 30, alignItems: 'center' },
+  thExText:  { fontSize: 11, fontWeight: '900', color: '#555555' },
   thExLabel: { fontSize: 9, color: '#AAAAAA', fontWeight: '500' },
 });

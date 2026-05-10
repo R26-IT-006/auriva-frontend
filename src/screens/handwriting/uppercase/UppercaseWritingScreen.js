@@ -19,20 +19,20 @@ import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const PAD = 16;
 
-const CANVAS_W = SCREEN_W  * 0.92;
-const CANVAS_H = SCREEN_H * 0.40;
+const COL_L            = Math.round(SCREEN_W * 0.43);
+const LETTER_CARD_SIZE = COL_L - 8;
+const CANVAS_W         = SCREEN_W - COL_L - PAD * 2;
+const CANVAS_H         = Math.round(SCREEN_H * 0.35);
 
-// ─── Double-ruled handwriting lines ──────────────────────────────────────────
-const LINE_1 = CANVAS_H * 0.10;   // cap / ascender  — blue solid
-const LINE_2 = CANVAS_H * 0.42;   // x-height top    — blue solid
-const LINE_3 = CANVAS_H * 0.72;   // baseline        — red dashed
-const LINE_4 = CANVAS_H * 0.90;   // descender       — blue solid
+const LINE_1 = Math.round(CANVAS_H * 0.10);
+const LINE_2 = Math.round(CANVAS_H * 0.42);
+const LINE_3 = Math.round(CANVAS_H * 0.72);
+const LINE_4 = Math.round(CANVAS_H * 0.90);
 
-// Uppercase letters fill the full cap→baseline zone
-const LETTER_FONT_SIZE = (LINE_3 - LINE_1) * 0.86;
+const GHOST_FONT_UPPER = Math.round((LINE_3 - LINE_1) / 0.71);
 
-// ─── Attempt badge colours ────────────────────────────────────────────────────
 const ATTEMPT_BADGE = {
   1: { bg: '#FFCBA8', border: '#FF8C42', text: '#7A2D00' },
   2: { bg: '#FFE97A', border: '#F0C000', text: '#5A4000' },
@@ -51,7 +51,6 @@ const ATTEMPT_HINTS = {
   3: 'Write from memory — no guide this time!',
 };
 
-// ─── Per-letter start positions ───────────────────────────────────────────────
 const START_POS = {
   I: { fx: 0.50, fy: 0.12 }, L: { fx: 0.37, fy: 0.12 }, T: { fx: 0.50, fy: 0.12 },
   E: { fx: 0.37, fy: 0.12 }, F: { fx: 0.37, fy: 0.12 }, H: { fx: 0.35, fy: 0.12 },
@@ -66,16 +65,14 @@ const START_POS = {
 
 const DEFAULT_START = { fx: 0.36, fy: 0.12 };
 
-// ─── Phonetics ────────────────────────────────────────────────────────────────
 const PHONETICS = {
   a:'[eɪ]', b:'[biː]', c:'[siː]', d:'[diː]', e:'[iː]',
   f:'[ɛf]',  g:'[dʒiː]', h:'[eɪtʃ]', i:'[aɪ]', j:'[dʒeɪ]',
-  k:'[keɪ]', l:'[ɛl]',  m:'[ɛm]',  n:'[ɛn]', o:'[oʊ]',
+  k:'[keɪ]', l:'[ɛl]', m:'[ɛm]', n:'[ɛn]', o:'[oʊ]',
   p:'[piː]', q:'[kjuː]', r:'[ɑːr]', s:'[ɛs]', t:'[tiː]',
-  u:'[juː]', v:'[viː]',  w:'[dʌbljuː]', x:'[ɛks]', y:'[waɪ]', z:'[zɛd]',
+  u:'[juː]', v:'[viː]', w:'[dʌbljуː]', x:'[ɛks]', y:'[waɪ]', z:'[zɛd]',
 };
 
-// ─── Letter stroke waypoints (uppercase) ─────────────────────────────────────
 const LETTER_PATHS = {
   A:[{fx:0.50,fy:0.12},{fx:0.30,fy:0.72},{fx:0.50,fy:0.12},{fx:0.70,fy:0.72},{fx:0.36,fy:0.50},{fx:0.64,fy:0.50}],
   B:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.12},{fx:0.55,fy:0.14},{fx:0.63,fy:0.24},{fx:0.63,fy:0.37},{fx:0.55,fy:0.45},{fx:0.37,fy:0.46},{fx:0.57,fy:0.48},{fx:0.64,fy:0.58},{fx:0.64,fy:0.65},{fx:0.55,fy:0.72},{fx:0.37,fy:0.72}],
@@ -105,7 +102,6 @@ const LETTER_PATHS = {
   Z:[{fx:0.32,fy:0.12},{fx:0.68,fy:0.12},{fx:0.32,fy:0.72},{fx:0.68,fy:0.72}],
 };
 
-// ─── Feature calculation ──────────────────────────────────────────────────────
 function calculateDrawingFeatures(paths) {
   const allPoints = paths.flat();
   if (allPoints.length < 2) {
@@ -134,40 +130,41 @@ function calculateDrawingFeatures(paths) {
 
 function getAttemptBadge(smoothness) {
   if (smoothness < 0.15) return { label: 'Excellent! ✓', color: '#2E7D32', bg: '#E8F5E9' };
-  if (smoothness < 0.35) return { label: 'Good effort!', color: '#E65100', bg: '#FFF3E0' };
-  return                        { label: 'Keep going!',  color: '#C62828', bg: '#FFEBEE' };
+  if (smoothness < 0.35) return { label: 'Good effort!',      color: '#E65100', bg: '#FFF3E0' };
+  return                        { label: 'Keep going!',        color: '#C62828', bg: '#FFEBEE' };
 }
 
-// ─── Uppercase-specific celebrations ─────────────────────────────────────────
 const CATEGORY_CELEBRATION = {
   straight: {
-    emoji: '🏗️', title: 'Tall Straight Capitals Done!',
+    icon: 'construct-outline',
+    title: 'Tall Straight Capitals Done!',
     message: 'Those tall letters look amazing!\nYour lines are getting so steady.',
-    gradient: ['#E3F2FD', '#BBDEFB'], color: '#1565C0',
+    color: '#1565C0',
   },
   curved: {
-    emoji: '🌙', title: 'Curved Capitals Conquered!',
+    icon: 'moon-outline',
+    title: 'Curved Capitals Conquered!',
     message: 'Big beautiful curves!\nYour uppercase letters are shining.',
-    gradient: ['#F3E5F5', '#E1BEE7'], color: '#6A1B9A',
+    color: '#6A1B9A',
   },
   mixed: {
-    emoji: '🌟', title: 'Complex Capitals Complete!',
+    icon: 'star-outline',
+    title: 'Complex Capitals Complete!',
     message: 'Those were the trickiest capitals!\nYou nailed every single one!',
-    gradient: ['#FFF8E1', '#FFE082'], color: '#E65100',
+    color: '#E65100',
   },
 };
 
 const ALL_DONE_CELEBRATION = {
-  emoji: '🎓', title: 'All Capitals Complete!',
+  icon: 'trophy-outline',
+  title: 'All Capitals Complete!',
   message: 'You wrote every capital letter!\nYou are a true alphabet champion!',
-  gradient: ['#E8F5E9', '#C8E6C9'], color: '#2E7D32',
+  color: '#2E7D32',
 };
 
 const NEXT_CATEGORY_LABEL = {
   straight: 'Straight capitals', curved: 'Curved capitals', mixed: 'Mixed capitals',
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function UppercaseWritingScreen({ route, navigation }) {
   const {
@@ -176,7 +173,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     letterSequence = [],
   } = route.params;
 
-  // Always uppercase
   const caseType = 'uppercase';
 
   const sequence = useMemo(() => {
@@ -184,7 +180,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     return filtered.length > 0 ? filtered : getAllLetters(caseType);
   }, [letterSequence]);
 
-  // ── State ──────────────────────────────────────────────────────────────────
   const [letterIdx,    setLetterIdx]    = useState(0);
   const [attempt,      setAttempt]      = useState(1);
   const [currentPath,  setCurrentPath]  = useState([]);
@@ -193,21 +188,16 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   const [feedbackData, setFeedbackData] = useState(null);
   const [celebration,  setCelebration]  = useState(null);
 
-  // ── Refs ───────────────────────────────────────────────────────────────────
   const startTimeRef = useRef(null);
   const allPathsRef  = useRef([]);
 
-  // ── Tracer dot animation ───────────────────────────────────────────────────
   const tracerX         = useRef(new Animated.Value(0)).current;
   const tracerY         = useRef(new Animated.Value(0)).current;
   const [tracerVisible, setTracerVisible] = useState(false);
-  const isTracingRef    = useRef(false);
 
-  // ── Celebration animation refs ─────────────────────────────────────────────
   const celebScale   = useRef(new Animated.Value(0.5)).current;
   const celebOpacity = useRef(new Animated.Value(0)).current;
 
-  // ── Derived ────────────────────────────────────────────────────────────────
   const letterObj     = sequence[letterIdx];
   const letter        = letterObj?.letter ?? 'A';
   const isLastLetter  = letterIdx >= sequence.length - 1;
@@ -217,7 +207,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   const phonetic      = PHONETICS[letter.toLowerCase()] ?? '';
   const badge         = ATTEMPT_BADGE[attempt];
 
-  // ── Speech ─────────────────────────────────────────────────────────────────
   const playLetterSound = useCallback((l = letter) => {
     Speech.stop();
     Speech.speak(l.toUpperCase(), { rate: 0.8, pitch: 1.0, language: 'en-US' });
@@ -231,54 +220,35 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     return () => Speech.stop();
   }, [letter]);
 
-  // ── Tracer dot animation for Attempt 1 ───────────────────────────────────
   useEffect(() => {
     const path = LETTER_PATHS[letter];
     if (attempt !== 1 || hasDrawn || !path || path.length < 2) {
-      isTracingRef.current = false;
       setTracerVisible(false);
-      tracerX.stopAnimation();
-      tracerY.stopAnimation();
       return;
     }
 
     const startX = path[0].fx * CANVAS_W;
     const startY = path[0].fy * CANVAS_H;
-    isTracingRef.current = true;
+    tracerX.setValue(startX);
+    tracerY.setValue(startY);
     setTracerVisible(true);
 
-    const runLoop = () => {
-      if (!isTracingRef.current) return;
-      tracerX.setValue(startX);
-      tracerY.setValue(startY);
+    const steps = path.slice(1).map(pt =>
+      Animated.parallel([
+        Animated.timing(tracerX, { toValue: pt.fx * CANVAS_W, duration: 420, useNativeDriver: false }),
+        Animated.timing(tracerY, { toValue: pt.fy * CANVAS_H, duration: 420, useNativeDriver: false }),
+      ])
+    );
 
-      const steps = path.slice(1).map(pt =>
-        Animated.parallel([
-          Animated.timing(tracerX, { toValue: pt.fx * CANVAS_W, duration: 420, useNativeDriver: true }),
-          Animated.timing(tracerY, { toValue: pt.fy * CANVAS_H, duration: 420, useNativeDriver: true }),
-        ])
-      );
+    const anim = Animated.loop(
+      Animated.sequence([Animated.delay(350), ...steps, Animated.delay(700)]),
+      { resetBeforeIteration: true }
+    );
+    anim.start();
 
-      Animated.sequence([
-        Animated.delay(350),
-        ...steps,
-        Animated.delay(700),
-      ]).start(({ finished }) => {
-        if (finished) runLoop();
-      });
-    };
-
-    runLoop();
-
-    return () => {
-      isTracingRef.current = false;
-      setTracerVisible(false);
-      tracerX.stopAnimation();
-      tracerY.stopAnimation();
-    };
+    return () => { setTracerVisible(false); anim.stop(); };
   }, [attempt, hasDrawn, letter, tracerX, tracerY]);
 
-  // ── Show feedback after first stroke ──────────────────────────────────────
   useEffect(() => {
     if (hasDrawn && allPathsRef.current.length > 0) {
       const { smoothness } = calculateDrawingFeatures(allPathsRef.current);
@@ -286,7 +256,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     }
   }, [hasDrawn]);
 
-  // ── PanResponder ───────────────────────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -319,7 +288,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     })
   ).current;
 
-  // ── Canvas helpers ─────────────────────────────────────────────────────────
   const resetCanvas = useCallback(() => {
     setAllPaths([]);
     allPathsRef.current = [];
@@ -330,18 +298,16 @@ export default function UppercaseWritingScreen({ route, navigation }) {
 
   const handleClear = useCallback(() => resetCanvas(), [resetCanvas]);
 
-  // ── Celebration overlay ────────────────────────────────────────────────────
   const showCelebrationFor = useCallback((data, nextCategory, isAllDone) => {
     setCelebration({ data, nextCategory, isAllDone });
     celebScale.setValue(0.5);
     celebOpacity.setValue(0);
     Animated.parallel([
-      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: true }),
-      Animated.timing(celebOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: false }),
+      Animated.timing(celebOpacity, { toValue: 1, duration: 260, useNativeDriver: false }),
     ]).start();
   }, [celebOpacity, celebScale]);
 
-  // ── Next attempt / next letter logic ──────────────────────────────────────
   const handleNext = useCallback(async () => {
     const features = calculateDrawingFeatures(allPathsRef.current);
     await storeLetterProgress(student.sid, letter, {
@@ -402,10 +368,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     }
   }, [celebration, navigation]);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────────────────────
-
   return (
     <LinearGradient
       colors={theme.backgroundGradient}
@@ -415,161 +377,175 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     >
       <SafeAreaView style={styles.safe}>
 
-        {/* ── Top bar ── */}
+        {/* Header */}
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+            style={styles.backBtn}
           >
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+            <Ionicons name="chevron-back" size={26} color={theme.headingText} />
           </TouchableOpacity>
 
-          <View style={styles.counterRow}>
-            <View style={styles.ucBadge}>
-              <Text style={styles.ucBadgeText}>ABC</Text>
+          <Text style={[styles.counterText, { color: theme.headingText }]}>
+            {letterIdx + 1} / {sequence.length}
+          </Text>
+
+          <View style={styles.attemptDots}>
+            {[1, 2, 3].map(n => (
+              <View
+                key={n}
+                style={[
+                  styles.dot,
+                  n < attempt   && { backgroundColor: theme.button, borderColor: theme.button },
+                  n === attempt && { backgroundColor: 'transparent', borderColor: theme.button },
+                  n > attempt   && { backgroundColor: 'transparent', borderColor: theme.button + '40' },
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Main area: letter card LEFT · content RIGHT */}
+        <View style={styles.mainRow}>
+
+          {/* Left column — large letter card */}
+          <View style={styles.letterCol}>
+            <View style={[styles.letterCard, { backgroundColor: theme.button }]}>
+              <Text style={[styles.letterCardText, { color: theme.buttonText }]}>
+                {letter}
+              </Text>
             </View>
-            <Text style={[styles.counterText, { color: theme.headingText }]}>
-              {letterIdx + 1} / {sequence.length}
+          </View>
+
+          {/* Right column — title + phonetic + badge + canvas */}
+          <View style={styles.contentCol}>
+
+            {/* Title card */}
+            <View style={[styles.titleCard, {
+              backgroundColor: theme.button + '14',
+              borderColor:     theme.button + '35',
+            }]}>
+              <Text style={[styles.writeLabel, { color: theme.headingText }]}>
+                Write '{letter.toUpperCase()}'
+              </Text>
+              <TouchableOpacity
+                style={[styles.soundBtn, { backgroundColor: theme.button }]}
+                onPress={() => playLetterSound()}
+                activeOpacity={0.75}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="volume-high" size={18} color={theme.buttonText} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Phonetic */}
+            <Text style={[styles.phoneticText, { color: theme.headingText }]}>
+              {phonetic}
             </Text>
-          </View>
 
-          <Text style={[styles.studentLabel, { color: theme.headingText }]}>
-            {student.full_name}
-          </Text>
-        </View>
-
-        {/* ── Letter prompt ── */}
-        <View style={styles.promptRow}>
-          <Text style={[styles.promptText, { color: theme.headingText }]}>
-            Write  '{letter}'
-          </Text>
-          <TouchableOpacity
-            style={[styles.phoneticBadge, { borderColor: theme.button + '55' }]}
-            onPress={() => playLetterSound()}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="volume-high" size={15} color={theme.button} />
-            <Text style={styles.phoneticText}>{phonetic}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Attempt badge ── */}
-        <View style={[styles.attemptBadge, {
-          backgroundColor: badge.bg,
-          borderColor:     badge.border,
-        }]}>
-          <Text style={[styles.attemptTitle, { color: badge.text }]}>
-            {ATTEMPT_TITLES[attempt]}
-          </Text>
-          <Text style={[styles.attemptHint, { color: badge.text + 'CC' }]}>
-            {ATTEMPT_HINTS[attempt]}
-          </Text>
-        </View>
-
-        {/* ── Writing canvas ── */}
-        <View style={styles.canvasWrap}>
-          <View style={styles.canvasOuter}>
-
-            <View
-              style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#CCCCCC' }]}
-              {...panResponder.panHandlers}
-            >
-              <Svg width={CANVAS_W} height={CANVAS_H}>
-
-                {/* ── Handwriting ruling lines ── */}
-                <Line x1={0} y1={LINE_1} x2={CANVAS_W} y2={LINE_1}
-                  stroke="#90CAF9" strokeWidth={1.5} />
-                <Line x1={0} y1={LINE_2} x2={CANVAS_W} y2={LINE_2}
-                  stroke="#90CAF9" strokeWidth={1} />
-                <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3}
-                  stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
-                <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4}
-                  stroke="#90CAF9" strokeWidth={1.5} />
-
-                {/* ── Ghost letter (faint, uppercase fills cap→baseline zone) ── */}
-                {guideOpacity > 0 && (
-                  <SvgText
-                    x={CANVAS_W / 2}
-                    y={LINE_3}
-                    textAnchor="middle"
-                    fontSize={LETTER_FONT_SIZE}
-                    fill={`rgba(60,60,180,${guideOpacity})`}
-                    fontWeight="bold"
-                  >
-                    {letter}
-                  </SvgText>
-                )}
-
-                {/* ── Attempt 2: start-position dot ── */}
-                {attempt === 2 && (
-                  <>
-                    <Circle
-                      cx={startPos.fx * CANVAS_W}
-                      cy={startPos.fy * CANVAS_H}
-                      r={9} fill={theme.button} opacity={0.80}
-                    />
-                    <SvgText
-                      x={startPos.fx * CANVAS_W + 17}
-                      y={startPos.fy * CANVAS_H + 5}
-                      fontSize={14} fill={theme.button} fontWeight="bold"
-                    >
-                      1
-                    </SvgText>
-                  </>
-                )}
-
-                {/* ── Drawn strokes ── */}
-                {allPaths.map((stroke, i) => (
-                  <Polyline
-                    key={i}
-                    points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
-                    stroke={theme.button}
-                    strokeWidth={5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                ))}
-
-                {/* ── Live stroke ── */}
-                {currentPath.length > 1 && (
-                  <Polyline
-                    points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
-                    stroke={theme.button}
-                    strokeWidth={5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                    opacity={0.75}
-                  />
-                )}
-
-              </Svg>
+            {/* Attempt badge */}
+            <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+              <Text style={[styles.attemptTitle, { color: badge.text }]}>
+                {ATTEMPT_TITLES[attempt]}
+              </Text>
+              <Text style={[styles.attemptHint, { color: badge.text }]}>
+                {ATTEMPT_HINTS[attempt]}
+              </Text>
             </View>
 
-            {/* ── Tracer dot overlay ── */}
-            {attempt === 1 && !hasDrawn && tracerVisible && (
-              <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                <Animated.View
-                  style={[
-                    styles.tracerDot,
-                    {
-                      backgroundColor: theme.button,
-                      transform: [
-                        { translateX: tracerX },
-                        { translateY: tracerY },
-                      ],
-                    },
-                  ]}
-                />
+            {/* Writing canvas */}
+            <View style={styles.canvasOuter}>
+              <View
+                style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
+                {...panResponder.panHandlers}
+              >
+                <Svg width={CANVAS_W} height={CANVAS_H}>
+
+                  <Line x1={0} y1={LINE_1} x2={CANVAS_W} y2={LINE_1} stroke="#90CAF9" strokeWidth={1.5} />
+                  <Line x1={0} y1={LINE_2} x2={CANVAS_W} y2={LINE_2} stroke="#90CAF9" strokeWidth={1} />
+                  <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3} stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
+                  <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#90CAF9" strokeWidth={1.5} />
+
+                  {guideOpacity > 0 && (
+                    <SvgText
+                      x={CANVAS_W / 2}
+                      y={LINE_3}
+                      textAnchor="middle"
+                      fontSize={GHOST_FONT_UPPER}
+                      fill={`rgba(60,60,180,${guideOpacity})`}
+                      fontWeight="bold"
+                    >
+                      {letter}
+                    </SvgText>
+                  )}
+
+                  {attempt === 2 && (
+                    <>
+                      <Circle
+                        cx={startPos.fx * CANVAS_W}
+                        cy={startPos.fy * CANVAS_H}
+                        r={9} fill={theme.button} opacity={0.80}
+                      />
+                      <SvgText
+                        x={startPos.fx * CANVAS_W + 17}
+                        y={startPos.fy * CANVAS_H + 5}
+                        fontSize={14} fill={theme.button} fontWeight="bold"
+                      >
+                        1
+                      </SvgText>
+                    </>
+                  )}
+
+                  {allPaths.map((stroke, i) => (
+                    <Polyline
+                      key={i}
+                      points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
+                      stroke={theme.button}
+                      strokeWidth={5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                  ))}
+
+                  {currentPath.length > 1 && (
+                    <Polyline
+                      points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
+                      stroke={theme.button}
+                      strokeWidth={5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                      opacity={0.75}
+                    />
+                  )}
+
+                </Svg>
               </View>
-            )}
+
+              {attempt === 1 && !hasDrawn && tracerVisible && (
+                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                  <Animated.View
+                    style={[
+                      styles.tracerDot,
+                      {
+                        backgroundColor: theme.button,
+                        transform: [
+                          { translateX: tracerX },
+                          { translateY: tracerY },
+                        ],
+                      },
+                    ]}
+                  />
+                </View>
+              )}
+            </View>
 
           </View>
         </View>
 
-        {/* ── Feedback badge ── */}
+        {/* Feedback pill */}
         {feedbackData && (
           <View style={[styles.feedbackBadge, { backgroundColor: feedbackData.bg }]}>
             <Text style={[styles.feedbackText, { color: feedbackData.color }]}>
@@ -578,13 +554,14 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* ── Action buttons ── */}
+        {/* Action buttons */}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
-            style={[styles.clearBtn, { borderColor: theme.cardOutline ?? '#BBBBBB' }]}
+            style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
             onPress={handleClear}
             activeOpacity={0.7}
           >
+            <Ionicons name="refresh-outline" size={16} color={theme.headingText} />
             <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
           </TouchableOpacity>
 
@@ -603,26 +580,26 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* ── Attempt progress dots ── */}
-        <View style={styles.attemptDots}>
+        {/* Bottom attempt dots */}
+        <View style={styles.bottomDots}>
           {[1, 2, 3].map(n => (
             <View
               key={n}
               style={[
                 styles.dot,
                 n < attempt   && { backgroundColor: theme.button, borderColor: theme.button },
-                n === attempt && { backgroundColor: 'transparent', borderColor: theme.button },
-                n > attempt   && { backgroundColor: 'transparent', borderColor: '#CCCCCC' },
+                n === attempt && { borderColor: theme.button },
+                n > attempt   && { borderColor: theme.button + '40' },
               ]}
             />
           ))}
         </View>
 
-        {/* ── Category celebration overlay ── */}
+        {/* Celebration overlay */}
         {celebration && (
           <View style={styles.celebOverlay}>
             <LinearGradient
-              colors={celebration.data.gradient}
+              colors={theme.backgroundGradient}
               style={styles.celebGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
@@ -633,14 +610,16 @@ export default function UppercaseWritingScreen({ route, navigation }) {
                   transform: [{ scale: celebScale }],
                 }]}
               >
-                <Text style={styles.celebEmoji}>{celebration.data.emoji}</Text>
+                <View style={[styles.celebIconWrap, { backgroundColor: celebration.data.color + '18' }]}>
+                  <Ionicons name={celebration.data.icon} size={52} color={celebration.data.color} />
+                </View>
                 <Text style={[styles.celebTitle, { color: celebration.data.color }]}>
                   {celebration.data.title}
                 </Text>
                 <Text style={styles.celebMessage}>{celebration.data.message}</Text>
 
                 {!celebration.isAllDone && celebration.nextCategory && (
-                  <View style={styles.celebNextBadge}>
+                  <View style={[styles.celebNextBadge, { backgroundColor: celebration.data.color + '12', borderColor: celebration.data.color + '30' }]}>
                     <Text style={styles.celebNextLabel}>Up next: </Text>
                     <Text style={[styles.celebNextValue, { color: celebration.data.color }]}>
                       {NEXT_CATEGORY_LABEL[celebration.nextCategory]}
@@ -649,19 +628,24 @@ export default function UppercaseWritingScreen({ route, navigation }) {
                 )}
 
                 <View style={styles.celebStars}>
-                  {['⭐','⭐','⭐'].map((s, i) => (
-                    <Text key={i} style={styles.celebStar}>{s}</Text>
+                  {[1, 2, 3].map(i => (
+                    <Ionicons key={i} name="star" size={30} color="#FFCA28" />
                   ))}
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.celebBtn, { backgroundColor: celebration.data.color }]}
+                  style={[styles.celebBtn, { backgroundColor: theme.button }]}
                   onPress={handleDismissCelebration}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.celebBtnText}>
-                    {celebration.isAllDone ? 'All done! 🎉' : 'Keep going! →'}
+                  <Text style={[styles.celebBtnText, { color: theme.buttonText }]}>
+                    {celebration.isAllDone ? 'All done!' : 'Keep going!'}
                   </Text>
+                  <Ionicons
+                    name={celebration.isAllDone ? 'checkmark-circle-outline' : 'arrow-forward'}
+                    size={18}
+                    color={theme.buttonText}
+                  />
                 </TouchableOpacity>
               </Animated.View>
             </LinearGradient>
@@ -673,8 +657,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
@@ -683,88 +665,105 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  counterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  ucBadge: {
-    backgroundColor: '#D9AAFF',
-    borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  ucBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#4A148C',
-    letterSpacing: 0.5,
-  },
-  counterText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  studentLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    opacity: 0.7,
-  },
-
-  promptRow: {
-    flexDirection: 'row',
+  backBtn: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    marginBottom: 8,
   },
-  promptText: {
-    fontSize: 28,
+  counterText: { fontSize: 13, fontWeight: '700' },
+  attemptDots: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+  },
+
+  mainRow: {
+    flexDirection: 'row',
+    flex: 1,
+    paddingHorizontal: PAD,
+    paddingBottom: 4,
+  },
+  letterCol: {
+    width: COL_L,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingRight: 8,
+  },
+  letterCard: {
+    width: LETTER_CARD_SIZE,
+    height: LETTER_CARD_SIZE,
+    borderRadius: Math.round(LETTER_CARD_SIZE * 0.22),
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  letterCardText: {
+    fontSize: Math.round(LETTER_CARD_SIZE * 0.60),
     fontWeight: '900',
+    lineHeight: Math.round(LETTER_CARD_SIZE * 0.75),
   },
-  phoneticBadge: {
+  contentCol: {
+    flex: 1,
+    gap: 8,
+    justifyContent: 'center',
+  },
+
+  titleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    borderWidth: 1,
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
     borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  writeLabel: {
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    flexShrink: 1,
+  },
+  soundBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginLeft: 8,
   },
   phoneticText: {
     fontSize: 13,
-    color: '#444444',
     fontStyle: 'italic',
+    fontWeight: '600',
+    opacity: 0.65,
+    paddingLeft: 2,
   },
 
   attemptBadge: {
-    alignSelf: 'center',
     borderWidth: 1.5,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     alignItems: 'center',
-    marginBottom: 10,
-    width: CANVAS_W,
   },
-  attemptTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  attemptHint: {
-    fontSize: 11,
-    marginTop: 2,
-    textAlign: 'center',
-  },
+  attemptTitle: { fontSize: 12, fontWeight: '800' },
+  attemptHint:  { fontSize: 10, marginTop: 2, textAlign: 'center', opacity: 0.85 },
 
-  canvasWrap: {
-    alignItems: 'center',
-    marginBottom: 6,
-  },
   canvasOuter: {
     width:  CANVAS_W,
     height: CANVAS_H,
@@ -774,11 +773,11 @@ const styles = StyleSheet.create({
     height: CANVAS_H,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    borderWidth: 2,
+    borderWidth: 1.5,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
     shadowRadius: 8,
     elevation: 3,
   },
@@ -801,56 +800,49 @@ const styles = StyleSheet.create({
 
   feedbackBadge: {
     alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 5,
     borderRadius: 20,
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  feedbackText: {
-    fontSize: 13,
-    fontWeight: '700',
+  feedbackText: { fontSize: 13, fontWeight: '700' },
+
+  bottomDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingBottom: 8,
   },
 
   buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
-    paddingHorizontal: 24,
-    marginBottom: 8,
+    gap: 12,
+    paddingHorizontal: PAD,
+    paddingVertical: 6,
   },
   clearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1.5,
-    paddingHorizontal: 28,
-    paddingVertical: 11,
-    borderRadius: 50,
-  },
-  clearText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  nextBtn: {
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 50,
   },
-  nextText: {
-    fontSize: 15,
-    fontWeight: '700',
+  clearText: { fontSize: 14, fontWeight: '600' },
+  nextBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    borderRadius: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
-
-  attemptDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    paddingBottom: 6,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-  },
+  nextText: { fontSize: 14, fontWeight: '800' },
 
   celebOverlay: {
     position: 'absolute',
@@ -876,18 +868,27 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  celebEmoji:     { fontSize: 64, marginBottom: 16 },
+  celebIconWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
   celebTitle:     { fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
   celebMessage:   { fontSize: 15, color: '#555555', textAlign: 'center', lineHeight: 24, marginBottom: 20 },
   celebNextBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#F5F5F5', borderRadius: 12,
+    borderWidth: 1, borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20,
   },
   celebNextLabel: { fontSize: 13, color: '#777777' },
   celebNextValue: { fontSize: 13, fontWeight: '800' },
   celebStars:     { flexDirection: 'row', gap: 8, marginBottom: 24 },
-  celebStar:      { fontSize: 28 },
-  celebBtn:       { paddingHorizontal: 40, paddingVertical: 14, borderRadius: 50, width: '100%', alignItems: 'center' },
-  celebBtnText:   { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
+  celebBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingHorizontal: 40, paddingVertical: 14, borderRadius: 50, width: '100%',
+  },
+  celebBtnText: { fontSize: 17, fontWeight: '800' },
 });

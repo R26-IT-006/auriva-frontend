@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,13 +24,13 @@ const AVATAR_MAP = {
   megatron: require('../../../assets/avatar-images/Megatron.png'),
 };
 
-const SHAPE_EMOJI = {
-  horizontal_line: '━',
-  vertical_line:   '┃',
-  full_circle:     '○',
-  half_circle:     '⌒',
-  zigzag:          '〰',
-  curve_wave:      '∿',
+const SHAPE_ICONS = {
+  horizontal_line: 'remove-outline',
+  vertical_line:   'swap-vertical-outline',
+  full_circle:     'ellipse-outline',
+  half_circle:     'radio-button-off-outline',
+  zigzag:          'pulse-outline',
+  curve_wave:      'analytics-outline',
 };
 
 function formatShapeName(key) {
@@ -49,9 +49,6 @@ function getOverallLabel(avg) {
   return 'Needs practice';
 }
 
-// ─── Learning-path card content ───────────────────────────────────────────────
-// Returns the icon, headline, and detail sentence for the motor profile summary.
-
 function getLearningPathContent(primaryStrength) {
   switch (primaryStrength) {
     case 'straight':
@@ -61,6 +58,7 @@ function getLearningPathContent(primaryStrength) {
         detail:   "We'll start with letters like l, i, t that use the strokes you already control well.",
         color:    '#1565C0',
         bg:       '#E3F2FD',
+        border:   '#90CAF9',
       };
     case 'curved':
       return {
@@ -69,6 +67,7 @@ function getLearningPathContent(primaryStrength) {
         detail:   "We'll start with letters like o, c, e that match your circle and arc strength.",
         color:    '#6A1B9A',
         bg:       '#F3E5F5',
+        border:   '#CE93D8',
       };
     default:
       return {
@@ -77,12 +76,10 @@ function getLearningPathContent(primaryStrength) {
         detail:   "You're balanced across all strokes. We'll practise step by step, easy to hard.",
         color:    '#2E7D32',
         bg:       '#E8F5E9',
+        border:   '#A5D6A7',
       };
   }
 }
-
-// ─── XAI explanation text (proposal Section 137) ─────────────────────────────
-// Explains, in plain language, why letters are ordered the way they are.
 
 function getXAIExplanation(motorProfile) {
   if (!motorProfile) {
@@ -114,6 +111,8 @@ export default function LetterHomeScreen({ route, navigation }) {
     motorProfile: passedProfile = null,
   } = route.params;
 
+  const { width, height } = useWindowDimensions();
+
   const [showSummary,       setShowSummary]       = useState(false);
   const [showWhyModal,      setShowWhyModal]       = useState(false);
   const [lowercaseProgress, setLowercaseProgress] = useState(0);
@@ -122,13 +121,10 @@ export default function LetterHomeScreen({ route, navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      // Refresh live progress from backend
       client.get(ENDPOINTS.LETTER_PROGRESS(student.sid))
         .then(res => setLowercaseProgress(res.data.lowercase_completed ?? 0))
         .catch(() => {});
 
-      // Load adaptive sequence + motor profile from storage
-      // (set by AssessmentCompleteScreen after the initial assessment)
       getLetterSequence(student.sid)
         .then(seq => { if (seq) setAdaptiveSequence(seq); })
         .catch(() => {});
@@ -137,7 +133,6 @@ export default function LetterHomeScreen({ route, navigation }) {
         .then(profile => {
           if (profile) {
             setMotorProfile(profile);
-            // Persist for teacher report (assessmentData comes from route params)
             recordAssessmentSnapshot(assessmentData, profile);
           }
         })
@@ -161,29 +156,47 @@ export default function LetterHomeScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      {/* Decorative background bubbles */}
+      <View style={[styles.bgBubbleLarge, {
+        backgroundColor: theme.button + '0E',
+        width: width * 0.50, height: width * 0.50, borderRadius: width * 0.25,
+      }]} />
+      <View style={[styles.bgBubbleMedium, {
+        backgroundColor: theme.button + '09',
+        width: width * 0.30, height: width * 0.30, borderRadius: width * 0.15,
+      }]} />
+      <View style={[styles.bgBubbleSmall, {
+        backgroundColor: theme.button + '07',
+        width: width * 0.18, height: width * 0.18, borderRadius: width * 0.09,
+      }]} />
+
       <SafeAreaView style={styles.safe}>
 
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
           <View style={styles.nameRow}>
-            <Image source={AVATAR_MAP[student?.avatar_key]} style={styles.avatarImg} />
-            <Text style={[styles.studentName, { color: theme.headingText }]}>
-              {student?.full_name}
-            </Text>
+            <View style={[styles.avatarRing, { borderColor: theme.button + '40' }]}>
+              <Image source={AVATAR_MAP[student?.avatar_key]} style={styles.avatarImg} />
+            </View>
+            <View>
+              <Text style={[styles.studentName, { color: theme.headingText }]}>
+                {student?.full_name}
+              </Text>
+              <Text style={styles.studentSubLabel}>Letter Writing</Text>
+            </View>
           </View>
 
           <View style={styles.topBtnGroup}>
             <TouchableOpacity
               style={[styles.summaryBtn, {
-                backgroundColor: theme.cardOutline + '30',
-                borderColor: theme.button,
+                backgroundColor: theme.button + '14',
+                borderColor: theme.button + '40',
               }]}
               onPress={() => setShowSummary(true)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.summaryBtnText, { color: theme.button }]}>
-                Assessment
-              </Text>
+              <Ionicons name="clipboard-outline" size={14} color={theme.button} />
+              <Text style={[styles.summaryBtnText, { color: theme.button }]}>Assessment</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -193,62 +206,86 @@ export default function LetterHomeScreen({ route, navigation }) {
             >
               <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
               <Text style={[styles.reportBtnText, { color: theme.buttonText }]}>
-                Report
+                View Progress Report
               </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── Scrollable content ── */}
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        {/* ── Main content ── */}
+        <View style={styles.mainContent}>
+
+          {/* ── Hero section ── */}
+          <View style={styles.heroSection}>
+            <Image
+              source={AVATAR_MAP[student?.avatar_key]}
+              style={styles.heroAvatar}
+              resizeMode="contain"
+            />
+            <Text style={[styles.heroGreeting, { color: theme.headingText }]}>
+              Hello, {student?.full_name}!
+            </Text>
+            <Text style={[styles.heroSubtitle, { color: theme.button }]}>
+              Ready to practice writing today?
+            </Text>
+          </View>
 
           {/* ── "Your Learning Path" card ── */}
           <View style={[styles.learningPathCard, {
-            borderLeftColor: theme.button,
             backgroundColor: pathContent.bg,
+            borderColor: pathContent.border,
           }]}>
             <View style={styles.learningPathHeader}>
-              <Text style={[styles.learningPathTitle, { color: theme.headingText }]}>
-                Your Personalised Learning Path
-              </Text>
+              <View style={styles.learningPathLeft}>
+                <View style={[styles.pathIconBadge, { backgroundColor: pathContent.color + '20' }]}>
+                  <Text style={styles.learningPathIcon}>{pathContent.icon}</Text>
+                </View>
+                <View style={styles.learningPathTextCol}>
+                  <Text style={[styles.learningPathHeadline, { color: pathContent.color }]}>
+                    {pathContent.headline}
+                  </Text>
+                  <Text style={styles.learningPathDetail}>
+                    {pathContent.detail}
+                  </Text>
+                  {motorProfile && (
+                    <Text style={[styles.sequenceTag, { color: pathContent.color + 'CC' }]}>
+                      {motorProfile.recommendedSequence}
+                    </Text>
+                  )}
+                </View>
+              </View>
               <TouchableOpacity
                 onPress={() => setShowWhyModal(true)}
-                style={[styles.whyBtn, { borderColor: theme.button }]}
+                style={[styles.whyBtn, { borderColor: pathContent.color + '50', backgroundColor: pathContent.color + '12' }]}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.whyBtnText, { color: theme.button }]}>
-                  Why this order?
-                </Text>
+                <Ionicons name="information-circle-outline" size={14} color={pathContent.color} />
+                <Text style={[styles.whyBtnText, { color: pathContent.color }]}>Why?</Text>
               </TouchableOpacity>
-            </View>
-
-            <View style={styles.learningPathBody}>
-              <Text style={styles.learningPathIcon}>{pathContent.icon}</Text>
-              <View style={styles.learningPathTextCol}>
-                <Text style={[styles.learningPathHeadline, { color: pathContent.color }]}>
-                  {pathContent.headline}
-                </Text>
-                <Text style={styles.learningPathDetail}>
-                  {pathContent.detail}
-                </Text>
-                {motorProfile && (
-                  <Text style={[styles.sequenceTag, { color: theme.button }]}>
-                    {motorProfile.recommendedSequence}
-                  </Text>
-                )}
-              </View>
             </View>
           </View>
 
-          {/* ── Letters / Words card ── */}
+          {/* ── Main Lowercase / Uppercase card ── */}
           <View style={styles.card}>
 
+            {/* Progress header inside card */}
+            <View style={styles.progressHeader}>
+              <View style={styles.progressHeaderLeft}>
+                <Ionicons name="trophy-outline" size={20} color="#F57F17" />
+                <Text style={styles.progressHeaderText}>
+                  Letters: {lowercaseProgress} / 26 completed
+                </Text>
+              </View>
+              <Text style={styles.progressPercent}>{progressPercent}%</Text>
+            </View>
+            <View style={styles.progressTrackWide}>
+              <View style={[styles.progressFillWide, { width: `${progressPercent}%` }]} />
+            </View>
+
+            {/* Lowercase / Uppercase row */}
             <View style={styles.pathRow}>
 
-              {/* Letters card — always unlocked */}
+              {/* Lowercase card */}
               <TouchableOpacity
                 style={styles.lettersCard}
                 onPress={() => navigation.navigate('LetterPractice', {
@@ -259,35 +296,37 @@ export default function LetterHomeScreen({ route, navigation }) {
                 })}
                 activeOpacity={0.85}
               >
-                <Text style={styles.lettersTitle}>Letters</Text>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+                <View style={styles.modeIconCircle}>
+                  <Ionicons name="text-outline" size={34} color="#2E7D32" />
                 </View>
-                <Text style={styles.progressLabel}>{lowercaseProgress} / 26 letters</Text>
+                <Text style={styles.lettersTitle}>Letters</Text>
+                <Text style={styles.modeSubLabel}>{lowercaseProgress} / 26 done</Text>
               </TouchableOpacity>
 
-              {/* Words card — always tappable for demo; lock icon shown until lowercase done */}
+              {/* Words card — locked until all lowercase completed */}
               <TouchableOpacity
-                style={[styles.wordsCard, !wordsUnlocked && { opacity: 0.6 }]}
-                activeOpacity={0.85}
+                style={styles.wordsCard}
+                activeOpacity={wordsUnlocked ? 0.85 : 0.5}
                 onPress={() => navigation.navigate('WordLetterSelect', { student, theme })}
               >
-                <Text style={styles.wordsTitle}>Words</Text>
-                {!wordsUnlocked ? (
-                  <>
-                    <Ionicons name="lock-closed" size={32} color="#7B1FA2" style={styles.lockIcon} />
-                    <Text style={styles.wordsNote}>
-                      Complete all lowercase letters to unlock words.
-                    </Text>
-                  </>
-                ) : (
-                  <Ionicons name="checkmark-circle" size={32} color="#7B1FA2" style={styles.lockIcon} />
-                )}
+                <View style={[styles.modeIconCircle, { backgroundColor: wordsUnlocked ? '#EDE7F6' : '#EEEEEE' }]}>
+                  <Ionicons
+                    name={wordsUnlocked ? 'book-outline' : 'lock-closed'}
+                    size={34}
+                    color={wordsUnlocked ? '#7B1FA2' : '#AAAAAA'}
+                  />
+                </View>
+                <Text style={[styles.wordsTitle, !wordsUnlocked && { color: '#AAAAAA' }]}>
+                  Words
+                </Text>
+                <Text style={[styles.modeSubLabel, !wordsUnlocked && { color: '#AAAAAA' }]}>
+                  {wordsUnlocked ? 'Unlocked!' : 'Finish letters first'}
+                </Text>
               </TouchableOpacity>
 
             </View>
 
-            {/* Word progress link for teacher */}
+            {/* Word progress link */}
             <TouchableOpacity
               style={styles.progressLink}
               onPress={() => navigation.navigate('WordProgress', { student, theme })}
@@ -299,11 +338,12 @@ export default function LetterHomeScreen({ route, navigation }) {
             </TouchableOpacity>
 
             <Text style={styles.footerNote}>
-              Complete each letter to track your progress and unlock new content.
+              Complete all 26 Letters to unlock the Words section.
             </Text>
+
           </View>
 
-        </ScrollView>
+        </View>
 
         {/* ── Assessment Summary Modal ── */}
         <Modal
@@ -319,34 +359,53 @@ export default function LetterHomeScreen({ route, navigation }) {
           >
             <SafeAreaView style={styles.safe}>
 
+              {/* Modal header bar */}
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.headingText }]}>
-                  Assessment Summary
-                </Text>
+                <View style={styles.modalTitleRow}>
+                  <View style={[styles.modalTitleIcon, { backgroundColor: theme.button + '20' }]}>
+                    <Ionicons name="clipboard-outline" size={18} color={theme.button} />
+                  </View>
+                  <Text style={[styles.modalTitle, { color: theme.headingText }]}>
+                    Assessment Summary
+                  </Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => setShowSummary(false)}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={[styles.modalCloseBtn, { backgroundColor: theme.button + '15' }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close" size={24} color={theme.headingText} />
+                  <Ionicons name="close" size={20} color={theme.headingText} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView
-                contentContainerStyle={styles.modalScroll}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.modalCard}>
+              {/* Main card — fills remaining space, no scroll */}
+              <View style={styles.modalCard}>
 
-                  <Text style={[styles.modalChildName, { color: theme.headingText }]}>
-                    {student?.full_name}
-                  </Text>
+                {/* Student banner */}
+                <View style={[styles.modalStudentBanner, { backgroundColor: theme.button + '0F' }]}>
+                  <Image
+                    source={AVATAR_MAP[student?.avatar_key]}
+                    style={styles.modalStudentAvatar}
+                    resizeMode="contain"
+                  />
+                  <View>
+                    <Text style={[styles.modalChildName, { color: theme.headingText }]}>
+                      {student?.full_name}
+                    </Text>
+                    <Text style={styles.modalChildSub}>Shape Assessment Results</Text>
+                  </View>
+                </View>
 
+                {/* Shape rows — fills available space evenly */}
+                <View style={styles.modalShapeList}>
                   {assessmentData.map((item, index) => {
-                    const badge = getBadge(item.features?.smoothness ?? 0);
-                    const emoji = SHAPE_EMOJI[item.shapeId] ?? '◆';
+                    const badge    = getBadge(item.features?.smoothness ?? 0);
+                    const iconName = SHAPE_ICONS[item.shapeId] ?? 'brush-outline';
                     return (
                       <View key={item.shapeId ?? index} style={styles.shapeRow}>
-                        <Text style={styles.shapeEmoji}>{emoji}</Text>
+                        <View style={[styles.shapeIconWrap, { backgroundColor: badge.bg }]}>
+                          <Ionicons name={iconName} size={18} color={badge.color} />
+                        </View>
                         <Text style={styles.shapeName}>
                           {formatShapeName(item.shapeId ?? '')}
                         </Text>
@@ -358,24 +417,31 @@ export default function LetterHomeScreen({ route, navigation }) {
                       </View>
                     );
                   })}
+                </View>
 
-                  {assessmentData.length > 0 && (
-                    <View style={[styles.overallCard, { backgroundColor: theme.background }]}>
-                      <Text style={[styles.overallText, { color: theme.headingText }]}>
-                        Overall motor control:{' '}
-                        <Text style={styles.overallValue}>
-                          {getOverallLabel(avgSmoothness)}
-                        </Text>
+                {/* Overall motor control card */}
+                {assessmentData.length > 0 && (
+                  <View style={[styles.overallCard, {
+                    backgroundColor: theme.button + '10',
+                    borderColor:     theme.button + '25',
+                  }]}>
+                    <View style={[styles.overallIconWrap, { backgroundColor: theme.button + '20' }]}>
+                      <Ionicons name="analytics-outline" size={22} color={theme.button} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.overallLabel}>Overall motor control</Text>
+                      <Text style={[styles.overallValue, { color: theme.headingText }]}>
+                        {getOverallLabel(avgSmoothness)}
                       </Text>
                     </View>
-                  )}
+                  </View>
+                )}
 
-                  {assessmentData.length === 0 && (
-                    <Text style={styles.emptyText}>No assessment data available.</Text>
-                  )}
+                {assessmentData.length === 0 && (
+                  <Text style={styles.emptyText}>No assessment data available.</Text>
+                )}
 
-                </View>
-              </ScrollView>
+              </View>
 
             </SafeAreaView>
           </LinearGradient>
@@ -442,30 +508,69 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
+  // Decorative background bubbles
+  bgBubbleLarge: {
+    position: 'absolute',
+    top: '-6%',
+    right: '-14%',
+  },
+  bgBubbleMedium: {
+    position: 'absolute',
+    bottom: '4%',
+    left: '-10%',
+  },
+  bgBubbleSmall: {
+    position: 'absolute',
+    top: '42%',
+    right: '-5%',
+  },
+
   // Top bar
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 14,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+  },
+  avatarRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   avatarImg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   studentName: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: 10,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  studentSubLabel: {
+    fontSize: 12,
+    color: '#888888',
+    marginTop: 1,
+  },
+  topBtnGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   summaryBtn: {
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
@@ -474,75 +579,95 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  topBtnGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   reportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
   },
   reportBtnText: {
     fontSize: 13,
     fontWeight: '700',
   },
 
-  // Scroll content
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+  // Main content
+  mainContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+    paddingBottom: 20,
+    gap: 18,
     alignItems: 'center',
-    gap: 20,
+  },
+
+  // ── Hero section ──────────────────────────────────────────────────────────
+  heroSection: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  heroAvatar: {
+    width: 100,
+    height: 100,
+    marginBottom: 6,
+  },
+  heroGreeting: {
+    fontSize: 30,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.85,
   },
 
   // ── Learning Path Card ─────────────────────────────────────────────────────
   learningPathCard: {
     width: '100%',
-    maxWidth: 600,
-    borderRadius: 12,
-    borderLeftWidth: 4,
+    maxWidth: 620,
+    borderRadius: 18,
+    borderWidth: 1.5,
     padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   learningPathHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'flex-start',
+    gap: 10,
   },
-  learningPathTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    flexShrink: 1,
-  },
-  whyBtn: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  whyBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  learningPathBody: {
+  learningPathLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
   },
+  pathIconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
   learningPathIcon: {
-    fontSize: 28,
-    marginTop: 2,
+    fontSize: 22,
   },
   learningPathTextCol: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   learningPathHeadline: {
     fontSize: 15,
@@ -551,100 +676,152 @@ const styles = StyleSheet.create({
   learningPathDetail: {
     fontSize: 13,
     color: '#555555',
-    lineHeight: 18,
+    lineHeight: 19,
   },
   sequenceTag: {
     fontSize: 11,
     fontWeight: '700',
-    marginTop: 4,
+    marginTop: 2,
     letterSpacing: 0.3,
+  },
+  whyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    flexShrink: 0,
+  },
+  whyBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   // ── Letters / Words card ───────────────────────────────────────────────────
   card: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 620,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 32,
+    borderRadius: 26,
+    padding: 24,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowRadius: 14,
+    gap: 16,
   },
+
+  // Progress header
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressHeaderText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#444444',
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#4CAF50',
+  },
+  progressTrackWide: {
+    width: '100%',
+    height: 10,
+    backgroundColor: '#EEEEEE',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginTop: -8,
+  },
+  progressFillWide: {
+    backgroundColor: '#4CAF50',
+    height: '100%',
+    borderRadius: 5,
+  },
+
   pathRow: {
     flexDirection: 'row',
-    gap: 20,
+    gap: 16,
   },
+
   lettersCard: {
     flex: 1,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 20,
-    padding: 24,
-    minHeight: 180,
+    backgroundColor: '#F1F8E9',
+    borderRadius: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    minHeight: 190,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
     borderWidth: 2,
-    borderColor: '#66BB6A',
+    borderColor: '#A5D6A7',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  modeIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#DCEDC8',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   lettersTitle: {
     fontSize: 22,
     fontWeight: '900',
     color: '#2E7D32',
-    marginBottom: 8,
   },
-  progressTrack: {
-    width: '90%',
-    height: 8,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
-  progressFill: {
-    backgroundColor: '#4CAF50',
-    height: '100%',
-    borderRadius: 4,
-  },
-  progressLabel: {
-    fontSize: 11,
+  modeSubLabel: {
+    fontSize: 13,
     color: '#555555',
+    fontWeight: '500',
   },
+
   wordsCard: {
     flex: 1,
     backgroundColor: '#F3E5F5',
-    borderRadius: 20,
-    padding: 24,
-    minHeight: 180,
+    borderRadius: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    minHeight: 190,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
     borderWidth: 2,
     borderColor: '#CE93D8',
+    shadowColor: '#7B1FA2',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 2,
   },
   wordsTitle: {
     fontSize: 22,
     fontWeight: '900',
     color: '#7B1FA2',
-    marginBottom: 8,
-  },
-  lockIcon: {
-    marginBottom: 8,
-  },
-  wordsNote: {
-    fontSize: 11,
-    color: '#666666',
-    textAlign: 'center',
-    lineHeight: 16,
-    paddingHorizontal: 8,
   },
   progressLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 14,
     paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
   progressLinkText: {
     fontSize: 13,
@@ -652,11 +829,11 @@ const styles = StyleSheet.create({
     color: '#7B1FA2',
   },
   footerNote: {
-    marginTop: 8,
     fontSize: 12,
-    color: '#999999',
+    color: '#AAAAAA',
     textAlign: 'center',
     lineHeight: 18,
+    marginTop: -6,
   },
 
   // ── Assessment Summary Modal ───────────────────────────────────────────────
@@ -664,63 +841,128 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 16,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  modalTitleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCard: {
+    flex: 1,
+    marginHorizontal: 18,
+    marginBottom: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  modalStudentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 16,
+    padding: 14,
+  },
+  modalStudentAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  modalChildName: {
     fontSize: 20,
     fontWeight: '900',
   },
-  modalScroll: {
-    paddingBottom: 32,
+  modalChildSub: {
+    fontSize: 13,
+    color: '#888888',
+    marginTop: 2,
   },
-  modalCard: {
-    margin: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-  },
-  modalChildName: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 20,
+  modalShapeList: {
+    flex: 1,
+    justifyContent: 'space-evenly',
   },
   shapeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#FAFAFA',
   },
-  shapeEmoji: {
-    fontSize: 20,
-    width: 30,
+  shapeIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   shapeName: {
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
     color: '#333333',
-    marginLeft: 8,
   },
   badge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 12,
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   overallCard: {
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: 1,
     padding: 16,
-    marginTop: 20,
   },
-  overallText: {
-    fontSize: 14,
+  overallIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  overallLabel: {
+    fontSize: 12,
+    color: '#888888',
     fontWeight: '500',
   },
   overallValue: {
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 2,
   },
   emptyText: {
     fontSize: 14,
@@ -729,7 +971,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 
-  // ── XAI "Why this order?" Modal ───────────────────────────────────────────
+  // ── XAI Modal ─────────────────────────────────────────────────────────────
   xaiOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

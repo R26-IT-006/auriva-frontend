@@ -56,9 +56,9 @@ const EXERCISE_LABELS = {
 // ─── Status display config ────────────────────────────────────────────────────
 
 const STATUS = {
-  pending: { icon: '·', dotColor: '#E0E0E0', badgeBg: '#F5F5F5', badgeBorder: '#E0E0E0', iconColor: '#9E9E9E', label: 'Not done'   },
-  correct: { icon: '✓', dotColor: '#4CAF50', badgeBg: '#E8F5E9', badgeBorder: '#81C784', iconColor: '#2E7D32', label: 'Correct!'    },
-  good:    { icon: '~', dotColor: '#FF9800', badgeBg: '#FFF3E0', badgeBorder: '#FFB74D', iconColor: '#E65100', label: 'With help'   },
+  pending: { icon: 'ellipse-outline',     dotColor: '#E0E0E0', badgeBg: '#F5F5F5', badgeBorder: '#E0E0E0', iconColor: '#9E9E9E', label: 'Not done'  },
+  correct: { icon: 'checkmark-circle',    dotColor: '#4CAF50', badgeBg: '#E8F5E9', badgeBorder: '#81C784', iconColor: '#2E7D32', label: 'Correct!'   },
+  good:    { icon: 'help-circle-outline', dotColor: '#FF9800', badgeBg: '#FFF3E0', badgeBorder: '#FFB74D', iconColor: '#E65100', label: 'With help'  },
 };
 
 const BLANK_STATUS = { A: 'pending', B: 'pending', C: 'pending', D: 'pending' };
@@ -103,9 +103,9 @@ export default function WordActivityScreen({ route, navigation }) {
 
   // Length-group celebrations (between short/medium/long word groups)
   const GROUP_CELEBRATIONS = useMemo(() => ({
-    3: { emoji: '⭐', title: 'Short words done!',   msg: `Great with short '${letter.toUpperCase()}' words! Keep going!` },
-    4: { emoji: '🌟', title: '4-letter words done!', msg: `Stronger every time with '${letter.toUpperCase()}'!` },
-    5: { emoji: '🏆', title: 'Long words done!',    msg: `You nailed all the long '${letter.toUpperCase()}' words!` },
+    3: { icon: 'star-outline',   title: 'Short words done!',   msg: `Great with short '${letter.toUpperCase()}' words! Keep going!` },
+    4: { icon: 'star',           title: '4-letter words done!', msg: `Stronger every time with '${letter.toUpperCase()}'!` },
+    5: { icon: 'trophy-outline', title: 'Long words done!',     msg: `You nailed all the long '${letter.toUpperCase()}' words!` },
   }), [letter]);
 
   // ── Word / exercise state ─────────────────────────────────────────────────
@@ -326,11 +326,7 @@ export default function WordActivityScreen({ route, navigation }) {
         </Text>
 
         {/* ── Exercise card ── */}
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={styles.cardContainer}>
           <Animated.View style={[styles.card, { opacity: cardAnim }]}>
             <TouchableOpacity
               style={styles.wordHeader}
@@ -346,7 +342,7 @@ export default function WordActivityScreen({ route, navigation }) {
             <View style={styles.divider} />
             {renderExercise()}
           </Animated.View>
-        </ScrollView>
+        </View>
 
       </SafeAreaView>
 
@@ -357,8 +353,10 @@ export default function WordActivityScreen({ route, navigation }) {
         <Modal visible transparent animationType="fade" onRequestClose={handleCelebrationDone}>
           <View style={styles.overlay}>
             <View style={styles.simpleCelebCard}>
-              <Text style={styles.celebEmoji}>{celebrate.emoji}</Text>
-              <Text style={styles.celebTitle}>{celebrate.title}</Text>
+              <View style={[styles.celebIconWrap, { backgroundColor: theme.button + '18' }]}>
+                <Ionicons name={celebrate.icon} size={44} color={theme.button} />
+              </View>
+              <Text style={[styles.celebTitle, { color: theme.headingText }]}>{celebrate.title}</Text>
               <Text style={styles.celebMsg}>{celebrate.msg}</Text>
               <Text style={styles.celebScore}>Score so far: {score.correct} / {score.total}</Text>
               <TouchableOpacity
@@ -366,9 +364,8 @@ export default function WordActivityScreen({ route, navigation }) {
                 onPress={handleCelebrationDone}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.celebBtnText, { color: theme.buttonText }]}>
-                  Continue →
-                </Text>
+                <Text style={[styles.celebBtnText, { color: theme.buttonText }]}>Continue</Text>
+                <Ionicons name="arrow-forward" size={16} color={theme.buttonText} />
               </TouchableOpacity>
             </View>
           </View>
@@ -385,7 +382,9 @@ export default function WordActivityScreen({ route, navigation }) {
 
               {/* Header */}
               <View style={styles.ldHeader}>
-                <Text style={styles.ldEmoji}>🎉</Text>
+                <View style={[styles.ldIconWrap, { backgroundColor: theme.button + '18' }]}>
+                  <Ionicons name="trophy-outline" size={36} color={theme.button} />
+                </View>
                 <View style={{ flex: 1, marginLeft: 14 }}>
                   <Text style={styles.ldTitle}>
                     Letter {letter.toUpperCase()} Complete!
@@ -431,9 +430,14 @@ export default function WordActivityScreen({ route, navigation }) {
               >
                 <Text style={[styles.celebBtnText, { color: theme.buttonText }]}>
                   {nextLetter
-                    ? `Next: Letter ${nextLetter.toUpperCase()} →`
-                    : 'All Done! 🎓'}
+                    ? `Next: Letter ${nextLetter.toUpperCase()}`
+                    : 'All Done!'}
                 </Text>
+                <Ionicons
+                  name={nextLetter ? 'arrow-forward' : 'checkmark-circle-outline'}
+                  size={16}
+                  color={theme.buttonText}
+                />
               </TouchableOpacity>
 
             </View>
@@ -458,14 +462,19 @@ function WordResultRow({ item }) {
           return (
             <View key={ex} style={[rowStyles.badge, { backgroundColor: cfg.badgeBg, borderColor: cfg.badgeBorder }]}>
               <Text style={[rowStyles.badgeLetter, { color: cfg.iconColor }]}>{ex}</Text>
-              <Text style={[rowStyles.badgeIcon,   { color: cfg.iconColor }]}>{cfg.icon}</Text>
+              <Ionicons name={cfg.icon} size={10} color={cfg.iconColor} />
             </View>
           );
         })}
       </View>
       <View style={rowStyles.stars}>
         {[0, 1, 2].map(i => (
-          <Text key={i} style={rowStyles.star}>{i < stars ? '⭐' : '☆'}</Text>
+          <Ionicons
+            key={i}
+            name={i < stars ? 'star' : 'star-outline'}
+            size={14}
+            color={i < stars ? '#FFCA28' : '#CCCCCC'}
+          />
         ))}
       </View>
     </View>
@@ -568,13 +577,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5, marginBottom: 8, opacity: 0.7,
   },
 
-  scroll: { paddingHorizontal: 20, paddingBottom: 32, alignItems: 'center' },
+  cardContainer: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingBottom: 18,
+    alignItems: 'center',
+  },
   card: {
-    width: '100%', maxWidth: 520,
-    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 28,
+    flex: 1,
+    width: '100%', maxWidth: 780,
+    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 30,
     elevation: 4, shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12,
-    gap: 20,
+    gap: 16,
   },
   wordHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -590,13 +605,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
-  celebEmoji: { fontSize: 56, marginBottom: 4 },
-  celebTitle: { fontSize: 22, fontWeight: '900', color: '#1A1A1A', textAlign: 'center' },
+  celebIconWrap: {
+    width: 80, height: 80, borderRadius: 40,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  celebTitle: { fontSize: 22, fontWeight: '900', textAlign: 'center' },
   celebMsg:   { fontSize: 14, color: '#555555', textAlign: 'center', lineHeight: 21 },
   celebScore: { fontSize: 13, fontWeight: '700', color: '#7B1FA2', marginTop: 2 },
   celebBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderRadius: 50, paddingHorizontal: 36, paddingVertical: 14,
-    width: '100%', alignItems: 'center', marginTop: 4,
+    width: '100%', marginTop: 4,
   },
   celebBtnText: { fontSize: 17, fontWeight: '800' },
 
@@ -615,8 +634,11 @@ const styles = StyleSheet.create({
     padding: 24, elevation: 8,
     maxHeight: SCREEN_H * 0.82,
   },
-  ldHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  ldEmoji:  { fontSize: 48 },
+  ldHeader:  { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  ldIconWrap: {
+    width: 60, height: 60, borderRadius: 30,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
   ldTitle:  { fontSize: 20, fontWeight: '900', color: '#1A1A1A' },
   ldScore:  { fontSize: 13, color: '#666666', marginTop: 2, fontWeight: '500' },
   ldPills:  { flexDirection: 'row', gap: 10, marginBottom: 14 },

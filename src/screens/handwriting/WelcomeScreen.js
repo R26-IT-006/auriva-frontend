@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-const BRAND_IMAGE = require('../../../assets/brand.png');
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -19,8 +18,17 @@ const AVATAR_MAP = {
 
 export default function WelcomeScreen({ route, navigation }) {
   const { student, theme } = route.params;
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const mascot = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.megatron;
+
+  const themeColor  = theme?.button     ?? '#312E81';
+  const textOnBtn   = theme?.buttonText ?? '#FFFFFF';
+
+  // Bubble sizes relative to the left panel width (~55% of screen)
+  const panelW = width * 0.55;
+  const bL = panelW * 0.62;   // large bubble diameter
+  const bM = panelW * 0.38;   // medium bubble diameter
+  const bS = panelW * 0.22;   // small bubble diameter
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -29,11 +37,26 @@ export default function WelcomeScreen({ route, navigation }) {
         {/* ── Left panel ─────────────────────────────────────────────────── */}
         <View style={styles.left}>
 
-          {/* Logo + title block */}
+          {/* ── Decorative bubbles (theme-tinted, matching StudentWelcomeScreen) */}
+          <View style={[styles.bubbleLarge, {
+            backgroundColor: themeColor + '14',
+            width: bL, height: bL, borderRadius: bL / 2,
+          }]} />
+          <View style={[styles.bubbleMedium, {
+            backgroundColor: themeColor + '0E',
+            width: bM, height: bM, borderRadius: bM / 2,
+          }]} />
+          <View style={[styles.bubbleSmall, {
+            backgroundColor: themeColor + '09',
+            width: bS, height: bS, borderRadius: bS / 2,
+          }]} />
+
+          {/* Brand block — no logo, large name fills the space */}
           <View style={styles.brandBlock}>
-            <Image source={BRAND_IMAGE} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.appName}>Auriva</Text>
-            <Text style={styles.moduleName}>LETTER WRITING</Text>
+            <Text style={[styles.appName, { color: themeColor }]}>Auriva</Text>
+            <View style={[styles.moduleTag, { backgroundColor: themeColor + '18', borderColor: themeColor + '30' }]}>
+              <Text style={[styles.moduleName, { color: themeColor }]}>LETTER WRITING</Text>
+            </View>
           </View>
 
           {/* Tagline */}
@@ -43,22 +66,24 @@ export default function WelcomeScreen({ route, navigation }) {
 
           {/* Start button */}
           <TouchableOpacity
-            style={styles.startBtn}
+            style={[styles.startBtn, { backgroundColor: themeColor, shadowColor: themeColor }]}
             onPress={() => navigation.navigate('Instructions', { student, theme })}
             activeOpacity={0.85}
           >
-            <Text style={styles.startBtnText}>Start Learning</Text>
+            <Text style={[styles.startBtnText, { color: textOnBtn }]}>Start Learning</Text>
           </TouchableOpacity>
 
         </View>
 
-        {/* ── Right panel ────────────────────────────────────────────────── */}
+        {/* ── Right panel — unchanged ─────────────────────────────────────── */}
         <View style={styles.right}>
 
-          {/* Mascot */}
-          <Image source={mascot} style={[styles.mascot, { height: height * 0.72 }]} resizeMode="contain" />
+          <Image
+            source={mascot}
+            style={[styles.mascot, { height: height * 0.72 }]}
+            resizeMode="contain"
+          />
 
-          {/* Speech bubble */}
           <View style={styles.bubble}>
             <Text style={styles.bubbleText}>Hi there!</Text>
             <Text style={styles.bubbleText}>Let's write together!</Text>
@@ -72,16 +97,10 @@ export default function WelcomeScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#E8EEF8',
-  },
-  root: {
-    flex: 1,
-    flexDirection: 'row',
-  },
+  safe: { flex: 1, backgroundColor: '#E8EEF8' },
+  root: { flex: 1, flexDirection: 'row' },
 
-  // ── Left panel ────────────────────────────────────────────────────────────
+  // ── Left panel ──────────────────────────────────────────────────────────────
   left: {
     flex: 1.1,
     backgroundColor: '#E8EEF8',
@@ -89,27 +108,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 40,
     gap: 28,
+    overflow: 'hidden',   // clips decorative bubbles at the panel edge
+  },
+
+  // Decorative bubbles — same pattern as StudentWelcomeScreen
+  bubbleLarge: {
+    position: 'absolute',
+    top: '-8%',
+    right: '-18%',
+  },
+  bubbleMedium: {
+    position: 'absolute',
+    bottom: '4%',
+    left: '-12%',
+  },
+  bubbleSmall: {
+    position: 'absolute',
+    top: '44%',
+    left: '-6%',
   },
 
   brandBlock: {
     alignItems: 'center',
-    gap: 4,
-  },
-  logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 4,
+    gap: 10,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 62,
     fontWeight: '900',
-    color: '#1B1B4B',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+  },
+  moduleTag: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1.5,
   },
   moduleName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#888888',
+    fontSize: 11,
+    fontWeight: '800',
     letterSpacing: 2.5,
     textTransform: 'uppercase',
   },
@@ -125,11 +161,9 @@ const styles = StyleSheet.create({
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#312E81',
     paddingHorizontal: 36,
     paddingVertical: 16,
     borderRadius: 50,
-    shadowColor: '#312E81',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -138,11 +172,10 @@ const styles = StyleSheet.create({
   startBtnText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
     letterSpacing: 0.2,
   },
 
-  // ── Right panel ───────────────────────────────────────────────────────────
+  // ── Right panel — pixel-identical to original ────────────────────────────────
   right: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -159,11 +192,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-
-  mascot: {
-    width: '90%',
-  },
-
+  mascot: { width: '90%' },
   bubble: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,

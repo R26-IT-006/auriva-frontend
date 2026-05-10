@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+﻿import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -33,8 +33,8 @@ const LINE_2 = Math.round(CANVAS_H * 0.42);  // x-height     — blue solid
 const LINE_3 = Math.round(CANVAS_H * 0.72);  // baseline     — red dashed
 const LINE_4 = Math.round(CANVAS_H * 0.90);  // descender    — blue solid
 
-// Uppercase: cap-height fills LINE_1 → LINE_3.  cap-height â‰ˆ 0.71 Ã— font-size.
-// Lowercase: x-height fills LINE_2 → LINE_3.    x-height   â‰ˆ 0.52 Ã— font-size.
+// Uppercase: cap-height fills LINE_1 → LINE_3.  cap-height ≈ 0.71 × font-size.
+// Lowercase: x-height fills LINE_2 → LINE_3.    x-height   ≈ 0.52 × font-size.
 const GHOST_FONT_UPPER = Math.round((LINE_3 - LINE_1) / 0.71);
 const GHOST_FONT_LOWER = Math.round((LINE_3 - LINE_2) / 0.52);
 
@@ -160,6 +160,7 @@ const LETTER_PATHS = {
   Z:[{fx:0.32,fy:0.12},{fx:0.68,fy:0.12},{fx:0.32,fy:0.72},{fx:0.68,fy:0.72}],
 };
 
+
 // â”€â”€â”€ Feature calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function calculateDrawingFeatures(paths) {
@@ -198,26 +199,26 @@ function getAttemptBadge(smoothness) {
 
 const CATEGORY_CELEBRATION = {
   straight: {
-    emoji: '✏️', title: 'Straight Lines Mastered!',
+    icon: 'create-outline', title: 'Straight Lines Mastered!',
     message: 'You drew perfect lines!\nYour hand is getting stronger every letter.',
-    gradient: ['#E3F2FD', '#BBDEFB'], color: '#1565C0',
+    color: '#1565C0',
   },
   curved: {
-    emoji: '⭕', title: 'Curves Conquered!',
+    icon: 'ellipse-outline', title: 'Curves Conquered!',
     message: 'Beautiful circles and arcs!\nYour strokes are becoming so smooth.',
-    gradient: ['#F3E5F5', '#E1BEE7'], color: '#6A1B9A',
+    color: '#6A1B9A',
   },
   mixed: {
-    emoji: '🌟', title: 'Complex Letters Done!',
+    icon: 'star-outline', title: 'Complex Letters Done!',
     message: 'You handled the trickiest letters!\nThat took real focus and skill.',
-    gradient: ['#FFF8E1', '#FFE082'], color: '#E65100',
+    color: '#E65100',
   },
 };
 
 const ALL_DONE_CELEBRATION = {
-  emoji: '🏆', title: 'All Letters Complete!',
+  icon: 'trophy-outline', title: 'All Letters Complete!',
   message: 'Amazing work! You practised every single letter.\nYou are a handwriting star!',
-  gradient: ['#E8F5E9', '#C8E6C9'], color: '#2E7D32',
+  color: '#2E7D32',
 };
 
 const NEXT_CATEGORY_LABEL = {
@@ -569,7 +570,6 @@ export default function LetterWritingScreen({ route, navigation }) {
                       {letter}
                     </SvgText>
                   )}
-
                   {/* Attempt 2: stroke-order start dot */}
                   {attempt === 2 && (
                     <>
@@ -693,7 +693,7 @@ export default function LetterWritingScreen({ route, navigation }) {
         {celebration && (
           <View style={styles.celebOverlay}>
             <LinearGradient
-              colors={celebration.data.gradient}
+              colors={theme.backgroundGradient}
               style={styles.celebGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
@@ -704,14 +704,16 @@ export default function LetterWritingScreen({ route, navigation }) {
                   transform: [{ scale: celebScale }],
                 }]}
               >
-                <Text style={styles.celebEmoji}>{celebration.data.emoji}</Text>
+                <View style={[styles.celebIconWrap, { backgroundColor: celebration.data.color + '18' }]}>
+                  <Ionicons name={celebration.data.icon} size={52} color={celebration.data.color} />
+                </View>
                 <Text style={[styles.celebTitle, { color: celebration.data.color }]}>
                   {celebration.data.title}
                 </Text>
                 <Text style={styles.celebMessage}>{celebration.data.message}</Text>
 
                 {!celebration.isAllDone && celebration.nextCategory && (
-                  <View style={styles.celebNextBadge}>
+                  <View style={[styles.celebNextBadge, { backgroundColor: celebration.data.color + '12', borderColor: celebration.data.color + '30' }]}>
                     <Text style={styles.celebNextLabel}>Up next: </Text>
                     <Text style={[styles.celebNextValue, { color: celebration.data.color }]}>
                       {NEXT_CATEGORY_LABEL[celebration.nextCategory]}
@@ -720,19 +722,24 @@ export default function LetterWritingScreen({ route, navigation }) {
                 )}
 
                 <View style={styles.celebStars}>
-                  {['⭐','⭐','⭐'].map((s, i) => (
-                    <Text key={i} style={styles.celebStar}>{s}</Text>
+                  {[1, 2, 3].map(i => (
+                    <Ionicons key={i} name="star" size={30} color="#FFCA28" />
                   ))}
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.celebBtn, { backgroundColor: celebration.data.color }]}
+                  style={[styles.celebBtn, { backgroundColor: theme.button }]}
                   onPress={handleDismissCelebration}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.celebBtnText}>
-                    {celebration.isAllDone ? 'All done! 🎉' : 'Keep going! →'}
+                  <Text style={[styles.celebBtnText, { color: theme.buttonText }]}>
+                    {celebration.isAllDone ? 'All done!' : 'Keep going!'}
                   </Text>
+                  <Ionicons
+                    name={celebration.isAllDone ? 'checkmark-circle-outline' : 'arrow-forward'}
+                    size={18}
+                    color={theme.buttonText}
+                  />
                 </TouchableOpacity>
               </Animated.View>
             </LinearGradient>
@@ -971,19 +978,27 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  celebEmoji:    { fontSize: 64, marginBottom: 16 },
+  celebIconWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
   celebTitle:    { fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
   celebMessage:  { fontSize: 15, color: '#555555', textAlign: 'center', lineHeight: 24, marginBottom: 20 },
   celebNextBadge:{
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#F5F5F5', borderRadius: 12,
+    borderWidth: 1, borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20,
   },
   celebNextLabel:{ fontSize: 13, color: '#777777' },
   celebNextValue:{ fontSize: 13, fontWeight: '800' },
   celebStars:    { flexDirection: 'row', gap: 8, marginBottom: 24 },
-  celebStar:     { fontSize: 28 },
-  celebBtn:      { paddingHorizontal: 40, paddingVertical: 14, borderRadius: 50, width: '100%', alignItems: 'center' },
-  celebBtnText:  { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
+  celebBtn:      {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingHorizontal: 40, paddingVertical: 14, borderRadius: 50, width: '100%',
+  },
+  celebBtnText:  { fontSize: 17, fontWeight: '800' },
 });
-
