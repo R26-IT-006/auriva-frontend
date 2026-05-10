@@ -544,7 +544,7 @@ export const CONCEPT_CATEGORIES = {
   },
   colors: {
     key:   'colors',
-    label: 'Colors',
+    label: 'Colours',
     items: [
       {
         key:   'red',

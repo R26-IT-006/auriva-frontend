@@ -16,7 +16,7 @@ import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
 
 const CATEGORIES = [
-  { key: 'colors',        label: 'Colors',               image: require('../../../../assets/concepts/category-images/Colors.png') },
+  { key: 'colors',        label: 'Colours',              image: require('../../../../assets/concepts/category-images/Colors.png') },
   { key: 'shapes',        label: 'Shapes',               image: require('../../../../assets/concepts/category-images/Shapes.png') },
   { key: 'numbers',       label: 'Numbers',              image: require('../../../../assets/concepts/category-images/Numbers.png') },
   { key: 'classroom',     label: 'Classroom Objects',    image: require('../../../../assets/concepts/category-images/Classroom Objects.png') },

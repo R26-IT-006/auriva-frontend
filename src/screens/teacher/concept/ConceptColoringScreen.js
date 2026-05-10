@@ -53,7 +53,7 @@ export default function ConceptColoringScreen({ route, navigation }) {
 
   useEffect(() => {
     setTimeout(() => {
-      Speech.speak(`Let's color the ${concept?.label}!`, { language: 'en-US', rate: 0.8 });
+      Speech.speak(`Let's colour the ${concept?.label}!`, { language: 'en-US', rate: 0.8 });
     }, 400);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -115,7 +115,7 @@ export default function ConceptColoringScreen({ route, navigation }) {
         {/* Pill — above everything, centred on the canvas axis */}
         <View style={[styles.pill, { backgroundColor: theme.cardSurface }]}>
           <Text style={[styles.pillText, { color: theme.headingText }]}>
-            Color the {concept.label}!
+            Colour the {concept.label}!
           </Text>
         </View>
 
