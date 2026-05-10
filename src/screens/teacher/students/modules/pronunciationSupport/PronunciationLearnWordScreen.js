@@ -16,6 +16,7 @@ import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback"
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { Asset } from "expo-asset";
 import { Audio, ResizeMode, Video } from "expo-av";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
@@ -30,6 +31,15 @@ import {
 
 const CAT_FLASHCARD_VIDEO = require("../../../../../../assets/pronunciation-videos/whiskers_cat.mp4");
 const CAT_MEOW_AUDIO = require("../../../../../../assets/pronunciation-audios/cat_meow.wav");
+
+async function getPlayableAudioSource(audioAsset) {
+  const resolvedAsset = Asset.fromModule(audioAsset);
+  await resolvedAsset.downloadAsync();
+
+  return resolvedAsset.localUri
+    ? { uri: resolvedAsset.localUri }
+    : audioAsset;
+}
 
 export default function PronunciationLearnWordScreen({ navigation, route }) {
   const student = route.params?.student;
@@ -275,8 +285,9 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
         pronunciationSoundRef.current = null;
       }
 
-      const { sound } = await Audio.Sound.createAsync(audioAsset, {
-        shouldPlay: true,
+      const playableSource = await getPlayableAudioSource(audioAsset);
+      const { sound } = await Audio.Sound.createAsync(playableSource, {
+        shouldPlay: false,
         volume: 1,
       });
 
@@ -290,6 +301,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           }
         }
       });
+      await sound.replayAsync();
     } catch (error) {
       console.log("Pronunciation audio playback error:", error);
       setIsPlaying(false);
@@ -334,6 +346,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
               <ButtonFeedback
                 activeOpacity={0.88}
                 onPress={handleHearSounds}
+                soundEnabled={false}
                 style={[styles.hearBtn, { backgroundColor: theme.button }, isPlaying && styles.hearBtnActive]}
               >
                 <Ionicons

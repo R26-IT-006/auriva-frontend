@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { Asset } from "expo-asset";
 import { Audio } from "expo-av";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { Colors } from "../../../../../constants/colors";
@@ -40,6 +41,15 @@ function buildChoices(categoryId, targetWord) {
   const categoryWords = WORD_BANK[categoryId] || WORD_BANK.animals || [];
   const distractors = categoryWords.filter((word) => word.id !== targetWord?.id);
   return [targetWord, ...distractors].filter(Boolean).slice(0, 4);
+}
+
+async function getPlayableAudioSource(audioAsset) {
+  const resolvedAsset = Asset.fromModule(audioAsset);
+  await resolvedAsset.downloadAsync();
+
+  return resolvedAsset.localUri
+    ? { uri: resolvedAsset.localUri }
+    : audioAsset;
 }
 
 function ChoiceCard({ item, state, onPress, width, disabled }) {
@@ -158,8 +168,9 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
         soundRef.current = null;
       }
 
-      const { sound } = await Audio.Sound.createAsync(audioAsset, {
-        shouldPlay: true,
+      const playableSource = await getPlayableAudioSource(audioAsset);
+      const { sound } = await Audio.Sound.createAsync(playableSource, {
+        shouldPlay: false,
         volume: 1,
       });
 
@@ -174,6 +185,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
           }
         }
       });
+      await sound.replayAsync();
     } catch (error) {
       console.log("Listen and choose playback error:", error);
       setIsPlaying(false);
@@ -263,6 +275,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
               <ButtonFeedback
                 activeOpacity={0.88}
                 onPress={playTargetWord}
+                soundEnabled={false}
                 style={[styles.playBtn, { backgroundColor: theme.button }, isPlaying && styles.playBtnActive]}
               >
                 <Ionicons name="volume-high-outline" size={22} color="#FFFFFF" />
@@ -314,6 +327,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
               <ButtonFeedback
                 activeOpacity={0.86}
                 onPress={playTargetWord}
+                soundEnabled={false}
                 style={[styles.secondaryBtn, { borderColor: theme.cardOutline }]}
               >
                 <Ionicons name="refresh" size={18} color={theme.headingText} />
