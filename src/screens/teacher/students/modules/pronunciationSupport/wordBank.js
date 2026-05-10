@@ -109,6 +109,43 @@ const WORD_METADATA = {
   jump: { ipa: "/dʒʌmp/", syllableCount: 1, difficulty: 3, pattern: "CVCC", easierWords: ["jellyfish"], relatedWords: ["butterfly"] },
 };
 
+const WORD_SINHALA_TRANSLATIONS = {
+  cat: "පූසා",
+  dog: "බල්ලා",
+  fish: "මාළුවා",
+  bird: "කුරුල්ලා",
+  worm: "පණුවා",
+  whale: "තල්මසා",
+  turtle: "කැස්බෑවා",
+  tiger: "කොටියා",
+  snail: "ගොළුබෙල්ලා",
+  pigeon: "පරවියා",
+  penguin: "පෙන්ගුවින්",
+  mosquito: "මදුරුවා",
+  leopard: "දිවියා",
+  kangaroo: "කැන්ගරු",
+  jellyfish: "ජෙලිෆිෂ්",
+  horse: "අශ්වයා",
+  hippo: "හිපෝ",
+  goose: "පාත්තයා",
+  fox: "නරියා",
+  elephant: "අලියා",
+  eagle: "රාජාලියා",
+  deer: "මුවා",
+  crab: "කකුළුවා",
+  cow: "එළදෙන",
+  chick: "කුකුළු පැටියා",
+  butterfly: "සමනලයා",
+  buffalo: "මී හරකා",
+  ant: "කුහුඹියා",
+  book: "පොත",
+  desk: "මේසය",
+  apple: "ඇපල්",
+  mango: "අඹ",
+  walk: "ඇවිදින්න",
+  jump: "පනින්න",
+};
+
 function getSoundPosition(index, total) {
   if (total <= 1) return "single";
   if (index === 0) return "initial";
@@ -148,6 +185,11 @@ function enrichWord(word, categoryId) {
     syllabusCategory: metadata.syllabusCategory || categoryId,
     easierWords: metadata.easierWords || [],
     relatedWords: metadata.relatedWords || [],
+    sinhalaTranslation:
+      word.sinhalaTranslation ||
+      metadata.sinhalaTranslation ||
+      WORD_SINHALA_TRANSLATIONS[word.id] ||
+      null,
     targetPhonemes,
     supportCue:
       metadata.supportCue ||

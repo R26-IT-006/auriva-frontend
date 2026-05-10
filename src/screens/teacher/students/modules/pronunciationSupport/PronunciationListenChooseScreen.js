@@ -241,6 +241,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
 
             <View style={styles.headerCopy}>
               <Text style={[styles.title, { color: theme.headingText }]}>Listen and Choose</Text>
+              <Text style={[styles.titleSinhala, { color: theme.headingText }]}>අසා තෝරන්න</Text>
               <Text style={[styles.subtitle, { color: theme.headingText }]}>
                 {student?.full_name ? `${student.full_name}'s listening activity` : "Listening activity"}
               </Text>
@@ -251,6 +252,9 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
             <View style={[styles.promptRow, isCompact && styles.promptRowCompact]}>
               <View style={styles.promptCopy}>
                 <Text style={[styles.promptTitle, { color: theme.headingText }]}>Tap the picture you hear</Text>
+                <Text style={[styles.promptTitleSinhala, { color: theme.headingText }]}>
+                  ඇසෙන පින්තූරය තට්ටු කරන්න
+                </Text>
                 <Text style={[styles.roundText, { color: theme.headingText }]}>
                   Round {roundIndex + 1} of {activityWords.length}
                 </Text>
@@ -389,6 +393,14 @@ const styles = StyleSheet.create({
     fontWeight: Layout.fontWeight.bold,
     letterSpacing: 0,
   },
+  titleSinhala: {
+    marginTop: 2,
+    fontSize: Layout.fontSize.xl,
+    lineHeight: 28,
+    fontWeight: "800",
+    letterSpacing: 0,
+    opacity: 0.82,
+  },
   subtitle: {
     marginTop: 2,
     fontSize: Layout.fontSize.sm,
@@ -420,6 +432,14 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     fontWeight: "800",
     letterSpacing: 0,
+  },
+  promptTitleSinhala: {
+    marginTop: 4,
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: "800",
+    letterSpacing: 0,
+    opacity: 0.82,
   },
   roundText: {
     marginTop: 4,

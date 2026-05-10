@@ -80,6 +80,9 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
 
         <View style={[styles.centerWrap, isCompact && styles.centerWrapCompact]}>
           <Text style={[styles.title, isCompact && styles.titleCompact, { color: theme.headingText }]}>Watch the mouth shapes</Text>
+          <Text style={[styles.titleSinhala, isCompact && styles.titleSinhalaCompact, { color: theme.headingText }]}>
+            මුඛ හැඩ බලන්න
+          </Text>
 
           <View style={styles.cardsRow}>
             {MOUTH_SHAPES.map((item) => (
@@ -162,11 +165,24 @@ const styles = StyleSheet.create({
     color: "#2C5878",
     fontWeight: "800",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 4,
   },
   titleCompact: {
     fontSize: 24,
     lineHeight: 30,
+  },
+  titleSinhala: {
+    fontSize: 23,
+    lineHeight: 30,
+    color: "#2C5878",
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 24,
+    opacity: 0.82,
+  },
+  titleSinhalaCompact: {
+    fontSize: 21,
+    lineHeight: 28,
   },
   cardsRow: {
     flexDirection: "row",

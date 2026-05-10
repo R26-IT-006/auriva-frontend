@@ -537,6 +537,15 @@ export default function PronunciationResultScreen({ navigation, route }) {
                 >
                   Great Job
                 </Text>
+                <Text
+                  style={[
+                    styles.studentResultTitleSinhala,
+                    isCompact && styles.studentResultTitleSinhalaCompact,
+                    { color: theme.headingText },
+                  ]}
+                >
+                  හරිම හොඳයි
+                </Text>
               </View>
             ) : (
               <Animated.View
@@ -561,6 +570,15 @@ export default function PronunciationResultScreen({ navigation, route }) {
                   ]}
                 >
                   Keep Practicing
+                </Text>
+                <Text
+                  style={[
+                    styles.studentResultTitleSinhala,
+                    styles.lowScoreTitle,
+                    isCompact && styles.studentResultTitleSinhalaCompact,
+                  ]}
+                >
+                  තව පුහුණු වෙමු
                 </Text>
               </Animated.View>
             )}
@@ -772,9 +790,22 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
+  studentResultTitleSinhala: {
+    marginTop: -8,
+    fontSize: 34,
+    lineHeight: 42,
+    fontWeight: "800",
+    textAlign: "center",
+    opacity: 0.82,
+  },
   studentResultTitleCompact: {
     fontSize: 38,
     lineHeight: 46,
+  },
+  studentResultTitleSinhalaCompact: {
+    marginTop: -4,
+    fontSize: 26,
+    lineHeight: 34,
   },
   lowScoreTitle: {
     color: "#FF4D6D",

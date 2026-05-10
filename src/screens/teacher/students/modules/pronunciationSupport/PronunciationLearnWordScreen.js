@@ -77,6 +77,10 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   const sounds = selectedWord?.sounds || [];
   const canShowCatFlashcard = selectedWord?.id === "cat";
   const selectedWordImageSource = getWordImageSource(selectedWord);
+  const sinhalaTranslation =
+    !isAlphabetMode && selectedWord?.sinhalaTranslation
+      ? selectedWord.sinhalaTranslation
+      : null;
 
   const floatingCardStyle = {
     opacity: flashcardOverlayOpacity,
@@ -291,6 +295,9 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           <Text style={[styles.headline, isCompact && styles.headlineCompact, { color: theme.headingText }]}>
             {isAlphabetMode ? "Listen to the letter sound" : "Listen to the sounds"}
           </Text>
+          <Text style={[styles.headlineSinhala, isCompact && styles.headlineSinhalaCompact, { color: theme.headingText }]}>
+            {isAlphabetMode ? "අකුරු ශබ්දයට සවන් දෙන්න" : "ශබ්ද වලට සවන් දෙන්න"}
+          </Text>
 
           <View
             style={[
@@ -319,6 +326,13 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                 />
                 <Text style={styles.hearBtnText}>Hear Sounds</Text>
               </ButtonFeedback>
+
+              {sinhalaTranslation ? (
+                <View style={styles.translationBox}>
+                  <Text style={styles.translationLabel}>Sinhala meaning</Text>
+                  <Text style={styles.translationText}>{sinhalaTranslation}</Text>
+                </View>
+              ) : null}
             </View>
 
             <View style={[styles.imagePane, !isWideTablet && styles.imagePaneCompact]}>
@@ -400,6 +414,9 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
               <View>
                 <Text style={styles.flashcardEyebrow}>Flashcard</Text>
                 <Text style={styles.flashcardTitle}>cat</Text>
+                {sinhalaTranslation ? (
+                  <Text style={styles.flashcardTranslation}>{sinhalaTranslation}</Text>
+                ) : null}
               </View>
               <ButtonFeedback
                 activeOpacity={0.82}
@@ -475,12 +492,26 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1F4C66",
     letterSpacing: 0,
-    marginBottom: 26,
+    marginBottom: 6,
     textAlign: "center",
   },
   headlineCompact: {
     fontSize: 30,
     lineHeight: 36,
+    marginBottom: 4,
+  },
+  headlineSinhala: {
+    fontSize: 28,
+    lineHeight: 36,
+    fontWeight: "800",
+    letterSpacing: 0,
+    marginBottom: 26,
+    textAlign: "center",
+    opacity: 0.82,
+  },
+  headlineSinhalaCompact: {
+    fontSize: 22,
+    lineHeight: 30,
     marginBottom: Layout.spacing.lg,
   },
   wordCard: {
@@ -553,6 +584,31 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: Layout.fontSize.sm,
     fontWeight: Layout.fontWeight.bold,
+  },
+  translationBox: {
+    minWidth: 160,
+    maxWidth: 260,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "#F8FBFF",
+    borderWidth: 1,
+    borderColor: "#D9E5F2",
+    alignItems: "center",
+  },
+  translationLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#6C7A8E",
+    textTransform: "uppercase",
+  },
+  translationText: {
+    marginTop: 4,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: "800",
+    color: "#263752",
+    textAlign: "center",
   },
   imagePane: {
     width: "42%",
@@ -735,6 +791,13 @@ const styles = StyleSheet.create({
     fontSize: 42,
     lineHeight: 46,
     fontWeight: "900",
+  },
+  flashcardTranslation: {
+    marginTop: 2,
+    color: "#526276",
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "800",
   },
   flashcardClose: {
     width: 48,

@@ -390,6 +390,9 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
         <Text style={[styles.title, isCompact && styles.titleCompact, { color: theme.headingText }]}>
           {isAlphabetMode ? "Say this letter" : "What is this?"}
         </Text>
+        <Text style={[styles.titleSinhala, isCompact && styles.titleSinhalaCompact, { color: theme.headingText }]}>
+          {isAlphabetMode ? "මේ අකුර කියන්න" : "මේ මොකක්ද?"}
+        </Text>
 
         <View style={[styles.contentRow, isCompact && styles.contentRowCompact, { width: cardWidth }]}>
           <View style={[styles.imageCard, isCompact && styles.imageCardCompact]}>
@@ -539,12 +542,26 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "800",
     color: "#2C5878",
-    marginBottom: 26,
+    marginBottom: 4,
     textAlign: "center",
   },
   titleCompact: {
     fontSize: 26,
     lineHeight: 32,
+    marginBottom: 4,
+  },
+  titleSinhala: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "800",
+    color: "#2C5878",
+    marginBottom: 26,
+    textAlign: "center",
+    opacity: 0.82,
+  },
+  titleSinhalaCompact: {
+    fontSize: 22,
+    lineHeight: 28,
     marginBottom: Layout.spacing.lg,
   },
   contentRow: {
