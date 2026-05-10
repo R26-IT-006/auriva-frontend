@@ -57,6 +57,7 @@ export function ButtonFeedback({
   style,
   activeOpacity = 1,
   disabled = false,
+  soundEnabled = true,
   hitSlop,
   ...touchableProps
 }) {
@@ -85,7 +86,9 @@ export function ButtonFeedback({
       return;
     }
 
-    playClickSound();
+    if (soundEnabled) {
+      playClickSound();
+    }
     onPress?.(event);
   }
 

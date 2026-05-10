@@ -90,7 +90,24 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     ],
   };
 
-  function handleNext() {
+  async function releaseLearningAudio() {
+    if (pronunciationSoundRef.current) {
+      await pronunciationSoundRef.current.unloadAsync().catch(() => {});
+      pronunciationSoundRef.current = null;
+    }
+    if (catMeowSoundRef.current) {
+      await catMeowSoundRef.current.unloadAsync().catch(() => {});
+      catMeowSoundRef.current = null;
+    }
+    if (catVideoRef.current) {
+      await catVideoRef.current.pauseAsync().catch(() => {});
+    }
+    setIsPlaying(false);
+    setIsCatFlashcardVisible(false);
+  }
+
+  async function handleNext() {
+    await releaseLearningAudio();
     setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
     navigation.navigate("PronunciationSpeakWord", {
       student,

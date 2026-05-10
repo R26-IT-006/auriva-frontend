@@ -53,6 +53,10 @@ function getAudioMimeType(uri) {
   return "audio/mp4";
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function readAudioClip(uri) {
   if (!uri) return null;
 
@@ -70,6 +74,74 @@ async function readAudioClip(uri) {
     rawAudioMimeType: getAudioMimeType(uri),
     rawAudioSize,
   };
+}
+
+const RECORDING_AUDIO_MODE = {
+  allowsRecordingIOS: true,
+  playsInSilentModeIOS: true,
+  staysActiveInBackground: false,
+  shouldDuckAndroid: true,
+  interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+  interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+  playThroughEarpieceAndroid: false,
+};
+
+const PLAYBACK_AUDIO_MODE = {
+  ...RECORDING_AUDIO_MODE,
+  allowsRecordingIOS: false,
+};
+
+const PRONUNCIATION_RECORDING_OPTIONS = {
+  isMeteringEnabled: true,
+  android: {
+    extension: ".m4a",
+    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+    audioEncoder: Audio.AndroidAudioEncoder.AAC,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 64000,
+  },
+  ios: {
+    extension: ".m4a",
+    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+    audioQuality: Audio.IOSAudioQuality.HIGH,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 64000,
+  },
+  web: {
+    mimeType: "audio/webm",
+    bitsPerSecond: 64000,
+  },
+};
+
+async function resetAudioSessionForRecording() {
+  await Audio.setIsEnabledAsync(false).catch(() => {});
+  await wait(140);
+  await Audio.setIsEnabledAsync(true);
+  await wait(60);
+  await Audio.setAudioModeAsync(RECORDING_AUDIO_MODE);
+}
+
+async function createRecordingWithRecovery() {
+  const recordingAttempts = [
+    PRONUNCIATION_RECORDING_OPTIONS,
+    Audio.RecordingOptionsPresets.LOW_QUALITY,
+  ];
+  let lastError = null;
+
+  for (const options of recordingAttempts) {
+    try {
+      await resetAudioSessionForRecording();
+      return await Audio.Recording.createAsync(options);
+    } catch (error) {
+      lastError = error;
+      Audio.setAudioModeAsync(PLAYBACK_AUDIO_MODE).catch(() => {});
+      await wait(160);
+    }
+  }
+
+  throw lastError || new Error("Unable to prepare the audio recorder.");
 }
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
@@ -218,22 +290,13 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      );
+      const { recording } = await createRecordingWithRecovery();
 
       recordingRef.current = recording;
       setRecordingSeconds(0);
       setIsRecording(true);
     } catch (error) {
+      Audio.setAudioModeAsync(PLAYBACK_AUDIO_MODE).catch(() => {});
       Alert.alert(
         "Recording error",
         error.message || "Unable to start recording.",
@@ -285,6 +348,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     } finally {
       recordingRef.current = null;
       setIsRecording(false);
+      Audio.setAudioModeAsync(PLAYBACK_AUDIO_MODE).catch(() => {});
     }
   }
 
@@ -422,6 +486,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
               activeOpacity={0.88}
               onPress={handleTapToSpeak}
               disabled={isScoring}
+              soundEnabled={false}
               style={styles.micHitArea}
             >
               <Animated.View
