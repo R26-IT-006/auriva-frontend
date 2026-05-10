@@ -17,27 +17,27 @@ const STEPS = [
   {
     icon: 'pencil-outline',
     title: 'Position the stylus',
-    desc: 'Ensure the child is comfortably holding the tablet stylus or using their finger.',
+    desc: 'Ensure the child is comfortably holding the stylus or using their finger.',
   },
   {
     icon: 'chatbubble-ellipses-outline',
-    title: 'Explain the task',
-    desc: 'Tell the child to trace or draw the shapes shown on screen at their own pace.',
+    title: 'Explain the activity',
+    desc: 'Ask the child to trace or draw the shapes shown on the screen.',
   },
   {
     icon: 'hand-left-outline',
-    title: 'Do not assist',
-    desc: "Avoid guiding the child's hand during drawing. Only assist if they cannot start.",
+    title: 'Avoid guiding',
+    desc: "Do not hold or guide the child's hand unless needed to start.",
   },
   {
     icon: 'time-outline',
-    title: 'Allow natural speed',
-    desc: 'Let the child complete each shape at their own pace. Do not rush or set time limits.',
+    title: 'Allow natural pace',
+    desc: 'Let the child draw at their own speed without rushing.',
   },
   {
     icon: 'desktop-outline',
-    title: 'System auto-records',
-    desc: 'The system automatically captures stroke trajectory, direction, speed, pause count and line stability. No manual recording needed.',
+    title: 'Automatic recording',
+    desc: 'The system records movement, speed, pauses, and stroke stability automatically.',
   },
 ];
 
@@ -68,6 +68,20 @@ export default function InstructionScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      {/* ── Decorative background bubbles (same style as StudentWelcomeScreen) ── */}
+      <View style={[styles.bgBubbleLarge, {
+        backgroundColor: theme.button + '12',
+        width: width * 0.42, height: width * 0.42, borderRadius: width * 0.21,
+      }]} />
+      <View style={[styles.bgBubbleMedium, {
+        backgroundColor: theme.button + '0D',
+        width: width * 0.26, height: width * 0.26, borderRadius: width * 0.13,
+      }]} />
+      <View style={[styles.bgBubbleSmall, {
+        backgroundColor: theme.button + '09',
+        width: width * 0.15, height: width * 0.15, borderRadius: width * 0.075,
+      }]} />
+
       <SafeAreaView style={styles.safe}>
 
         <View style={[styles.root, isLandscape && styles.rootLandscape]}>
@@ -171,6 +185,23 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
+  // Decorative background bubbles
+  bgBubbleLarge: {
+    position: 'absolute',
+    top: '-8%',
+    right: '-10%',
+  },
+  bgBubbleMedium: {
+    position: 'absolute',
+    bottom: '6%',
+    left: '-8%',
+  },
+  bgBubbleSmall: {
+    position: 'absolute',
+    top: '48%',
+    right: '-4%',
+  },
+
   // Root layout switches between portrait (column) and landscape (row)
   root: {
     flex: 1,
@@ -202,27 +233,27 @@ const styles = StyleSheet.create({
     marginBottom: '2%',
   },
   teacherBadgeText: {
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.8,
   },
 
   title: {
-    fontSize: 22,
+    fontSize: 34,
     fontWeight: '900',
-    lineHeight: 30,
+    lineHeight: 42,
     marginBottom: '1%',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 22,
     fontWeight: '700',
     marginBottom: '1.5%',
     letterSpacing: 0.3,
   },
   intro: {
-    fontSize: 14,
+    fontSize: 18,
     color: '#555555',
-    lineHeight: 21,
+    lineHeight: 27,
   },
 
   // ── Steps ─────────────────────────────────────────────────────────────────
@@ -249,33 +280,33 @@ const styles = StyleSheet.create({
   },
 
   stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   stepNumber: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '900',
   },
 
   stepBody: {
     flex: 1,
-    gap: 2,
+    gap: 4,
   },
   stepTitle: {
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: '800',
     flexShrink: 1,
     marginBottom: 2,
   },
   stepDesc: {
-    fontSize: 13,
+    fontSize: 17,
     color: '#555555',
-    lineHeight: 19,
+    lineHeight: 25,
   },
 
   // ── Begin button ──────────────────────────────────────────────────────────
@@ -284,8 +315,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 7,
-    paddingVertical: 10,
-    paddingHorizontal: 22,
+    paddingVertical: 15,
+    paddingHorizontal: 32,
     borderRadius: 50,
     marginTop: '2%',
     shadowColor: '#000',
@@ -295,7 +326,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   beginBtnText: {
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '700',
     letterSpacing: 0.2,
   },
@@ -327,10 +358,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   speechText: {
-    fontSize: 13,
+    fontSize: 17,
     color: '#333333',
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 25,
     textAlign: 'center',
   },
 

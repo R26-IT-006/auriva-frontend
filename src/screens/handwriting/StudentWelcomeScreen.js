@@ -21,7 +21,7 @@ export default function StudentWelcomeScreen({ route, navigation }) {
   const { student, theme } = route.params;
   const { width, height } = useWindowDimensions();
 
-  const avatarSize = Math.min(width, height) * 0.52;
+  const avatarSize = Math.min(width, height) * 0.50;
 
   return (
     <LinearGradient
@@ -59,8 +59,6 @@ export default function StudentWelcomeScreen({ route, navigation }) {
               Let's practice handwriting!
             </Text>
           </View>
-
-          <View style={styles.spacer} />
 
           {/* ── Start button ─────────────────────────────────────────────── */}
           <View style={styles.btnWrapper}>
@@ -100,36 +98,32 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: '6%',
+    paddingVertical: '5%',
+    gap: 28,
   },
 
-  avatar: {
-    marginBottom: '4%',
-  },
+  avatar: {},
 
   textBlock: {
     alignItems: 'center',
     gap: 10,
   },
   greeting: {
-    fontSize: 34,
+    fontSize: 38,
     fontWeight: '900',
     textAlign: 'center',
     letterSpacing: 0.3,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
     opacity: 0.85,
   },
 
-  spacer: { flex: 1 },
-
   btnWrapper: {
     width: '80%',
-    maxWidth: 340,
-    marginBottom: '4%',
+    maxWidth: 360,
   },
   startButton: {
     width: '100%',

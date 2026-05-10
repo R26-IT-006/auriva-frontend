@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line, Circle, Polyline, Path, G, Defs, Marker } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 
@@ -26,7 +26,7 @@ const CANVAS_CY     = CANVAS_HEIGHT / 2;
 
 const POINTER_SIZE = 14;
 const POINTER_HALF = POINTER_SIZE / 2;
-const N_POINTS     = 100; // animation path sample count
+const N_POINTS     = 100;
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -80,6 +80,25 @@ const SHAPES = [
   },
 ];
 
+// Starting coordinates (SVG space) for pulsing ring — matches GuideShape start dots
+const SHAPE_STARTS = {
+  horizontal_line: { x: CANVAS_CX - 200,  y: CANVAS_CY        },
+  vertical_line:   { x: CANVAS_CX,         y: CANVAS_CY - 150  },
+  full_circle:     { x: CANVAS_CX,         y: CANVAS_CY - 120  },
+  half_circle:     { x: CANVAS_CX - 150,   y: CANVAS_CY        },
+  zigzag:          { x: CANVAS_CX - 180,   y: CANVAS_CY + 40   },
+  curve_wave:      { x: CANVAS_CX - 180,   y: CANVAS_CY        },
+};
+
+const SHAPE_AUDIO = {
+  horizontal_line: require('../../../assets/handwriting_instructions/horizontal_line.mp3'),
+  vertical_line:   require('../../../assets/handwriting_instructions/vertical_line.mp3'),
+  full_circle:     require('../../../assets/handwriting_instructions/circle.mp3'),
+  half_circle:     require('../../../assets/handwriting_instructions/curved.mp3'),
+  zigzag:          require('../../../assets/handwriting_instructions/zig_zag.mp3'),
+  curve_wave:      require('../../../assets/handwriting_instructions/wave.mp3'),
+};
+
 // ─── Animated pointer path sampling ───────────────────────────────────────────
 
 function computePathPoints(shapeId) {
@@ -107,10 +126,9 @@ function computePathPoints(shapeId) {
     }
 
   } else if (shapeId === 'half_circle') {
-    // arc from (cx-150, cy) upward through (cx, cy-150) to (cx+150, cy)
     const r = 150;
     for (let i = 0; i <= N_POINTS; i++) {
-      const angle = Math.PI + (i / N_POINTS) * Math.PI; // π → 2π
+      const angle = Math.PI + (i / N_POINTS) * Math.PI;
       pts.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
     }
 
@@ -220,7 +238,6 @@ function calculateFeatures(paths, shapeId) {
       return s + Math.abs(Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2) - r);
     }, 0) / allPoints.length;
   }
-  // zigzag, curve_wave: accuracy = 0, use smoothness as proxy
 
   return { duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy };
 }
@@ -230,26 +247,26 @@ function calculateFeatures(paths, shapeId) {
 function GuideShape({ shapeId, theme }) {
   const cx = CANVAS_CX;
   const cy = CANVAS_CY;
-  const dash = { stroke: '#CCCCCC', strokeWidth: 3, strokeDasharray: '10,6' };
+  const dash = { stroke: '#B8C8E8', strokeWidth: 3, strokeDasharray: '10,6' };
 
   if (shapeId === 'horizontal_line') return (
     <>
       <Line x1={cx - 200} y1={cy} x2={cx + 200} y2={cy} {...dash} />
-      <Circle cx={cx - 200} cy={cy} r={8} fill={theme.button} />
+      <Circle cx={cx - 200} cy={cy} r={12} fill={theme.button} />
     </>
   );
 
   if (shapeId === 'vertical_line') return (
     <>
       <Line x1={cx} y1={cy - 150} x2={cx} y2={cy + 150} {...dash} />
-      <Circle cx={cx} cy={cy - 150} r={8} fill={theme.button} />
+      <Circle cx={cx} cy={cy - 150} r={12} fill={theme.button} />
     </>
   );
 
   if (shapeId === 'full_circle') return (
     <>
       <Circle cx={cx} cy={cy} r={120} fill="none" {...dash} />
-      <Circle cx={cx} cy={cy - 120} r={8} fill={theme.button} />
+      <Circle cx={cx} cy={cy - 120} r={12} fill={theme.button} />
     </>
   );
 
@@ -259,7 +276,7 @@ function GuideShape({ shapeId, theme }) {
         d={`M ${cx - 150} ${cy} A 150 150 0 0 1 ${cx + 150} ${cy}`}
         fill="none" {...dash}
       />
-      <Circle cx={cx - 150} cy={cy} r={8} fill={theme.button} />
+      <Circle cx={cx - 150} cy={cy} r={12} fill={theme.button} />
     </>
   );
 
@@ -273,7 +290,7 @@ function GuideShape({ shapeId, theme }) {
     return (
       <>
         <Polyline points={pts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" {...dash} />
-        <Circle cx={cx - 180} cy={cy + 40} r={8} fill={theme.button} />
+        <Circle cx={cx - 180} cy={cy + 40} r={12} fill={theme.button} />
       </>
     );
   }
@@ -284,7 +301,7 @@ function GuideShape({ shapeId, theme }) {
         d={`M ${cx - 180} ${cy} Q ${cx - 120} ${cy - 60},${cx - 60} ${cy} Q ${cx} ${cy + 60},${cx + 60} ${cy} Q ${cx + 120} ${cy - 60},${cx + 180} ${cy}`}
         fill="none" {...dash}
       />
-      <Circle cx={cx - 180} cy={cy} r={8} fill={theme.button} />
+      <Circle cx={cx - 180} cy={cy} r={12} fill={theme.button} />
     </>
   );
 
@@ -308,60 +325,32 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const allPathsRef          = useRef([]);
   const completedShapesRef   = useRef([]);
   const animValue            = useRef(new Animated.Value(0)).current;
-  const femaleVoiceRef   = useRef(null);
-  const sinhalaVoiceRef  = useRef(null);
-  const voicesReadyRef   = useRef(false);
+  const pulseAnim            = useRef(new Animated.Value(0)).current;
+  const pulseLoopRef         = useRef(null);
+  const soundRef             = useRef(null);
 
   const currentShape = SHAPES[currentShapeIndex];
 
-  // Detect voices once on mount
-  useEffect(() => {
-    // Female name hints — checked as a fallback only
-    const FEMALE_NAMES = ['samantha', 'karen', 'victoria', 'zira', 'hazel', 'susan', 'fiona', 'moira', 'allison'];
-    Speech.getAvailableVoicesAsync()
-      .then(voices => {
-        const enVoices = voices.filter(v => v.language?.startsWith('en'));
+  const pulseScale = useMemo(
+    () => pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }),
+    [pulseAnim],
+  );
+  const pulseOpacity = useMemo(
+    () => pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.75, 0] }),
+    [pulseAnim],
+  );
 
-        // Priority order (most natural → least):
-        //  1. Enhanced quality  → Google WaveNet / neural (sounds human)
-        //  2. Named female      → Samantha, Karen, etc.
-        //  3. Any English voice → last resort
-        const enhanced = enVoices.find(v => v.quality === Speech.VoiceQuality?.Enhanced);
-        const named    = enVoices.find(v => FEMALE_NAMES.some(n => v.name?.toLowerCase().includes(n)));
-        femaleVoiceRef.current = (enhanced || named || enVoices[0])?.identifier ?? null;
-
-        // Sinhala voice — only set if device actually has one
-        const siVoice = voices.find(v => v.language?.startsWith('si'));
-        sinhalaVoiceRef.current = siVoice?.identifier ?? null;
-
-        voicesReadyRef.current = true;
-      })
-      .catch(() => { voicesReadyRef.current = true; });
-
-    return () => Speech.stop();
+  const playShapeAudio = useCallback(async (shapeId) => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(SHAPE_AUDIO[shapeId]);
+      soundRef.current = sound;
+      await sound.playAsync();
+    } catch (_) {}
   }, []);
-
-  // Speak current shape instruction: English first, then Sinhala if available
-  const speakInstruction = useCallback((shape) => {
-    const target = shape ?? currentShape;
-    const enOpts = {
-      language: 'en-US',
-      rate:     0.65,
-      pitch:    1.05,
-      ...(femaleVoiceRef.current ? { voice: femaleVoiceRef.current } : {}),
-      onDone: () => {
-        if (sinhalaVoiceRef.current) {
-          Speech.speak(target.instructionSi, {
-            language: 'si-LK',
-            rate:     0.75,
-            voice:    sinhalaVoiceRef.current,
-          });
-        }
-      },
-    };
-    Speech.stop();
-    Speech.speak(target.instruction, enOpts);
-  }, [currentShape]);
 
   // Precompute interpolation ranges for animated pointer
   const pathPoints = computePathPoints(currentShape.id);
@@ -375,41 +364,39 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     outputRange: pathPoints.map(p => p.y - POINTER_HALF),
   });
 
-  // Restart animation and speak instruction on shape change
+  // Restart animations and speak on shape change
   useEffect(() => {
     animValue.setValue(0);
-    const anim = Animated.loop(
+    pulseAnim.setValue(0);
+
+    const pointerLoop = Animated.loop(
       Animated.timing(animValue, {
         toValue: 1,
         duration: 2500,
         useNativeDriver: false,
       })
     );
-    anim.start();
+    pointerLoop.start();
 
-    // Speak directly — avoids stale callback closure.
-    // 900 ms lets TTS engine initialise on first load.
+    const pulseLoop = Animated.loop(
+      Animated.timing(pulseAnim, {
+        toValue: 1,
+        duration: 1100,
+        useNativeDriver: true,
+      })
+    );
+    pulseLoopRef.current = pulseLoop;
+    pulseLoop.start();
+
     const shape = SHAPES[currentShapeIndex];
-    const t = setTimeout(() => {
-      const enOpts = {
-        language: 'en-US',
-        rate:     0.78,
-        pitch:    1.15,
-        ...(femaleVoiceRef.current ? { voice: femaleVoiceRef.current } : {}),
-        onDone: () => {
-          if (sinhalaVoiceRef.current) {
-            Speech.speak(shape.instructionSi, {
-              language: 'si-LK',
-              rate:     0.75,
-              voice:    sinhalaVoiceRef.current,
-            });
-          }
-        },
-      };
-      Speech.speak(shape.instruction, enOpts);
-    }, 900);
+    const t = setTimeout(() => { playShapeAudio(shape.id); }, 300);
 
-    return () => { anim.stop(); clearTimeout(t); Speech.stop(); };
+    return () => {
+      pointerLoop.stop();
+      pulseLoop.stop();
+      clearTimeout(t);
+      if (soundRef.current) { soundRef.current.unloadAsync(); soundRef.current = null; }
+    };
   }, [currentShapeIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── PanResponder ────────────────────────────────────────────────────────────
@@ -475,6 +462,13 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   }, []);
 
   const handleNext = useCallback(async () => {
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      } catch (_) {}
+      soundRef.current = null;
+    }
     const idx = currentShapeIndexRef.current;
     const shapeData = {
       shapeId:   SHAPES[idx].id,
@@ -506,6 +500,8 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   }, [navigation, student, theme, submitAssessment]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
+  const startDot = SHAPE_STARTS[currentShape.id];
+
   return (
     <LinearGradient
       colors={theme.backgroundGradient}
@@ -515,15 +511,22 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     >
       <SafeAreaView style={styles.safe}>
 
-        {/* ── Main vertical container ── */}
         <View style={styles.container}>
 
-          {/* TOP: label + title + instruction */}
+          {/* ── TOP: assessment badge + shape title + success badge + instruction ── */}
           <View style={styles.topArea}>
-            <Text style={styles.pageLabel}>{currentShape.pageLabel}</Text>
+
+            <View style={[styles.assessBadge, { backgroundColor: theme.button + '18', borderColor: theme.button + '40' }]}>
+              <Ionicons name="pencil-outline" size={13} color={theme.button} />
+              <Text style={[styles.assessBadgeText, { color: theme.button }]}>
+                {currentShape.pageLabel}
+              </Text>
+            </View>
+
             <Text style={[styles.shapeTitle, { color: theme.headingText }]}>
               {currentShape.label}
             </Text>
+
             <View style={[styles.instructionCard, { borderLeftColor: theme.button }]}>
               <View style={styles.instructionInner}>
                 <View style={styles.instructionTexts}>
@@ -531,21 +534,22 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
                   <Text style={styles.instructionSi}>{currentShape.instructionSi}</Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => speakInstruction()}
+                  onPress={() => playShapeAudio(currentShape.id)}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   style={[styles.speakerBtn, { backgroundColor: theme.button + '18' }]}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="volume-high" size={20} color={theme.button} />
+                  <Ionicons name="volume-high" size={24} color={theme.button} />
                 </TouchableOpacity>
               </View>
             </View>
+
           </View>
 
-          {/* MIDDLE: canvas */}
+          {/* ── MIDDLE: drawing canvas ── */}
           <View style={styles.canvasArea}>
             <View
-              style={[styles.canvasCard, { borderColor: theme.cardOutline }]}
+              style={[styles.canvasCard, { borderColor: theme.button + '30' }]}
               {...panResponder.panHandlers}
             >
               <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
@@ -576,6 +580,24 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
                 )}
               </Svg>
 
+              {/* Pulsing ring — guides child to start position */}
+              {!showNext && (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.pulseDot,
+                    {
+                      left:            startDot.x - 18,
+                      top:             startDot.y - 18,
+                      borderColor:     theme.button,
+                      backgroundColor: theme.button + '20',
+                      transform:       [{ scale: pulseScale }],
+                      opacity:         pulseOpacity,
+                    },
+                  ]}
+                />
+              )}
+
               {/* Animated guide pointer */}
               <Animated.View
                 pointerEvents="none"
@@ -587,7 +609,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* BOTTOM: progress dots + buttons */}
+          {/* ── BOTTOM: progress dots + action buttons ── */}
           <View style={styles.bottomArea}>
             <View style={styles.progressDots}>
               {SHAPES.map((_, i) => {
@@ -598,9 +620,9 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
                     key={i}
                     style={[
                       styles.dot,
-                      done   && { width: 10, height: 10, backgroundColor: theme.button,  borderColor: theme.button,  borderWidth: 2 },
-                      active && { width: 10, height: 10, backgroundColor: 'transparent', borderColor: theme.button,  borderWidth: 2 },
-                      !done && !active && { width: 8, height: 8, backgroundColor: 'transparent', borderColor: '#CCCCCC', borderWidth: 2 },
+                      done   && { backgroundColor: theme.button,    borderColor: theme.button   },
+                      active && { backgroundColor: 'transparent',   borderColor: theme.button   },
+                      !done && !active && { backgroundColor: 'transparent', borderColor: '#CCCCCC' },
                     ]}
                   />
                 );
@@ -609,11 +631,12 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
             <View style={styles.buttonsRow}>
               <TouchableOpacity
-                style={[styles.clearButton, { borderColor: theme.cardOutline }]}
+                style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
                 onPress={handleClear}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
+                <Ionicons name="refresh" size={18} color={theme.button} />
+                <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
               </TouchableOpacity>
 
               {showNext && (
@@ -623,6 +646,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
                   activeOpacity={0.85}
                 >
                   <Text style={[styles.nextText, { color: theme.buttonText }]}>Next</Text>
+                  <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
                 </TouchableOpacity>
               )}
             </View>
@@ -630,7 +654,20 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
         </View>
 
-        {/* Avatar — absolute relative to SafeAreaView (screen-level) */}
+        {/* Feedback bubble — speech bubble above avatar's head */}
+        {showNext && (
+          <>
+            <View style={[styles.avatarBubble, { borderColor: theme.button + '40' }]}>
+              <Ionicons name="checkmark-circle" size={16} color="#2E7D32" style={{ marginBottom: 2 }} />
+              <Text style={styles.avatarBubbleText}>Great drawing!</Text>
+            </View>
+            {/* Tail pointing right toward avatar's head */}
+            <View style={styles.avatarBubbleTailBorder} />
+            <View style={styles.avatarBubbleTail} />
+          </>
+        )}
+
+        {/* Avatar — screen-level absolute */}
         <Image
           source={AVATAR_MAP[student?.avatar_key]}
           style={styles.avatarImage}
@@ -659,31 +696,61 @@ const styles = StyleSheet.create({
     width: '100%',
     flexShrink: 0,
   },
-  pageLabel: {
-    fontSize: 13,
-    color: '#999999',
-    textAlign: 'center',
+
+  assessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    alignSelf: 'center',
+    marginBottom: 8,
   },
+  assessBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+
   shapeTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '900',
     textAlign: 'center',
-    marginTop: 4,
+    marginBottom: 4,
   },
+
+  successBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginBottom: 6,
+  },
+  successText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+
   instructionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 22,
     paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderLeftWidth: 4,
     width: '100%',
     maxWidth: 520,
     alignSelf: 'center',
-    marginTop: 12,
+    marginTop: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   instructionInner: {
@@ -696,21 +763,21 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   instructionEn: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#444444',
     textAlign: 'center',
   },
   instructionSi: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#7B7B9E',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   speakerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -725,14 +792,14 @@ const styles = StyleSheet.create({
   canvasCard: {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFF',
     borderRadius: 20,
     borderWidth: 2,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
     elevation: 3,
   },
   pointer: {
@@ -741,6 +808,13 @@ const styles = StyleSheet.create({
     height: POINTER_SIZE,
     borderRadius: POINTER_HALF,
     opacity: 0.8,
+  },
+  pulseDot: {
+    position: 'absolute',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
   },
 
   // Bottom area
@@ -755,7 +829,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dot: {
-    borderRadius: 5,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
   },
   buttonsRow: {
     flexDirection: 'row',
@@ -763,32 +840,94 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1.5,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 13,
     borderRadius: 50,
   },
   clearText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   nextButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 36,
+    paddingVertical: 13,
     borderRadius: 50,
   },
   nextText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
 
-  // Avatar — screen-level absolute
+  // Avatar
   avatarImage: {
     position: 'absolute',
-    bottom: -20,
-    right: 60,
-    width: 120,
-    height: 150,
+    bottom: -10,
+    right: 8,
+    width: 250,
+    height: 320,
     zIndex: 10,
+  },
+
+  // Feedback speech bubble above avatar's head
+  avatarBubble: {
+    position: 'absolute',
+    bottom: 258,
+    right: 110,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+    maxWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 4,
+    zIndex: 11,
+  },
+  avatarBubbleText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  // Border layer of tail (slightly larger triangle in border color)
+  avatarBubbleTailBorder: {
+    position: 'absolute',
+    bottom: 268,
+    right: 93,
+    width: 0,
+    height: 0,
+    borderTopWidth: 11,
+    borderBottomWidth: 11,
+    borderLeftWidth: 16,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: '#00000026',
+    zIndex: 11,
+  },
+  // White fill of tail
+  avatarBubbleTail: {
+    position: 'absolute',
+    bottom: 270,
+    right: 95,
+    width: 0,
+    height: 0,
+    borderTopWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftWidth: 14,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: '#FFFFFF',
+    zIndex: 12,
   },
 });
