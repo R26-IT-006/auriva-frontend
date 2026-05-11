@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItemsForCategory } from '../../../constants/conceptData';
 import { conceptApi } from '../../../api/concept';
@@ -115,6 +116,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
 
   const [progressItems, setProgressItems] = useState([]);
   const [loading,       setLoading]       = useState(true);
+  const [gateVisible,   setGateVisible]   = useState(false);
 
   const theme    = getAvatarTheme(student?.avatar_key);
   const H_PAD    = Layout.spacing.md;
@@ -266,7 +268,13 @@ export default function ConceptItemsScreen({ route, navigation }) {
             <Text style={[styles.title, { color: theme.headingText }]}>{category.label.toUpperCase()}</Text>
           </View>
 
-          <View style={styles.iconBtn} />
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            onPress={() => setGateVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="school" size={20} color={theme.headingText} />
+          </TouchableOpacity>
         </View>
 
         <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -290,6 +298,15 @@ export default function ConceptItemsScreen({ route, navigation }) {
           />
         )}
       </SafeAreaView>
+
+      <ParentGateModal
+        visible={gateVisible}
+        onSuccess={() => {
+          setGateVisible(false);
+          navigation.navigate('StudentConceptProgress', { student, category });
+        }}
+        onCancel={() => setGateVisible(false)}
+      />
 
     </LinearGradient>
   );

@@ -136,9 +136,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginTop: 70,
   },
   title: {
-    fontSize: 18,
+    fontSize: 32,
     fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: -0.3,
   },

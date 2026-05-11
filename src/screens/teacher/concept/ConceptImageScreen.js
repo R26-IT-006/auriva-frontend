@@ -203,10 +203,6 @@ export default function ConceptImageScreen({ route, navigation }) {
           </View>
         )}
 
-        <Text style={[styles.instruction, { color: theme.headingText }]}>
-          {getConceptPhrase(concept)}
-        </Text>
-
         {/* Main image — tappable */}
         <View style={[styles.imageContainer, { width: imgSize, height: imgSize }]}>
           <TouchableOpacity
@@ -307,13 +303,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Nunito_700Bold',
   },
-  instruction: {
-    fontSize: 24,
-    fontFamily: 'Nunito_900Black',
-    letterSpacing: -0.3,
-    marginTop: 8,
-    marginBottom: 16,
-  },
   imageContainer: {
     position: 'relative',
   },
@@ -345,7 +334,7 @@ const styles = StyleSheet.create({
   },
   fwdBtnWrap: {
     position: 'absolute',
-    bottom: 36,
+    bottom: 80,
     alignSelf: 'center',
   },
   fwdBtn: {

@@ -225,6 +225,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 100,
   },
 
   topBar: {

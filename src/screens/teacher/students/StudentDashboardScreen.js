@@ -31,13 +31,18 @@ const AVATAR_NAMES = {
   boba: 'Boba', glitter: 'Glitter', lily: 'Lily', megatron: 'Megatron',
 };
 
-const CONCEPT_ICON = require('../../../../assets/concepts/Concept Learning Module Icon.png');
+const MODULE_ICONS = {
+  concept:       require('../../../../assets/modules/Icons/Concept Learning Icon.png'),
+  writing:       require('../../../../assets/modules/Icons/Writing Module Icon.png'),
+  pronunciation: require('../../../../assets/modules/Icons/Pronunciation Module Icon.png'),
+  dialogue:      require('../../../../assets/modules/Icons/Dialogue Module Icon.png'),
+};
 
 const MODULES = [
-  { key: 'concept',       label: 'Concept Learning',    icon: 'bulb-outline',        image: CONCEPT_ICON },
-  { key: 'writing',       label: 'Writing Module',       icon: 'pencil-outline' },
-  { key: 'pronunciation', label: 'Pronunciation Module', icon: 'mic-outline' },
-  { key: 'dialogue',      label: 'Dialogue Module',      icon: 'chatbubbles-outline' },
+  { key: 'concept',       label: 'Concept Learning',    image: MODULE_ICONS.concept },
+  { key: 'writing',       label: 'Writing Module',       image: MODULE_ICONS.writing },
+  { key: 'pronunciation', label: 'Pronunciation Module', image: MODULE_ICONS.pronunciation },
+  { key: 'dialogue',      label: 'Dialogue Module',      image: MODULE_ICONS.dialogue },
 ];
 
 export default function StudentDashboardScreen({ route, navigation }) {
@@ -149,10 +154,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
                 }}
                 activeOpacity={0.8}
               >
-                <View style={[
-                  styles.moduleIconWrap,
-                  { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : theme.background },
-                ]}>
+                <View style={styles.moduleIconWrap}>
                   {m.image ? (
                     <Image source={m.image} style={styles.moduleIconImage} resizeMode="contain" />
                   ) : (
@@ -290,10 +292,10 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  moduleIconImage: { width: 150, height: 150 },
+  moduleIconImage: { width: 100, height: 100 },
   moduleIconWrap: {
-    width: 154, height: 154,
-    borderRadius: 26,
+    width: 104, height: 104,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

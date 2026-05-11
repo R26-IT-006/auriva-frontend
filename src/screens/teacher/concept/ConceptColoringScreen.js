@@ -53,7 +53,7 @@ export default function ConceptColoringScreen({ route, navigation }) {
 
   useEffect(() => {
     setTimeout(() => {
-      Speech.speak(`Let's colour the ${concept?.label}!`, { language: 'en-US', rate: 0.8 });
+      Speech.speak(`Let's colour the ${concept?.label?.toLowerCase()}!`, { language: 'en-US', rate: 0.8 });
     }, 400);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -115,8 +115,13 @@ export default function ConceptColoringScreen({ route, navigation }) {
         {/* Pill — above everything, centred on the canvas axis */}
         <View style={[styles.pill, { backgroundColor: theme.cardSurface }]}>
           <Text style={[styles.pillText, { color: theme.headingText }]}>
-            Colour the {concept.label}!
+            Colour the {concept.label.toLowerCase()}!
           </Text>
+          {concept.labelSi && (
+            <Text style={[styles.pillTextSi, { color: theme.headingText }]}>
+              {concept.labelSi} වර්ණ ගන්වමු!
+            </Text>
+          )}
         </View>
 
         {/* Palette + Canvas side by side, both starting at the same top */}
@@ -237,6 +242,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  pillTextSi: {
+    fontSize: 15,
+    fontFamily: 'Nunito_700Bold',
+    opacity: 0.65,
+    textAlign: 'center',
+    marginTop: 2,
   },
 
   /* Palette and canvas share the same row, tops flush */

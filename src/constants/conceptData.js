@@ -859,16 +859,18 @@ const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
 
 export function getConceptPhrase(concept) {
   if (!concept) return '';
-  if (concept.plural) return `These are ${concept.label}`;
-  const article = VOWELS.has(concept.label[0].toLowerCase()) ? 'an' : 'a';
-  return `This is ${article} ${concept.label}`;
+  const name = concept.label.toLowerCase();
+  if (concept.plural) return `These are ${name}`;
+  const article = VOWELS.has(name[0]) ? 'an' : 'a';
+  return `This is ${article} ${name}`;
 }
 
 export function getConceptQuestion(concept) {
   if (!concept) return '';
-  if (concept.plural) return `Can you find ${concept.label} here?`;
-  const article = VOWELS.has(concept.label[0].toLowerCase()) ? 'an' : 'a';
-  return `Can you find ${article} ${concept.label} here?`;
+  const name = concept.label.toLowerCase();
+  if (concept.plural) return `Can you find ${name} here?`;
+  const article = VOWELS.has(name[0]) ? 'an' : 'a';
+  return `Can you find ${article} ${name} here?`;
 }
 
 // Sinhala has no articles — structure is the same for singular and plural
