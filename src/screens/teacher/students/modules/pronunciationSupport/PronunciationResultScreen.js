@@ -26,6 +26,10 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
+import {
+  buildPronunciationResultPayload,
+  DEFAULT_PHONEME_SCORES,
+} from "./pronunciationPayloads.js";
 
 const EXPECTED_PRONUNCIATION_SCORE = 80;
 const WELL_DONE_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/well-done-female.mp3");
@@ -232,11 +236,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
     return words.find((item) => item.id === "dog") || words[0];
   }, [currentWord?.id, recommendation?.word, words]);
 
-  const sounds = phonemeScores || currentWord?.sounds || [
-    { text: "/k/", score: 91 },
-    { text: "/æ/", score: 40 },
-    { text: "/t/", score: 76 },
-  ];
+  const sounds = phonemeScores || currentWord?.sounds || DEFAULT_PHONEME_SCORES;
 
   async function unloadCelebrationSounds() {
     const soundsToUnload = celebrationSoundsRef.current;
@@ -306,33 +306,24 @@ export default function PronunciationResultScreen({ navigation, route }) {
 
     hasSavedResultRef.current = true;
 
-    const payload = {
+    const payload = buildPronunciationResultPayload({
       mode,
-      category_id: isAlphabetMode ? null : categoryId,
-      word_id: currentWord.id,
-      word_label: currentWord.letter || currentWord.word || currentWord.id,
-      overall_score: displayScore,
-      phoneme_scores: sounds.map((sound, index) => ({
-        text: sound.text || "",
-        type: sound.type || null,
-        position: sound.position || null,
-        cue: sound.cue || null,
-        score: sound.score ?? [91, 40, 76][index] ?? displayScore,
-      })),
-      response_duration: responseDuration,
-      hesitation_time: hesitationTime ?? null,
-      recommendation_type: recommendation?.type || null,
-      recommendation_message: recommendation?.message || null,
-      recommendation_details: recommendation?.details || null,
-      next_word_id: nextWord?.id || null,
-      attempt_number: Math.max(1, numberOfAttempts || 1),
-      workflow_completed: true,
-      recording_uri: recordingUri || null,
-      raw_audio_base64: rawAudioBase64 || null,
-      raw_audio_mime_type: rawAudioMimeType || null,
-      raw_audio_size: rawAudioSize || null,
-      listen_choose_data: savedListenChooseData,
-    };
+      categoryId,
+      isAlphabetMode,
+      currentWord,
+      displayScore,
+      sounds,
+      responseDuration,
+      hesitationTime,
+      recommendation,
+      nextWord,
+      numberOfAttempts,
+      recordingUri,
+      rawAudioBase64,
+      rawAudioMimeType,
+      rawAudioSize,
+      listenChooseData: savedListenChooseData,
+    });
 
     teacherApi.savePronunciationResult(studentId, payload).catch((error) => {
       hasSavedResultRef.current = false;

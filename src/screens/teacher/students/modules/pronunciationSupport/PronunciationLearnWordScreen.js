@@ -16,7 +16,6 @@ import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback"
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Asset } from "expo-asset";
 import { Audio, ResizeMode, Video } from "expo-av";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
@@ -28,18 +27,14 @@ import {
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
+import {
+  getPlayableAudioSource,
+  setPronunciationPlaybackMode,
+  unloadSoundRef,
+} from "./pronunciationAudioPlayback.js";
 
 const CAT_FLASHCARD_VIDEO = require("../../../../../../assets/pronunciation-videos/whiskers_cat.mp4");
 const CAT_MEOW_AUDIO = require("../../../../../../assets/pronunciation-audios/cat_meow.wav");
-
-async function getPlayableAudioSource(audioAsset) {
-  const resolvedAsset = Asset.fromModule(audioAsset);
-  await resolvedAsset.downloadAsync();
-
-  return resolvedAsset.localUri
-    ? { uri: resolvedAsset.localUri }
-    : audioAsset;
-}
 
 export default function PronunciationLearnWordScreen({ navigation, route }) {
   const student = route.params?.student;
@@ -101,14 +96,8 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   };
 
   async function releaseLearningAudio() {
-    if (pronunciationSoundRef.current) {
-      await pronunciationSoundRef.current.unloadAsync().catch(() => {});
-      pronunciationSoundRef.current = null;
-    }
-    if (catMeowSoundRef.current) {
-      await catMeowSoundRef.current.unloadAsync().catch(() => {});
-      catMeowSoundRef.current = null;
-    }
+    await unloadSoundRef(pronunciationSoundRef);
+    await unloadSoundRef(catMeowSoundRef);
     if (catVideoRef.current) {
       await catVideoRef.current.pauseAsync().catch(() => {});
     }
@@ -174,12 +163,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
 
   function handleOpenCatFlashcard() {
     if (!canShowCatFlashcard) return;
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,
-      shouldDuckAndroid: false,
-      playThroughEarpieceAndroid: false,
-    }).catch(() => {});
+    setPronunciationPlaybackMode().catch(() => {});
     setCatVideoKey((key) => key + 1);
     setIsCatFlashcardVisible(true);
     playCatMeow();
@@ -187,12 +171,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
 
   async function handleReplayCatVideo() {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: false,
-        playThroughEarpieceAndroid: false,
-      });
+      await setPronunciationPlaybackMode();
 
       if (catVideoRef.current) {
         await catVideoRef.current.setPositionAsync(0);
@@ -228,17 +207,8 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
 
   async function playCatMeow() {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: false,
-        playThroughEarpieceAndroid: false,
-      });
-
-      if (catMeowSoundRef.current) {
-        await catMeowSoundRef.current.unloadAsync().catch(() => {});
-        catMeowSoundRef.current = null;
-      }
+      await setPronunciationPlaybackMode();
+      await unloadSoundRef(catMeowSoundRef);
 
       const { sound } = await Audio.Sound.createAsync(CAT_MEOW_AUDIO, {
         shouldPlay: true,
@@ -272,18 +242,8 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
 
     try {
       setIsPlaying(true);
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: false,
-        playThroughEarpieceAndroid: false,
-      });
-
-      if (pronunciationSoundRef.current) {
-        await pronunciationSoundRef.current.unloadAsync().catch(() => {});
-        pronunciationSoundRef.current = null;
-      }
+      await setPronunciationPlaybackMode();
+      await unloadSoundRef(pronunciationSoundRef);
 
       const playableSource = await getPlayableAudioSource(audioAsset);
       const { sound } = await Audio.Sound.createAsync(playableSource, {

@@ -13,6 +13,7 @@ import {
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
+import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
 
 const PRONUNCIATION_MODE_OPTIONS = [
   {
@@ -30,32 +31,6 @@ const PRONUNCIATION_MODE_OPTIONS = [
     panelColor: "#DFF3E2",
   },
 ];
-
-function Step({ label, active, done, theme }) {
-  return (
-    <View style={styles.stepWrap}>
-      <View
-        style={[
-          styles.stepCircle,
-          active && { backgroundColor: theme.button, borderColor: theme.button },
-          done && { backgroundColor: theme.cardOutline, borderColor: theme.cardOutline },
-        ]}
-      >
-        {done ? (
-          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-        ) : (
-          <Text style={[styles.stepNumber, active && styles.stepNumberActive]}>
-            {label}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
-}
-
-function StepConnector({ theme }) {
-  return <View style={[styles.stepConnector, { backgroundColor: theme.cardOutline }]} />;
-}
 
 function CategoryCard({ item, selected, onPress, cardWidth, theme }) {
   return (
@@ -184,13 +159,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
           </View>
         </View>
 
-        <View style={styles.stepsRow}>
-          <Step label="1" done theme={theme} />
-          <StepConnector theme={theme} />
-          <Step label="2" active theme={theme} />
-          <StepConnector theme={theme} />
-          <Step label="3" theme={theme} />
-        </View>
+        <PronunciationStepIndicator currentStep={2} theme={theme} />
 
         <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
           <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Mode</Text>
@@ -319,49 +288,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: Layout.fontSize.sm,
     color: Colors.text.secondary,
-  },
-  stepsRow: {
-    marginTop: Layout.spacing.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 2,
-    borderColor: "#98A8BC",
-    backgroundColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepCircleActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  stepCircleDone: {
-    backgroundColor: "#4F9CCC",
-    borderColor: "#4F9CCC",
-  },
-  stepNumber: {
-    fontSize: Layout.fontSize.xs,
-    color: "#6E7D92",
-    fontWeight: Layout.fontWeight.bold,
-  },
-  stepNumberActive: {
-    color: "#FFFFFF",
-  },
-  stepConnector: {
-    width: 54,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#6DA5C8",
-    marginHorizontal: 8,
   },
   panel: {
     width: "100%",

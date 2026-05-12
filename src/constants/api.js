@@ -53,8 +53,6 @@ export const ENDPOINTS = {
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
   TEACHER_PRONUNCIATION_SCORE: (id) =>
     `/teacher/students/${id}/pronunciation-score`,
-  TEACHER_PRONUNCIATION_RESULT: (id) =>
-    `/teacher/students/${id}/pronunciation-results`,
   TEACHER_PRONUNCIATION_RESULTS: (id) =>
     `/teacher/students/${id}/pronunciation-results`,
   TEACHER_PRONUNCIATION_RESULT_AUDIO: (id) =>

@@ -4,7 +4,7 @@ import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback"
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
+import { Audio } from "expo-av";
 import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
@@ -16,133 +16,12 @@ import {
 } from "./pronunciationSessionStore.js";
 import { getWordImageSource } from "./wordBank.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
-
-function arrayBufferToBase64(buffer) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  const bytes = new Uint8Array(buffer);
-  let output = "";
-  let index = 0;
-
-  for (; index + 2 < bytes.length; index += 3) {
-    const triplet = (bytes[index] << 16) | (bytes[index + 1] << 8) | bytes[index + 2];
-    output += alphabet[(triplet >> 18) & 63];
-    output += alphabet[(triplet >> 12) & 63];
-    output += alphabet[(triplet >> 6) & 63];
-    output += alphabet[triplet & 63];
-  }
-
-  if (index < bytes.length) {
-    const first = bytes[index];
-    const second = index + 1 < bytes.length ? bytes[index + 1] : 0;
-    const triplet = (first << 16) | (second << 8);
-    output += alphabet[(triplet >> 18) & 63];
-    output += alphabet[(triplet >> 12) & 63];
-    output += index + 1 < bytes.length ? alphabet[(triplet >> 6) & 63] : "=";
-    output += "=";
-  }
-
-  return output;
-}
-
-function getAudioMimeType(uri) {
-  const lowerUri = String(uri || "").toLowerCase();
-  if (lowerUri.endsWith(".m4a")) return "audio/mp4";
-  if (lowerUri.endsWith(".caf")) return "audio/x-caf";
-  if (lowerUri.endsWith(".wav")) return "audio/wav";
-  if (lowerUri.endsWith(".3gp")) return "audio/3gpp";
-  return "audio/mp4";
-}
-
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function readAudioClip(uri) {
-  if (!uri) return null;
-
-  const response = await fetch(uri);
-  const buffer = await response.arrayBuffer();
-  const rawAudioBase64 = arrayBufferToBase64(buffer);
-  const rawAudioSize = buffer.byteLength || null;
-
-  if (!rawAudioBase64 || !rawAudioSize) {
-    throw new Error("Recorded audio file was empty.");
-  }
-
-  return {
-    rawAudioBase64,
-    rawAudioMimeType: getAudioMimeType(uri),
-    rawAudioSize,
-  };
-}
-
-const RECORDING_AUDIO_MODE = {
-  allowsRecordingIOS: true,
-  playsInSilentModeIOS: true,
-  staysActiveInBackground: false,
-  shouldDuckAndroid: true,
-  interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-  interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-  playThroughEarpieceAndroid: false,
-};
-
-const PLAYBACK_AUDIO_MODE = {
-  ...RECORDING_AUDIO_MODE,
-  allowsRecordingIOS: false,
-};
-
-const PRONUNCIATION_RECORDING_OPTIONS = {
-  isMeteringEnabled: true,
-  android: {
-    extension: ".m4a",
-    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 64000,
-  },
-  ios: {
-    extension: ".m4a",
-    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-    audioQuality: Audio.IOSAudioQuality.HIGH,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 64000,
-  },
-  web: {
-    mimeType: "audio/webm",
-    bitsPerSecond: 64000,
-  },
-};
-
-async function resetAudioSessionForRecording() {
-  await Audio.setIsEnabledAsync(false).catch(() => {});
-  await wait(140);
-  await Audio.setIsEnabledAsync(true);
-  await wait(60);
-  await Audio.setAudioModeAsync(RECORDING_AUDIO_MODE);
-}
-
-async function createRecordingWithRecovery() {
-  const recordingAttempts = [
-    PRONUNCIATION_RECORDING_OPTIONS,
-    Audio.RecordingOptionsPresets.LOW_QUALITY,
-  ];
-  let lastError = null;
-
-  for (const options of recordingAttempts) {
-    try {
-      await resetAudioSessionForRecording();
-      return await Audio.Recording.createAsync(options);
-    } catch (error) {
-      lastError = error;
-      Audio.setAudioModeAsync(PLAYBACK_AUDIO_MODE).catch(() => {});
-      await wait(160);
-    }
-  }
-
-  throw lastError || new Error("Unable to prepare the audio recorder.");
-}
+import {
+  createRecordingWithRecovery,
+  PLAYBACK_AUDIO_MODE,
+  readAudioClip,
+} from "./pronunciationRecording.js";
+import { buildPronunciationScoringPayload } from "./pronunciationPayloads.js";
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
@@ -370,19 +249,18 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
 
     try {
       setIsScoring(true);
-      const scoringResult = await teacherApi.scorePronunciationAttempt(studentId, {
-        mode,
-        category_id: isAlphabetMode ? null : categoryId,
-        word_id: word?.id || "cat",
-        word_label: word?.letter || word?.word || word?.id || "cat",
-        difficulty: word?.difficulty || null,
-        target_phonemes: word?.sounds || [],
-        response_duration: responseDuration,
-        attempt_number: numberOfAttempts + 1,
-        raw_audio_base64: savedAudioData.rawAudioBase64,
-        raw_audio_mime_type: savedAudioData.rawAudioMimeType,
-        raw_audio_size: savedAudioData.rawAudioSize,
-      });
+      const scoringResult = await teacherApi.scorePronunciationAttempt(
+        studentId,
+        buildPronunciationScoringPayload({
+          mode,
+          categoryId,
+          isAlphabetMode,
+          word,
+          responseDuration,
+          attemptNumber: numberOfAttempts + 1,
+          audioData: savedAudioData,
+        }),
+      );
 
       submitScoredAttempt(scoringResult, {
         recordingUri: savedRecordingUri,

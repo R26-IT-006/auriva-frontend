@@ -10,7 +10,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Asset } from "expo-asset";
 import { Audio } from "expo-av";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { Colors } from "../../../../../constants/colors";
@@ -23,6 +22,11 @@ import {
   PRONUNCIATION_STEPS,
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
+import {
+  getPlayableAudioSource,
+  setPronunciationPlaybackMode,
+  unloadSoundRef,
+} from "./pronunciationAudioPlayback.js";
 
 function buildActivityWords(categoryId, preferredWord) {
   const categoryWords = WORD_BANK[categoryId] || WORD_BANK.animals || [];
@@ -41,15 +45,6 @@ function buildChoices(categoryId, targetWord) {
   const categoryWords = WORD_BANK[categoryId] || WORD_BANK.animals || [];
   const distractors = categoryWords.filter((word) => word.id !== targetWord?.id);
   return [targetWord, ...distractors].filter(Boolean).slice(0, 4);
-}
-
-async function getPlayableAudioSource(audioAsset) {
-  const resolvedAsset = Asset.fromModule(audioAsset);
-  await resolvedAsset.downloadAsync();
-
-  return resolvedAsset.localUri
-    ? { uri: resolvedAsset.localUri }
-    : audioAsset;
 }
 
 function ChoiceCard({ item, state, onPress, width, disabled }) {
@@ -156,17 +151,8 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
 
     try {
       setIsPlaying(true);
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: false,
-        playThroughEarpieceAndroid: false,
-      });
-
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-      }
+      await setPronunciationPlaybackMode();
+      await unloadSoundRef(soundRef);
 
       const playableSource = await getPlayableAudioSource(audioAsset);
       const { sound } = await Audio.Sound.createAsync(playableSource, {

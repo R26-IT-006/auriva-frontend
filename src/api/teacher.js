@@ -48,7 +48,7 @@ export const teacherApi = {
 
   async savePronunciationResult(studentId, payload) {
     const { data } = await client.post(
-      ENDPOINTS.TEACHER_PRONUNCIATION_RESULT(studentId),
+      ENDPOINTS.TEACHER_PRONUNCIATION_RESULTS(studentId),
       payload
     );
     return data;
