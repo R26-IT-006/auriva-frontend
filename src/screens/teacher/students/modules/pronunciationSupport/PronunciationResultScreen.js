@@ -437,7 +437,10 @@ export default function PronunciationResultScreen({ navigation, route }) {
   }
 
   function handleGoHome() {
-    navigation.navigate("StudentSession", { student });
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "WorkspaceSelect" }],
+    });
   }
 
   function handleTryAgain() {
