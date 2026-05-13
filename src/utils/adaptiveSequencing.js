@@ -46,7 +46,7 @@ import { LETTER_CATEGORIES } from '../constants/letterCategories';
  * @param {{ accuracy: number, smoothness: number }} features
  * @returns {number} performance score 0-100
  */
-function featuresToScore({ accuracy = 0, smoothness = 0 }) {
+export function featuresToScore({ accuracy = 0, smoothness = 0 }) {
   if (accuracy === 0) {
     // Smoothness-only shape (zigzag, curve_wave)
     // smoothness ≈ 0–1 in practice; multiply ×100 to match the accuracy scale

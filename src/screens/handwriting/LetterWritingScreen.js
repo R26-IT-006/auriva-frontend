@@ -15,6 +15,8 @@ import Svg, { Line, Circle, Polyline, Text as SvgText } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import { storeLetterProgress } from '../../utils/storage';
 import { getAllLetters } from '../../constants/letterCategories';
+import { featuresToScore } from '../../utils/adaptiveSequencing';
+import { useToast } from '../../context/ToastContext';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 
@@ -261,6 +263,8 @@ export default function LetterWritingScreen({ route, navigation }) {
     return filtered.length > 0 ? filtered : getAllLetters(caseType);
   }, [letterSequence, caseType]);
 
+  const { show } = useToast();
+
   // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [letterIdx,    setLetterIdx]    = useState(0);
   const [attempt,      setAttempt]      = useState(1);
@@ -271,8 +275,9 @@ export default function LetterWritingScreen({ route, navigation }) {
   const [celebration,  setCelebration]  = useState(null);
 
   // â”€â”€ Refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const startTimeRef   = useRef(null);
-  const allPathsRef    = useRef([]);
+  const startTimeRef     = useRef(null);
+  const allPathsRef      = useRef([]);
+  const attemptScoresRef = useRef([]);   // accumulates featuresToScore result for each attempt
 
   // â”€â”€ Tracer dot animation (Attempt 1 "Watch & Trace") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tracerX          = useRef(new Animated.Value(0)).current;
@@ -414,6 +419,9 @@ export default function LetterWritingScreen({ route, navigation }) {
   // â”€â”€ Next attempt / next letter logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleNext = useCallback(async () => {
     const features = calculateDrawingFeatures(allPathsRef.current);
+    const attemptScore = Math.round(featuresToScore({ smoothness: features.smoothness }));
+    attemptScoresRef.current = [...attemptScoresRef.current, attemptScore];
+
     await storeLetterProgress(student.sid, letter, {
       attempt,
       deviation:      0,
@@ -423,32 +431,40 @@ export default function LetterWritingScreen({ route, navigation }) {
       smoothness:     features.smoothness,
     });
 
-    // Attempt 3 is the "write freely" attempt — evaluate correctness with
-    // three signals so a short smooth stroke (e.g. one line on 'o') cannot pass:
-    //   1. smoothness < 0.35  — stroke quality (existing badge threshold)
-    //   2. drawnLength >= CANVAS_H * 0.25 — child drew enough total ink
-    //   3. drawnW >= CANVAS_W * 0.10 OR drawnH >= CANVAS_H * 0.15
-    //      — drawing actually spans enough of the canvas in some direction
     if (isLastAttempt) {
       const { length: drawnLength, width: drawnW, height: drawnH } =
         getDrawingBounds(allPathsRef.current);
       const hasEnoughLength   = drawnLength >= CANVAS_H * 0.25;
       const hasEnoughCoverage = drawnW >= CANVAS_W * 0.10 || drawnH >= CANVAS_H * 0.15;
       const wroteCorrectly    = features.smoothness < 0.35 && hasEnoughLength && hasEnoughCoverage;
-      if (!wroteCorrectly) {
-        setAttempt(1);
-        resetCanvas();
-        return;
-      }
-    }
 
-    // Report letter completion to backend only when the child passed attempt 3.
-    if (isLastAttempt) {
-      client.post(ENDPOINTS.LETTER_COMPLETE, {
-        student_id: student.sid,
-        letter,
-        case_type: caseType,
-      }).catch(() => {});
+      try {
+        const response = await client.post(ENDPOINTS.LETTER_COMPLETE, {
+          student_id:      student.sid,
+          letter,
+          case_type:       caseType,
+          attempt_scores:  attemptScoresRef.current,
+          wrote_correctly: wroteCorrectly,
+        });
+        if (!wroteCorrectly || response.data.completed === false) {
+          if (response.data.completed === false) {
+            show('Keep practising — try again!', 'info');
+          }
+          attemptScoresRef.current = [];
+          setAttempt(1);
+          resetCanvas();
+          return;
+        }
+      } catch {
+        // network failure — apply local wroteCorrectly check only
+        if (!wroteCorrectly) {
+          attemptScoresRef.current = [];
+          setAttempt(1);
+          resetCanvas();
+          return;
+        }
+      }
+      attemptScoresRef.current = [];
     }
 
     if (!isLastAttempt) {
