@@ -158,6 +158,14 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
               {student.full_name} completed all {assessmentData.length} shape assessments.
             </Text>
             <TouchableOpacity
+              style={[styles.retakeButton, { borderColor: theme.button }]}
+              onPress={() => navigation.navigate('StudentWelcome', { student, theme })}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="arrow-back" size={16} color={theme.button} />
+              <Text style={[styles.retakeText, { color: theme.button }]}>Back to Assessment</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.doneButton, { backgroundColor: theme.button }]}
               onPress={async () => {
                 const { letters, motorProfile } = generateAdaptiveSequence(
@@ -336,6 +344,19 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  retakeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 36,
+    paddingVertical: 11,
+    borderRadius: 50,
+    borderWidth: 1.5,
+  },
+  retakeText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   doneButton: {
     flexDirection: 'row',

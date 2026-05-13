@@ -170,7 +170,10 @@ export default function WordWritingScreen({ route, navigation }) {
   const spelling      = getSpelling(word);
 
   // â”€â”€ Speech â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const MUTED_WRITING_WORDS = new Set(['axe', 'album', 'arrow']);
+
   const spellWord = useCallback((w = word) => {
+    if (MUTED_WRITING_WORDS.has(w)) return;
     spellCancelRef.current = true;
     spellTimersRef.current.forEach(clearTimeout);
     spellTimersRef.current = [];

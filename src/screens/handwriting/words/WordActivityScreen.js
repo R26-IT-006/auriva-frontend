@@ -132,7 +132,9 @@ export default function WordActivityScreen({ route, navigation }) {
   useEffect(() => {
     if (!currentWord) return;
     Speech.stop();
-    Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: 'en-US' });
+    if (currentWord.word === 'ant') {
+      Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: 'en-US' });
+    }
     return () => Speech.stop();
   }, [currentWord?.word]);
 
@@ -331,8 +333,10 @@ export default function WordActivityScreen({ route, navigation }) {
             <TouchableOpacity
               style={styles.wordHeader}
               onPress={() => {
-                Speech.stop();
-                Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: 'en-US' });
+                if (currentWord.word === 'ant') {
+                  Speech.stop();
+                  Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: 'en-US' });
+                }
               }}
               activeOpacity={0.7}
             >

@@ -189,6 +189,27 @@ function calculateDrawingFeatures(paths) {
   return { smoothness, pauseCount, completionTime, strokeCount: paths.length };
 }
 
+// Returns total drawn length + bounding-box dimensions in one pass.
+// Used on attempt 3 to catch cases where the child drew too little
+// (e.g. a short line on 'o') regardless of how smooth it was.
+function getDrawingBounds(paths) {
+  const all = paths.flat();
+  if (all.length === 0) return { length: 0, width: 0, height: 0 };
+  let minX = all[0].x, maxX = all[0].x;
+  let minY = all[0].y, maxY = all[0].y;
+  let length = 0;
+  for (let i = 1; i < all.length; i++) {
+    if (all[i].x < minX) minX = all[i].x;
+    if (all[i].x > maxX) maxX = all[i].x;
+    if (all[i].y < minY) minY = all[i].y;
+    if (all[i].y > maxY) maxY = all[i].y;
+    const dx = all[i].x - all[i-1].x;
+    const dy = all[i].y - all[i-1].y;
+    length += Math.sqrt(dx * dx + dy * dy);
+  }
+  return { length, width: maxX - minX, height: maxY - minY };
+}
+
 function getAttemptBadge(smoothness) {
   if (smoothness < 0.15) return { label: 'Excellent! ✓', color: '#2E7D32', bg: '#E8F5E9' };
   if (smoothness < 0.35) return { label: 'Good effort!', color: '#E65100', bg: '#FFF3E0' };
@@ -402,7 +423,26 @@ export default function LetterWritingScreen({ route, navigation }) {
       smoothness:     features.smoothness,
     });
 
-    // Report letter completion to backend on the final attempt
+    // Attempt 3 is the "write freely" attempt — evaluate correctness with
+    // three signals so a short smooth stroke (e.g. one line on 'o') cannot pass:
+    //   1. smoothness < 0.35  — stroke quality (existing badge threshold)
+    //   2. drawnLength >= CANVAS_H * 0.25 — child drew enough total ink
+    //   3. drawnW >= CANVAS_W * 0.10 OR drawnH >= CANVAS_H * 0.15
+    //      — drawing actually spans enough of the canvas in some direction
+    if (isLastAttempt) {
+      const { length: drawnLength, width: drawnW, height: drawnH } =
+        getDrawingBounds(allPathsRef.current);
+      const hasEnoughLength   = drawnLength >= CANVAS_H * 0.25;
+      const hasEnoughCoverage = drawnW >= CANVAS_W * 0.10 || drawnH >= CANVAS_H * 0.15;
+      const wroteCorrectly    = features.smoothness < 0.35 && hasEnoughLength && hasEnoughCoverage;
+      if (!wroteCorrectly) {
+        setAttempt(1);
+        resetCanvas();
+        return;
+      }
+    }
+
+    // Report letter completion to backend only when the child passed attempt 3.
     if (isLastAttempt) {
       client.post(ENDPOINTS.LETTER_COMPLETE, {
         student_id: student.sid,
