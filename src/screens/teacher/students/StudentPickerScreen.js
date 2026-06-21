@@ -20,17 +20,17 @@ import { useToast } from '../../../context/ToastContext';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 
 const COLS     = 3;
-const H_PAD    = 32;
-const CARD_GAP = 20;
+const H_PAD    = 40;
+const CARD_GAP = 24;
 
 function StudentCard({ student, cardSize, onPress }) {
   const theme      = getAvatarTheme(student.avatar_key);
   const initial    = (student.full_name || '?')[0].toUpperCase();
-  const circleSize = cardSize * 0.52;
+  const circleSize = cardSize * 0.54;
   const scale      = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
-    Animated.spring(scale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
   }
   function onPressOut() {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
@@ -43,29 +43,19 @@ function StudentCard({ student, cardSize, onPress }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
-        style={[
-          styles.card,
-          {
-            width:           cardSize,
-            height:          cardSize * 1.18,
-            backgroundColor: '#FFFFFF',
-            borderColor:     theme.cardOutline,
-          },
-        ]}
+        style={[styles.card, { width: cardSize, height: cardSize * 1.1 }]}
       >
-        {/* Avatar circle — photo or initial */}
-        <View
-          style={[
-            styles.circle,
-            {
-              width:        circleSize,
-              height:       circleSize,
-              borderRadius: circleSize / 2,
-              backgroundColor: theme.cardOutline,
-              borderColor:  'rgba(255,255,255,0.85)',
-            },
-          ]}
-        >
+        {/* Colored top accent strip */}
+        <View style={[styles.cardAccent, { backgroundColor: theme.cardOutline + '22' }]} />
+
+        {/* Avatar */}
+        <View style={[styles.circle, {
+          width: circleSize,
+          height: circleSize,
+          borderRadius: circleSize / 2,
+          borderColor: theme.cardOutline,
+          backgroundColor: theme.cardOutline + '33',
+        }]}>
           {student.profile_photo_url ? (
             <Image
               source={{ uri: student.profile_photo_url }}
@@ -73,17 +63,14 @@ function StudentCard({ student, cardSize, onPress }) {
               resizeMode="cover"
             />
           ) : (
-            <Text style={[styles.initial, { fontSize: circleSize * 0.42, color: '#fff' }]}>
+            <Text style={[styles.initial, { fontSize: circleSize * 0.42, color: theme.cardOutline }]}>
               {initial}
             </Text>
           )}
         </View>
 
         {/* Name */}
-        <Text
-          style={[styles.name, { color: '#1A1A1A', fontSize: cardSize * 0.11 }]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.name, { fontSize: cardSize * 0.1 }]} numberOfLines={2}>
           {student.full_name}
         </Text>
       </TouchableOpacity>
@@ -97,7 +84,7 @@ export default function StudentPickerScreen({ navigation }) {
   const [students, setStudents] = useState([]);
   const [loading,  setLoading]  = useState(true);
 
-  const cardSize = ((width - H_PAD * 2 - CARD_GAP * (COLS - 1)) / COLS) * 0.65;
+  const cardSize = ((width - H_PAD * 2 - CARD_GAP * (COLS - 1)) / COLS) * 0.72;
 
   const load = useCallback(async () => {
     try {
@@ -126,9 +113,12 @@ export default function StudentPickerScreen({ navigation }) {
             onPress={() => navigation.navigate('WorkspaceSelect')}
             activeOpacity={0.7}
           >
-            <Ionicons name="chevron-back" size={22} color="#2A5A48" />
+            <Ionicons name="chevron-back" size={20} color="#2A5A48" />
           </TouchableOpacity>
-          <Text style={styles.title}>My Students</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>My Students</Text>
+            <Text style={styles.subtitle}>Tap a student to begin their session</Text>
+          </View>
         </View>
 
         {loading ? (
@@ -137,7 +127,9 @@ export default function StudentPickerScreen({ navigation }) {
           </View>
         ) : students.length === 0 ? (
           <View style={styles.centered}>
-            <Ionicons name="people-outline" size={52} color="#2A5A48" style={{ opacity: 0.5 }} />
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="people-outline" size={40} color="#2A5A48" />
+            </View>
             <Text style={styles.emptyTitle}>No students yet</Text>
             <Text style={styles.emptySub}>
               Ask your principal to assign students to your account.
@@ -180,84 +172,125 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
+  // ── Header ────────────────────────────────────────────────────────────────
   header: {
-    flexDirection:     'row',
-    alignItems:        'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: H_PAD,
-    paddingVertical:   16,
-    gap: 10,
+    paddingTop: 20,
+    paddingBottom: 12,
+    gap: 14,
   },
   backBtn: {
-    width: 36, height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerText: {
+    gap: 2,
   },
   title: {
-    fontFamily: 'Nunito_800ExtraBold',
-    fontSize:   22,
-    color:      '#1A3D2E',
+    fontFamily: 'Nunito_900Black',
+    fontSize: 24,
+    color: '#1A3D2E',
+  },
+  subtitle: {
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 13,
+    color: '#4A7A60',
   },
 
+  // ── List ──────────────────────────────────────────────────────────────────
   list: {
-    paddingTop:    8,
-    paddingBottom: 32,
+    paddingTop: 16,
+    paddingBottom: 36,
   },
 
+  // ── Card ──────────────────────────────────────────────────────────────────
   card: {
-    borderRadius:   28,
-    borderWidth:    5,
-    alignItems:     'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 0,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap:            12,
-    shadowColor:    '#000',
-    shadowOffset:   { width: 0, height: 4 },
-    shadowOpacity:  0.08,
-    shadowRadius:   12,
-    elevation:      4,
+    gap: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  cardAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
+    borderTopLeftRadius: 21,
+    borderTopRightRadius: 21,
   },
 
+  // ── Avatar ────────────────────────────────────────────────────────────────
   circle: {
-    borderWidth:    3,
-    alignItems:     'center',
+    borderWidth: 3,
+    alignItems: 'center',
     justifyContent: 'center',
-    overflow:       'hidden',
-    shadowColor:    '#000',
-    shadowOffset:   { width: 0, height: 2 },
-    shadowOpacity:  0.12,
-    shadowRadius:   6,
-    elevation:      3,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 3,
   },
-
   initial: {
     fontFamily: 'Nunito_900Black',
   },
 
+  // ── Name ──────────────────────────────────────────────────────────────────
   name: {
-    fontFamily:        'Nunito_800ExtraBold',
-    textAlign:         'center',
-    paddingHorizontal: 8,
+    fontFamily: 'Nunito_700Bold',
+    color: '#1A2E26',
+    textAlign: 'center',
+    paddingHorizontal: 10,
+    lineHeight: 20,
+    marginTop: 10,
   },
 
+  // ── Empty state ───────────────────────────────────────────────────────────
   centered: {
-    flex:              1,
-    alignItems:        'center',
-    justifyContent:    'center',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 32,
-    gap:               12,
+    gap: 14,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize:   18,
-    color:      '#1A3D2E',
+    fontSize: 18,
+    color: '#1A3D2E',
   },
   emptySub: {
-    fontFamily: 'Nunito_700Bold',
-    fontSize:   14,
-    color:      '#2A5A48',
-    textAlign:  'center',
-    opacity:    0.7,
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 14,
+    color: '#2A5A48',
+    textAlign: 'center',
     lineHeight: 22,
+    opacity: 0.8,
   },
 });
