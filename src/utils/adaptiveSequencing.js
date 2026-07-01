@@ -33,26 +33,69 @@ import { LETTER_CATEGORIES } from '../constants/letterCategories';
 
 // ─── Score conversion ─────────────────────────────────────────────────────────
 // Raw assessment data uses two quality metrics (lower = worse performance):
-//   accuracy  : pixel-deviation from ideal path (0 = perfect, 100+ = poor)
-//   smoothness: angular jerk in radians      (0 = perfect, 1+ = poor)
+//   accuracy    : pixel-deviation from ideal path (0 = perfect, 100+ = poor)
+//   smoothness  : angular jerk in radians         (0 = perfect, 1+  = poor)
+//   dtw_distance: normalised DTW trajectory error (0 = perfect, 166+ = far off)
 //
-// We invert both into a 0-100 performance score where 100 = perfect.
+// We combine these into a 0-100 performance score where 100 = perfect.
+
+// DTW_CAP: observed ceiling for normalised DTW distance.
+// Real data: good letter 'l' ≈ 27, very wrong shape ≈ 166.
+// Cap at 120 so anything beyond scores the maximum penalty without overflowing.
+const DTW_CAP = 120;
+
+/** Scoring weights for the letter-writing formula. DTW is dominant (0.7)
+ *  because it measures shape fidelity; smoothness is secondary (0.3). */
+export const SCORE_WEIGHTS = { trajectory: 0.7, smoothness: 0.3 };
 
 /**
- * Converts a single shape's features into a 0-100 performance score.
- * Shapes with no meaningful accuracy (zigzag, curve_wave) are scored
- * from smoothness alone.
- *
- * @param {{ accuracy: number, smoothness: number }} features
- * @returns {number} performance score 0-100
+ * Completion gate: a letter attempt passes only when its DTW distance is
+ * strictly below this value.  Calibrated from observed data (good≈27, bad≈166);
+ * 65 sits well inside the "good" zone.  Recalibrate after the first school visit.
+ * Exported so LetterWritingScreen and storage.js share one source of truth.
  */
-export function featuresToScore({ accuracy = 0, smoothness = 0 }) {
-  if (accuracy === 0) {
-    // Smoothness-only shape (zigzag, curve_wave)
-    // smoothness ≈ 0–1 in practice; multiply ×100 to match the accuracy scale
-    return Math.min(100, Math.max(0, 100 - smoothness * 100));
+export const DTW_CORRECT_THRESHOLD = 65;
+
+/**
+ * Converts a single shape/letter-attempt's features into a 0-100 score.
+ *
+ * Three code paths:
+ *  1. accuracy !== 0  → shape-assessment path (lines, circles): score = 100 - accuracy
+ *  2. dtw_distance provided → letter-writing path: weighted DTW + smoothness
+ *  3. dtw_distance null     → old client / no template: weight redistributed to
+ *     smoothness so missing DTW is never treated as a perfect trajectory.
+ *
+ * Backward-compatible: callers that only pass {smoothness} (or {accuracy,smoothness})
+ * continue to receive a valid score; they simply take path 1 or 3.
+ *
+ * @param {{ accuracy?: number, smoothness?: number, dtw_distance?: number|null }} features
+ * @returns {number} 0-100 performance score (higher = better)
+ */
+export function featuresToScore({ accuracy = null, smoothness = 0, dtw_distance = null }) {
+  // Path 1 — geometric accuracy (lines, circles): accuracy is a positive number.
+  // null means "not computed" (zigzag, curve_wave, letters) → skip to DTW/smoothness.
+  if (accuracy != null && accuracy > 0) {
+    return Math.min(100, Math.max(0, 100 - accuracy));
   }
-  return Math.min(100, Math.max(0, 100 - accuracy));
+
+  const smoothPenalty = smoothness * 100; // 0 = perfect, 100 = maximally poor
+
+  if (dtw_distance == null) {
+    // Path 3 — no DTW available: redistribute trajectory weight to smoothness.
+    // Total effective weight = 0.7 + 0.3 = 1.0 (same scale, no free pass).
+    const w = SCORE_WEIGHTS.trajectory + SCORE_WEIGHTS.smoothness;
+    return Math.min(100, Math.max(0, 100 - w * smoothPenalty));
+  }
+
+  // Path 2 — letter writing with DTW.
+  // Normalise DTW to 0-100 scale, capped at DTW_CAP so far-off strokes
+  // don't exceed the penalty budget (observed range good~27 → bad~166).
+  const trajectoryPenalty = Math.min(dtw_distance, DTW_CAP) / DTW_CAP * 100;
+
+  return Math.min(100, Math.max(0,
+    100 - (SCORE_WEIGHTS.trajectory * trajectoryPenalty
+         + SCORE_WEIGHTS.smoothness  * smoothPenalty),
+  ));
 }
 
 /**

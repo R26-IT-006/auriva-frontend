@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
+import { computeDTW } from '../../utils/dtw';
+import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -182,7 +184,7 @@ function computePathPoints(shapeId) {
 function calculateFeatures(paths, shapeId) {
   const allPoints = paths.flat();
   if (allPoints.length < 2) {
-    return { duration_ms: 0, total_distance: 0, avg_speed: 0, smoothness: 0, pause_count: 0, accuracy: 0 };
+    return { duration_ms: 0, total_distance: 0, avg_speed: 0, smoothness: 0, pause_count: 0, accuracy: null, dtw_distance: null };
   }
 
   const duration_ms = allPoints[allPoints.length - 1].t;
@@ -221,7 +223,8 @@ function calculateFeatures(paths, shapeId) {
 
   const cx = CANVAS_CX;
   const cy = CANVAS_CY;
-  let accuracy = 0;
+  let accuracy = null;
+  let dtw_distance = null;
 
   if (shapeId === 'horizontal_line') {
     accuracy = allPoints.reduce((s, p) => s + Math.abs(p.y - cy), 0) / allPoints.length;
@@ -237,9 +240,14 @@ function calculateFeatures(paths, shapeId) {
     accuracy = allPoints.reduce((s, p) => {
       return s + Math.abs(Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2) - r);
     }, 0) / allPoints.length;
+  } else if (shapeId === 'zigzag' || shapeId === 'curve_wave') {
+    const template = computePathPoints(shapeId);
+    const childPts = allPoints.map(p => ({ x: p.x, y: p.y }));
+    const result = computeDTW(childPts, template);
+    dtw_distance = result.normalizedDistance;
   }
 
-  return { duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy };
+  return { duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy, dtw_distance };
 }
 
 // ─── Guide shape SVG ──────────────────────────────────────────────────────────
@@ -311,7 +319,7 @@ function GuideShape({ shapeId, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ShapeAssessmentScreen({ route, navigation }) {
-  const { student, theme } = route.params;
+  const { student, theme, collectionMode = false } = route.params;
 
   const [currentShapeIndex, setCurrentShapeIndex] = useState(0);
   const [completedShapes,   setCompletedShapes]   = useState([]);
@@ -328,6 +336,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const pulseAnim            = useRef(new Animated.Value(0)).current;
   const pulseLoopRef         = useRef(null);
   const soundRef             = useRef(null);
+  const strokeIdCounter      = useRef(0);  // ML: counts strokes within the current shape
 
   const currentShape = SHAPES[currentShapeIndex];
 
@@ -407,14 +416,16 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
       onPanResponderGrant: (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        startTime.current = Date.now();
-        setCurrentPath([{ x: locationX, y: locationY, t: 0 }]);
+        const now = Date.now();
+        startTime.current = now;
+        strokeIdCounter.current += 1;  // ML: new stroke starts
+        setCurrentPath([{ x: locationX, y: locationY, t: 0, tAbs: now, stroke_id: strokeIdCounter.current }]);
       },
 
       onPanResponderMove: (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        const t = Date.now() - startTime.current;
-        setCurrentPath(prev => [...prev, { x: locationX, y: locationY, t }]);
+        const now = Date.now();
+        setCurrentPath(prev => [...prev, { x: locationX, y: locationY, t: now - startTime.current, tAbs: now, stroke_id: strokeIdCounter.current }]);
       },
 
       onPanResponderRelease: () => {
@@ -437,13 +448,20 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const submitAssessment = useCallback(async (assessmentData) => {
     try {
       const response = await client.post(ENDPOINTS.HANDWRITING_ASSESSMENT, {
-        student_id:    student.sid,
-        session_start: sessionStartTime.current,
-        session_end:   Date.now(),
+        student_id:      student.sid,
+        session_start:   sessionStartTime.current,
+        session_end:     Date.now(),
+        collection_mode: collectionMode,
         shapes: assessmentData.map(shape => ({
           shape_id:     shape.shapeId,
           stroke_count: shape.strokes.length,
-          strokes:      shape.strokes,
+          task_type:    'shape_tracing',         // ML: activity type label
+          canvas_width:  CANVAS_WIDTH,           // ML: needed to normalize x coordinates
+          canvas_height: CANVAS_HEIGHT,          // ML: needed to normalize y coordinates
+          strokes: shape.strokes.map((pts, i) => ({  // ML: structured stroke objects
+            stroke_id: i + 1,
+            points:    pts,                      // each point: {x, y, t, tAbs, stroke_id}
+          })),
           features:     shape.features,
         })),
       });
@@ -452,13 +470,14 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       console.error('Failed to submit assessment data:', err);
       return null;
     }
-  }, [student.sid]);
+  }, [student.sid, collectionMode]);
 
   const handleClear = useCallback(() => {
     setAllPaths([]);
     allPathsRef.current = [];
     setCurrentPath([]);
     setShowNext(false);
+    strokeIdCounter.current = 0;  // ML: reset stroke counter when child clears and restarts
   }, []);
 
   const handleNext = useCallback(async () => {
@@ -488,16 +507,28 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       allPathsRef.current = [];
       setCurrentPath([]);
       setShowNext(false);
+      strokeIdCounter.current = 0;  // ML: reset stroke counter for the next shape
     } else {
       const assessmentId = await submitAssessment(updated);
-      navigation.navigate('AssessmentComplete', {
-        student,
-        theme,
-        assessmentData: updated,
-        assessmentId,
-      });
+      if (collectionMode) {
+        navigation.navigate('LetterWriting', {
+          student,
+          theme,
+          caseType:       'lowercase',
+          letterSequence: DATA_COLLECTION_PROTOCOL.lowercase,
+          collectionMode: true,
+        });
+      } else {
+        navigation.navigate('AssessmentComplete', {
+          student,
+          theme,
+          assessmentData: updated,
+          assessmentId,
+          collectionMode: false,
+        });
+      }
     }
-  }, [navigation, student, theme, submitAssessment]);
+  }, [navigation, student, theme, collectionMode, submitAssessment]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   const startDot = SHAPE_STARTS[currentShape.id];

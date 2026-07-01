@@ -36,6 +36,79 @@ function InfoRow({ icon, label, value }) {
   );
 }
 
+const GLOBAL_DEFAULT = 55;
+
+function ThresholdCard({ thresholds = {} }) {
+  const effectiveDefault = typeof thresholds.default === 'number' ? thresholds.default : GLOBAL_DEFAULT;
+  const wasRaised  = effectiveDefault > GLOBAL_DEFAULT;
+
+  const letterOverrides = Object.entries(thresholds)
+    .filter(([k]) => k !== 'default')
+    .map(([letter, value]) => ({ letter, value }))
+    .sort((a, b) => a.letter.localeCompare(b.letter));
+
+  const noChanges = !wasRaised && letterOverrides.length === 0;
+
+  return (
+    <Card style={styles.infoCard}>
+      <View style={styles.thresholdHeader}>
+        <View style={[styles.thresholdIconWrap, wasRaised && styles.thresholdIconRaised]}>
+          <Ionicons
+            name="stats-chart-outline"
+            size={16}
+            color={wasRaised ? '#059669' : '#6366F1'}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.thresholdScore}>{effectiveDefault} / 100</Text>
+          <Text style={styles.thresholdNote}>
+            {wasRaised
+              ? `Raised from ${GLOBAL_DEFAULT} — student is improving consistently!`
+              : 'Using the default writing standard'}
+          </Text>
+        </View>
+        <View style={[styles.thresholdBadge, wasRaised && styles.thresholdBadgeGreen]}>
+          <Text style={[styles.thresholdBadgeText, wasRaised && styles.thresholdBadgeTextGreen]}>
+            {wasRaised ? '▲ Raised' : 'Default'}
+          </Text>
+        </View>
+      </View>
+
+      {letterOverrides.length > 0 && (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.thresholdLetterSection}>
+            <Text style={styles.thresholdLetterHeading}>Letters with a lower standard:</Text>
+            {letterOverrides.map(({ letter, value }) => (
+              <View key={letter} style={styles.thresholdLetterRow}>
+                <View style={styles.thresholdLetterBadge}>
+                  <Text style={styles.thresholdLetterChar}>{letter.toUpperCase()}</Text>
+                </View>
+                <Text style={styles.thresholdLetterLabel}>Letter '{letter}'</Text>
+                <Text style={styles.thresholdLetterValue}>{value} / 100</Text>
+                <Text style={styles.thresholdLetterTag}>↓ adjusted</Text>
+              </View>
+            ))}
+            <Text style={styles.thresholdHint}>
+              These letters were automatically adjusted after the student struggled
+              with them repeatedly.
+            </Text>
+          </View>
+        </>
+      )}
+
+      {noChanges && (
+        <>
+          <View style={styles.divider} />
+          <Text style={styles.thresholdAllGood}>
+            No adjustments yet — all letters use the standard setting.
+          </Text>
+        </>
+      )}
+    </Card>
+  );
+}
+
 export default function TeacherStudentDetailScreen({ route, navigation }) {
   const initialStudent = route.params?.student;
   const [student, setStudent] = useState(initialStudent);
@@ -124,6 +197,10 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
             />
           </View>
         </Card>
+
+        {/* Writing Standard */}
+        <Text style={styles.sectionTitle}>Writing Standard</Text>
+        <ThresholdCard thresholds={student.personal_thresholds ?? {}} />
 
         {/* Personal Info */}
         <Text style={styles.sectionTitle}>Student Information</Text>
@@ -258,4 +335,58 @@ const styles = StyleSheet.create({
   },
   reportTagText: { fontSize: 10, color: '#6366F1', fontWeight: '700' },
   reportArrow: { paddingLeft: 4 },
+
+  // ── Threshold card ────────────────────────────────────────────────────────
+  thresholdHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: Layout.spacing.md, gap: Layout.spacing.sm,
+  },
+  thresholdIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
+  },
+  thresholdIconRaised: { backgroundColor: '#D1FAE5' },
+  thresholdScore: {
+    fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold,
+    color: Colors.text.primary,
+  },
+  thresholdNote: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
+  thresholdBadge: {
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 8, backgroundColor: '#EEF2FF',
+  },
+  thresholdBadgeGreen: { backgroundColor: '#D1FAE5' },
+  thresholdBadgeText: { fontSize: 11, fontWeight: '700', color: '#6366F1' },
+  thresholdBadgeTextGreen: { color: '#059669' },
+  thresholdLetterSection: {
+    paddingHorizontal: Layout.spacing.md,
+    paddingTop: Layout.spacing.sm,
+    paddingBottom: Layout.spacing.md,
+  },
+  thresholdLetterHeading: {
+    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
+    fontWeight: Layout.fontWeight.semibold, marginBottom: Layout.spacing.sm,
+  },
+  thresholdLetterRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: Layout.spacing.sm, marginBottom: Layout.spacing.xs,
+  },
+  thresholdLetterBadge: {
+    width: 26, height: 26, borderRadius: 6,
+    backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center',
+  },
+  thresholdLetterChar: { fontSize: 13, fontWeight: '800', color: '#D97706' },
+  thresholdLetterLabel: { flex: 1, fontSize: Layout.fontSize.sm, color: Colors.text.primary },
+  thresholdLetterValue: {
+    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#D97706',
+  },
+  thresholdLetterTag: { fontSize: Layout.fontSize.xs, color: '#D97706' },
+  thresholdHint: {
+    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
+    marginTop: Layout.spacing.sm, fontStyle: 'italic',
+  },
+  thresholdAllGood: {
+    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
+    padding: Layout.spacing.md, fontStyle: 'italic',
+  },
 });

@@ -17,7 +17,8 @@ import WordActivityScreen       from '../screens/handwriting/words/WordActivityS
 import WordWritingScreen        from '../screens/handwriting/words/WordWritingScreen';
 import WordProgressScreen       from '../screens/handwriting/words/WordProgressScreen';
 import WordLetterSelectScreen   from '../screens/handwriting/words/WordLetterSelectScreen';
-import TeacherReportScreen      from '../screens/handwriting/reports/TeacherReportScreen';
+import TeacherReportScreen        from '../screens/handwriting/reports/TeacherReportScreen';
+import DataCollectionDoneScreen  from '../screens/handwriting/DataCollectionDoneScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -107,6 +108,11 @@ export default function HandwritingNavigator({ route }) {
       <Stack.Screen
         name="TeacherReport"
         component={TeacherReportScreen}
+        initialParams={{ student, theme }}
+      />
+      <Stack.Screen
+        name="DataCollectionDone"
+        component={DataCollectionDoneScreen}
         initialParams={{ student, theme }}
       />
     </Stack.Navigator>

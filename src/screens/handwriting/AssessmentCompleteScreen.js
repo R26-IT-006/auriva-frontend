@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { generateAdaptiveSequence, calculateMotorProfile } from '../../utils/adaptiveSequencing';
 import { storeLetterSequence, storeMotorProfile } from '../../utils/storage';
+import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { computeMotorComfortScore } from '../../utils/reportEngine';
@@ -60,7 +61,7 @@ function getScoreColor(score) {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function AssessmentCompleteScreen({ route, navigation }) {
-  const { student, theme, assessmentData = [], assessmentId } = route.params;
+  const { student, theme, assessmentData = [], assessmentId, collectionMode = false } = route.params;
 
   const scores       = assessmentData.map(s => getAccuracyScore(s.features));
   const overallScore = scores.length
@@ -168,6 +169,17 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.doneButton, { backgroundColor: theme.button }]}
               onPress={async () => {
+                if (collectionMode) {
+                  navigation.navigate('LetterWriting', {
+                    student,
+                    theme,
+                    caseType:       'lowercase',
+                    letterSequence: DATA_COLLECTION_PROTOCOL.lowercase,
+                    collectionMode: true,
+                  });
+                  return;
+                }
+
                 const { letters, motorProfile } = generateAdaptiveSequence(
                   assessmentData, 'lowercase'
                 );

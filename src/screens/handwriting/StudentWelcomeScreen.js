@@ -71,6 +71,7 @@ export default function StudentWelcomeScreen({ route, navigation }) {
                 Start Assessment
               </Text>
             </TouchableOpacity>
+
           </View>
 
         </View>

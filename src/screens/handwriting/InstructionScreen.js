@@ -120,16 +120,29 @@ export default function InstructionScreen({ route, navigation }) {
               ))}
             </View>
 
-            {/* ── Begin button ───────────────────────────────────────────── */}
-            <TouchableOpacity
-              style={[styles.beginBtn, { backgroundColor: theme.button }]}
-              onPress={() => navigation.navigate('StudentWelcome', { student, theme })}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.beginBtnText, { color: theme.buttonText }]}>
-                Begin Assessment
-              </Text>
-            </TouchableOpacity>
+            {/* ── Action buttons ─────────────────────────────────────────── */}
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.beginBtn, { backgroundColor: theme.button }]}
+                onPress={() => navigation.navigate('StudentWelcome', { student, theme })}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.beginBtnText, { color: theme.buttonText }]}>
+                  Begin Assessment
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.skipBtn, { borderColor: theme.button + '66' }]}
+                onPress={() => navigation.navigate('LetterHome', { student, theme })}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.skipBtnText, { color: theme.button }]}>
+                  Skip Assessment
+                </Text>
+                <Ionicons name="arrow-forward-outline" size={16} color={theme.button} />
+              </TouchableOpacity>
+            </View>
 
           </View>
 
@@ -309,16 +322,21 @@ const styles = StyleSheet.create({
     lineHeight: 25,
   },
 
-  // ── Begin button ──────────────────────────────────────────────────────────
+  // ── Action buttons ────────────────────────────────────────────────────────
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: '2%',
+    gap: 10,
+  },
   beginBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     gap: 7,
     paddingVertical: 15,
     paddingHorizontal: 32,
     borderRadius: 50,
-    marginTop: '2%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
@@ -329,6 +347,19 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: '700',
     letterSpacing: 0.2,
+  },
+  skipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    paddingHorizontal: 24,
+    borderRadius: 50,
+    borderWidth: 1.5,
+  },
+  skipBtnText: {
+    fontSize: 17,
+    fontWeight: '600',
   },
 
   // ── Avatar — landscape (side column) ─────────────────────────────────────
