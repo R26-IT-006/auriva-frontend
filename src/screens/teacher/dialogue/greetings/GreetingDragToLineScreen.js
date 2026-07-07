@@ -549,14 +549,14 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
                     {current.cards.find(c => c.correct)?.label} ✓
                   </Text>
                 ) : (
-                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here</Text>
+                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here  ·  නිවැරදි වාක්‍ය ඛණ්ඩය මෙහි දමන්න</Text>
                 )}
               </Animated.View>
 
               <View style={styles.cardsRow}>
                 <View style={styles.dragHint}>
                   <Ionicons name="hand-left-outline" size={16} color={theme.headingText} style={{ opacity: 0.5 }} />
-                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card</Text>
+                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card  ·  කාඩ්ය ඇදගෙන යන්න</Text>
                 </View>
                 <View style={styles.cardsArea}>
                   {current.cards.map((card) => (

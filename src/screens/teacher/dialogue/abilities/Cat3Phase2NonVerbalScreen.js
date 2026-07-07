@@ -36,9 +36,9 @@ const CAT3_NV = {
     wrong2:  require('../../../../../assets/dialogue-images/words/abilities/clap/context_wrong_2.png'),
   },
   run: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/run/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/run/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/run/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/run/Non_verbal.jpeg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/walk/Phase3.jpeg'),
   },
   walk: {
     correct: require('../../../../../assets/dialogue-images/words/abilities/walk/context_correct.png'),
@@ -86,7 +86,7 @@ const NV_CAPTIONS = {
   cat3_yes: ['Saying yes!',        'Playing alone',   'Looking away'],
   cat3_no:  ['Saying no!',         'Clapping hands',  'Running around'],
   clap:     ['Clapping hands',     'Running outside', 'Jumping up'],
-  run:      ['Running fast',       'Standing still',  'Clapping hands'],
+  run:      ['Running fast',       'Clapping',  'Walking to School'],
   walk:     ['Walking along',      'Jumping high',    'Dancing around'],
   jump:     ['Jumping up high',    'Walking slowly',  'Talking quietly'],
   talk:     ['Talking to someone', 'Clapping hands',  'Running outside'],
@@ -364,30 +364,29 @@ const styles = StyleSheet.create({
   title:    { fontSize: Layout.fontSize.xl, fontWeight: '700', textAlign: 'center', marginBottom: Layout.spacing.xs },
   subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
-  cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.sm },
+  cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.md },
 
   imageCard: {
     flex:         1,
-    maxWidth:     160,
-    borderRadius: Layout.radius.lg,
+    borderRadius: Layout.radius.xl,
     overflow:     'hidden',
     borderWidth:  2,
     borderColor:  'transparent',
-    ...Layout.shadow.sm,
+    ...Layout.shadow.md,
   },
   cardCorrect: { borderColor: '#22C55E', borderWidth: 3 },
   cardWrong:   { borderColor: '#FF4D6D', borderWidth: 2, opacity: 0.65 },
 
-  imageWrap: { position: 'relative', width: '100%', aspectRatio: 1 },
+  imageWrap: { position: 'relative', width: '100%', aspectRatio: 4 / 3 },
   cardImage: { width: '100%', height: '100%' },
-  correctBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#FFF', borderRadius: 12 },
+  correctBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#FFF', borderRadius: 14 },
 
   cardCaption: {
-    fontSize:    Layout.fontSize.xs,
-    fontWeight:  '600',
+    fontSize:    Layout.fontSize.md,
+    fontWeight:  '700',
     textAlign:   'center',
-    paddingHorizontal: Layout.spacing.xs,
-    paddingVertical:   Layout.spacing.sm,
+    paddingHorizontal: Layout.spacing.sm,
+    paddingVertical:   Layout.spacing.md,
   },
 
   avatarRow:  { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: Layout.spacing.md },

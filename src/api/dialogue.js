@@ -43,25 +43,36 @@ export const dialogueApi = {
     return data;
   },
 
-  async assessPhase2Speech(studentId, wordId, { audioBase64, mimeType, sessionId }) {
+  async assessPhase2Speech(studentId, wordId, {
+    audioBase64, mimeType, sessionId, avatarAudioEndTs, recordingStartTs,
+  }) {
     const { data } = await client.post(
       ENDPOINTS.DIALOGUE_LEVEL1_PHASE2_ASSESS(studentId, wordId),
       {
-        audio_base64: audioBase64,
-        mime_type:    mimeType,
-        session_id:   sessionId ?? undefined,
+        audio_base64:        audioBase64,
+        mime_type:           mimeType,
+        session_id:          sessionId ?? undefined,
+        avatar_audio_end_ts: avatarAudioEndTs ?? undefined,
+        recording_start_ts:  recordingStartTs ?? undefined,
       }
     );
     return data;
   },
 
-  async submitPhase3Scenario(studentId, wordId, { scenarioLabel, selectedCorrect, sessionId }) {
+  async submitPhase3Scenario(studentId, wordId, {
+    scenarioLabel, selectedCorrect, sessionId,
+    responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect,
+  }) {
     const { data } = await client.post(
       ENDPOINTS.DIALOGUE_LEVEL1_PHASE3_SCENARIO(studentId, wordId),
       {
-        scenario_label:   scenarioLabel,
-        selected_correct: selectedCorrect,
-        session_id:       sessionId ?? undefined,
+        scenario_label:         scenarioLabel,
+        selected_correct:       selectedCorrect,
+        session_id:             sessionId ?? undefined,
+        response_latency_ms:    responseLatencyMs ?? undefined,
+        selection_change_count: selectionChangeCount ?? 0,
+        prompt_count:           promptCount ?? 1,
+        first_tap_correct:      firstTapCorrect ?? undefined,
       }
     );
     return data;

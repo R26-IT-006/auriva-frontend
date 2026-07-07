@@ -93,7 +93,7 @@ const NV_IMAGES = {
 };
 
 const NV_CAPTIONS = {
-  hello:          ['Friends greeting\neach other',        'A child studying\nalone',            'A child eating\nlunch'],
+  hello:          ['Friends greeting\neach other',        'A child saying\nGoodbye',            'A child eating\nlunch'],
   goodbye:        ['Waving goodbye\nat the door',         'Playing at\nthe park',               'Eating dinner\ntogether'],
   good_morning:   ['Morning greeting\nat school',         'Playing in\nthe evening',            'Reading a book\nat night'],
   good_afternoon: ['Afternoon greeting\nafter school',    'Having breakfast\nin the morning',   'Playing outside\nat night'],
@@ -287,6 +287,9 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Look at the pictures and tap the correct scene
             </Text>
+            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
+              රූප බලා නිවැරදි දර්ශනය ස්පර්ශ කරන්න
+            </Text>
 
             <View style={styles.cardsRow}>
               {imageItems.map(item => {
@@ -399,7 +402,8 @@ const styles = StyleSheet.create({
   },
 
   title: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, textAlign: 'center', marginBottom: Layout.spacing.xs },
-  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
+  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xs },
+  subtitleSinhala: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
   cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.sm },
   imageCard: {

@@ -253,7 +253,7 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
             <View style={styles.btnRow}>
               {!hasFinished && (
                 <Text style={[styles.watchHint, { color: theme.headingText }]}>
-                  Watch the video to continue
+                  Watch the video to continue  ·  ඉදිරියට යාමට වීඩියෝව නරඹන්න
                 </Text>
               )}
               <TouchableOpacity

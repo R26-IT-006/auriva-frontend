@@ -134,6 +134,9 @@ export default function GreetingLandingScreen({ route, navigation }) {
             <Text style={[styles.title, { color: theme.headingText }]}>
               {"Let's learn the word"}
             </Text>
+            <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
+              වචනය ඉගෙනගනිමු!
+            </Text>
             <Text style={[styles.wordHighlight, { color: theme.button }]}>
               "{wordLabel}"
             </Text>
@@ -238,6 +241,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     opacity: 0.75,
+  },
+  titleSinhala: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.65,
   },
   wordHighlight: {
     fontSize: 28,

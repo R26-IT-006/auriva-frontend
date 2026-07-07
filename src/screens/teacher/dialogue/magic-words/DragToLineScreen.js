@@ -46,7 +46,7 @@ const ACTIVITIES = {
     {
       id: 3,
       image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context2.png'),
-      prompt: 'Anjalie helps you carry your bag.\nYou should say...',
+      prompt: 'Anjalie helps you to pick up your crayons.\nYou should say...',
       cards:  [
         { label: 'Thank You',  correct: true  },
         { label: "I'm Sorry",  correct: false },
@@ -430,7 +430,7 @@ export default function DragToLineScreen({ route, navigation }) {
                     {current.cards.find(c => c.correct)?.label} ✓
                   </Text>
                 ) : (
-                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here</Text>
+                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here  ·  නිවැරදි වාක්‍ය ඛණ්ඩය මෙහි දමන්න</Text>
                 )}
               </Animated.View>
 
@@ -438,7 +438,7 @@ export default function DragToLineScreen({ route, navigation }) {
               <View style={styles.cardsRow}>
                 <View style={styles.dragHint}>
                   <Ionicons name="hand-left-outline" size={16} color={theme.headingText} style={{ opacity: 0.5 }} />
-                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card</Text>
+                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card  ·  කාඩ්ය ඇදගෙන යන්න</Text>
                 </View>
                 <View style={styles.cardsArea}>
                   {current.cards.map((card) => (

@@ -49,7 +49,7 @@ function JumpAvatar({ source }) {
   function doJump() {
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(jumpY,  { toValue: -110, duration: 220, useNativeDriver: true }),
+        Animated.timing(jumpY,  { toValue: -160, duration: 220, useNativeDriver: true }),
         Animated.timing(scaleY, { toValue: 1.08,  duration: 220, useNativeDriver: true }),
       ]),
       Animated.parallel([
@@ -83,19 +83,19 @@ function RunAvatar({ source }) {
   function doRun() {
     if (isRunning.current) return;
     isRunning.current = true;
-    translateX.setValue(-160);
+    translateX.setValue(-220);
     translateY.setValue(0);
 
     const bounce = Animated.loop(
       Animated.sequence([
-        Animated.timing(translateY, { toValue: -10, duration: 120, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: -14, duration: 120, useNativeDriver: true }),
         Animated.timing(translateY, { toValue: 0,   duration: 120, useNativeDriver: true }),
       ]),
       { iterations: 20 },
     );
     bounce.start();
 
-    Animated.timing(translateX, { toValue: 160, duration: 1400, useNativeDriver: true }).start(() => {
+    Animated.timing(translateX, { toValue: 220, duration: 1400, useNativeDriver: true }).start(() => {
       bounce.stop();
       setTimeout(() => {
         translateX.setValue(0);
@@ -119,29 +119,38 @@ function RunAvatar({ source }) {
 // ── Walk animation ────────────────────────────────────────────────────────────
 
 function WalkAvatar({ source }) {
-  const bobY = useRef(new Animated.Value(0)).current;
-  const isWalking = useRef(false);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const isWalking  = useRef(false);
 
   function doWalk() {
     if (isWalking.current) return;
     isWalking.current = true;
-    Animated.loop(
+    translateX.setValue(-130);
+    translateY.setValue(0);
+
+    const bob = Animated.loop(
       Animated.sequence([
-        Animated.timing(bobY, { toValue: -8, duration: 200, useNativeDriver: true }),
-        Animated.timing(bobY, { toValue: 0,  duration: 200, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: -10, duration: 250, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0,   duration: 250, useNativeDriver: true }),
       ]),
       { iterations: 8 },
-    ).start(() => {
-      bobY.setValue(0);
+    );
+    bob.start();
+
+    Animated.timing(translateX, { toValue: 130, duration: 4000, useNativeDriver: true }).start(() => {
+      bob.stop();
+      translateX.setValue(0);
+      translateY.setValue(0);
       isWalking.current = false;
     });
   }
 
   return (
-    <TouchableOpacity onPress={doWalk} activeOpacity={0.9} style={styles.avatarTouchable}>
+    <TouchableOpacity onPress={doWalk} activeOpacity={0.9} style={[styles.avatarTouchable, { overflow: 'hidden', width: '100%' }]}>
       <Animated.Image
         source={source}
-        style={[styles.avatarImg, { transform: [{ translateY: bobY }] }]}
+        style={[styles.avatarImg, { transform: [{ translateX }, { translateY }] }]}
         resizeMode="contain"
       />
     </TouchableOpacity>
@@ -407,8 +416,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarImg: {
-    width:  220,
-    height: 320,
+    width:  Math.min(Layout.window.width * 0.38, 420),
+    height: Math.min(Layout.window.height * 0.58, 520),
   },
 
   wordCard: {

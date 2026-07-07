@@ -63,7 +63,7 @@ const NV_IMAGES = {
 
 // Image captions per word — update once artwork filenames are confirmed
 const NV_CAPTIONS = {
-  thank_you:        ['Anjalie receives\na present',  'Saman is eating\nbreakfast',  'Saman is crying\nafter he fell'],
+  thank_you:        ['Anjalie receives\na present',  'Saman is reading\na book',  'Anjalie and Saman are\nplaying'],
   im_sorry:         ['Saman bumps into\nAnjalie',    'They are drawing\ntogether',  'Anjalie is eating\nher lunch'],
   youre_welcome:    ["Anjalie says\n'Thank you'",    'Anjalie is sleeping',         'They are running\noutside'],
   excuse_me:        ['Saman needs to\npass by',     'Anjalie is drawing',          'Saman is playing\nwith toys'],
@@ -270,6 +270,9 @@ export default function Phase2NonVerbalScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Look at the pictures and tap the correct scene
             </Text>
+            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
+              රූප බලා නිවැරදි දර්ශනය ස්පර්ශ කරන්න
+            </Text>
 
             {/* ── 3 image cards ── */}
             {isVerticalLayout ? (
@@ -444,6 +447,12 @@ const styles = StyleSheet.create({
     fontSize:    Layout.fontSize.sm,
     textAlign:   'center',
     opacity:     0.65,
+    marginBottom: Layout.spacing.xs,
+  },
+  subtitleSinhala: {
+    fontSize:     Layout.fontSize.sm,
+    textAlign:    'center',
+    opacity:      0.65,
     marginBottom: Layout.spacing.xl,
   },
 

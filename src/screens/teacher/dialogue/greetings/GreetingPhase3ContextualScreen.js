@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,18 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
+
+const PHASE3_PROMPT_AUDIO = {
+  hello:          require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Hello.mp3'),
+  goodbye:        require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodbye.mp3'),
+  good_morning:   require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodmorning.mp3'),
+  good_afternoon: require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodafternoon.mp3'),
+  good_night:     require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodnight.mp3'),
+  happy_birthday: require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Happybirthday.mp3'),
+  how_are_you:    require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Howareyou.mp3'),
+  im_fine:        require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Imfine.mp3'),
+  happy_new_year: require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Happynewyear.mp3'),
+};
 
 const WORD_DISPLAY = {
   hello:          'Hello',
@@ -48,7 +60,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
-      captions: { correct: 'Friends greeting\neach other', wrong1: 'A child eating\nlunch alone', wrong2: 'A child studying\nat home' },
+      captions: { correct: 'Friends greeting\neach other', wrong1: 'A child saying\nGoodbye', wrong2: 'A child eating\nlunch' },
     },
     B: {
       images: {
@@ -56,7 +68,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong3.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong4.png'),
       },
-      captions: { correct: 'Meeting a teacher\nat school', wrong1: 'Playing alone\nin the garden', wrong2: 'Reading a book\nin the library' },
+      captions: { correct: 'Meeting a teacher\nat school', wrong1: 'Playing \nin the garden', wrong2: 'Singing with your\nfriend' },
     },
     C: {
       images: {
@@ -64,7 +76,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong3.png'),
       },
-      captions: { correct: 'Waving hello\nto a neighbour', wrong1: 'A child eating\nlunch alone', wrong2: 'Playing alone\nin the garden' },
+      captions: { correct: 'Waving hello\nto a neighbour', wrong1: 'A child waving\nGoodbye', wrong2: 'Playing \nin the garden' },
     },
     checkpoint: {
       images: {
@@ -402,6 +414,22 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
   const activeRef    = useRef(true);
   const settingsFade = useRef(new Animated.Value(0)).current;
 
+  // ── RC2 feature capture refs ──────────────────────────────────────────
+  const renderTimestampRef      = useRef(Date.now());
+  const responseLatencyRef      = useRef(null);
+  const firstTapCorrectRef      = useRef(null);
+  const selectionChangeCountRef = useRef(0);
+  const promptCountRef          = useRef(1);
+
+  useEffect(() => {
+    renderTimestampRef.current      = Date.now();
+    responseLatencyRef.current      = null;
+    firstTapCorrectRef.current      = null;
+    selectionChangeCountRef.current = 0;
+    promptCountRef.current          = 1;
+    playSound(PHASE3_PROMPT_AUDIO[wordKey]).catch(() => {});
+  }, [scenario]);
+
   const imageItems = useMemo(
     () => buildScenarioImages(scenario, wordKey),
     [scenario]
@@ -475,12 +503,15 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
     }
   }
 
-  function advanceFromScenario(label, wasCorrect) {
+  function advanceFromScenario(
+    label, wasCorrect, responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect,
+  ) {
     resultsRef.current[label] = wasCorrect;
 
     dialogueApi.submitPhase3Scenario(
       student?.sid, wordId,
-      { scenarioLabel: label, selectedCorrect: wasCorrect, sessionId }
+      { scenarioLabel: label, selectedCorrect: wasCorrect, sessionId,
+        responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect }
     ).catch(() => {});
 
     if (label === 'A') {
@@ -523,19 +554,43 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
     }, 1600);
   }
 
-  async function handleImageTap(item) {
+  function handleImageTap(item) {
     if (settled) return;
+
+    if (selectedId === null) {
+      responseLatencyRef.current = Date.now() - renderTimestampRef.current;
+      firstTapCorrectRef.current = item.isCorrect;
+    } else if (selectedId !== item.id) {
+      selectionChangeCountRef.current += 1;
+    }
+
     setSelectedId(item.id);
+  }
+
+  async function handleConfirmSelection() {
+    if (settled || selectedId === null) return;
     setSettled(true);
 
-    if (item.isCorrect) {
+    const chosen = imageItems.find(i => i.id === selectedId);
+    if (chosen?.isCorrect) {
       setCloudText('Great job!');
       await playSound(AUDIO_GOOD_JOB).catch(() => {});
     } else {
       setCloudText("Let's try the next one!");
     }
 
-    advanceFromScenario(scenario, item.isCorrect);
+    const selectionChangeCount = Math.min(selectionChangeCountRef.current, 2);
+    advanceFromScenario(
+      scenario, !!chosen?.isCorrect,
+      responseLatencyRef.current, selectionChangeCount,
+      promptCountRef.current, firstTapCorrectRef.current,
+    );
+  }
+
+  function handleHearAgain() {
+    if (settled) return;
+    promptCountRef.current += 1;
+    playSound(PHASE3_PROMPT_AUDIO[wordKey]).catch(() => {});
   }
 
   function openSettings() { setGatePurpose('settings'); setShowGate(true); }
@@ -605,12 +660,16 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               {`Select the image where we can use the word '${wordLabel}'`}
             </Text>
+            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
+              {`'${wordLabel}' වචනය භාවිතා කළ හැකි රූපය තෝරන්න`}
+            </Text>
 
             <View style={styles.cardsRow}>
               {imageItems.map(item => {
                 const isSelected      = selectedId === item.id;
-                const showGreenBorder = isSelected && item.isCorrect;
-                const showRedDim      = isSelected && !item.isCorrect;
+                const showProvisional = isSelected && !settled;
+                const showGreenBorder = isSelected && settled && item.isCorrect;
+                const showRedDim      = isSelected && settled && !item.isCorrect;
                 return (
                   <TouchableOpacity
                     key={item.id}
@@ -619,6 +678,7 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
                     style={[
                       styles.imageCard,
                       { width: cardW, backgroundColor: theme.cardSurface },
+                      showProvisional && { borderColor: theme.button, borderWidth: 3 },
                       showGreenBorder && styles.cardCorrect,
                       showRedDim      && styles.cardWrong,
                     ]}
@@ -637,6 +697,26 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                onPress={handleHearAgain}
+                disabled={settled}
+                style={[styles.hearAgainButton, { borderColor: theme.button }]}
+              >
+                <Ionicons name="volume-high-outline" size={16} color={theme.button} />
+                <Text style={[styles.hearAgainText, { color: theme.button }]}>Hear it again</Text>
+              </TouchableOpacity>
+              {selectedId !== null && !settled && (
+                <TouchableOpacity
+                  onPress={handleConfirmSelection}
+                  style={[styles.confirmButton, { backgroundColor: theme.button }]}
+                >
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={{ flex: 1 }} />
@@ -729,7 +809,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   title: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, textAlign: 'center', marginBottom: Layout.spacing.xs },
-  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
+  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xs },
+  subtitleSinhala: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
   cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.sm },
   imageCard: {
@@ -806,4 +887,31 @@ const styles = StyleSheet.create({
   settingsOption: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
   settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: 4 },
+
+  actionRow: {
+    flexDirection:  'row',
+    justifyContent: 'center',
+    alignItems:     'center',
+    gap:            Layout.spacing.md,
+    marginTop:      Layout.spacing.md,
+  },
+  hearAgainButton: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical:   8,
+    borderRadius:      Layout.radius.full,
+    borderWidth:       1.5,
+  },
+  hearAgainText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.bold },
+  confirmButton: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical:   8,
+    borderRadius:      Layout.radius.full,
+  },
+  confirmButtonText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#FFFFFF' },
 });

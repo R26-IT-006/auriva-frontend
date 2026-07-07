@@ -59,14 +59,20 @@ export default function GreetingPhase1CompleteScreen({ route, navigation }) {
             <Text style={[styles.heading, { color: theme.headingText }]}>
               You did it! 🎉
             </Text>
+            <Text style={[styles.headingSinhala, { color: theme.headingText }]}>
+              ඔබ කළා! 🎉
+            </Text>
 
             <Text style={[styles.subtext, { color: theme.headingText }]}>
               You've learnt to recognise{'\n'}
               <Text style={[styles.wordAccent, { color: theme.button }]}>"{wordLabel}"</Text>
             </Text>
+            <Text style={[styles.subtextSinhala, { color: theme.headingText }]}>
+              {`"${wordLabel}" වචනය හඳුනාගෙන ඉගෙනගත්තා`}
+            </Text>
 
             <Text style={[styles.nextLabel, { color: theme.headingText }]}>
-              Next up: Say the word!
+              Next up: Say the word!  ·  ඊළඟ: වචනය කියමු!
             </Text>
           </Animated.View>
 
@@ -83,7 +89,7 @@ export default function GreetingPhase1CompleteScreen({ route, navigation }) {
               }
             >
               <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>
-                Let's say it!
+                Let's say it!  ·  අපි කියමු!
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -128,12 +134,24 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
   },
+  headingSinhala: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.65,
+  },
   subtext: {
     fontSize: Layout.fontSize.md,
     fontWeight: '600',
     textAlign: 'center',
     opacity: 0.75,
     lineHeight: 24,
+  },
+  subtextSinhala: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.65,
   },
   wordAccent: { fontWeight: '900', opacity: 1 },
   nextLabel: {
