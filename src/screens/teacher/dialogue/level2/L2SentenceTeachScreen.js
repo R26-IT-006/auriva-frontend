@@ -15,14 +15,9 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 
 // ── Shared audio helpers ──────────────────────────────────────────────────────
-const REC_OPTIONS = {
-  android: { extension: '.m4a', outputFormat: Audio.AndroidOutputFormat.MPEG_4, audioEncoder: Audio.AndroidAudioEncoder.AAC, sampleRate: 16000, numberOfChannels: 1, bitRate: 128000 },
-  ios:     { extension: '.m4a', outputFormat: Audio.IOSOutputFormat.MPEG4AAC, audioQuality: Audio.IOSAudioQuality.HIGH, sampleRate: 16000, numberOfChannels: 1, bitRate: 128000, linearPCMBitDepth: 16, linearPCMIsBigEndian: false, linearPCMIsFloat: false },
-  web:     { mimeType: 'audio/webm', bitsPerSecond: 128000 },
-};
-
 async function playBase64Audio(base64, soundRef) {
   if (!base64) return;
   try {
@@ -496,21 +491,26 @@ function ActivityPreScreen({ sessionData, theme, onSelect }) {
 }
 
 // ── Step 4: Speak ─────────────────────────────────────────────────────────────
-const S4 = { IDLE: 'idle', PLAYING: 'playing', LISTENING: 'listening', RECORDING: 'recording', PROCESSING: 'processing', DONE: 'done' };
+const S4 = { IDLE: 'idle', PLAYING: 'playing', PROCESSING: 'processing', DONE: 'done' };
 
 function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentenceIndex, onNext }) {
   const [phase,   setPhase]   = useState(S4.IDLE);
   const [feedbk,  setFeedbk]  = useState('');
   const soundRef    = useRef(null);
-  const recordRef   = useRef(null);
   const hasAudio    = !!sentence.audio_base64;
+
+  const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
+    onStart: () => setFeedbk(''),
+    onStop: uri => submitRecording(uri),
+    onError: () => setPhase(S4.IDLE),
+  });
 
   useEffect(() => {
     if (hasAudio) { handlePlay(); }
     return () => {
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
-      recordRef.current?.stopAndUnloadAsync().catch(() => {});
+      resetRecorder();
     };
   }, []);
 
@@ -520,32 +520,14 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
     setPhase(S4.IDLE);
   }
 
-  async function handleRecordBtn() {
-    if (phase === S4.RECORDING) { await submitRecording(); return; }
-    if (![S4.IDLE, S4.LISTENING].includes(phase)) return;
-
-    setPhase(S4.LISTENING);
-    setFeedbk('');
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') { setPhase(S4.IDLE); return; }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(REC_OPTIONS);
-      await rec.startAsync();
-      recordRef.current = rec;
-      setPhase(S4.RECORDING);
-    } catch { setPhase(S4.IDLE); }
+  function handleRecordBtn() {
+    if (recorderState === 'idle' && phase !== S4.IDLE) return;
+    toggleRecording();
   }
 
-  async function submitRecording() {
-    if (!recordRef.current) return;
+  async function submitRecording(uri) {
     setPhase(S4.PROCESSING);
     try {
-      await recordRef.current.stopAndUnloadAsync();
-      const uri = recordRef.current.getURI();
-      recordRef.current = null;
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
       const b64 = await uriToBase64(uri);
       if (studentId && sessionId) {
         const res = await level2Api.assessStep4(studentId, sessionId, sentenceIndex, b64, 'audio/m4a');
@@ -558,8 +540,8 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
     } catch { setPhase(S4.IDLE); }
   }
 
-  const isRecording  = phase === S4.RECORDING;
-  const isProcessing = phase === S4.PROCESSING;
+  const isRecording  = recorderState === 'recording';
+  const isProcessing = phase === S4.PROCESSING || recorderState === 'starting' || recorderState === 'stopping';
   const micColor     = isRecording ? '#FF4D6D' : theme.button;
 
   return (

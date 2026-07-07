@@ -27,9 +27,6 @@ export default function Level1OverviewScreen({ route, navigation }) {
             navigation.replace('DialogueCategory', { student });
           }
 
-        } else if (categoryKey === 'days_of_week') {
-          navigation.replace('DaysMenuScreen', { student });
-
         } else if (categoryKey === 'greetings') {
           if (nextWord) {
             navigation.replace('GreetingLanding', {

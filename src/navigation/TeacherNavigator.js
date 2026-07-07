@@ -32,14 +32,6 @@ import Cat3Phase2Screen               from '../screens/teacher/dialogue/abilitie
 import Cat3Phase2NonVerbalScreen      from '../screens/teacher/dialogue/abilities/Cat3Phase2NonVerbalScreen';
 import Cat3Phase3Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase3Screen';
 import Cat3WordCompleteScreen         from '../screens/teacher/dialogue/abilities/Cat3WordCompleteScreen';
-import DaysLandingScreen          from '../screens/teacher/dialogue/days-of-week/DaysLandingScreen';
-import DaysPhase1CalendarScreen   from '../screens/teacher/dialogue/days-of-week/DaysPhase1CalendarScreen';
-import DaysDragToLineScreen       from '../screens/teacher/dialogue/days-of-week/DaysDragToLineScreen';
-import DaysPhase2ProductionScreen from '../screens/teacher/dialogue/days-of-week/DaysPhase2ProductionScreen';
-import DaysPhase2NonVerbalScreen  from '../screens/teacher/dialogue/days-of-week/DaysPhase2NonVerbalScreen';
-import DaysPhase3SequenceScreen   from '../screens/teacher/dialogue/days-of-week/DaysPhase3SequenceScreen';
-import DaysSpinningWheelScreen    from '../screens/teacher/dialogue/days-of-week/DaysSpinningWheelScreen';
-import DaysMenuScreen             from '../screens/teacher/dialogue/days-of-week/DaysMenuScreen';
 import GreetingLandingScreen      from '../screens/teacher/dialogue/greetings/GreetingLandingScreen';
 import GreetingPhase1VideoScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase1VideoScreen';
 import GreetingDragToLineScreen   from '../screens/teacher/dialogue/greetings/GreetingDragToLineScreen';
@@ -47,15 +39,6 @@ import GreetingPhase1CompleteScreen from '../screens/teacher/dialogue/greetings/
 import GreetingPhase2ProductionScreen from '../screens/teacher/dialogue/greetings/GreetingPhase2ProductionScreen';
 import GreetingPhase2NonVerbalScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase2NonVerbalScreen';
 import GreetingPhase3ContextualScreen from '../screens/teacher/dialogue/greetings/GreetingPhase3ContextualScreen';
-
-// Level 3 – Conversation Builder
-import L3LandingScreen       from '../screens/teacher/dialogue/level3/L3LandingScreen';
-import DemoScreen            from '../screens/teacher/dialogue/level3/DemoScreen';
-import FillBlanksScreen      from '../screens/teacher/dialogue/level3/FillBlanksScreen';
-import RepeatAudioScreen     from '../screens/teacher/dialogue/level3/RepeatAudioScreen';
-import FeedbackScreen        from '../screens/teacher/dialogue/level3/FeedbackScreen';
-import TextCueScreen         from '../screens/teacher/dialogue/level3/TextCueScreen';
-import IndependentScreen     from '../screens/teacher/dialogue/level3/IndependentScreen';
 
 // Level 2 – Sentence Construction
 import L2TopicSelectionScreen  from '../screens/teacher/dialogue/level2/L2TopicSelectionScreen';
@@ -175,25 +158,6 @@ export default function TeacherNavigator() {
       <Stack.Screen name="GreetingPhase2Production"   component={GreetingPhase2ProductionScreen} />
       <Stack.Screen name="GreetingPhase2NonVerbal"    component={GreetingPhase2NonVerbalScreen} />
       <Stack.Screen name="GreetingPhase3Contextual"   component={GreetingPhase3ContextualScreen} />
-
-      {/* Days of the Week */}
-      <Stack.Screen name="DaysMenuScreen"        component={DaysMenuScreen} />
-      <Stack.Screen name="DaysLanding"          component={DaysLandingScreen} />
-      <Stack.Screen name="DaysPhase1Calendar"   component={DaysPhase1CalendarScreen} />
-      <Stack.Screen name="DaysDragToLine"       component={DaysDragToLineScreen} />
-      <Stack.Screen name="DaysPhase2Production" component={DaysPhase2ProductionScreen} />
-      <Stack.Screen name="DaysPhase2NonVerbal"  component={DaysPhase2NonVerbalScreen} />
-      <Stack.Screen name="DaysPhase3Sequence"   component={DaysPhase3SequenceScreen} />
-      <Stack.Screen name="DaysSpinningWheel"    component={DaysSpinningWheelScreen} />
-
-      {/* Level 3 – Conversation Builder */}
-      <Stack.Screen name="L3Landing"      component={L3LandingScreen} />
-      <Stack.Screen name="L3Demo"         component={DemoScreen} />
-      <Stack.Screen name="L3FillBlanks"   component={FillBlanksScreen} />
-      <Stack.Screen name="L3RepeatAudio"  component={RepeatAudioScreen} />
-      <Stack.Screen name="L3Feedback"     component={FeedbackScreen} />
-      <Stack.Screen name="L3TextCue"      component={TextCueScreen} />
-      <Stack.Screen name="L3Independent"  component={IndependentScreen} />
 
       {/* Level 2 – Sentence Construction */}
       <Stack.Screen name="L2TopicSelection"  component={L2TopicSelectionScreen} />

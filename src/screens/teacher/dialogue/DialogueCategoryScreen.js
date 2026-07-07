@@ -37,13 +37,7 @@ const CATEGORIES = [
     icon: require('../../../../assets/dialogue-icons/activities.png'),
     gradient: ['#7DD3FC', '#38BDF8'],
   },
-  {
-    key: 'days_of_week',
-    label: 'Days of the Week',
-    subtitle: 'A journey through time!',
-    icon: require('../../../../assets/dialogue-icons/days_of_the_week.png'),
-    gradient: ['#FCD34D', '#FB923C'],
-  },
+  /* Evaluations tile added in TASK-15 */
 ];
 
 const H_PAD = 14;
@@ -121,9 +115,7 @@ export default function DialogueCategoryScreen({ route, navigation }) {
                       activeOpacity={0.85}
                       style={[styles.card, ci === 1 && { marginLeft: GAP }]}
                       onPress={() =>
-                        cat.key === 'days_of_week'
-                          ? navigation.navigate('DaysMenuScreen', { student })
-                          : navigation.navigate('Level1Overview', { student, categoryKey: cat.key })
+                        navigation.navigate('Level1Overview', { student, categoryKey: cat.key })
                       }
                     >
                       <LinearGradient

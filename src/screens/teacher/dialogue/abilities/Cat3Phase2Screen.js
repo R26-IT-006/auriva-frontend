@@ -17,6 +17,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
+import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 
 const PROGRESS_FRACTION = 0.70;
 
@@ -33,27 +34,21 @@ const AUDIO = {
   tapRecordBtn: require('../../../../../assets/dialogue-audios/Tap_the_record_button_and_speak.mp3'),
 };
 
-const REC_OPTIONS = {
-  android: {
-    extension: '.m4a',
-    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 128000,
-  },
-  ios: {
-    extension: '.m4a',
-    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-    audioQuality: Audio.IOSAudioQuality.HIGH,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 128000,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: { mimeType: 'audio/webm', bitsPerSecond: 128000 },
+const WORD_AUDIO = {
+  clap:  require('../../../../../assets/dialogue-audios/abilities/clap.mp3'),
+  run:   require('../../../../../assets/dialogue-audios/abilities/run.mp3'),
+  walk:  require('../../../../../assets/dialogue-audios/abilities/walk.mp3'),
+  jump:  require('../../../../../assets/dialogue-audios/abilities/jump.mp3'),
+  dance: require('../../../../../assets/dialogue-audios/abilities/dance.mp3'),
+  sing:  require('../../../../../assets/dialogue-audios/abilities/sing.mp3'),
+  talk:  require('../../../../../assets/dialogue-audios/abilities/talk.mp3'),
+};
+
+const CAN_YOU_SAY_AUDIO = {
+  clap: require('../../../../../assets/dialogue-audios/abilities/can_you_say_clap.mp3'),
+  jump: require('../../../../../assets/dialogue-audios/abilities/can_you_say_jump.mp3'),
+  run:  require('../../../../../assets/dialogue-audios/abilities/can_you_say_run.mp3'),
+  walk: require('../../../../../assets/dialogue-audios/abilities/can_you_say_walk.mp3'),
 };
 
 const P = {
@@ -98,10 +93,12 @@ export default function Cat3Phase2Screen({ route, navigation }) {
   const phaseRef      = useRef(P.INTRO);
   const activeRef     = useRef(true);
   const soundRef      = useRef(null);
-  const recordingRef  = useRef(null);
   const timerRef      = useRef(null);
   const attemptRef    = useRef(0);
   const sessionIdRef  = useRef(sessionId ?? null);
+  const avatarAudioEndRef = useRef(null); // RC3
+  const recordingStartRef = useRef(null); // RC3
+  const micDelayRef       = useRef(0);    // RC3
   const settingsFade  = useRef(new Animated.Value(0)).current;
 
   function setPhase(p) {
@@ -116,6 +113,14 @@ export default function Cat3Phase2Screen({ route, navigation }) {
   function clearTimer() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   }
+
+  const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
+    rc3Refs: { recordingStartRef, micDelayRef },
+    onGetReady: () => say('Get ready...'),
+    onStart: () => { setPhase(P.RECORDING); say('Listening...'); },
+    onStop: uri => submitRecording(uri),
+    onError: () => startListening(),
+  });
 
   async function playSound(source) {
     if (!source) return;
@@ -162,7 +167,7 @@ export default function Cat3Phase2Screen({ route, navigation }) {
       clearTimer();
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
-      recordingRef.current?.stopAndUnloadAsync().catch(() => {});
+      resetRecorder();
     };
   }, []));
 
@@ -174,6 +179,14 @@ export default function Cat3Phase2Screen({ route, navigation }) {
     say(`Can you say "${wordLabel}"?`);
     setBtnGlow(false);
     clearTimer();
+    const promptAudio = CAN_YOU_SAY_AUDIO[wordKey];
+    if (promptAudio) {
+      // RC3 — captured via .then() rather than await, since this call is
+      // intentionally fire-and-forget and must not block the 15s timer below.
+      playSound(promptAudio)
+        .then(() => { avatarAudioEndRef.current = Date.now(); })
+        .catch(() => {});
+    }
     timerRef.current = setTimeout(enterNoResponse, 15_000);
   }
 
@@ -184,6 +197,7 @@ export default function Cat3Phase2Screen({ route, navigation }) {
     setBtnGlow(true);
     clearTimer();
     await playSound(AUDIO.tapRecordBtn);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     timerRef.current = setTimeout(enterReprompt, 10_000);
   }
@@ -195,6 +209,7 @@ export default function Cat3Phase2Screen({ route, navigation }) {
     setBtnGlow(false);
     clearTimer();
     await playSound(AUDIO.youCanDoIt);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     timerRef.current = setTimeout(goNonverbal, 20_000);
   }
@@ -217,51 +232,31 @@ export default function Cat3Phase2Screen({ route, navigation }) {
 
   // ── Recording ─────────────────────────────────────────────────────────────
 
-  async function handleRecordBtn() {
-    if (phaseRef.current === P.RECORDING) {
-      await submitRecording();
-      return;
+  function handleRecordBtn() {
+    if (recorderState === 'idle') {
+      const recordable = [P.LISTENING, P.NO_RESP, P.REPROMPT, P.PARTIAL];
+      if (!recordable.includes(phaseRef.current)) return;
+
+      clearTimer();
+      setBtnGlow(false);
     }
-
-    const recordable = [P.LISTENING, P.NO_RESP, P.REPROMPT, P.PARTIAL];
-    if (!recordable.includes(phaseRef.current)) return;
-
-    clearTimer();
-    setBtnGlow(false);
-
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') { startListening(); return; }
-
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(REC_OPTIONS);
-      await recording.startAsync();
-      recordingRef.current = recording;
-      setPhase(P.RECORDING);
-      say('Listening...');
-    } catch {
-      startListening();
-    }
+    toggleRecording();
   }
 
-  async function submitRecording() {
-    if (!recordingRef.current) return;
+  async function submitRecording(uri) {
     setPhase(P.PROCESSING);
     say('...');
 
     try {
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
-
       const b64 = await uriToBase64(uri);
       attemptRef.current += 1;
 
       const res = await cat3Api.assessPhase2Speech(
         student?.sid, wordId, b64, 'audio/m4a', sessionIdRef.current,
+        avatarAudioEndRef.current, recordingStartRef.current,
       );
+
+      micDelayRef.current = res.mic_delay_ms ?? 0; // RC3
 
       if (res.session_id && !sessionIdRef.current) {
         sessionIdRef.current = res.session_id;
@@ -340,8 +335,9 @@ export default function Cat3Phase2Screen({ route, navigation }) {
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
 
-  const isRecording = phase === P.RECORDING;
-  const isDimmed    = [P.INTRO, P.PROCESSING, P.DONE, P.NONVERBAL].includes(phase);
+  const isRecording = recorderState === 'recording';
+  const isDimmed    = [P.INTRO, P.PROCESSING, P.DONE, P.NONVERBAL].includes(phase)
+    || recorderState === 'starting' || recorderState === 'stopping';
   const WORD_UPPER  = wordLabel.toUpperCase();
 
   return (
@@ -374,13 +370,17 @@ export default function Cat3Phase2Screen({ route, navigation }) {
               {'?'}
             </Text>
 
-            {/* Word tile */}
-            <View style={[styles.wordTile, { backgroundColor: theme.cardSurface }]}>
+            {/* Word tile — tap to hear the word */}
+            <TouchableOpacity
+              style={[styles.wordTile, { backgroundColor: theme.cardSurface }]}
+              onPress={() => { const a = WORD_AUDIO[wordKey]; if (a) playSound(a).catch(() => {}); }}
+              activeOpacity={0.82}
+            >
               <View style={[styles.speakerCircle, { backgroundColor: theme.button + '22' }]}>
                 <Ionicons name="volume-high" size={36} color={theme.button} />
               </View>
               <Text style={[styles.wordText, { color: theme.button }]}>{wordLabel}</Text>
-            </View>
+            </TouchableOpacity>
 
             <View style={styles.hintRow}>
               <Ionicons name="hand-left-outline" size={14} color={theme.headingText} style={{ opacity: 0.4 }} />
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   title: { fontSize: Layout.fontSize.xl, fontWeight: '600', textAlign: 'center', marginBottom: Layout.spacing.lg },
 
   wordTile: {
-    width:        160,
+    minWidth:     200,
     borderRadius: Layout.radius.xl,
     padding:      Layout.spacing.xl,
     alignItems:   'center',

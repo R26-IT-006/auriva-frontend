@@ -17,6 +17,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 
 // Progress: Phase 2 sits at ~85% through Level 1
 const PROGRESS_FRACTION = 0.85;
@@ -71,29 +72,6 @@ const WORD_AUDIO = {
   },
 };
 
-const REC_OPTIONS = {
-  android: {
-    extension: '.m4a',
-    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 128000,
-  },
-  ios: {
-    extension: '.m4a',
-    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-    audioQuality: Audio.IOSAudioQuality.HIGH,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 128000,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: { mimeType: 'audio/webm', bitsPerSecond: 128000 },
-};
-
 const P = {
   INTRO:       'intro',
   LISTENING:   'listening',
@@ -146,12 +124,14 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   const phaseRef      = useRef(P.INTRO);
   const activeRef     = useRef(true);
   const soundRef      = useRef(null);
-  const recordingRef  = useRef(null);
   const timerRef      = useRef(null);
   const tileTapTimer  = useRef(null);
   const attemptRef    = useRef(0);   // # of recording submissions
   const tileTapRef    = useRef(0);   // # of word-tile taps without recording
   const sessionIdRef  = useRef(null); // session_id returned by first Phase 2 assess call
+  const avatarAudioEndRef = useRef(null); // RC3 — when the last avatar prompt finished
+  const recordingStartRef = useRef(null); // RC3 — when the current recording started
+  const micDelayRef       = useRef(0);    // RC3 — delay (ms) to apply before the next recording
   const settingsFade  = useRef(new Animated.Value(0)).current;
 
   function setPhase(p) {
@@ -166,6 +146,14 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   function clearTimer() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   }
+
+  const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
+    rc3Refs: { recordingStartRef, micDelayRef },
+    onGetReady: () => say('Get ready...'),
+    onStart: () => { setPhase(P.RECORDING); say('Listening...'); },
+    onStop: uri => submitRecording(uri),
+    onError: () => startListening(),
+  });
 
   // ── Audio ─────────────────────────────────────────────────────────────────
 
@@ -215,6 +203,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
       // "Can you say [word]?" — bubble updates, then mic auto-starts
       say(`Can you say "${wordLabel}"?`);
       await playSound(wordAudio.canYouSay);
+      avatarAudioEndRef.current = Date.now(); // RC3
       if (cancelled) return;
 
       startListening();
@@ -239,7 +228,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
       if (tileTapTimer.current) clearTimeout(tileTapTimer.current);
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
-      recordingRef.current?.stopAndUnloadAsync().catch(() => {});
+      resetRecorder();
     };
   }, []));
 
@@ -263,6 +252,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setBtnGlow(false);
     clearTimer();
     await playSound(AUDIO.tapToListen);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     // 10-second window to tap the word tile before progressing
     timerRef.current = setTimeout(enterReprompt1, 10_000);
@@ -276,6 +266,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setBtnGlow(true);
     clearTimer();
     await playSound(AUDIO.tapRecordBtn);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     timerRef.current = setTimeout(enterReprompt1, 10_000);
   }
@@ -288,6 +279,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setBtnGlow(false);
     clearTimer();
     await playSound(wordAudio.canYouSay);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     timerRef.current = setTimeout(enterReprompt2, 20_000);
   }
@@ -300,6 +292,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setBtnGlow(false);
     clearTimer();
     await playSound(AUDIO.youCanDoIt);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     timerRef.current = setTimeout(enterNonverbal, 20_000);
   }
@@ -351,62 +344,42 @@ export default function Phase2ProductionScreen({ route, navigation }) {
 
   // ── Recording ─────────────────────────────────────────────────────────────
 
-  async function handleRecordBtn() {
-    if (phaseRef.current === P.RECORDING) {
-      await submitRecording();
-      return;
+  function handleRecordBtn() {
+    if (recorderState === 'idle') {
+      const recordable = [P.LISTENING, P.NO_RESPONSE, P.REC_HINT, P.REPROMPT_1, P.REPROMPT_2, P.PARTIAL_1, P.PARTIAL_2];
+      if (!recordable.includes(phaseRef.current)) return;
+
+      clearTimer();
+      if (tileTapTimer.current) { clearTimeout(tileTapTimer.current); tileTapTimer.current = null; }
+      setTileGlow(false);
+      setBtnGlow(false);
+      tileTapRef.current = 0;
     }
-
-    const recordable = [P.LISTENING, P.NO_RESPONSE, P.REC_HINT, P.REPROMPT_1, P.REPROMPT_2, P.PARTIAL_1, P.PARTIAL_2];
-    if (!recordable.includes(phaseRef.current)) return;
-
-    clearTimer();
-    if (tileTapTimer.current) { clearTimeout(tileTapTimer.current); tileTapTimer.current = null; }
-    setTileGlow(false);
-    setBtnGlow(false);
-    tileTapRef.current = 0;
-
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') { startListening(); return; }
-
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(REC_OPTIONS);
-      await recording.startAsync();
-      recordingRef.current = recording;
-
-      setPhase(P.RECORDING);
-      say('Listening...');
-    } catch {
-      startListening();
-    }
+    toggleRecording();
   }
 
-  async function submitRecording() {
-    if (!recordingRef.current) return;
+  async function submitRecording(uri) {
     setPhase(P.PROCESSING);
     say('...');
 
     try {
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
-
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
-
       const b64 = await uriToBase64(uri);
       attemptRef.current += 1;
 
       const res = await dialogueApi.assessPhase2Speech(
         student?.sid, wordId,
-        { audioBase64: b64, mimeType: 'audio/m4a', sessionId: sessionIdRef.current }
+        {
+          audioBase64: b64, mimeType: 'audio/m4a', sessionId: sessionIdRef.current,
+          avatarAudioEndTs: avatarAudioEndRef.current, recordingStartTs: recordingStartRef.current,
+        }
       );
 
       // Capture session_id from the first response for continuity
       if (res.session_id && !sessionIdRef.current) {
         sessionIdRef.current = res.session_id;
       }
+
+      micDelayRef.current = res.mic_delay_ms ?? 0; // RC3
 
       if (!activeRef.current) return;
 
@@ -449,10 +422,12 @@ export default function Phase2ProductionScreen({ route, navigation }) {
           await delay(2000);
           if (!activeRef.current) return;
           await playSound(wordAudio.word);
+          avatarAudioEndRef.current = Date.now(); // RC3
         } else {
           setPhase(P.PARTIAL_1);
           say(`Can you say "${wordLabel}"?`);
           await playSound(wordAudio.canYouSay);
+          avatarAudioEndRef.current = Date.now(); // RC3
         }
       } else {
         // score = 0: no recognisable speech — re-prompt
@@ -500,8 +475,9 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   // ── Derived render state ──────────────────────────────────────────────────
 
   const WORD_UPPER   = wordLabel.toUpperCase();
-  const isRecording  = phase === P.RECORDING;
-  const isDimmed     = [P.INTRO, P.PROCESSING, P.DONE, P.NONVERBAL].includes(phase);
+  const isRecording  = recorderState === 'recording';
+  const isDimmed     = [P.INTRO, P.PROCESSING, P.DONE, P.NONVERBAL].includes(phase)
+    || recorderState === 'starting' || recorderState === 'stopping';
   const showProdVideo = phase === P.INTRO && prodVideo !== null;
 
   return (
@@ -536,6 +512,9 @@ export default function Phase2ProductionScreen({ route, navigation }) {
               </Text>
               {'?'}
             </Text>
+            <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
+              {`"${wordLabel}" කිව හැකිද?`}
+            </Text>
 
             {/* Word tile — tap to hear audio */}
             <TouchableOpacity
@@ -559,7 +538,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
             <View style={styles.hintRow}>
               <Ionicons name="hand-left-outline" size={15} color={theme.headingText} style={{ opacity: 0.45 }} />
               <Text style={[styles.hintText, { color: theme.headingText }]}>
-                Click on the card to hear the audio
+                Click on the card to hear the audio  ·  ශ්‍රව්‍ය ඇසීමට කාඩ්පත ස්පර්ශ කරන්න
               </Text>
             </View>
 
@@ -588,7 +567,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
                     {isRecording ? 'Stop Recording' : 'Record Audio'}
                   </Text>
                 </TouchableOpacity>
-                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK</Text>
+                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK  ·  ස්පර්ශ කර කතා කරන්න</Text>
               </View>
 
               {/* Avatar + speech bubble */}
@@ -703,16 +682,23 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xl,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: Layout.spacing.lg,
+    marginBottom: 4,
   },
   titleEmphasis: {
     fontSize: Layout.fontSize.xl,
     fontWeight: '900',
   },
+  titleSinhala: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.65,
+    marginBottom: Layout.spacing.lg,
+  },
 
   /* Word tile */
   wordTile: {
-    width: 160,
+    minWidth: 240,
     borderRadius: Layout.radius.xl,
     padding: Layout.spacing.xl,
     alignItems: 'center',

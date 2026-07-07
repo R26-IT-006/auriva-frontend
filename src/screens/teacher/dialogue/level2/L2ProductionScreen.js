@@ -8,14 +8,9 @@ import * as FileSystem from 'expo-file-system';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
+import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 
-const REC_OPTIONS = {
-  android: { extension: '.m4a', outputFormat: Audio.AndroidOutputFormat.MPEG_4, audioEncoder: Audio.AndroidAudioEncoder.AAC, sampleRate: 16000, numberOfChannels: 1, bitRate: 128000 },
-  ios:     { extension: '.m4a', outputFormat: Audio.IOSOutputFormat.MPEG4AAC, audioQuality: Audio.IOSAudioQuality.HIGH, sampleRate: 16000, numberOfChannels: 1, bitRate: 128000, linearPCMBitDepth: 16, linearPCMIsBigEndian: false, linearPCMIsFloat: false },
-  web:     { mimeType: 'audio/webm', bitsPerSecond: 128000 },
-};
-
-const P = { IDLE: 'idle', PLAYING: 'playing', RECORDING: 'recording', PROCESSING: 'processing', DONE: 'done' };
+const P = { IDLE: 'idle', PLAYING: 'playing', PROCESSING: 'processing', DONE: 'done' };
 
 async function playBase64Audio(base64, soundRef) {
   if (!base64) return;
@@ -70,11 +65,16 @@ export default function L2ProductionScreen({ route, navigation }) {
   const [feedback, setFeedback] = useState('');
 
   const soundRef  = useRef(null);
-  const recRef    = useRef(null);
 
   const currentAudio = section === 'full'
     ? sessionData?.full_paragraph?.audio_base64 ?? null
     : sentences[sxsIdx]?.audio_base64 ?? null;
+
+  const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
+    onStart: () => setFeedback(''),
+    onStop: uri => submitRecording(uri),
+    onError: () => setRecPhase(P.IDLE),
+  });
 
   // Reset recorder state when moving to next sentence / section
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function L2ProductionScreen({ route, navigation }) {
     return () => {
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
-      recRef.current?.stopAndUnloadAsync().catch(() => {});
+      resetRecorder();
     };
   }, [section, sxsIdx]);
 
@@ -96,30 +96,14 @@ export default function L2ProductionScreen({ route, navigation }) {
     setRecPhase(P.IDLE);
   }
 
-  async function handleRecordBtn() {
-    if (recPhase === P.RECORDING) { await submitRecording(); return; }
-    if (recPhase !== P.IDLE) return;
-    setFeedback('');
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') return;
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(REC_OPTIONS);
-      await rec.startAsync();
-      recRef.current = rec;
-      setRecPhase(P.RECORDING);
-    } catch { setRecPhase(P.IDLE); }
+  function handleRecordBtn() {
+    if (recorderState === 'idle' && recPhase !== P.IDLE) return;
+    toggleRecording();
   }
 
-  async function submitRecording() {
-    if (!recRef.current) return;
+  async function submitRecording(uri) {
     setRecPhase(P.PROCESSING);
     try {
-      await recRef.current.stopAndUnloadAsync();
-      const uri = recRef.current.getURI();
-      recRef.current = null;
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
       const b64 = await uriToBase64(uri);
       if (student?.sid && sessionId) {
         if (section === 'full') {
@@ -142,8 +126,8 @@ export default function L2ProductionScreen({ route, navigation }) {
   }
 
   const progress = section === 'full' ? 0.1 : 0.1 + (sxsIdx + 1) / sentences.length * 0.9;
-  const isRecording  = recPhase === P.RECORDING;
-  const isProcessing = recPhase === P.PROCESSING;
+  const isRecording  = recorderState === 'recording';
+  const isProcessing = recPhase === P.PROCESSING || recorderState === 'starting' || recorderState === 'stopping';
   const isPlaying    = recPhase === P.PLAYING;
 
   return (
