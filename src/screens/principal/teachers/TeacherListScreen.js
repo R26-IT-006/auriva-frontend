@@ -69,7 +69,7 @@ function TableHeader() {
 
 function ActionBtn({ icon, color, bg, onPress }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       onPress={onPress}
       activeOpacity={0.75}
       style={[styles.actionBtn, { backgroundColor: bg }]}

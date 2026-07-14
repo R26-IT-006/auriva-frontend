@@ -43,12 +43,12 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
   const labelOpacity = sidebarAnim.interpolate({
     inputRange: [MINI_WIDTH, SIDEBAR_WIDTH],
     outputRange: [0, 1],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
   const labelX = sidebarAnim.interpolate({
     inputRange: [MINI_WIDTH, SIDEBAR_WIDTH],
     outputRange: [6, 0],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
   const ls = { opacity: labelOpacity, transform: [{ translateX: labelX }] };
 
@@ -99,7 +99,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         {NAV_ITEMS.map((item) => {
           const active = activeRoute === item.name;
           return (
-            <TouchableOpacity
+            <ButtonFeedback
               key={item.name}
               onPress={() => navRef.current?.navigate(item.name)}
               activeOpacity={0.75}
@@ -147,7 +147,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         <Animated.Text numberOfLines={1} style={[styles.signOutLabel, ls]}>
           Sign Out
         </Animated.Text>
-      </TouchableOpacity>
+      </ButtonFeedback>
 
       <ConfirmDialog
         visible={signOutVisible}

@@ -13,6 +13,7 @@ import {
   Nunito_900Black,
 } from '@expo-google-fonts/nunito';
 import AppNavigator from './src/navigation/AppNavigator';
+import { BackgroundAudio } from './src/components/common/BackgroundAudio';
 
 // Apply Nunito globally to every Text in the app
 Text.defaultProps = Text.defaultProps || {};
@@ -33,6 +34,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="auto" />
+        <BackgroundAudio />
         <AppNavigator />
       </SafeAreaProvider>
     </GestureHandlerRootView>

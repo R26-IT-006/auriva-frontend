@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -35,25 +35,17 @@ const WORKSPACES = [
 
 export default function WorkspaceSelectScreen({ navigation }) {
   const { width } = useWindowDimensions();
-  const cardWidth = Math.min(width - Layout.spacing.lg * 2, 420);
-  const [logoutVisible, setLogoutVisible] = useState(false);
-  const logout = useAuthStore((s) => s.logout);
+  const cardSize = Math.min(
+    (width - Layout.spacing.lg * 2 - Layout.spacing.xl) / 2,
+    200,
+  );
 
   return (
-    <LinearGradient colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']} style={styles.safe}>
-      <SafeAreaView style={styles.safeInner}>
-
-        {/* Top-right logout button */}
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.logoutBtn}
-            onPress={() => setLogoutVisible(true)}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="log-out-outline" size={20} color="#555" />
-            <Text style={styles.logoutText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
+    <SafeAreaView style={styles.safe}>
+      {/* Dot-pattern background layer */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <DotGrid />
+      </View>
 
         <View style={styles.container}>
           <View style={styles.titleWrap}>
@@ -102,9 +94,33 @@ export default function WorkspaceSelectScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  safeInner: { flex: 1 },
+/* Lightweight dot-grid overlay */
+function DotGrid() {
+  const { width, height } = useWindowDimensions();
+  const GAP = 28;
+  const COLS = Math.ceil(width / GAP);
+  const ROWS = Math.ceil(height / GAP);
+  const dots = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      dots.push(
+        <View
+          key={`${r}-${c}`}
+          style={{
+            position: "absolute",
+            top: r * GAP + 6,
+            left: c * GAP + 6,
+            width: 3,
+            height: 3,
+            borderRadius: 2,
+            backgroundColor: "rgba(160,160,180,0.22)",
+          }}
+        />,
+      );
+    }
+  }
+  return <>{dots}</>;
+}
 
   topBar: {
     position: 'absolute',
@@ -135,13 +151,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_600SemiBold',
     color: '#444',
   },
-
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Layout.spacing.lg,
-    gap: Layout.spacing.xl,
+    gap: Layout.spacing.xxl,
   },
   titleWrap: {
     alignItems: 'center',
@@ -161,7 +176,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 28,
     borderWidth: 1,
     borderColor: '#E8EEF0',
@@ -189,16 +203,23 @@ const styles = StyleSheet.create({
   },
   textWrap: {
     flex: 1,
-    gap: 6,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
   },
   cardLabel: {
     fontSize: Layout.fontSize.xl,
     fontFamily: 'Nunito_600SemiBold',
     color: '#1A2E26',
   },
-  cardSub: {
-    fontSize: Layout.fontSize.md,
-    color: '#6B8A80',
+  cardLabel: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.semibold,
+    color: Colors.text.primary,
+    textAlign: "center",
+    lineHeight: 19,
   },
   chevronCircle: {
     width: 36,

@@ -45,13 +45,13 @@ const COLS = [
 
 function FilterChip({ label, active, onPress }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       onPress={onPress}
       activeOpacity={0.75}
       style={[styles.chip, active && styles.chipActive]}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 

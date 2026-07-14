@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { ButtonFeedback } from "./ButtonFeedback";
 
 export function Input({
   label,
@@ -16,8 +17,8 @@ export function Input({
   onChangeText,
   placeholder,
   secureTextEntry = false,
-  keyboardType = 'default',
-  autoCapitalize = 'none',
+  keyboardType = "default",
+  autoCapitalize = "none",
   leftIcon,
   error,
   editable = true,
@@ -42,11 +43,17 @@ export function Input({
           focused && styles.inputWrapperFocused,
           error && styles.inputWrapperError,
           !editable && styles.inputWrapperDisabled,
-          multiline && { height: 'auto', minHeight: 80, alignItems: 'flex-start' },
+          multiline && {
+            height: "auto",
+            minHeight: 80,
+            alignItems: "flex-start",
+          },
         ]}
       >
         {leftIcon && (
-          <View style={[styles.leftIconContainer, multiline && { paddingTop: 12 }]}>
+          <View
+            style={[styles.leftIconContainer, multiline && { paddingTop: 12 }]}
+          >
             {leftIcon}
           </View>
         )}
@@ -62,27 +69,30 @@ export function Input({
           multiline={multiline}
           numberOfLines={numberOfLines}
           onFocus={() => setFocused(true)}
-          onBlur={() => { setFocused(false); onBlur?.(); }}
+          onBlur={() => {
+            setFocused(false);
+            onBlur?.();
+          }}
           style={[
             styles.input,
             !leftIcon && { paddingLeft: Layout.spacing.md },
             isPassword && { paddingRight: 44 },
-            multiline && { textAlignVertical: 'top', paddingTop: 12 },
+            multiline && { textAlignVertical: "top", paddingTop: 12 },
             inputStyle,
           ]}
         />
         {isPassword && (
-          <TouchableOpacity
+          <ButtonFeedback
             onPress={() => setShowPassword((p) => !p)}
             style={styles.eyeIcon}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons
-              name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+              name={showPassword ? "eye-outline" : "eye-off-outline"}
               size={20}
               color={Colors.icon.default}
             />
-          </TouchableOpacity>
+          </ButtonFeedback>
         )}
       </View>
       {error && <Text style={styles.error}>{error}</Text>}
@@ -102,8 +112,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.surface,
     borderRadius: Layout.radius.lg,
     borderWidth: 1.5,
@@ -131,11 +141,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    height: '100%',
+    height: "100%",
     paddingRight: Layout.spacing.md,
   },
   eyeIcon: {
-    position: 'absolute',
+    position: "absolute",
     right: Layout.spacing.md,
   },
   error: {

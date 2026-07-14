@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { teacherApi } from '../../../api/teacher';
 
 function StudentCard({ student, onPress }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.card}>
+    <ButtonFeedback onPress={onPress} activeOpacity={0.8} style={styles.card}>
       <Avatar name={student.full_name} uri={student.profile_photo_url} size={56} />
       <View style={styles.info}>
         <Text style={styles.name}>{student.full_name}</Text>
@@ -29,7 +29,7 @@ function StudentCard({ student, onPress }) {
       <View style={styles.action}>
         <Ionicons name="chevron-forward" size={18} color={Colors.icon.muted} />
       </View>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 

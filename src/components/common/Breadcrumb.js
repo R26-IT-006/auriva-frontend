@@ -1,14 +1,15 @@
-﻿import React from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { ButtonFeedback } from "./ButtonFeedback";
 
 const K = {
-  purple:     '#8A80BC',
-  purpleLight:'#EFEDF8',
-  bg:         '#F2F1F8',
+  purple: "#8A80BC",
+  purpleLight: "#EFEDF8",
+  bg: "#F2F1F8",
 };
 
 /**
@@ -27,14 +28,14 @@ export function Breadcrumb({ crumbs = [], title, right }) {
       <View style={styles.trailRow}>
         {/* Back chevron navigates to previous crumb */}
         {crumbs.length > 1 && crumbs[crumbs.length - 2]?.onPress && (
-          <TouchableOpacity
+          <ButtonFeedback
             onPress={crumbs[crumbs.length - 2].onPress}
             style={styles.backBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.7}
           >
             <Ionicons name="chevron-back" size={16} color={K.purple} />
-          </TouchableOpacity>
+          </ButtonFeedback>
         )}
 
         <View style={styles.trail}>
@@ -58,11 +59,14 @@ export function Breadcrumb({ crumbs = [], title, right }) {
                     {crumb.label}
                   </Text>
                 ) : (
-                  <TouchableOpacity onPress={crumb.onPress} activeOpacity={0.7}>
-                    <Text style={[styles.crumbText, styles.crumbTextLink]} numberOfLines={1}>
+                  <ButtonFeedback onPress={crumb.onPress} activeOpacity={0.7}>
+                    <Text
+                      style={[styles.crumbText, styles.crumbTextLink]}
+                      numberOfLines={1}
+                    >
                       {crumb.label}
                     </Text>
-                  </TouchableOpacity>
+                  </ButtonFeedback>
                 )}
               </View>
             );
@@ -73,7 +77,11 @@ export function Breadcrumb({ crumbs = [], title, right }) {
       </View>
 
       {/* Page title */}
-      {title && <Text style={styles.title} numberOfLines={1}>{title}</Text>}
+      {title && (
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+      )}
     </View>
   );
 }
@@ -88,8 +96,8 @@ const styles = StyleSheet.create({
     ...Layout.shadow.sm,
   },
   trailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: 32,
   },
   backBtn: {
@@ -97,20 +105,20 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 8,
     backgroundColor: K.purpleLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Layout.spacing.sm,
     flexShrink: 0,
   },
   trail: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'nowrap',
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "nowrap",
   },
   crumbItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flexShrink: 1,
   },
   separator: {

@@ -1,23 +1,23 @@
-﻿import React from 'react';
+import React from "react";
 import {
   Modal,
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   TouchableWithoutFeedback,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Layout } from '../../constants/layout';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Layout } from "../../constants/layout";
+import { ButtonFeedback } from "./ButtonFeedback";
 
 const K = {
-  purple:      '#8A80BC',
-  purpleLight: '#EFEDF8',
-  purpleDark:  '#6B62A8',
-  danger:      '#E05252',
-  dangerLight: '#FDEAEA',
-  text:        '#1A1A2E',
-  subtext:     '#666',
+  purple: "#8A80BC",
+  purpleLight: "#EFEDF8",
+  purpleDark: "#6B62A8",
+  danger: "#E05252",
+  dangerLight: "#FDEAEA",
+  text: "#1A1A2E",
+  subtext: "#666",
 };
 
 /**
@@ -36,18 +36,18 @@ const K = {
  */
 export function ConfirmDialog({
   visible = false,
-  title = 'Confirmation',
-  message = 'Are you sure?',
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  title = "Confirmation",
+  message = "Are you sure?",
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
   icon,
   onConfirm,
   onCancel,
   danger = false,
 }) {
-  const resolvedIcon = icon ?? (danger ? 'trash' : 'help-circle');
-  const accentColor  = danger ? K.danger : K.purple;
-  const accentLight  = danger ? K.dangerLight : K.purpleLight;
+  const resolvedIcon = icon ?? (danger ? "trash" : "help-circle");
+  const accentColor = danger ? K.danger : K.purple;
+  const accentLight = danger ? K.dangerLight : K.purpleLight;
 
   return (
     <Modal
@@ -61,9 +61,10 @@ export function ConfirmDialog({
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
             <View style={styles.card}>
-
               {/* Icon circle */}
-              <View style={[styles.iconCircle, { backgroundColor: accentLight }]}>
+              <View
+                style={[styles.iconCircle, { backgroundColor: accentLight }]}
+              >
                 <Ionicons name={resolvedIcon} size={36} color={accentColor} />
               </View>
 
@@ -75,23 +76,26 @@ export function ConfirmDialog({
 
               {/* Buttons — Cancel left, Confirm right */}
               <View style={styles.btnRow}>
-                <TouchableOpacity
+                <ButtonFeedback
                   style={[styles.btn, styles.btnCancel]}
                   onPress={onCancel}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.btnCancelText}>{cancelLabel}</Text>
-                </TouchableOpacity>
+                </ButtonFeedback>
 
-                <TouchableOpacity
-                  style={[styles.btn, styles.btnConfirm, { backgroundColor: accentColor }]}
+                <ButtonFeedback
+                  style={[
+                    styles.btn,
+                    styles.btnConfirm,
+                    { backgroundColor: accentColor },
+                  ]}
                   onPress={onConfirm}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.btnConfirmText}>{confirmLabel}</Text>
-                </TouchableOpacity>
+                </ButtonFeedback>
               </View>
-
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -103,21 +107,21 @@ export function ConfirmDialog({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 40,
   },
   card: {
-    width: '100%',
+    width: "100%",
     maxWidth: 420,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderRadius: 28,
     paddingVertical: 40,
     paddingHorizontal: 32,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.15,
     shadowRadius: 32,
@@ -128,8 +132,8 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 4,
   },
 
@@ -137,40 +141,40 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xl,
     fontFamily: 'Nunito_800ExtraBold',
     color: K.text,
-    textAlign: 'center',
+    textAlign: "center",
   },
   message: {
     fontSize: Layout.fontSize.md,
     color: K.subtext,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
     marginBottom: 4,
   },
 
   btnRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginTop: 8,
-    width: '100%',
+    width: "100%",
   },
   btn: {
     flex: 1,
     height: 52,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   btnConfirm: {
     // backgroundColor set inline via accentColor
   },
   btnConfirmText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: Layout.fontSize.md,
     fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.3,
   },
   btnCancel: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: "#F2F2F7",
   },
   btnCancelText: {
     color: K.text,

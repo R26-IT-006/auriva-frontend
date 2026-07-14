@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from "react";
 import {
   View, Text, Image, TouchableOpacity, StyleSheet,
 } from 'react-native';
@@ -49,11 +49,19 @@ export default function StudentDashboardScreen({ route, navigation }) {
   const fetch = useCallback(async () => {
     try {
       const data = await teacherApi.getStudent(initialStudent.sid);
-      setStudent(data);
-    } catch { /* keep cached */ }
+      setStudent((current) => ({
+        ...data,
+        avatar_key:
+          data.avatar_key ?? current?.avatar_key ?? initialStudent.avatar_key,
+      }));
+    } catch {
+      /* keep cached */
+    }
   }, [initialStudent.sid]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
 
   if (!student) return null;
 

@@ -333,7 +333,7 @@ export default function CreateStudentScreen({ navigation }) {
                   {disabilityOpen && (
                     <View style={styles.dropdown}>
                       {DISABILITY_OPTIONS.map((opt) => (
-                        <TouchableOpacity
+                        <ButtonFeedback
                           key={opt}
                           style={[styles.dropdownItem, form.disability === opt && styles.dropdownItemActive]}
                           onPress={() => { setField('disability', opt); setDisabilityOpen(false); }}
