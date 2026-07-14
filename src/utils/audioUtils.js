@@ -1,37 +1,59 @@
-import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { Audio } from 'expo-av';
+import { Asset } from 'expo-asset';
 
-let _currentPlayer = null;
-
-async function _ensureAudioMode() {
-  try {
-    await setAudioModeAsync({ playsInSilentMode: true });
-  } catch {}
-}
-
-// Synchronous — pauses then releases the current player immediately
-function _stopCurrent() {
-  if (_currentPlayer) {
-    try { _currentPlayer.pause(); } catch {}
-    try { _currentPlayer.remove(); } catch {}
-    _currentPlayer = null;
-  }
-}
+let _currentSound = null;
 
 export async function playConceptAudio(source) {
   if (!source) return false;
   try {
-    _stopCurrent(); // stop old audio synchronously before any await
-    await _ensureAudioMode();
+    // Stop and release any currently playing sound
+    if (_currentSound) {
+      try { await _currentSound.stopAsync(); } catch {}
+      try { await _currentSound.unloadAsync(); } catch {}
+      _currentSound = null;
+    }
 
-    const player = createAudioPlayer(source);
-    _currentPlayer = player;
-    player.play();
+    // Configure audio session — essential for Android speaker + iOS silent mode
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS:       false,
+      playsInSilentModeIOS:     true,
+      shouldDuckAndroid:        false,
+      playThroughEarpieceAndroid: false,
+      staysActiveInBackground:  false,
+    });
+
+    // Resolve the bundled asset to an on-device URI before loading
+    const asset = Asset.fromModule(source);
+    if (!asset.downloaded) {
+      await asset.downloadAsync();
+    }
+    const uri = asset.localUri ?? asset.uri;
+
+    const { sound } = await Audio.Sound.createAsync(
+      { uri },
+      { shouldPlay: true, volume: 1.0 },
+    );
+    _currentSound = sound;
+
+    // Release the sound automatically once playback finishes
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        sound.unloadAsync().catch(() => {});
+        if (_currentSound === sound) _currentSound = null;
+      }
+    });
+
     return true;
-  } catch {
+  } catch (e) {
+    console.warn('[audioUtils] playback failed:', e?.message ?? e);
     return false;
   }
 }
 
 export function stopConceptAudio() {
-  _stopCurrent();
+  if (_currentSound) {
+    _currentSound.stopAsync().catch(() => {});
+    _currentSound.unloadAsync().catch(() => {});
+    _currentSound = null;
+  }
 }

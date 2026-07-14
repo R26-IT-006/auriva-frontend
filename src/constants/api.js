@@ -1,9 +1,9 @@
 // For Android emulator: http://10.0.2.2:3000/api
 // For iOS simulator: http://localhost:3000/api
 // For physical device: use your machine's local IP
-// Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.19:3000/api
+// Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.180:3000/api
 // Android emulator → 10.0.2.2 maps to host machine's localhost
-export const API_BASE_URL = 'http://192.168.1.19:3000/api';
+export const API_BASE_URL = 'http://192.168.1.180:3000/api';
 
 export const ENDPOINTS = {
   // Auth
