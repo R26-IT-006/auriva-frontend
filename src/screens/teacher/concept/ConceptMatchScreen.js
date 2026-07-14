@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,23 +41,34 @@ export default function ConceptMatchScreen({ route, navigation }) {
   const theme      = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
 
-  const options = useRef(() => {
+  // Stable options list (set once after distractor fetch; reshuffled between attempts)
+  const optionsRef = useRef(null);
+
+  function buildSequentialOptions() {
     const idx  = allItems.findIndex((it) => it.key === conceptKey);
     const next1 = allItems[(idx + 1) % allItems.length];
     const next2 = allItems[(idx + 2) % allItems.length];
     return [concept, next1, next2];
-  });
+  }
 
   const [currentAttempt,  setCurrentAttempt]  = useState(1);
-  const [displayOrder,    setDisplayOrder]    = useState(() => shuffle(options.current()));
+  const [displayOrder,    setDisplayOrder]    = useState(null); // null = loading
   const [locked,          setLocked]          = useState(false);
   const [feedbackKey,     setFeedbackKey]     = useState(null);
   const [feedbackResult,  setFeedbackResult]  = useState(null); // 'correct' | 'wrong'
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [attempts,        setAttempts]        = useState([]);
+  const feedbackSlide = useRef(new Animated.Value(250)).current;
   const [gateVisible,     setGateVisible]     = useState(false);
 
   const attemptStart = useRef(Date.now());
+
+  function showFeedback() {
+    Animated.spring(feedbackSlide, { toValue: 0, useNativeDriver: true, friction: 6, tension: 80 }).start();
+  }
+
+  function hideFeedbackThen(cb) {
+    Animated.timing(feedbackSlide, { toValue: 250, useNativeDriver: true, duration: 250 }).start(() => cb());
+  }
 
   const CARD_GAP = 12;
   const H_PAD    = Layout.spacing.md;
@@ -76,10 +89,35 @@ export default function ConceptMatchScreen({ route, navigation }) {
     }
   }, [concept]);
 
+  // Load adaptive distractors from GKB; fall back to sequential neighbours
   useEffect(() => {
+    let cancelled = false;
+    conceptApi.getDistractors({ studentId: student.sid, categoryKey: category.key, conceptKey, tier: 1 })
+      .then((res) => {
+        if (cancelled) return;
+        const keys = res?.distractors || [];
+        const d1 = keys[0] ? allItems.find((it) => it.key === keys[0]) : null;
+        const d2 = keys[1] ? allItems.find((it) => it.key === keys[1]) : null;
+        const opts = (d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey)
+          ? [concept, d1, d2]
+          : buildSequentialOptions();
+        optionsRef.current = opts;
+        setDisplayOrder(shuffle(opts));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const opts = buildSequentialOptions();
+        optionsRef.current = opts;
+        setDisplayOrder(shuffle(opts));
+      });
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!displayOrder) return;
     const t = setTimeout(speakPrompt, 400);
     return () => clearTimeout(t);
-  }, [currentAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentAttempt, displayOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleOptionTap(option) {
     if (locked) return;
@@ -93,7 +131,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
     setFeedbackKey(option.key);
     setFeedbackResult(wasCorrect ? 'correct' : 'wrong');
-    setFeedbackVisible(true);
+    showFeedback();
 
     const updatedAttempts = [...attempts, newAttempt];
     setAttempts(updatedAttempts);
@@ -112,25 +150,25 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
     if (currentAttempt < 3) {
       setTimeout(() => {
-        setFeedbackVisible(false);
-        setFeedbackKey(null);
-        setFeedbackResult(null);
-        setDisplayOrder(prev => {
-          const base = options.current();
-          let next;
-          do { next = shuffle(base); }
-          while (next.every((item, i) => item.key === prev[i].key));
-          return next;
+        hideFeedbackThen(() => {
+          setFeedbackKey(null);
+          setFeedbackResult(null);
+          setDisplayOrder(prev => {
+            const base = optionsRef.current || buildSequentialOptions();
+            let next;
+            do { next = shuffle(base); }
+            while (next.every((item, i) => item.key === prev[i].key));
+            return next;
+          });
+          attemptStart.current = Date.now();
+          setCurrentAttempt((n) => n + 1);
+          setLocked(false);
         });
-        attemptStart.current = Date.now();
-        setCurrentAttempt((n) => n + 1);
-        setLocked(false);
-      }, 1500);
+      }, 1200);
     } else {
       // Final attempt — complete after GIF display
-      setTimeout(async () => {
-        setFeedbackVisible(false);
-
+      setTimeout(() => {
+        hideFeedbackThen(async () => {
         const correctCount = updatedAttempts.filter((a) => a.wasCorrect).length;
         const score        = correctCount / 3;
         const passed       = score >= 2 / 3;
@@ -166,7 +204,8 @@ export default function ConceptMatchScreen({ route, navigation }) {
             isRelearn: true, confusedKeys,
           });
         }
-      }, 1500);
+        });
+      }, 1200);
     }
   }
 
@@ -235,8 +274,11 @@ export default function ConceptMatchScreen({ route, navigation }) {
           ))}
         </View>
 
-        {/* Options */}
+        {/* Options — show spinner until distractors are loaded */}
         <View style={styles.optionsContainer}>
+          {!displayOrder ? (
+            <ActivityIndicator size="large" color={theme.button} style={{ marginTop: 40 }} />
+          ) : (
           <View style={[styles.optionsRow, { paddingHorizontal: H_PAD, gap: CARD_GAP }]}>
             {displayOrder.map((option) => {
               const isTapped  = feedbackKey === option.key;
@@ -272,18 +314,22 @@ export default function ConceptMatchScreen({ route, navigation }) {
               );
             })}
           </View>
+          )}
         </View>
 
-        {/* GIF feedback overlay */}
-        {feedbackVisible && (
-          <View style={styles.gifOverlay} pointerEvents="none">
+        {/* GIF feedback popup */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.gifPopup, { transform: [{ translateY: feedbackSlide }] }]}
+        >
+          {feedbackResult && (
             <ExpoImage
               source={feedbackResult === 'correct' ? CORRECT_GIF : WRONG_GIF}
               style={styles.gifImage}
               contentFit="contain"
             />
-          </View>
-        )}
+          )}
+        </Animated.View>
 
       </SafeAreaView>
 
@@ -351,7 +397,8 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 24,
   },
   optionsRow: {
     flexDirection: 'row',
@@ -359,8 +406,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   optionCard: {
-    borderRadius: 18,
-    borderWidth: 2.5,
+    borderRadius: 36,
+    borderWidth: 3.5,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -390,15 +437,15 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  gifOverlay: {
+  gifPopup: {
     position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    bottom: 20,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   gifImage: {
-    width: 320,
-    height: 320,
+    width: 200,
+    height: 200,
   },
 });

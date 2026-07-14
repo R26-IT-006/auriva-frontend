@@ -1,9 +1,9 @@
 // For Android emulator: http://10.0.2.2:3000/api
 // For iOS simulator: http://localhost:3000/api
 // For physical device: use your machine's local IP
-// Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.19:3000/api
+// Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.180:3000/api
 // Android emulator → 10.0.2.2 maps to host machine's localhost
-export const API_BASE_URL = 'http://192.168.1.19:3000/api';
+export const API_BASE_URL = 'http://192.168.1.180:3000/api';
 
 export const ENDPOINTS = {
   // Auth
@@ -25,8 +25,6 @@ export const ENDPOINTS = {
   TEACHER_DASHBOARD: "/teacher/dashboard",
   TEACHER_STUDENTS: "/teacher/students",
   TEACHER_STUDENT: (id) => `/teacher/students/${id}`,
-  TEACHER_SESSION_START: '/teacher/session/start',
-  TEACHER_SESSION_END: '/teacher/session/end',
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
 
   // Handwriting
@@ -69,4 +67,9 @@ export const ENDPOINTS = {
   CONCEPT_TIER1_COMPLETE:     '/teacher/concepts/tier1/complete',
   CONCEPT_ADAPTIVE_ATTEMPT:   '/teacher/concepts/adaptive/attempt',
   CONCEPT_ADAPTIVE_COMPLETE:  '/teacher/concepts/adaptive/complete',
+  CONCEPT_TIER2_START:        '/teacher/concepts/tier2/start',
+  CONCEPT_TIER2_COMPLETE:     '/teacher/concepts/tier2/complete',
+  CONCEPT_TIER3_START:        '/teacher/concepts/tier3/start',
+  CONCEPT_TIER3_COMPLETE:     '/teacher/concepts/tier3/complete',
+  CONCEPT_DISTRACTORS:        '/teacher/concepts/distractors',
 };

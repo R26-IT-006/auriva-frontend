@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItem } from '../../../constants/conceptData';
+import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
 const AVATAR_CONGRATS_IMAGES = {
@@ -64,7 +65,7 @@ function FallingStar({ delay, startX }) {
 }
 
 export default function ConceptCongratulationsScreen({ route, navigation }) {
-  const { student, category, conceptKey, correctCount = 3 } = route.params;
+  const { student, category, conceptKey, correctCount = 3, completedTier = 1 } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
   const theme   = getAvatarTheme(student?.avatar_key);
@@ -126,7 +127,19 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
   function handleContinue() {
     Speech.stop();
-    navigation.navigate('ConceptItems', { student, category });
+    if (completedTier === 1) {
+      if (correctCount === 3) {
+        // Perfect T1 pass — skip image re-show, jump straight to name-match
+        conceptApi.startTier2({ studentId: student.sid, categoryKey: category.key, conceptKey }).catch(() => {});
+        navigation.navigate('Tier2Activity', { student, category, conceptKey, sessionId: null });
+      } else {
+        navigation.navigate('Tier2Image', { student, category, conceptKey, sessionId: null });
+      }
+    } else if (completedTier === 2) {
+      navigation.navigate('Tier3Video', { student, category, conceptKey, needsReplay: correctCount < 3 });
+    } else {
+      navigation.navigate('ConceptItems', { student, category });
+    }
   }
 
   const fallingStars = Array.from({ length: STAR_COUNT }, (_, i) => ({

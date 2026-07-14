@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  Animated,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,19 +46,27 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
 
   const [currentRound,    setCurrentRound]    = useState(0);
   const [displayPair,     setDisplayPair]     = useState(rounds[0]?.pair ?? []);
-  const [locked,          setLocked]          = useState(false);
-  const [feedbackResult,  setFeedbackResult]  = useState(null); // 'correct' | 'wrong'
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
-  const [tappedKey,       setTappedKey]       = useState(null);
+  const [locked,         setLocked]         = useState(false);
+  const [feedbackResult, setFeedbackResult] = useState(null); // 'correct' | 'wrong'
+  const [tappedKey,      setTappedKey]      = useState(null);
+  const feedbackSlide = useRef(new Animated.Value(250)).current;
   const allCorrectRef    = useRef(true);
   const roundResultsRef  = useRef([]);
   const roundStartRef    = useRef(Date.now());
 
-  const CARD_GAP = 24;
+  const CARD_GAP = 12;
   const H_PAD    = Layout.spacing.md;
-  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP) / 2) * 0.88;
+  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
   const CARD_H   = CARD_W;
-  const IMG_SIZE = Math.floor(CARD_W * 0.70);
+  const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
+
+  function showFeedback() {
+    Animated.spring(feedbackSlide, { toValue: 0, useNativeDriver: true, friction: 6, tension: 80 }).start();
+  }
+
+  function hideFeedbackThen(cb) {
+    Animated.timing(feedbackSlide, { toValue: 250, useNativeDriver: true, duration: 250 }).start(() => cb());
+  }
 
   const speakPrompt = useCallback(() => {
     if (!concept) return;
@@ -106,46 +115,47 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
 
     setTappedKey(option.key);
     setFeedbackResult(wasCorrect ? 'correct' : 'wrong');
-    setFeedbackVisible(true);
+    showFeedback();
 
     setTimeout(() => {
-      setFeedbackVisible(false);
-      setTappedKey(null);
-      setFeedbackResult(null);
+      hideFeedbackThen(() => {
+        setTappedKey(null);
+        setFeedbackResult(null);
 
-      const isLastRound = currentRound === rounds.length - 1;
+        const isLastRound = currentRound === rounds.length - 1;
 
-      if (isLastRound) {
-        Speech.stop();
-        stopConceptAudio();
-        const passed = allCorrectRef.current;
+        if (isLastRound) {
+          Speech.stop();
+          stopConceptAudio();
+          const passed = allCorrectRef.current;
 
-        // Log completion to backend (fire-and-forget)
-        conceptApi.completeAdaptive({
-          studentId:    student.sid,
-          sessionId:    sessionId || null,
-          categoryKey:  category.key,
-          conceptKey,
-          confusedKeys,
-          roundResults: roundResultsRef.current,
-          allPassed:    passed,
-        }).catch(() => {});
+          // Log completion to backend (fire-and-forget)
+          conceptApi.completeAdaptive({
+            studentId:    student.sid,
+            sessionId:    sessionId || null,
+            categoryKey:  category.key,
+            conceptKey,
+            confusedKeys,
+            roundResults: roundResultsRef.current,
+            allPassed:    passed,
+          }).catch(() => {});
 
-        if (passed) {
-          navigation.replace('ConceptCongrats', { student, category, conceptKey, correctCount: 2 });
+          if (passed) {
+            navigation.replace('ConceptCongrats', { student, category, conceptKey, correctCount: 2 });
+          } else {
+            navigation.replace('ConceptImage', {
+              student, category, conceptKey, sessionId,
+              isRelearn: true, confusedKeys,
+            });
+          }
         } else {
-          navigation.replace('ConceptImage', {
-            student, category, conceptKey, sessionId,
-            isRelearn: true, confusedKeys,
-          });
+          const next = currentRound + 1;
+          setDisplayPair(rounds[next].pair);
+          setCurrentRound(next);
+          setLocked(false);
         }
-      } else {
-        const next = currentRound + 1;
-        setDisplayPair(rounds[next].pair);
-        setCurrentRound(next);
-        setLocked(false);
-      }
-    }, 1500);
+      });
+    }, 1200);
   }
 
   if (!concept || rounds.length === 0) return null;
@@ -258,16 +268,19 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
 
         </View>
 
-        {/* GIF feedback overlay */}
-        {feedbackVisible && (
-          <View style={styles.gifOverlay} pointerEvents="none">
+        {/* GIF feedback popup */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.gifPopup, { transform: [{ translateY: feedbackSlide }] }]}
+        >
+          {feedbackResult && (
             <ExpoImage
               source={feedbackResult === 'correct' ? CORRECT_GIF : WRONG_GIF}
               style={styles.gifImage}
               contentFit="contain"
             />
-          </View>
-        )}
+          )}
+        </Animated.View>
 
       </SafeAreaView>
     </LinearGradient>
@@ -319,6 +332,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 60,
   },
 
   questionBlock: {
@@ -346,14 +360,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    borderRadius: 20,
-    borderWidth: 2.5,
+    borderRadius: 36,
+    borderWidth: 3.5,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   cardCorrect: {
     shadowColor: '#4CAF50',
@@ -377,15 +391,15 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  gifOverlay: {
+  gifPopup: {
     position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    bottom: 20,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   gifImage: {
-    width: 320,
-    height: 320,
+    width: 200,
+    height: 200,
   },
 });

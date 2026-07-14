@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  Alert,
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
@@ -14,7 +13,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../../../components/common/Avatar';
 import { Badge } from '../../../components/common/Badge';
 import { Card } from '../../../components/common/Card';
-import { Button } from '../../../components/common/Button';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
@@ -39,11 +37,10 @@ function InfoRow({ icon, label, value }) {
 export default function TeacherStudentDetailScreen({ route, navigation }) {
   const initialStudent = route.params?.student;
   const [student, setStudent] = useState(initialStudent);
-  const [sessionLoading, setSessionLoading] = useState(false);
-  const [hasActiveSession, setHasActiveSession] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetch = useCallback(async () => {
+    if (!initialStudent?.sid) { setRefreshing(false); return; }
     try {
       const s = await teacherApi.getStudent(initialStudent.sid);
       setStudent(s);
@@ -52,28 +49,9 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     } finally {
       setRefreshing(false);
     }
-  }, [initialStudent.sid]);
+  }, [initialStudent?.sid]);
 
   useEffect(() => { fetch(); }, [fetch]);
-
-  async function handleSessionToggle() {
-    setSessionLoading(true);
-    try {
-      if (hasActiveSession) {
-        await teacherApi.endSession(student.sid);
-        setHasActiveSession(false);
-        Alert.alert('Session Ended', `Session with ${student.full_name} has been recorded.`);
-      } else {
-        await teacherApi.startSession(student.sid);
-        setHasActiveSession(true);
-        Alert.alert('Session Started', `Learning session with ${student.full_name} is now active.`);
-      }
-    } catch (err) {
-      Alert.alert('Error', err.message);
-    } finally {
-      setSessionLoading(false);
-    }
-  }
 
   if (!student) return null;
 
@@ -93,37 +71,6 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
             <Badge label={student.disability} variant="info" style={{ marginTop: 6 }} />
           </View>
         </View>
-
-        {/* Session control */}
-        <Card style={[styles.sessionCard, hasActiveSession && styles.sessionCardActive]} padding="md">
-          <View style={styles.sessionRow}>
-            <View style={styles.sessionInfo}>
-              <View style={styles.sessionIndicator}>
-                <View style={[styles.dot, hasActiveSession && styles.dotActive]} />
-                <Text style={styles.sessionStatus}>
-                  {hasActiveSession ? 'Session Active' : 'No Active Session'}
-                </Text>
-              </View>
-              {hasActiveSession && (
-                <Text style={styles.sessionHint}>Session is currently in progress</Text>
-              )}
-            </View>
-            <Button
-              title={hasActiveSession ? 'End Session' : 'Start Session'}
-              variant={hasActiveSession ? 'danger' : 'primary'}
-              size="sm"
-              onPress={handleSessionToggle}
-              loading={sessionLoading}
-              icon={
-                <Ionicons
-                  name={hasActiveSession ? 'stop-circle-outline' : 'play-circle-outline'}
-                  size={16}
-                  color={hasActiveSession ? Colors.status.error : '#FFF'}
-                />
-              }
-            />
-          </View>
-        </Card>
 
         {/* Personal Info */}
         <Text style={styles.sectionTitle}>Student Information</Text>
@@ -208,15 +155,6 @@ const styles = StyleSheet.create({
   profileMeta: { flex: 1, marginLeft: Layout.spacing.lg },
   profileName: { fontSize: Layout.fontSize.xl, fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
   profileCode: { fontSize: Layout.fontSize.sm, color: Colors.text.link, marginTop: 2 },
-  sessionCard: { marginBottom: Layout.spacing.md },
-  sessionCardActive: { borderColor: Colors.status.success, borderWidth: 1.5 },
-  sessionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sessionInfo: { flex: 1, marginRight: Layout.spacing.md },
-  sessionIndicator: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.icon.muted },
-  dotActive: { backgroundColor: Colors.status.success },
-  sessionStatus: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
-  sessionHint: { fontSize: Layout.fontSize.xs, color: Colors.status.success, marginTop: 4 },
   sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', color: Colors.text.primary, marginBottom: Layout.spacing.sm, marginTop: Layout.spacing.xs },
   infoCard: { marginBottom: Layout.spacing.md },
   infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Layout.spacing.sm, paddingHorizontal: Layout.spacing.md },

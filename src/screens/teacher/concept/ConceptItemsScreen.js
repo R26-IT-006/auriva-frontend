@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItemsForCategory } from '../../../constants/conceptData';
 import { conceptApi } from '../../../api/concept';
@@ -115,6 +116,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
 
   const [progressItems, setProgressItems] = useState([]);
   const [loading,       setLoading]       = useState(true);
+  const [gateVisible,   setGateVisible]   = useState(false);
 
   const theme    = getAvatarTheme(student?.avatar_key);
   const H_PAD    = Layout.spacing.md;
@@ -161,13 +163,42 @@ export default function ConceptItemsScreen({ route, navigation }) {
       is_priority:  s?.is_priority  || false,
       tier1_status: s?.tier1_status || 'not_started',
       tier1_score:  s?.tier1_score  ?? null,
+      tier2_status: s?.tier2_status || 'not_started',
+      tier3_status: s?.tier3_status || 'not_started',
     };
   });
 
-  // First unlocked concept that hasn't been passed — the resume point
+  // Re-entry point: first unlocked concept not yet fully through tier 3
   const resumeKey = loading
     ? null
-    : (merged.find((i) => i.is_unlocked && i.tier1_status !== 'passed')?.key ?? null);
+    : (merged.find((i) => i.is_unlocked && i.tier3_status !== 'passed')?.key ?? null);
+
+  // Category complete when every concept has passed tier 1
+  const allTier1Passed = !loading && merged.length > 0 && merged.every((i) => i.tier1_status === 'passed');
+
+  // Bottom 3 by tier1_score for the review section (only when all passed)
+  const weakConcepts = allTier1Passed
+    ? [...merged]
+        .filter((i) => i.tier1_score !== null && i.tier1_score < 1.0)
+        .sort((a, b) => (a.tier1_score ?? 1) - (b.tier1_score ?? 1))
+        .slice(0, 3)
+    : [];
+
+  // Route to the correct tier screen based on what the student last completed
+  function routeForItem(item) {
+    if (item.tier1_status !== 'passed') {
+      return ['ConceptImage', { student, category, conceptKey: item.key, sessionId: null }];
+    }
+    if (item.tier2_status !== 'passed') {
+      const screen = item.tier2_status === 'in_progress' ? 'Tier2Activity' : 'Tier2Image';
+      return [screen, { student, category, conceptKey: item.key, sessionId: null }];
+    }
+    if (item.tier3_status !== 'passed') {
+      return ['Tier3Video', { student, category, conceptKey: item.key }];
+    }
+    // Fully complete — allow re-practice from the top
+    return ['ConceptImage', { student, category, conceptKey: item.key, sessionId: null }];
+  }
 
   function renderCard({ item }) {
     return (
@@ -177,13 +208,40 @@ export default function ConceptItemsScreen({ route, navigation }) {
         cardH={cardH}
         theme={theme}
         isResume={item.key === resumeKey}
-        onPress={() => navigation.navigate('ConceptImage', {
-          student,
-          category,
-          conceptKey: item.key,
-          sessionId:  null,
-        })}
+        onPress={() => {
+          const [screen, params] = routeForItem(item);
+          navigation.navigate(screen, params);
+        }}
       />
+    );
+  }
+
+  function renderReviewSection() {
+    if (weakConcepts.length === 0) return null;
+    return (
+      <View style={styles.reviewSection}>
+        <Text style={[styles.reviewHeading, { color: theme.headingText }]}>
+          Review Weaker Concepts
+        </Text>
+        <View style={styles.reviewRow}>
+          {weakConcepts.map((item) => (
+            <TouchableOpacity
+              key={item.key}
+              style={[styles.reviewCard, { backgroundColor: theme.cardSurface, borderColor: '#FF9800' }]}
+              activeOpacity={0.82}
+              onPress={() => navigation.navigate('Tier2Activity', { student, category, conceptKey: item.key, sessionId: null })}
+            >
+              <View style={styles.reviewImageBox}>
+                <Image source={item.icon ?? item.real} style={styles.reviewImage} resizeMode="contain" />
+              </View>
+              <Text style={styles.reviewLabel}>{item.label}</Text>
+              <View style={styles.reviewScoreBadge}>
+                <Text style={styles.reviewScoreText}>{Math.round((item.tier1_score ?? 0) * 100)}%</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
     );
   }
 
@@ -210,7 +268,13 @@ export default function ConceptItemsScreen({ route, navigation }) {
             <Text style={[styles.title, { color: theme.headingText }]}>{category.label.toUpperCase()}</Text>
           </View>
 
-          <View style={styles.iconBtn} />
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            onPress={() => setGateVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="school" size={20} color={theme.headingText} />
+          </TouchableOpacity>
         </View>
 
         <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -229,10 +293,20 @@ export default function ConceptItemsScreen({ route, navigation }) {
             contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD }]}
             columnWrapperStyle={{ gap: GAP }}
             ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
+            ListFooterComponent={renderReviewSection}
             showsVerticalScrollIndicator={false}
           />
         )}
       </SafeAreaView>
+
+      <ParentGateModal
+        visible={gateVisible}
+        onSuccess={() => {
+          setGateVisible(false);
+          navigation.navigate('StudentConceptProgress', { student, category });
+        }}
+        onCancel={() => setGateVisible(false)}
+      />
 
     </LinearGradient>
   );
@@ -349,5 +423,62 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+
+  reviewSection: {
+    marginTop: 28,
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  reviewHeading: {
+    fontSize: 18,
+    fontFamily: 'Nunito_800ExtraBold',
+    letterSpacing: 0.3,
+  },
+  reviewRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  reviewCard: {
+    width: 110,
+    borderRadius: 14,
+    borderWidth: 3,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  reviewImageBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  reviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  reviewLabel: {
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  reviewScoreBadge: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  reviewScoreText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#E65100',
   },
 });

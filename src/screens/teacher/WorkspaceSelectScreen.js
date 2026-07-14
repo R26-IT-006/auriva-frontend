@@ -17,7 +17,7 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 const WORKSPACES = [
   {
     key:    'teacher',
-    label:  'Teacher workspace',
+    label:  'Teacher Workspace',
     sub:    'Manage classes & resources',
     image:  require('../../../assets/teacher.png'),
     route:  'TeacherMain',
@@ -25,7 +25,7 @@ const WORKSPACES = [
   },
   {
     key:    'student',
-    label:  'Student workspace',
+    label:  'Student Workspace',
     sub:    'Access lessons & assignments',
     image:  require('../../../assets/students.png'),
     route:  'StudentPicker',
@@ -107,10 +107,15 @@ const styles = StyleSheet.create({
   safeInner: { flex: 1 },
 
   topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.md,
+    paddingTop: Layout.spacing.xl,
+    zIndex: 10,
   },
   logoutBtn: {
     flexDirection: 'row',
@@ -144,8 +149,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 36,
-    fontFamily: 'Nunito_800ExtraBold',
-    fontFamily: 'sans-serif-rounded',
+    fontFamily: 'Nunito_900Black',
     color: '#1A3028',
     textAlign: 'center',
     letterSpacing: 0,
@@ -157,10 +161,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: 'rgba(245,252,250,0.92)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 28,
     borderWidth: 1,
-    borderColor: '#D8EDE7',
+    borderColor: '#E8EEF0',
     paddingHorizontal: Layout.spacing.xl,
     paddingVertical: Layout.spacing.lg,
     flexDirection: 'row',
@@ -205,11 +209,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bottomIndicator: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
     width: 60,
     height: 4,
     borderRadius: 2,
     backgroundColor: 'rgba(0,0,0,0.15)',
-    alignSelf: 'center',
-    marginBottom: 20,
   },
 });

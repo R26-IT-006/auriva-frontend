@@ -67,6 +67,12 @@ import ConceptDemoScreen             from '../screens/teacher/concept/ConceptDem
 import ConceptMatchScreen            from '../screens/teacher/concept/ConceptMatchScreen';
 import ConceptCongratulationsScreen  from '../screens/teacher/concept/ConceptCongratulationsScreen';
 import ConceptAdaptiveQuizScreen     from '../screens/teacher/concept/ConceptAdaptiveQuizScreen';
+import Tier2ImageScreen              from '../screens/teacher/concept/Tier2ImageScreen';
+import Tier2ActivityScreen           from '../screens/teacher/concept/Tier2ActivityScreen';
+import Tier2DragDropScreen           from '../screens/teacher/concept/Tier2DragDropScreen';
+import Tier3VideoScreen              from '../screens/teacher/concept/Tier3VideoScreen';
+import ConceptColoringScreen              from '../screens/teacher/concept/ConceptColoringScreen';
+import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -184,6 +190,13 @@ export default function TeacherNavigator() {
       <Stack.Screen name="ConceptMatch"      component={ConceptMatchScreen} />
       <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
       <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
+      <Stack.Screen name="Tier2Image"          component={Tier2ImageScreen} />
+      <Stack.Screen name="Tier2Activity"       component={Tier2ActivityScreen} />
+      <Stack.Screen name="Tier2DragDrop"       component={Tier2DragDropScreen} />
+      <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />
+      <Stack.Screen name="ConceptColoring"          component={ConceptColoringScreen} />
+      <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
+      <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
       <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
       <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
       <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />

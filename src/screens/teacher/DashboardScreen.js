@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,20 +11,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../../components/common/Avatar';
-import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { teacherApi } from '../../api/teacher';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
-import { formatDateTime } from '../../utils/formatters';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
+const TEAL      = '#3A9BA8';
+const TEAL_GRAD = ['#4AABB8', '#52C07C'];
+const AMBER     = '#F0A940';
+
 function StatCard({ icon, value, label, color, bg }) {
   return (
-    <View style={[styles.statCard, { borderTopColor: color }]}>
+    <View style={styles.statCard}>
       <View style={[styles.statIconBox, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={22} color={color} />
+        <Ionicons name={icon} size={20} color={color} />
       </View>
       <Text style={styles.statValue}>{value ?? '—'}</Text>
       <Text style={styles.statLabel}>{label}</Text>
@@ -32,29 +33,32 @@ function StatCard({ icon, value, label, color, bg }) {
   );
 }
 
-// ── Quick-action card ─────────────────────────────────────────────────────────
 function ActionCard({ icon, label, sub, color, bg, onPress }) {
   return (
-    <TouchableOpacity style={styles.actionCard} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.actionCard} onPress={onPress} activeOpacity={0.82}>
       <View style={[styles.actionIconBox, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={26} color={color} />
+        <Ionicons name={icon} size={24} color={color} />
       </View>
-      <Text style={styles.actionLabel}>{label}</Text>
-      <Text style={styles.actionSub}>{sub}</Text>
+      <View style={styles.actionText}>
+        <Text style={styles.actionLabel}>{label}</Text>
+        <Text style={styles.actionSub}>{sub}</Text>
+      </View>
+      <View style={[styles.actionChevron, { backgroundColor: bg }]}>
+        <Ionicons name="chevron-forward" size={16} color={color} />
+      </View>
     </TouchableOpacity>
   );
 }
 
-// ── Main screen ───────────────────────────────────────────────────────────────
 export default function TeacherDashboardScreen({ navigation }) {
-  const [data,       setData]       = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [data,          setData]          = useState(null);
+  const [refreshing,    setRefreshing]    = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
 
   const logout = useAuthStore((s) => s.logout);
   const toast  = useToast();
 
-  const fetch = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       const res = await teacherApi.getDashboard();
       setData(res);
@@ -65,145 +69,150 @@ export default function TeacherDashboardScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { load(); }, [load]);
 
   const profile = data?.profile;
   const stats   = data?.stats;
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const engagementDisplay = stats?.avgEngagement != null
+    ? `${Math.round(stats.avgEngagement * 100)}%`
+    : null;
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <LinearGradient
+      colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']}
+      style={styles.root}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); load(); }}
+              tintColor={TEAL}
+            />
+          }
+        >
 
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <LinearGradient colors={['#3D3A8C', '#5B56C0']} style={styles.header}>
-
-        {/* Top row: avatar + name + buttons */}
-        <View style={styles.headerTop}>
-          <Avatar
-            name={profile?.full_name}
-            uri={profile?.profile_photo_url}
-            size={54}
-            style={styles.avatar}
-          />
-          <View style={styles.headerMeta}>
-            <Text style={styles.headerGreeting}>Good day,</Text>
-            <Text style={styles.headerName} numberOfLines={1}>
-              {profile?.full_name ?? '...'}
-            </Text>
-            <Text style={styles.headerCode}>{profile?.teacher_code}</Text>
-          </View>
-          <View style={styles.headerBtns}>
-            <TouchableOpacity
-              style={styles.headerBtn}
-              onPress={() => navigation.getParent()?.getParent()?.navigate('WorkspaceSelect')}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="grid-outline" size={19} color="rgba(255,255,255,0.85)" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerBtn}
-              onPress={() => setLogoutVisible(true)}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="log-out-outline" size={19} color="rgba(255,255,255,0.85)" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Stat cards sit inside the header banner */}
-        <View style={styles.statsRow}>
-          <StatCard
-            icon="layers-outline"
-            value={stats?.totalSessions}
-            label="Total Sessions"
-            color="#7B9EF0"
-            bg="rgba(123,158,240,0.15)"
-          />
-          <View style={styles.statDivider} />
-          <StatCard
-            icon="today-outline"
-            value={stats?.weeklySessions}
-            label="This Week"
-            color="#6DD5A0"
-            bg="rgba(109,213,160,0.15)"
-          />
-        </View>
-      </LinearGradient>
-
-      {/* ── Body ───────────────────────────────────────────────── */}
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); fetch(); }}
-            tintColor={Colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-
-        {/* Last session */}
-        {stats?.lastSession && (
-          <>
-            <Text style={styles.sectionTitle}>Last Session</Text>
-            <View style={styles.lastSessionCard}>
-              <View style={styles.lastSessionIconWrap}>
-                <Ionicons name="time-outline" size={22} color={Colors.primary} />
-              </View>
-              <View style={styles.lastSessionBody}>
-                <Text style={styles.lastSessionName}>{stats.lastSession.studentName}</Text>
-                <Text style={styles.lastSessionCode}>{stats.lastSession.studentCode}</Text>
-                <Text style={styles.lastSessionDate}>{formatDateTime(stats.lastSession.date)}</Text>
-              </View>
-              <View style={styles.lastSessionBadge}>
-                <Text style={styles.lastSessionBadgeText}>Completed</Text>
-              </View>
-            </View>
-          </>
-        )}
-
-        {/* Quick actions */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <ActionCard
-            icon="people-outline"
-            label="My Students"
-            sub="View your class"
-            color={Colors.primary}
-            bg={Colors.status.infoLight}
-            onPress={() => navigation.navigate('Students')}
-          />
-          <ActionCard
-            icon="play-circle-outline"
-            label="Start Session"
-            sub="Begin learning"
-            color={Colors.status.success}
-            bg={Colors.status.successLight}
-            onPress={() => navigation.navigate('Students')}
-          />
-        </View>
-
-        {/* Overview banner */}
-        <View style={styles.overviewBanner}>
-          <LinearGradient
-            colors={['#4B47A8', '#6B67C8']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.overviewGradient}
-          >
-            <View style={styles.overviewLeft}>
-              <Text style={styles.overviewTitle}>Ready to teach?</Text>
-              <Text style={styles.overviewSub}>
-                Your students are waiting. Start a new session from My Students.
+          {/* ── Top bar ── */}
+          <View style={styles.topBar}>
+            <View style={styles.topBarLeft}>
+              <Text style={styles.topGreeting}>{greeting}</Text>
+              <Text style={styles.topName} numberOfLines={1}>
+                {profile?.full_name ?? '...'}
               </Text>
             </View>
-            <View style={styles.overviewIconWrap}>
-              <Ionicons name="school-outline" size={40} color="rgba(255,255,255,0.25)" />
+            <View style={styles.topBarRight}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => navigation.getParent()?.getParent()?.navigate('WorkspaceSelect')}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="grid-outline" size={20} color="#2A5A48" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => setLogoutVisible(true)}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="log-out-outline" size={20} color="#2A5A48" />
+              </TouchableOpacity>
             </View>
-          </LinearGradient>
-        </View>
+          </View>
 
-      </ScrollView>
+          {/* ── Profile card ── */}
+          <View style={styles.profileCard}>
+            <Avatar
+              name={profile?.full_name}
+              uri={profile?.profile_photo_url}
+              size={64}
+              style={styles.avatar}
+            />
+            <View style={styles.profileMeta}>
+              <Text style={styles.profileName}>{profile?.full_name ?? '...'}</Text>
+              <View style={styles.profileCodeRow}>
+                <Ionicons name="id-card-outline" size={13} color={TEAL} />
+                <Text style={styles.profileCode}>{profile?.teacher_code ?? '—'}</Text>
+              </View>
+              <View style={styles.profileBadge}>
+                <Text style={styles.profileBadgeText}>Teacher</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ── Stats row — 3 cards ── */}
+          <View style={styles.statsRow}>
+            <StatCard
+              icon="people-outline"
+              value={stats?.totalStudents}
+              label="Students"
+              color={TEAL}
+              bg="#D6F0F4"
+            />
+            <View style={styles.statDivider} />
+            <StatCard
+              icon="checkmark-circle-outline"
+              value={stats?.conceptsMastered}
+              label="Mastered"
+              color="#52C07C"
+              bg="#DCF5E8"
+            />
+            <View style={styles.statDivider} />
+            <StatCard
+              icon="pulse-outline"
+              value={engagementDisplay}
+              label="Engagement"
+              color={AMBER}
+              bg="#FDF0D6"
+            />
+          </View>
+
+          {/* ── Quick actions ── */}
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsCol}>
+            <ActionCard
+              icon="people-outline"
+              label="My Students"
+              sub="View and manage your class"
+              color={TEAL}
+              bg="#D6F0F4"
+              onPress={() => navigation.navigate('Students')}
+            />
+          </View>
+
+          {/* ── Banner ── */}
+          <TouchableOpacity
+            activeOpacity={0.88}
+            style={styles.bannerWrap}
+            onPress={() => navigation.navigate('Students')}
+          >
+            <LinearGradient
+              colors={TEAL_GRAD}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.banner}
+            >
+              <View style={styles.bannerLeft}>
+                <Text style={styles.bannerTitle}>Ready to teach?</Text>
+                <Text style={styles.bannerSub}>
+                  Select a student and start today's learning session.
+                </Text>
+              </View>
+              <View style={styles.bannerIconCircle}>
+                <Ionicons name="school-outline" size={30} color="rgba(255,255,255,0.9)" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
+        </ScrollView>
+      </SafeAreaView>
 
       <ConfirmDialog
         visible={logoutVisible}
@@ -215,209 +224,216 @@ export default function TeacherDashboardScreen({ navigation }) {
         onConfirm={logout}
         onCancel={() => setLogoutVisible(false)}
       />
-
-    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-
-  // ── Header ──────────────────────────────────────────────────────────────────
-  header: {
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.md,
-    paddingBottom: Layout.spacing.lg,
-    gap: Layout.spacing.lg,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.md,
-  },
-  avatar: {
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.35)',
-  },
-  headerMeta: { flex: 1 },
-  headerGreeting: {
-    fontSize: Layout.fontSize.xs,
-    color: 'rgba(255,255,255,0.65)',
-  },
-  headerName: {
-    fontSize: Layout.fontSize.lg,
-    fontFamily: 'Nunito_700Bold',
-    color: '#FFF',
-    marginTop: 1,
-  },
-  headerCode: {
-    fontSize: Layout.fontSize.xs,
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 2,
-  },
-  headerBtns: {
-    flexDirection: 'row',
-    gap: Layout.spacing.sm,
-  },
-  headerBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  // ── Stat cards (inside header) ───────────────────────────────────────────────
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    paddingVertical: Layout.spacing.md,
-    paddingHorizontal: Layout.spacing.lg,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-    borderTopWidth: 3,
-    paddingTop: Layout.spacing.sm,
-  },
-  statIconBox: {
-    width: 40, height: 40, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 2,
-  },
-  statValue: {
-    fontSize: Layout.fontSize.xxl,
-    fontFamily: 'Nunito_800ExtraBold',
-    color: '#FFF',
-  },
-  statLabel: {
-    fontSize: Layout.fontSize.xs,
-    color: 'rgba(255,255,255,0.6)',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    marginVertical: 4,
-    marginHorizontal: Layout.spacing.md,
-  },
-
-  // ── Body scroll ─────────────────────────────────────────────────────────────
+  root: { flex: 1 },
+  safe: { flex: 1 },
   scroll: {
     padding: Layout.spacing.lg,
     paddingBottom: Layout.spacing.xxl,
     gap: Layout.spacing.md,
   },
-  sectionTitle: {
-    fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
-    color: Colors.text.primary,
-    marginTop: Layout.spacing.xs,
-  },
 
-  // ── Last session ─────────────────────────────────────────────────────────────
-  lastSessionCard: {
+  // ── Top bar ───────────────────────────────────────────────────────────────
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    padding: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    gap: Layout.spacing.md,
-    ...Layout.shadow.sm,
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
-  lastSessionIconWrap: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: Colors.status.infoLight,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
+  topBarLeft: { gap: 1 },
+  topGreeting: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: '#4A7A60',
   },
-  lastSessionBody: { flex: 1 },
-  lastSessionName: {
-    fontSize: Layout.fontSize.md,
+  topName: {
+    fontSize: 22,
+    fontFamily: 'Nunito_900Black',
+    color: '#1A3D2E',
+  },
+  topBarRight: { flexDirection: 'row', gap: 10 },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  // ── Profile card ──────────────────────────────────────────────────────────
+  profileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  avatar: { borderWidth: 3, borderColor: '#D6F0F4' },
+  profileMeta: { flex: 1, gap: 4 },
+  profileName: {
+    fontSize: 18,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#1A3D2E',
+  },
+  profileCodeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  profileCode: {
+    fontSize: 13,
     fontFamily: 'Nunito_600SemiBold',
-    color: Colors.text.primary,
+    color: TEAL,
   },
-  lastSessionCode: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.link,
-    marginTop: 2,
-  },
-  lastSessionDate: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    marginTop: 3,
-  },
-  lastSessionBadge: {
-    backgroundColor: Colors.status.successLight,
+  profileBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#D6F0F4',
     borderRadius: 20,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
+    marginTop: 2,
   },
-  lastSessionBadgeText: {
-    fontSize: 10,
+  profileBadgeText: {
+    fontSize: 11,
     fontFamily: 'Nunito_700Bold',
-    color: Colors.status.success,
+    color: TEAL,
   },
 
-  // ── Quick actions ────────────────────────────────────────────────────────────
-  actionsGrid: {
+  // ── Stats row ─────────────────────────────────────────────────────────────
+  statsRow: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     flexDirection: 'row',
-    gap: Layout.spacing.sm,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  actionCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    padding: Layout.spacing.md,
+  statCard: { flex: 1, alignItems: 'center', gap: 5 },
+  statIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    gap: 6,
-    ...Layout.shadow.sm,
-  },
-  actionIconBox: {
-    width: 54, height: 54, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
+    justifyContent: 'center',
     marginBottom: 2,
   },
-  actionLabel: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_700Bold',
-    color: Colors.text.primary,
-    textAlign: 'center',
+  statValue: {
+    fontSize: 24,
+    fontFamily: 'Nunito_900Black',
+    color: '#1A3D2E',
   },
-  actionSub: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    textAlign: 'center',
+  statLabel: {
+    fontSize: 11,
+    fontFamily: 'Nunito_600SemiBold',
+    color: '#6B8A80',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#E8F0EC',
+    marginHorizontal: 8,
   },
 
-  // ── Overview banner ──────────────────────────────────────────────────────────
-  overviewBanner: {
-    borderRadius: Layout.radius.lg,
-    overflow: 'hidden',
-    ...Layout.shadow.sm,
-    marginTop: Layout.spacing.xs,
+  // ── Section title ─────────────────────────────────────────────────────────
+  sectionTitle: {
+    fontSize: 15,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#1A3D2E',
+    marginTop: 4,
   },
-  overviewGradient: {
+
+  // ── Quick actions ─────────────────────────────────────────────────────────
+  actionsCol: { gap: 10 },
+  actionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Layout.spacing.lg,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  overviewLeft: { flex: 1, gap: 6 },
-  overviewTitle: {
-    fontSize: Layout.fontSize.lg,
+  actionIconBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: { flex: 1, gap: 2 },
+  actionLabel: {
+    fontSize: 15,
+    fontFamily: 'Nunito_700Bold',
+    color: '#1A3D2E',
+  },
+  actionSub: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: '#6B8A80',
+  },
+  actionChevron: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Banner ────────────────────────────────────────────────────────────────
+  bannerWrap: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 5,
+    marginTop: 4,
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 22,
+    paddingHorizontal: 24,
+  },
+  bannerLeft: { flex: 1, gap: 5 },
+  bannerTitle: {
+    fontSize: 18,
     fontFamily: 'Nunito_800ExtraBold',
     color: '#FFF',
   },
-  overviewSub: {
-    fontSize: Layout.fontSize.sm,
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 19,
+  bannerSub: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: 'rgba(255,255,255,0.82)',
+    lineHeight: 20,
   },
-  overviewIconWrap: {
-    marginLeft: Layout.spacing.md,
+  bannerIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
   },
 });

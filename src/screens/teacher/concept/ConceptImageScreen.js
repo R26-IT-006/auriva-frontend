@@ -35,6 +35,7 @@ export default function ConceptImageScreen({ route, navigation }) {
   const rippleScale  = useRef(new Animated.Value(0.4)).current;
   const rippleOpacity = useRef(new Animated.Value(0.7)).current;
   const sessionStart = useRef(Date.now());
+  const lastTapTime  = useRef(null);
   const tapHintLoop  = useRef(null);
 
   const playIntro = useCallback(() => {
@@ -97,6 +98,7 @@ export default function ConceptImageScreen({ route, navigation }) {
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleImageTap() {
+    const now      = Date.now();
     const newCount = tapCount + 1;
     setTapCount(newCount);
 
@@ -109,13 +111,16 @@ export default function ConceptImageScreen({ route, navigation }) {
       Animated.spring(imageScale, { toValue: 1,    useNativeDriver: true, speed: 30 }),
     ]).start();
 
+    const interTapMs = lastTapTime.current ? now - lastTapTime.current : null;
+    lastTapTime.current = now;
+
     conceptApi.logInteraction({
       studentId:   student.sid,
       sessionId:   sessionId || null,
       categoryKey: category.key,
       conceptKey,
       eventType:   'image_tap',
-      eventData:   { tap_index: newCount, time_ms: Date.now() - sessionStart.current },
+      eventData:   { tap_index: newCount, time_ms: now - sessionStart.current, inter_tap_ms: interTapMs },
     }).catch(() => {});
 
     if (newCount === 2) {
@@ -129,6 +134,15 @@ export default function ConceptImageScreen({ route, navigation }) {
   }
 
   function handleForward() {
+    conceptApi.logInteraction({
+      studentId:   student.sid,
+      sessionId:   sessionId || null,
+      categoryKey: category.key,
+      conceptKey,
+      tier:        1,
+      eventType:   'screen_exit',
+      eventData:   { total_time_ms: Date.now() - sessionStart.current },
+    }).catch(() => {});
     Speech.stop();
     stopConceptAudio();
     if (isRelearn) {
@@ -188,10 +202,6 @@ export default function ConceptImageScreen({ route, navigation }) {
             <Text style={[styles.relearnText, { color: theme.button }]}>Let's look again!</Text>
           </View>
         )}
-
-        <Text style={[styles.instruction, { color: theme.headingText }]}>
-          {getConceptPhrase(concept)}
-        </Text>
 
         {/* Main image — tappable */}
         <View style={[styles.imageContainer, { width: imgSize, height: imgSize }]}>
@@ -293,13 +303,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Nunito_700Bold',
   },
-  instruction: {
-    fontSize: 24,
-    fontFamily: 'Nunito_900Black',
-    letterSpacing: -0.3,
-    marginTop: 8,
-    marginBottom: 16,
-  },
   imageContainer: {
     position: 'relative',
   },
@@ -331,7 +334,7 @@ const styles = StyleSheet.create({
   },
   fwdBtnWrap: {
     position: 'absolute',
-    bottom: 36,
+    bottom: 80,
     alignSelf: 'center',
   },
   fwdBtn: {
