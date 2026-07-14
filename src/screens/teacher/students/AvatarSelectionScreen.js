@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { teacherApi } from '../../../api/teacher';
@@ -42,7 +42,22 @@ const AVATARS = [
   },
 ];
 
-function AvatarCard({ avatar, selected, onPress }) {
+function AvatarVideoBackground({ source }) {
+  const player = useVideoPlayer(source, p => {
+    p.loop = true;
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={StyleSheet.absoluteFill}
+      contentFit="cover"
+      nativeControls={false}
+    />
+  );
+}
+
+function AvatarIcon({ avatar, selected, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
@@ -109,13 +124,7 @@ export default function AvatarSelectionScreen({ navigation, route }) {
 
       {/* ── Full-screen video / plain background ─────────────── */}
       {selected ? (
-        <Video
-          source={selected.video}
-          style={StyleSheet.absoluteFill}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay
-          isLooping
-        />
+        <AvatarVideoBackground key={selected.key} source={selected.video} />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.noSelectionBg]} />
       )}
