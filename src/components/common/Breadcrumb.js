@@ -1,9 +1,9 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "../../constants/colors";
-import { Layout } from "../../constants/layout";
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/colors';
+import { Layout } from '../../constants/layout';
 import { ButtonFeedback } from "./ButtonFeedback";
 
 const K = {
@@ -127,16 +127,16 @@ const styles = StyleSheet.create({
   crumbText: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
     flexShrink: 1,
   },
   crumbTextLink: {
     color: K.purple,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
   },
   crumbTextActive: {
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
   },
   right: {
     marginLeft: Layout.spacing.sm,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
     color: Colors.text.primary,
     marginTop: 4,
   },

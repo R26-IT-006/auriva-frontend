@@ -1,6 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, StyleSheet, Alert } from "react-native";
-import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  StyleSheet,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../components/common/Avatar';
@@ -83,7 +90,7 @@ const styles = StyleSheet.create({
     ...Layout.shadow.sm,
   },
   info: { flex: 1, marginLeft: Layout.spacing.md },
-  name: { fontSize: Layout.fontSize.md, fontWeight: Layout.fontWeight.semibold, color: Colors.text.primary },
+  name: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
   code: { fontSize: Layout.fontSize.xs, color: Colors.text.link, marginTop: 2 },
   action: { paddingLeft: Layout.spacing.sm },
 });

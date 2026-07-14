@@ -41,6 +41,14 @@ export const Layout = {
     extrabold: '800',
   },
 
+  fonts: {
+    regular:   'Nunito_400Regular',
+    semibold:  'Nunito_600SemiBold',
+    bold:      'Nunito_700Bold',
+    extrabold: 'Nunito_800ExtraBold',
+    black:     'Nunito_900Black',
+  },
+
   shadow: {
     sm: {
       shadowColor: '#6478C8',

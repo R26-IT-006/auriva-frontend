@@ -1,8 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Modal, ScrollView, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "../../constants/colors";
-import { Layout } from "../../constants/layout";
+﻿import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/colors';
+import { Layout } from '../../constants/layout';
 import { ButtonFeedback } from "./ButtonFeedback";
 
 const K = {
@@ -125,12 +132,12 @@ const col = StyleSheet.create({
   itemText: {
     fontSize: Layout.fontSize.lg,
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
   itemTextActive: {
     fontSize: Layout.fontSize.xl,
     color: K.purple,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
   },
 });
 
@@ -297,7 +304,7 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.secondary,
     marginBottom: 2,
   },
@@ -324,11 +331,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
   placeholder: {
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.regular,
+    fontFamily: 'Nunito_400Regular',
   },
   error: {
     fontSize: Layout.fontSize.xs,
@@ -372,7 +379,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
   },
 
@@ -386,7 +393,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.muted,
     letterSpacing: 0.6,
     textTransform: "uppercase",
@@ -413,7 +420,7 @@ const styles = StyleSheet.create({
   },
   doneBtnText: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: "#FFFFFF",
+    fontFamily: 'Nunito_700Bold',
+    color: '#FFFFFF',
   },
 });

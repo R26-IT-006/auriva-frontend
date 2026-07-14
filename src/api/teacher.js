@@ -17,20 +17,6 @@ export const teacherApi = {
     return data;
   },
 
-  async startSession(studentId) {
-    const { data } = await client.post(ENDPOINTS.TEACHER_SESSION_START, {
-      student_id: studentId,
-    });
-    return data;
-  },
-
-  async endSession(studentId) {
-    const { data } = await client.post(ENDPOINTS.TEACHER_SESSION_END, {
-      student_id: studentId,
-    });
-    return data;
-  },
-
   async setAvatar(studentId, avatarKey) {
     const { data } = await client.post(ENDPOINTS.TEACHER_STUDENT_AVATAR(studentId), {
       avatar_key: avatarKey,

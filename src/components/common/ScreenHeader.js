@@ -1,9 +1,9 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "../../constants/colors";
-import { Layout } from "../../constants/layout";
+﻿import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/colors';
+import { Layout } from '../../constants/layout';
 import { ButtonFeedback } from "./ButtonFeedback";
 
 export function ScreenHeader({ title, subtitle, onBack, rightAction }) {
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
   },
   subtitle: {

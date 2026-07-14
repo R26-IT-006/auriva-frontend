@@ -1,21 +1,20 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   RefreshControl,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { Avatar } from "../../../components/common/Avatar";
-import { Badge } from "../../../components/common/Badge";
-import { Card } from "../../../components/common/Card";
-import { Button } from "../../../components/common/Button";
-import { Colors } from "../../../constants/colors";
-import { Layout } from "../../../constants/layout";
-import { teacherApi } from "../../../api/teacher";
-import { formatDate } from "../../../utils/formatters";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Avatar } from '../../../components/common/Avatar';
+import { Badge } from '../../../components/common/Badge';
+import { Card } from '../../../components/common/Card';
+import { Colors } from '../../../constants/colors';
+import { Layout } from '../../../constants/layout';
+import { teacherApi } from '../../../api/teacher';
+import { formatDate } from '../../../utils/formatters';
 
 function InfoRow({ icon, label, value }) {
   if (!value) return null;
@@ -39,6 +38,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const isStudentWorkspaceSession = route.name === "StudentSession";
 
   const fetch = useCallback(async () => {
+    if (!initialStudent?.sid) { setRefreshing(false); return; }
     try {
       const s = await teacherApi.getStudent(initialStudent.sid);
       setStudent(s);
@@ -47,15 +47,11 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     } finally {
       setRefreshing(false);
     }
-  }, [initialStudent.sid]);
+  }, [initialStudent?.sid]);
 
   useEffect(() => {
     fetch();
   }, [fetch]);
-
-  function handleStartSession() {
-    navigation.navigate("PronunciationSessionSetup", { student });
-  }
 
   if (!student) return null;
 
@@ -91,39 +87,6 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
             />
           </View>
         </View>
-
-        {/* Session control / progress */}
-        <Card style={styles.sessionCard} padding="md">
-          {isStudentWorkspaceSession ? (
-            <View style={styles.sessionRow}>
-              <View style={styles.sessionInfo}>
-                <View style={styles.sessionIndicator}>
-                  <View style={[styles.dot, styles.dotReady]} />
-                  <Text style={styles.sessionStatus}>Ready to Start</Text>
-                </View>
-                <Text style={styles.sessionHint}>
-                  Open Pronunciation Support Module setup
-                </Text>
-              </View>
-              <Button
-                title="Start Session"
-                variant="primary"
-                size="sm"
-                onPress={handleStartSession}
-                icon={
-                  <Ionicons name="play-circle-outline" size={16} color="#FFF" />
-                }
-              />
-            </View>
-          ) : (
-            <View style={styles.progressBlock}>
-              <Text style={styles.progressTitle}>Session Progress</Text>
-              <Text style={styles.progressHint}>
-                Completed words for this student will appear here.
-              </Text>
-            </View>
-          )}
-        </Card>
 
         {/* Personal Info */}
         <Text style={styles.sectionTitle}>Student Information</Text>
@@ -201,62 +164,9 @@ const styles = StyleSheet.create({
     ...Layout.shadow.md,
   },
   profileMeta: { flex: 1, marginLeft: Layout.spacing.lg },
-  profileName: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-  },
-  profileCode: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.link,
-    marginTop: 2,
-  },
-  sessionCard: { marginBottom: Layout.spacing.md },
-  sessionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sessionInfo: { flex: 1, marginRight: Layout.spacing.md },
-  sessionIndicator: { flexDirection: "row", alignItems: "center", gap: 6 },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.icon.muted,
-  },
-  dotReady: { backgroundColor: Colors.primary },
-  sessionStatus: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.primary,
-  },
-  sessionHint: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.secondary,
-    marginTop: 4,
-  },
-  progressBlock: {
-    minHeight: 54,
-    justifyContent: "center",
-  },
-  progressTitle: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-  },
-  progressHint: {
-    marginTop: 6,
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.secondary,
-  },
-  sectionTitle: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Layout.spacing.sm,
-    marginTop: Layout.spacing.xs,
-  },
+  profileName: { fontSize: Layout.fontSize.xl, fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
+  profileCode: { fontSize: Layout.fontSize.sm, color: Colors.text.link, marginTop: 2 },
+  sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', color: Colors.text.primary, marginBottom: Layout.spacing.sm, marginTop: Layout.spacing.xs },
   infoCard: { marginBottom: Layout.spacing.md },
   infoRow: {
     flexDirection: "row",
@@ -274,15 +184,7 @@ const styles = StyleSheet.create({
     marginRight: Layout.spacing.sm,
   },
   infoContent: { flex: 1 },
-  infoLabel: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.medium,
-  },
+  infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
+  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
   divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 58 },
 });

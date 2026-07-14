@@ -1,55 +1,95 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native";
-import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  TextInput,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Button } from '../../../components/common/Button';
-import { Input } from '../../../components/common/Input';
 import DatePickerField from '../../../components/common/DatePickerField';
-import { Colors } from '../../../constants/colors';
-import { Layout } from '../../../constants/layout';
 import { principalApi } from '../../../api/principal';
 import { validatePhone } from '../../../utils/validation';
 import { useToast } from '../../../context/ToastContext';
-import { Breadcrumb } from '../../../components/common/Breadcrumb';
 
-const K = {
-  purple:     '#8A80BC',
-  purpleLight:'#EFEDF8',
-  teal:       '#4AADA3',
-  tealLight:  '#E8F6F5',
-  coral:      '#D97B6C',
-  coralLight: '#FAF0EE',
-  amber:      '#C9973A',
-  amberLight: '#FBF4E6',
-  bg:         '#F2F1F8',
-  banner:     '#3D5A9E',
-};
+// ── palette ───────────────────────────────────────────────────────────────────
+const DARK     = '#0F2F3E';
+const DARK2    = '#1A3A4A';
+const GREEN    = '#3EBF78';
+const GREEN_L  = '#E0F7EC';
+const BLUE     = '#4A8FD8';
+const BLUE_L   = '#DEEAF8';
+const PURPLE   = '#7B68C8';
+const PURPLE_L = '#EEEBF8';
+const AMBER    = '#F0A940';
+const AMBER_L  = '#FDF0D6';
+const CORAL    = '#D95F50';
+const CORAL_L  = '#FDECEA';
+const BODY_BG  = '#F2F5F8';
+const SURFACE  = '#FFFFFF';
+const TEXT     = '#1A2E3B';
+const MUTED    = '#8A93A8';
+const BORDER   = '#E8EEF4';
 
 const DISABILITY_OPTIONS = [
   'ASD Level 1', 'ASD Level 2', 'ASD Level 3',
   'Down Syndrome', 'Intellectual Disability', 'Learning Disability', 'Other',
 ];
 
-function SectionHeader({ icon, label, color, bg }) {
+// ── field row (label + input + optional error) ────────────────────────────────
+function FieldRow({ label, required, error, children }) {
   return (
-    <View style={styles.sectionHeader}>
-      <View style={[styles.sectionIconBox, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={14} color={color} />
-      </View>
-      <Text style={[styles.sectionLabel, { color }]}>{label}</Text>
+    <View style={styles.fieldRow}>
+      <Text style={styles.fieldLabel}>
+        {label}
+        {required && <Text style={styles.fieldRequired}> *</Text>}
+      </Text>
+      {children}
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
 
-export default function EditStudentScreen({ route, navigation }) {
-  const { student } = route.params;
-  const { width, height } = useWindowDimensions();
-  const isLandscape  = width > height;
-  const formMaxWidth = isLandscape ? Math.min(width * 0.65, 680) : undefined;
+function StyledInput({ error, ...props }) {
+  return (
+    <TextInput
+      style={[styles.styledInput, error && styles.styledInputError, props.multiline && styles.styledInputMulti]}
+      placeholderTextColor={MUTED}
+      {...props}
+    />
+  );
+}
 
+// ── section card ──────────────────────────────────────────────────────────────
+function SectionCard({ title, icon, accent, children }) {
+  return (
+    <View style={styles.card}>
+      <View style={[styles.cardAccentBar, { backgroundColor: accent }]} />
+      <View style={styles.cardInner}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.cardIconBox, { backgroundColor: accent + '1A' }]}>
+            <Ionicons name={icon} size={15} color={accent} />
+          </View>
+          <Text style={styles.cardTitle}>{title}</Text>
+        </View>
+        <View style={styles.cardFields}>{children}</View>
+      </View>
+    </View>
+  );
+}
+
+// ── screen ────────────────────────────────────────────────────────────────────
+export default function EditStudentScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
+  const { student } = route.params;
   const toast = useToast();
+
   const [form, setForm] = useState({
     full_name:      student.full_name ?? '',
     date_of_birth:  student.date_of_birth?.slice(0, 10) ?? '',
@@ -61,10 +101,10 @@ export default function EditStudentScreen({ route, navigation }) {
     mobile_number:  student.mobile_number ?? '',
     home_number:    student.home_number ?? '',
   });
-  const [photo, setPhoto]                       = useState(null);
-  const [loading, setLoading]                   = useState(false);
-  const [errors, setErrors]                     = useState({});
-  const [showDisabilityPicker, setShowDisabilityPicker] = useState(false);
+  const [photo,                setPhoto]                = useState(null);
+  const [loading,              setLoading]              = useState(false);
+  const [errors,               setErrors]               = useState({});
+  const [disabilityOpen,       setDisabilityOpen]       = useState(false);
 
   function set(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -81,8 +121,8 @@ export default function EditStudentScreen({ route, navigation }) {
 
   function validate() {
     const e = {};
-    if (!form.full_name.trim())  e.full_name  = 'Full Name cannot be empty.';
-    if (!form.disability.trim()) e.disability = 'Disability cannot be empty.';
+    if (!form.full_name.trim())  e.full_name  = 'Full name is required.';
+    if (!form.disability.trim()) e.disability = 'Please select a disability type.';
     if (form.mobile_number && !validatePhone(form.mobile_number))
       e.mobile_number = 'Enter a valid phone number.';
     if (form.home_number && !validatePhone(form.home_number))
@@ -101,8 +141,8 @@ export default function EditStudentScreen({ route, navigation }) {
         const uri  = photo.uri;
         const name = uri.split('/').pop();
         const ext  = name.split('.').pop().toLowerCase();
-        const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
-        formData.append('photo', { uri, name, type: mimeMap[ext] || 'image/jpeg' });
+        const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+        formData.append('photo', { uri, name, type: mime[ext] || 'image/jpeg' });
       }
       await principalApi.updateStudent(student.sid, formData);
       toast.show('Student profile updated successfully.');
@@ -118,271 +158,526 @@ export default function EditStudentScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Breadcrumb
-        crumbs={[
-          { label: 'Students', onPress: () => navigation.pop(2) },
-          { label: student.full_name, onPress: () => navigation.goBack() },
-          { label: 'Edit Student' },
-        ]}
-        title="Edit Student"
-      />
+
+      {/* ── Top bar ── */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={20} color={TEXT} />
+        </TouchableOpacity>
+        <View style={styles.breadcrumb}>
+          <TouchableOpacity onPress={() => navigation.pop(2)} activeOpacity={0.7}>
+            <Text style={styles.breadcrumbParent}>Students</Text>
+          </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={14} color={MUTED} />
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <Text style={styles.breadcrumbParent}>{student.full_name}</Text>
+          </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={14} color={MUTED} />
+          <Text style={styles.breadcrumbCurrent}>Edit Profile</Text>
+        </View>
+      </View>
+
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ maxWidth: formMaxWidth, alignSelf: 'center', width: '100%' }}>
 
-            {/* ── Photo hero ───────────────────────────────────── */}
-            <View style={styles.photoCard}>
-              <View style={styles.photoBanner} />
-              <View style={styles.photoBody}>
-                <ButtonFeedback onPress={pickPhoto} activeOpacity={0.8} style={styles.photoTouch}>
-                  {photoUri ? (
-                    <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-                  ) : (
-                    <View style={styles.photoPlaceholder}>
-                      <Ionicons name="camera-outline" size={28} color={Colors.icon.default} />
+          {/* ── Left panel: photo identity ── */}
+          <View style={styles.layout}>
+            <View style={styles.leftPanel}>
+
+              {/* Photo card */}
+              <View style={styles.photoCard}>
+                <View style={styles.photoCardTop}>
+                  <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8} style={styles.photoWrap}>
+                    {photoUri ? (
+                      <Image source={{ uri: photoUri }} style={styles.photoImg} />
+                    ) : (
+                      <View style={styles.photoEmpty}>
+                        <Ionicons name="person-outline" size={34} color="rgba(255,255,255,0.4)" />
+                      </View>
+                    )}
+                    <View style={styles.photoCameraBtn}>
+                      <Ionicons name="camera" size={13} color={SURFACE} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.photoCardBottom}>
+                  <Text style={styles.photoName}>{student.full_name}</Text>
+                  <View style={styles.photoCodePill}>
+                    <Text style={styles.photoCodeText}>{student.student_code}</Text>
+                  </View>
+                  <TouchableOpacity onPress={pickPhoto} style={styles.changePhotoBtn} activeOpacity={0.8}>
+                    <Ionicons name="image-outline" size={14} color={BLUE} />
+                    <Text style={styles.changePhotoBtnText}>Change Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Student code info card */}
+              <View style={styles.infoChip}>
+                <Ionicons name="information-circle-outline" size={15} color={MUTED} />
+                <Text style={styles.infoChipText}>
+                  Student code and assignment cannot be changed here.
+                </Text>
+              </View>
+
+              {/* Action buttons */}
+              <TouchableOpacity
+                style={[styles.saveBtn, loading && { opacity: 0.7 }]}
+                onPress={handleUpdate}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="checkmark-outline" size={15} color={SURFACE} />
+                <Text style={styles.saveBtnText}>{loading ? 'Saving…' : 'Save Changes'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+            </View>
+
+            {/* ── Right panel: form ── */}
+            <View style={styles.rightPanel}>
+
+              {/* Required */}
+              <SectionCard title="Required Information" icon="star-outline" accent={PURPLE}>
+                <FieldRow label="Full Name" required error={errors.full_name}>
+                  <StyledInput
+                    value={form.full_name}
+                    onChangeText={(v) => set('full_name', v)}
+                    placeholder="Student's full name"
+                    autoCapitalize="words"
+                    error={errors.full_name}
+                  />
+                </FieldRow>
+
+                <View style={styles.fieldDivider} />
+
+                <FieldRow label="Date of Birth">
+                  <DatePickerField
+                    value={form.date_of_birth}
+                    onChange={(v) => set('date_of_birth', v)}
+                    maximumDate={new Date()}
+                    error={errors.date_of_birth}
+                  />
+                </FieldRow>
+
+                <View style={styles.fieldDivider} />
+
+                <FieldRow label="Disability Type" required error={errors.disability}>
+                  <TouchableOpacity
+                    style={[styles.styledInput, styles.selectRow, errors.disability && styles.styledInputError]}
+                    onPress={() => setDisabilityOpen((v) => !v)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.selectText, !form.disability && { color: MUTED }]}>
+                      {form.disability || 'Select type…'}
+                    </Text>
+                    <Ionicons name={disabilityOpen ? 'chevron-up' : 'chevron-down'} size={16} color={MUTED} />
+                  </TouchableOpacity>
+                  {disabilityOpen && (
+                    <View style={styles.dropdown}>
+                      {DISABILITY_OPTIONS.map((opt, i) => {
+                        const active = form.disability === opt;
+                        return (
+                          <TouchableOpacity
+                            key={opt}
+                            style={[
+                              styles.dropdownItem,
+                              active && styles.dropdownItemActive,
+                              i > 0 && styles.dropdownItemBorder,
+                            ]}
+                            onPress={() => { set('disability', opt); setDisabilityOpen(false); }}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={[styles.dropdownText, active && styles.dropdownTextActive]}>{opt}</Text>
+                            {active && <Ionicons name="checkmark-circle" size={16} color={PURPLE} />}
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   )}
-                  <View style={styles.photoBadge}>
-                    <Ionicons name="camera" size={11} color="#FFF" />
+                </FieldRow>
+              </SectionCard>
+
+              {/* Parent / Guardian */}
+              <SectionCard title="Parent / Guardian" icon="people-outline" accent={BLUE}>
+                <View style={styles.fieldPair}>
+                  <View style={{ flex: 1 }}>
+                    <FieldRow label="Father's Name">
+                      <StyledInput
+                        value={form.father_name}
+                        onChangeText={(v) => set('father_name', v)}
+                        placeholder="Optional"
+                        autoCapitalize="words"
+                      />
+                    </FieldRow>
                   </View>
-                </ButtonFeedback>
-                <Text style={styles.photoName}>{student.full_name}</Text>
-                <Text style={styles.photoHint}>Tap photo to change</Text>
-              </View>
-            </View>
-
-            {/* ── Required Info ────────────────────────────────── */}
-            <SectionHeader icon="star-outline" label="Required Information" color={K.purple} bg={K.purpleLight} />
-            <View style={styles.formCard}>
-              <Input
-                label="Full Name"
-                value={form.full_name}
-                onChangeText={(v) => set('full_name', v)}
-                placeholder="Student's full name"
-                autoCapitalize="words"
-                leftIcon={<Ionicons name="person-outline" size={18} color={Colors.icon.default} />}
-                error={errors.full_name}
-              />
-              <DatePickerField
-                label="Date of Birth"
-                value={form.date_of_birth}
-                onChange={(v) => set('date_of_birth', v)}
-                maximumDate={new Date()}
-                error={errors.date_of_birth}
-              />
-
-              {/* Disability picker */}
-              <View>
-                <Text style={styles.selectLabel}>Disability</Text>
-                <ButtonFeedback
-                  style={[styles.selectBtn, errors.disability && { borderColor: Colors.status.error }]}
-                  onPress={() => setShowDisabilityPicker((v) => !v)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.selectText, !form.disability && { color: Colors.text.muted }]}>
-                    {form.disability || 'Select disability type'}
-                  </Text>
-                  <Ionicons name={showDisabilityPicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.icon.default} />
-                </ButtonFeedback>
-                {errors.disability && <Text style={styles.fieldError}>{errors.disability}</Text>}
-                {showDisabilityPicker && (
-                  <View style={styles.dropdown}>
-                    {DISABILITY_OPTIONS.map((opt) => (
-                      <ButtonFeedback
-                        key={opt}
-                        style={[styles.dropdownItem, form.disability === opt && styles.dropdownItemActive]}
-                        onPress={() => { set('disability', opt); setShowDisabilityPicker(false); }}
-                      >
-                        <Text style={[styles.dropdownText, form.disability === opt && styles.dropdownTextActive]}>{opt}</Text>
-                        {form.disability === opt && <Ionicons name="checkmark" size={16} color={K.purple} />}
-                      </ButtonFeedback>
-                    ))}
+                  <View style={{ flex: 1 }}>
+                    <FieldRow label="Mother's Name">
+                      <StyledInput
+                        value={form.mother_name}
+                        onChangeText={(v) => set('mother_name', v)}
+                        placeholder="Optional"
+                        autoCapitalize="words"
+                      />
+                    </FieldRow>
                   </View>
-                )}
-              </View>
-            </View>
+                </View>
 
-            {/* ── Parent / Guardian ────────────────────────────── */}
-            <SectionHeader icon="people-outline" label="Parent / Guardian" color={K.teal} bg={K.tealLight} />
-            <View style={styles.formCard}>
-              <Input
-                label="Father's Name"
-                value={form.father_name}
-                onChangeText={(v) => set('father_name', v)}
-                placeholder="Optional"
-                autoCapitalize="words"
-                leftIcon={<Ionicons name="person-outline" size={18} color={Colors.icon.default} />}
-              />
-              <Input
-                label="Mother's Name"
-                value={form.mother_name}
-                onChangeText={(v) => set('mother_name', v)}
-                placeholder="Optional"
-                autoCapitalize="words"
-                leftIcon={<Ionicons name="person-outline" size={18} color={Colors.icon.default} />}
-              />
-              <Input
-                label="Mobile Number"
-                value={form.mobile_number}
-                onChangeText={(v) => set('mobile_number', v)}
-                placeholder="+94771234567"
-                keyboardType="phone-pad"
-                leftIcon={<Ionicons name="phone-portrait-outline" size={18} color={Colors.icon.default} />}
-                error={errors.mobile_number}
-              />
-              <Input
-                label="Home Number"
-                value={form.home_number}
-                onChangeText={(v) => set('home_number', v)}
-                placeholder="+94112345678"
-                keyboardType="phone-pad"
-                leftIcon={<Ionicons name="call-outline" size={18} color={Colors.icon.default} />}
-                error={errors.home_number}
-              />
-            </View>
+                <View style={styles.fieldDivider} />
 
-            {/* ── Additional ───────────────────────────────────── */}
-            <SectionHeader icon="document-text-outline" label="Additional Details" color={K.coral} bg={K.coralLight} />
-            <View style={styles.formCard}>
-              <Input
-                label="Address"
-                value={form.address}
-                onChangeText={(v) => set('address', v)}
-                placeholder="Home address"
-                autoCapitalize="sentences"
-                multiline
-                numberOfLines={3}
-                leftIcon={<Ionicons name="home-outline" size={18} color={Colors.icon.default} />}
-              />
-              <Input
-                label="Marital Status"
-                value={form.marital_status}
-                onChangeText={(v) => set('marital_status', v)}
-                placeholder="e.g. N/A"
-                leftIcon={<Ionicons name="heart-outline" size={18} color={Colors.icon.default} />}
-              />
-            </View>
+                <View style={styles.fieldPair}>
+                  <View style={{ flex: 1 }}>
+                    <FieldRow label="Mobile Number" error={errors.mobile_number}>
+                      <StyledInput
+                        value={form.mobile_number}
+                        onChangeText={(v) => set('mobile_number', v)}
+                        placeholder="+94771234567"
+                        keyboardType="phone-pad"
+                        error={errors.mobile_number}
+                      />
+                    </FieldRow>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <FieldRow label="Home Number" error={errors.home_number}>
+                      <StyledInput
+                        value={form.home_number}
+                        onChangeText={(v) => set('home_number', v)}
+                        placeholder="+94112345678"
+                        keyboardType="phone-pad"
+                        error={errors.home_number}
+                      />
+                    </FieldRow>
+                  </View>
+                </View>
+              </SectionCard>
 
-            {/* ── Actions ──────────────────────────────────────── */}
-            <View style={styles.buttonRow}>
-              <Button title="Cancel" variant="outline" onPress={() => navigation.goBack()} style={{ flex: 1 }} />
-              <Button
-                title="Save Changes"
-                onPress={handleUpdate}
-                loading={loading}
-                style={{ flex: 1 }}
-                icon={<Ionicons name="checkmark-outline" size={18} color="#FFF" />}
-              />
-            </View>
+              {/* Additional */}
+              <SectionCard title="Additional Details" icon="document-text-outline" accent={AMBER}>
+                <View style={styles.fieldPair}>
+                  <View style={{ flex: 2 }}>
+                    <FieldRow label="Address">
+                      <StyledInput
+                        value={form.address}
+                        onChangeText={(v) => set('address', v)}
+                        placeholder="Home address"
+                        autoCapitalize="sentences"
+                        multiline
+                        numberOfLines={3}
+                      />
+                    </FieldRow>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <FieldRow label="Marital Status">
+                      <StyledInput
+                        value={form.marital_status}
+                        onChangeText={(v) => set('marital_status', v)}
+                        placeholder="e.g. N/A"
+                        autoCapitalize="words"
+                      />
+                    </FieldRow>
+                  </View>
+                </View>
+              </SectionCard>
 
+            </View>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
+
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: K.bg },
-  scroll: { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl, gap: Layout.spacing.md },
+  safe: { flex: 1, backgroundColor: BODY_BG },
 
+  // ── Top bar ───────────────────────────────────────────────────────────────
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: SURFACE,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    gap: 10,
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: BODY_BG,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  breadcrumb: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4,
+  },
+  breadcrumbParent: {
+    fontSize: 13, fontFamily: 'Nunito_600SemiBold', color: MUTED,
+  },
+  breadcrumbCurrent: {
+    fontSize: 14, fontFamily: 'Nunito_800ExtraBold', color: TEXT,
+  },
+
+  // ── Layout ────────────────────────────────────────────────────────────────
+  scroll: { padding: 16, paddingBottom: 8 },
+  layout: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  leftPanel: { width: 220, gap: 12 },
+  rightPanel: { flex: 1, gap: 14 },
+
+  // ── Photo card ────────────────────────────────────────────────────────────
   photoCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    overflow: 'hidden',
+    backgroundColor: SURFACE,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.sm,
-    marginBottom: Layout.spacing.xs,
+    borderColor: BORDER,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  photoBanner: { height: 56, backgroundColor: K.banner },
-  photoBody:   { alignItems: 'center', paddingBottom: Layout.spacing.md, gap: 4 },
-  photoTouch:  { marginTop: -36 },
-  photoPreview: {
-    width: 72, height: 72, borderRadius: 36,
-    borderWidth: 3, borderColor: Colors.surface,
+  photoCardTop: {
+    backgroundColor: DARK,
+    paddingTop: 28,
+    paddingBottom: 36,
+    alignItems: 'center',
   },
-  photoPlaceholder: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: Colors.surfaceAlt,
-    borderWidth: 3, borderColor: Colors.surface,
-    borderStyle: 'dashed',
+  photoWrap: { position: 'relative' },
+  photoImg: {
+    width: 88, height: 88, borderRadius: 44,
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.25)',
+  },
+  photoEmpty: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.20)',
     alignItems: 'center', justifyContent: 'center',
   },
-  photoBadge: {
+  photoCameraBtn: {
     position: 'absolute', bottom: 2, right: 2,
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: K.coral,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: BLUE,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: Colors.surface,
+    borderWidth: 2, borderColor: DARK,
+  },
+  photoCardBottom: {
+    alignItems: 'center',
+    paddingTop: 14,
+    paddingBottom: 18,
+    paddingHorizontal: 12,
+    gap: 8,
+    marginTop: -24,
+    backgroundColor: SURFACE,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   photoName: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-    marginTop: Layout.spacing.xs,
+    fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: TEXT,
+    textAlign: 'center',
   },
-  photoHint: { fontSize: Layout.fontSize.xs, color: Colors.text.muted },
+  photoCodePill: {
+    backgroundColor: PURPLE_L,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  photoCodeText: {
+    fontSize: 11, fontFamily: 'Nunito_700Bold', color: PURPLE, letterSpacing: 0.4,
+  },
+  changePhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: BLUE_L,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginTop: 2,
+  },
+  changePhotoBtnText: {
+    fontSize: 12, fontFamily: 'Nunito_700Bold', color: BLUE,
+  },
 
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: Layout.spacing.xs,
-    marginBottom: Layout.spacing.xs,
-    marginTop: Layout.spacing.xs,
+  // ── Info chip ─────────────────────────────────────────────────────────────
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: SURFACE,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
   },
-  sectionIconBox: {
-    width: 26, height: 26, borderRadius: 8,
+  infoChipText: {
+    flex: 1,
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+    color: MUTED,
+    lineHeight: 16,
+  },
+
+  // ── Section card ──────────────────────────────────────────────────────────
+  card: {
+    backgroundColor: SURFACE,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  cardAccentBar: {
+    width: 4,
+    alignSelf: 'stretch',
+  },
+  cardInner: { flex: 1 },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  cardIconBox: {
+    width: 30, height: 30, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
-  sectionLabel: {
-    fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
-    letterSpacing: 0.2,
+  cardTitle: {
+    fontSize: 13, fontFamily: 'Nunito_700Bold', color: TEXT,
+  },
+  cardFields: {
+    padding: 16,
+    gap: 12,
   },
 
-  formCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    padding: Layout.spacing.md,
+  // ── Fields ────────────────────────────────────────────────────────────────
+  fieldRow: { gap: 6 },
+  fieldLabel: {
+    fontSize: 11,
+    fontFamily: 'Nunito_700Bold',
+    color: MUTED,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  fieldRequired: { color: CORAL },
+  fieldError: {
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+    color: CORAL,
+  },
+  fieldDivider: {
+    height: 1,
+    backgroundColor: BORDER,
+    marginHorizontal: -16,
+    marginVertical: 2,
+  },
+  fieldPair: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  // ── Input ─────────────────────────────────────────────────────────────────
+  styledInput: {
+    backgroundColor: BODY_BG,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.sm,
-    gap: Layout.spacing.xs,
+    borderColor: BORDER,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: TEXT,
+  },
+  styledInputMulti: {
+    minHeight: 78,
+    textAlignVertical: 'top',
+    paddingTop: 10,
+  },
+  styledInputError: {
+    borderColor: CORAL,
   },
 
-  selectLabel: {
-    fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.secondary,
-    marginBottom: Layout.spacing.xs,
-  },
-  selectBtn: {
-    flexDirection: 'row', alignItems: 'center',
+  // ── Disability picker ─────────────────────────────────────────────────────
+  selectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.background,
-    borderRadius: Layout.radius.lg,
-    borderWidth: 1.5, borderColor: Colors.border,
-    height: 52, paddingHorizontal: Layout.spacing.md,
+    paddingVertical: 0,
+    height: 44,
   },
-  selectText: { fontSize: Layout.fontSize.md, color: Colors.text.primary },
-  fieldError: { fontSize: Layout.fontSize.xs, color: Colors.status.error, marginTop: 4, marginLeft: 4 },
+  selectText: {
+    fontSize: 13, fontFamily: 'Nunito_400Regular', color: TEXT,
+  },
   dropdown: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.md,
-    borderWidth: 1, borderColor: Colors.border,
-    marginTop: 4, overflow: 'hidden',
+    backgroundColor: SURFACE,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginTop: 4,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   dropdownItem: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: Layout.spacing.md, paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
-  dropdownItemActive: { backgroundColor: K.purpleLight },
-  dropdownText: { flex: 1, fontSize: Layout.fontSize.md, color: Colors.text.primary },
-  dropdownTextActive: { color: K.purple, fontWeight: Layout.fontWeight.semibold },
+  dropdownItemBorder: {
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  dropdownItemActive: { backgroundColor: PURPLE_L },
+  dropdownText: {
+    flex: 1, fontSize: 13, fontFamily: 'Nunito_400Regular', color: TEXT,
+  },
+  dropdownTextActive: {
+    fontFamily: 'Nunito_700Bold', color: PURPLE,
+  },
 
-  buttonRow: { flexDirection: 'row', gap: Layout.spacing.sm, marginTop: Layout.spacing.xl },
+  // ── Left panel action buttons ─────────────────────────────────────────────
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#2E9E63',
+  },
+  saveBtnText: {
+    fontSize: 13, fontFamily: 'Nunito_700Bold', color: SURFACE,
+  },
+  cancelBtn: {
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BODY_BG,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  cancelBtnText: {
+    fontSize: 13, fontFamily: 'Nunito_700Bold', color: MUTED,
+  },
 });

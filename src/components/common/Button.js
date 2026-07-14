@@ -14,11 +14,11 @@ import { playClickSound } from "./ButtonFeedback";
 
 const VARIANTS = {
   primary: {
-    gradient: ["#7C6FCD", "#5A8EE0"],
-    gradientPress: ["#5A4FB0", "#3D70C8"],
-    gradientDis: ["#B0BED8", "#9AAEC8"],
-    textColor: "#FFFFFF",
-    radius: 14,
+    gradient:      ['#4AABB8', '#52C07C'],
+    gradientPress: ['#3A8E9A', '#3DA060'],
+    gradientDis:   ['#B0D4D8', '#A8CEB8'],
+    textColor:     '#FFFFFF',
+    radius:        14,
   },
   outline: {
     bg: "transparent",
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   text: {
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
   row: {

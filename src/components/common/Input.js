@@ -1,8 +1,14 @@
-import React, { useState } from "react";
-import { View, TextInput, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "../../constants/colors";
-import { Layout } from "../../constants/layout";
+﻿import React, { useState } from 'react';
+import {
+  View,
+  TextInput,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/colors';
+import { Layout } from '../../constants/layout';
 import { ButtonFeedback } from "./ButtonFeedback";
 
 export function Input({
@@ -100,7 +106,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.secondary,
     marginBottom: Layout.spacing.xs,
     letterSpacing: 0.2,

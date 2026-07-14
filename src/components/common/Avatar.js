@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
@@ -56,6 +56,6 @@ const styles = StyleSheet.create({
   },
   initials: {
     color: '#FFFFFF',
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
   },
 });
