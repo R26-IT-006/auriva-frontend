@@ -196,7 +196,6 @@ export default function TeacherNavigator() {
       <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />
       <Stack.Screen name="ConceptColoring"          component={ConceptColoringScreen} />
       <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
-      <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
       <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
       <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
       <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
