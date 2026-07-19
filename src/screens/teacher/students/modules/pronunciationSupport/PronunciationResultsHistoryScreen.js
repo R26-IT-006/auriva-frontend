@@ -15,14 +15,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { useFocusEffect } from "@react-navigation/native";
 import { teacherApi } from "../../../../../api/teacher";
-import { API_BASE_URL, ENDPOINTS } from "../../../../../constants/api";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
-import { storage } from "../../../../../utils/storage";
 import { getStudentIdentifier } from "./studentIdentity.js";
 import {
+  buildMfccDtwPhonemeComparison,
   buildPronunciationHistorySummary,
+  buildSelectedSessionComparison,
   formatDateTime,
+  getScoringEvidence,
   getScoreColor,
   HISTORY_REFRESH_INTERVAL_MS,
 } from "./pronunciationHistory.js";
@@ -58,6 +59,160 @@ function SummaryMetric({ icon, label, value, color = Colors.primary }) {
         <Text style={styles.summaryMetricValue} numberOfLines={1}>
           {value}
         </Text>
+      </View>
+    </View>
+  );
+}
+
+function formatDelta(value) {
+  if (value > 0) return `+${value}%`;
+  if (value < 0) return `${value}%`;
+  return "0%";
+}
+
+function getDeltaColor(value) {
+  if (value > 0) return Colors.status.success;
+  if (value < 0) return Colors.status.error;
+  return Colors.text.secondary;
+}
+
+function SessionComparison({ comparison }) {
+  if (!comparison) return null;
+
+  const { previousResult, scoreDelta, phonemeDeltas } = comparison;
+
+  return (
+    <View style={styles.comparisonBox}>
+      <View style={styles.comparisonHeader}>
+        <View style={styles.comparisonIcon}>
+          <Ionicons name="git-compare-outline" size={18} color={Colors.primary} />
+        </View>
+        <View style={styles.comparisonTitleWrap}>
+          <Text style={styles.comparisonTitle}>Previous Word Attempt</Text>
+          <Text style={styles.comparisonMeta}>
+            Session {previousResult.session_number}, {formatDateTime(previousResult.created_at)}
+          </Text>
+        </View>
+        <View style={styles.comparisonScores}>
+          <Text style={styles.previousScoreText}>{previousResult.overall_score}%</Text>
+          <Text
+            style={[
+              styles.deltaText,
+              { color: getDeltaColor(scoreDelta) },
+            ]}
+          >
+            {formatDelta(scoreDelta)}
+          </Text>
+        </View>
+      </View>
+
+      {phonemeDeltas.length ? (
+        <View style={styles.deltaChipRow}>
+          {phonemeDeltas.slice(0, 4).map((item, index) => (
+            <View key={`${item.text}-${index}`} style={styles.deltaChip}>
+              <Text style={styles.deltaChipSound}>{item.text}</Text>
+              <Text
+                style={[
+                  styles.deltaChipValue,
+                  { color: getDeltaColor(item.delta) },
+                ]}
+              >
+                {formatDelta(item.delta)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function AudioAnalysisPanel({ comparison }) {
+  if (!comparison) return null;
+
+  const config = comparison.mfccConfig || {};
+  const quality = comparison.audioQuality || {};
+
+  return (
+    <View style={styles.audioAnalysisBox}>
+      <View style={styles.audioAnalysisHeader}>
+        <View style={styles.audioAnalysisIcon}>
+          <Ionicons name="analytics-outline" size={18} color={Colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.audioAnalysisTitle}>MFCC + DTW Comparison</Text>
+          <Text style={styles.audioAnalysisMeta}>
+            Student recording matched against the reference audio
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.audioAnalysisStats}>
+        <View style={styles.audioAnalysisStat}>
+          <Text style={styles.audioAnalysisStatLabel}>DTW Distance</Text>
+          <Text style={styles.audioAnalysisStatValue}>
+            {comparison.dtwDistance ?? "-"}
+          </Text>
+        </View>
+        <View style={styles.audioAnalysisStat}>
+          <Text style={styles.audioAnalysisStatLabel}>Attempt Frames</Text>
+          <Text style={styles.audioAnalysisStatValue}>
+            {config.attempt_frames ?? "-"}
+          </Text>
+        </View>
+        <View style={styles.audioAnalysisStat}>
+          <Text style={styles.audioAnalysisStatLabel}>Reference Frames</Text>
+          <Text style={styles.audioAnalysisStatValue}>
+            {config.reference_frames ?? "-"}
+          </Text>
+        </View>
+        <View style={styles.audioAnalysisStat}>
+          <Text style={styles.audioAnalysisStatLabel}>SNR</Text>
+          <Text style={styles.audioAnalysisStatValue}>
+            {quality.snr_db ?? "-"} dB
+          </Text>
+        </View>
+        <View style={styles.audioAnalysisStat}>
+          <Text style={styles.audioAnalysisStatLabel}>Silence</Text>
+          <Text style={styles.audioAnalysisStatValue}>
+            {quality.silence_ratio != null
+              ? `${Math.round(quality.silence_ratio * 100)}%`
+              : "-"}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.audioAnalysisRows}>
+        {comparison.rows.map((row, index) => (
+          <View key={`${row.text}-${index}`} style={styles.audioAnalysisRow}>
+            <View style={styles.audioAnalysisRowTop}>
+              <Text style={styles.audioAnalysisSound}>/{row.text}/</Text>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${row.segmentScore}%`,
+                      backgroundColor: getScoreColor(row.segmentScore),
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.audioAnalysisScore}>{row.segmentScore}%</Text>
+            </View>
+            <View style={styles.audioAnalysisTiming}>
+              <Text style={styles.audioAnalysisTimingText}>
+                Ref {row.referenceStart ?? "-"}-{row.referenceEnd ?? "-"}s
+              </Text>
+              <Text style={styles.audioAnalysisTimingText}>
+                Student {row.studentStart ?? "-"}-{row.studentEnd ?? "-"}s
+              </Text>
+              <Text style={styles.audioAnalysisTimingText}>
+                Match {row.similarityScore ?? row.segmentScore}% | Timing {row.timingScore ?? "-"}%
+              </Text>
+            </View>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -134,6 +289,18 @@ export default function PronunciationResultsHistoryScreen({ route }) {
     () => buildPronunciationHistorySummary(results),
     [results],
   );
+  const selectedComparison = useMemo(
+    () => buildSelectedSessionComparison(results, selectedResult),
+    [results, selectedResult],
+  );
+  const selectedAudioComparison = useMemo(
+    () =>
+      buildMfccDtwPhonemeComparison({
+        phonemeScores: selectedResult?.phoneme_scores || [],
+        evidence: getScoringEvidence(selectedResult),
+      }),
+    [selectedResult],
+  );
 
   const fetchResults = useCallback(async () => {
     if (!studentId) return;
@@ -173,6 +340,12 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   }, [selectedId]);
 
   useEffect(() => {
+    if (results.length === 0) {
+      stopAudio();
+    }
+  }, [results.length]);
+
+  useEffect(() => {
     return () => {
       if (soundRef.current) {
         soundRef.current.unloadAsync().catch(() => {});
@@ -200,8 +373,13 @@ export default function PronunciationResultsHistoryScreen({ route }) {
 
     try {
       await stopAudio();
-      const token = await storage.getToken();
-      const audioUrl = `${API_BASE_URL}${ENDPOINTS.TEACHER_PRONUNCIATION_RESULT_AUDIO(result.id)}?stream=1`;
+      const audio = await teacherApi.getPronunciationResultAudio(result.id);
+      const audioBase64 = audio?.raw_audio_base64;
+      const audioMimeType = audio?.raw_audio_mime_type || "audio/mp4";
+
+      if (!audioBase64) {
+        throw new Error("No saved audio was returned for this session.");
+      }
 
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
@@ -212,8 +390,7 @@ export default function PronunciationResultsHistoryScreen({ route }) {
 
       const { sound } = await Audio.Sound.createAsync(
         {
-          uri: audioUrl,
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          uri: `data:${audioMimeType};base64,${audioBase64}`,
         },
         { shouldPlay: true },
       );
@@ -460,7 +637,26 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                         {selectedResult.has_raw_audio ? "Captured" : "Missing"}
                       </Text>
                     </View>
+                    {!!selectedResult.recommendation_details?.adaptive_model && (
+                      <View style={styles.metricBox}>
+                        <Text style={styles.metricLabel}>Adaptive</Text>
+                        <Text style={styles.metricValue}>
+                          {selectedResult.recommendation_details.adaptive_model.adaptive_score}%
+                        </Text>
+                      </View>
+                    )}
+                    {!!selectedResult.recommendation_details?.confidence && (
+                      <View style={styles.metricBox}>
+                        <Text style={styles.metricLabel}>Confidence</Text>
+                        <Text style={styles.metricValue}>
+                          {selectedResult.recommendation_details.confidence.level}
+                        </Text>
+                      </View>
+                    )}
                   </View>
+
+                  <SessionComparison comparison={selectedComparison} />
+                  <AudioAnalysisPanel comparison={selectedAudioComparison} />
 
                   <View style={styles.activitiesSection}>
                     <TouchableOpacity
@@ -651,6 +847,24 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                             <Text style={styles.candidateReason}>
                               {selectedResult.recommendation_details.selected_candidate.reason}
                             </Text>
+                          </View>
+                        )}
+                        {!!selectedResult.recommendation_details?.confidence
+                          ?.uncertainty_reasons?.length && (
+                          <View style={styles.candidateBox}>
+                            <Text style={styles.candidateLabel}>
+                              Confidence Notes
+                            </Text>
+                            {selectedResult.recommendation_details.confidence.uncertainty_reasons.map(
+                              (reason, index) => (
+                                <Text
+                                  key={`${reason}-${index}`}
+                                  style={styles.candidateReason}
+                                >
+                                  {reason}
+                                </Text>
+                              ),
+                            )}
                           </View>
                         )}
                       </View>
@@ -994,6 +1208,172 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.md,
     fontWeight: Layout.fontWeight.bold,
     textTransform: "capitalize",
+  },
+  comparisonBox: {
+    marginTop: Layout.spacing.lg,
+    borderRadius: Layout.radius.md,
+    borderWidth: 1,
+    borderColor: "#D8E2FF",
+    backgroundColor: Colors.status.infoLight,
+    padding: Layout.spacing.md,
+  },
+  comparisonHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  comparisonIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  comparisonTitleWrap: {
+    flex: 1,
+  },
+  comparisonTitle: {
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  comparisonMeta: {
+    marginTop: 2,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    lineHeight: 16,
+  },
+  comparisonScores: {
+    alignItems: "flex-end",
+  },
+  previousScoreText: {
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    fontWeight: Layout.fontWeight.semibold,
+  },
+  deltaText: {
+    marginTop: 2,
+    fontSize: Layout.fontSize.lg,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  deltaChipRow: {
+    marginTop: Layout.spacing.md,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Layout.spacing.sm,
+  },
+  deltaChip: {
+    minHeight: 34,
+    borderRadius: Layout.radius.sm,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    paddingHorizontal: Layout.spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.xs,
+  },
+  deltaChipSound: {
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  deltaChipValue: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  audioAnalysisBox: {
+    marginTop: Layout.spacing.lg,
+    borderRadius: Layout.radius.md,
+    borderWidth: 1,
+    borderColor: "#D8E2FF",
+    backgroundColor: Colors.surface,
+    padding: Layout.spacing.md,
+  },
+  audioAnalysisHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  audioAnalysisIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.status.infoLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  audioAnalysisTitle: {
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  audioAnalysisMeta: {
+    marginTop: 2,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    lineHeight: 16,
+  },
+  audioAnalysisStats: {
+    marginTop: Layout.spacing.md,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Layout.spacing.sm,
+  },
+  audioAnalysisStat: {
+    flex: 1,
+    minWidth: 120,
+    borderRadius: Layout.radius.sm,
+    backgroundColor: Colors.background,
+    padding: Layout.spacing.sm,
+  },
+  audioAnalysisStatLabel: {
+    color: Colors.text.secondary,
+    fontSize: 10,
+    fontWeight: Layout.fontWeight.bold,
+    textTransform: "uppercase",
+  },
+  audioAnalysisStatValue: {
+    marginTop: 3,
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.md,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  audioAnalysisRows: {
+    marginTop: Layout.spacing.md,
+    gap: Layout.spacing.sm,
+  },
+  audioAnalysisRow: {
+    gap: 4,
+  },
+  audioAnalysisRowTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  audioAnalysisSound: {
+    width: 44,
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  audioAnalysisScore: {
+    width: 44,
+    textAlign: "right",
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  audioAnalysisTiming: {
+    marginLeft: 52,
+    gap: 2,
+  },
+  audioAnalysisTimingText: {
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    lineHeight: 16,
+    fontWeight: Layout.fontWeight.semibold,
   },
   activitiesSection: {
     marginTop: Layout.spacing.lg,

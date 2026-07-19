@@ -267,9 +267,11 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
         responseDuration,
       });
     } catch (error) {
+      const isQualityError = error.response?.data?.code === "AUDIO_QUALITY_FAILED";
       Alert.alert(
-        "Scoring error",
-        error.response?.data?.message ||
+        isQualityError ? "Recording quality issue" : "Scoring error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
           error.message ||
           "Unable to score this pronunciation right now.",
       );

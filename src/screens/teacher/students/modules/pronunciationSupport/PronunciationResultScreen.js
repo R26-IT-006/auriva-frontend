@@ -35,25 +35,6 @@ const EXPECTED_PRONUNCIATION_SCORE = 80;
 const WELL_DONE_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/well-done-female.mp3");
 const HOORAY_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/hooray-female.mp3");
 
-function ProgressRow({ label, value, barColor }) {
-  return (
-    <View style={styles.progressRow}>
-      <View style={styles.soundTag}>
-        <Text style={styles.soundTagText}>{label}</Text>
-      </View>
-      <View style={styles.progressTrack}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${value}%`, backgroundColor: barColor },
-          ]}
-        />
-      </View>
-      <Text style={styles.progressValue}>{value}%</Text>
-    </View>
-  );
-}
-
 function FeedbackButton({ onPress, style, activeOpacity = 0.92, children }) {
   return (
     <ButtonFeedback style={style} activeOpacity={activeOpacity} onPress={onPress}>
@@ -89,12 +70,6 @@ function ConfettiBurst({ pieces }) {
       ))}
     </View>
   );
-}
-
-function getScoreBarColor(score) {
-  if (score >= 80) return "#9ECC9F";
-  if (score >= 60) return "#E6C47A";
-  return "#E09A8F";
 }
 
 export default function PronunciationResultScreen({ navigation, route }) {
@@ -891,43 +866,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#2E3E56",
     fontWeight: "700",
-  },
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-    gap: 10,
-  },
-  soundTag: {
-    width: 38,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: "#F1F5FA",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  soundTagText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#3A4A63",
-  },
-  progressTrack: {
-    flex: 1,
-    height: 12,
-    borderRadius: 8,
-    backgroundColor: "#E8EDF4",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 8,
-  },
-  progressValue: {
-    width: 42,
-    textAlign: "right",
-    color: "#4A5B73",
-    fontWeight: "700",
-    fontSize: 16,
   },
   rightPanel: {
     width: 260,
