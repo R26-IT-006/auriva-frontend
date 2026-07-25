@@ -12,6 +12,19 @@ export const level2Api = {
     return data;
   },
 
+  /**
+   * Persist ONLY the child's self-portrait strokes (TASK-17 Fix 2 — dedicated
+   * endpoint, so a child with no questionnaire row yet can still save a
+   * portrait, and saving never rewrites the other questionnaire fields).
+   */
+  async savePortrait(studentId, portraitStrokes) {
+    const { data } = await client.patch(
+      `/teacher/level2/questionnaire/${studentId}/portrait`,
+      { portrait_strokes: portraitStrokes }
+    );
+    return data;
+  },
+
   async startSession(studentId, sessionId = null) {
     const body = sessionId ? { session_id: sessionId } : {};
     const { data } = await client.post(ENDPOINTS.LEVEL2_SESSION_START(studentId), body);

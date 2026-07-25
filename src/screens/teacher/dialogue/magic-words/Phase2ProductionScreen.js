@@ -150,7 +150,11 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
     rc3Refs: { recordingStartRef, micDelayRef },
     onGetReady: () => say('Get ready...'),
-    onStart: () => { setPhase(P.RECORDING); say('Listening...'); },
+    onStart: async () => {
+      setPhase(P.RECORDING);
+      await delay(300); // let mic warm up before cueing the child — avoids clipping short-word onsets
+      say('Listening...');
+    },
     onStop: uri => submitRecording(uri),
     onError: () => startListening(),
   });

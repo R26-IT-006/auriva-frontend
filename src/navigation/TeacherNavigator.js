@@ -49,6 +49,7 @@ import L2SentenceTeachScreen   from '../screens/teacher/dialogue/level2/L2Senten
 import L2ListenTogetherScreen  from '../screens/teacher/dialogue/level2/L2ListenTogetherScreen';
 import L2ProductionScreen      from '../screens/teacher/dialogue/level2/L2ProductionScreen';
 import L2SessionCompleteScreen from '../screens/teacher/dialogue/level2/L2SessionCompleteScreen';
+import L2PortraitScreen        from '../screens/teacher/dialogue/level2/L2PortraitScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -168,6 +169,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />
       <Stack.Screen name="L2Production"      component={L2ProductionScreen} />
       <Stack.Screen name="L2SessionComplete" component={L2SessionCompleteScreen} />
+      <Stack.Screen name="L2Portrait"        component={L2PortraitScreen} />
 
     </Stack.Navigator>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, ActivityIndicator,
 } from 'react-native';
@@ -9,6 +9,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
 import { useToast } from '../../../../context/ToastContext';
+import PortraitView from '../../../../components/level2/PortraitView';
 
 const TOPICS = [
   { key: 'self_introduction', label: 'Self-Introduction', icon: 'person-outline', active: true },
@@ -24,6 +25,13 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
   const cardWidth   = Math.min(width * 0.82, 440);
 
   const [loading, setLoading] = useState(false);
+  const [portraitStrokes, setPortraitStrokes] = useState(null);
+
+  useEffect(() => {
+    level2Api.getQuestionnaire(student.sid)
+      .then((resp) => setPortraitStrokes(resp?.data?.portrait_strokes ?? null))
+      .catch(() => setPortraitStrokes(null));
+  }, []);
 
   async function handleTopicSelect(topicKey) {
     if (topicKey !== 'self_introduction') return;
@@ -93,6 +101,24 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
               </TouchableOpacity>
             ))}
           </View>
+
+          <TouchableOpacity
+            style={[styles.topicCard, { width: cardWidth, borderColor: theme.cardOutline, backgroundColor: theme.cardSurface }]}
+            activeOpacity={0.82}
+            onPress={() => navigation.navigate('L2Portrait', { student })}
+          >
+            <View style={[styles.iconWrap, { backgroundColor: theme.button }]}>
+              {portraitStrokes ? (
+                <PortraitView strokes={portraitStrokes} size={48} />
+              ) : (
+                <Ionicons name="color-palette-outline" size={26} color="#FFF" />
+              )}
+            </View>
+            <View style={styles.topicTextWrap}>
+              <Text style={[styles.topicLabel, { color: theme.headingText }]}>Draw yourself</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.cardOutline} />
+          </TouchableOpacity>
 
           {loading && <ActivityIndicator color={theme.button} size="large" style={{ marginTop: 16 }} />}
         </View>

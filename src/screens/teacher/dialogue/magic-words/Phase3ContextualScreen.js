@@ -337,7 +337,13 @@ export default function Phase3ContextualScreen({ route, navigation }) {
       student?.sid, wordId,
       { scenarioLabel: label, selectedCorrect: wasCorrect, sessionId,
         responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect }
-    ).catch(() => {});
+    ).catch((err) => {
+      // Was previously a silent no-op — this call's real-world failure rate turned out
+      // to be ~100% (zero scenario rows ever landed for real pilot data), with no way
+      // to tell why. Logging here so the next round of real usage actually surfaces
+      // the cause instead of staying a black box.
+      console.warn('[Phase3Scenario] submitPhase3Scenario failed:', label, err?.response?.status, err?.response?.data ?? err?.message);
+    });
 
     // Determine next step
     if (label === 'A') {
