@@ -3,17 +3,18 @@
   "version": "1.0.0",
   "main": "index.js",
   "engines": {
-    "node": ">=20 <24"
+    "node": ">=20"
   },
   "scripts": {
     "postinstall": "node scripts/patch-freeport-async.js",
-    "start": "npx -y -p node@22 node node_modules/expo/bin/cli start --tunnel --port 8081",
-    "start:local": "npx -y -p node@22 node node_modules/expo/bin/cli start --localhost --port 8081",
-    "start:lan": "npx -y -p node@22 node node_modules/expo/bin/cli start --lan --port 8081",
-    "start:clear": "npx -y -p node@22 node node_modules/expo/bin/cli start --lan --port 8081 --clear",
+    "start": "expo start --lan --port 8081",
+    "start:tunnel": "expo start --tunnel --port 8081",
+    "start:local": "expo start --localhost --port 8081",
+    "start:lan": "expo start --lan --port 8081",
+    "start:clear": "expo start --lan --port 8081 --clear",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "npx -y -p node@22 node node_modules/expo/bin/cli start --web"
+    "web": "expo start --web"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
