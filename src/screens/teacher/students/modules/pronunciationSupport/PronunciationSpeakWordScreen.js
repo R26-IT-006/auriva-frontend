@@ -55,6 +55,8 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     (state) => state.submitScoredAttempt,
   );
   const recordingRef = useRef(null);
+  const promptShownAtRef = useRef(Date.now());
+  const preRecordDelayRef = useRef(null);
   const pulseLoopRef = useRef(null);
   const waveLoopRef = useRef(null);
   const timerRef = useRef(null);
@@ -172,6 +174,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       const { recording } = await createRecordingWithRecovery();
 
       recordingRef.current = recording;
+      preRecordDelayRef.current = Math.max(
+        0,
+        (Date.now() - promptShownAtRef.current) / 1000,
+      );
       setRecordingSeconds(0);
       setIsRecording(true);
     } catch (error) {
@@ -227,6 +233,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     } finally {
       recordingRef.current = null;
       setIsRecording(false);
+      promptShownAtRef.current = Date.now();
       Audio.setAudioModeAsync(PLAYBACK_AUDIO_MODE).catch(() => {});
     }
   }
@@ -259,6 +266,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           responseDuration,
           attemptNumber: numberOfAttempts + 1,
           audioData: savedAudioData,
+          preRecordDelaySeconds: preRecordDelayRef.current,
         }),
       );
 

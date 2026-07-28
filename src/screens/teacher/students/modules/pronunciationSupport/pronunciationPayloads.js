@@ -10,6 +10,7 @@ export function buildPronunciationScoringPayload({
   responseDuration,
   attemptNumber,
   audioData,
+  preRecordDelaySeconds,
 }) {
   return {
     mode,
@@ -20,6 +21,7 @@ export function buildPronunciationScoringPayload({
     target_phonemes: word?.sounds || [],
     response_duration: responseDuration,
     attempt_number: attemptNumber,
+    pre_record_delay_seconds: preRecordDelaySeconds ?? null,
     raw_audio_base64: audioData.rawAudioBase64,
     raw_audio_mime_type: audioData.rawAudioMimeType,
     raw_audio_size: audioData.rawAudioSize,
