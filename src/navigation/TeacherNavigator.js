@@ -40,6 +40,10 @@ import GreetingPhase2ProductionScreen from '../screens/teacher/dialogue/greeting
 import GreetingPhase2NonVerbalScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase2NonVerbalScreen';
 import GreetingPhase3ContextualScreen from '../screens/teacher/dialogue/greetings/GreetingPhase3ContextualScreen';
 
+// Evaluations (TASK-15)
+import EvaluationMenuScreen  from '../screens/teacher/dialogue/evaluations/EvaluationMenuScreen';
+import EvaluationMatchScreen from '../screens/teacher/dialogue/evaluations/EvaluationMatchScreen';
+
 // Level 2 – Sentence Construction
 import L2TopicSelectionScreen  from '../screens/teacher/dialogue/level2/L2TopicSelectionScreen';
 import L2QuestionnaireScreen   from '../screens/teacher/dialogue/level2/L2QuestionnaireScreen';
@@ -159,6 +163,10 @@ export default function TeacherNavigator() {
       <Stack.Screen name="GreetingPhase2Production"   component={GreetingPhase2ProductionScreen} />
       <Stack.Screen name="GreetingPhase2NonVerbal"    component={GreetingPhase2NonVerbalScreen} />
       <Stack.Screen name="GreetingPhase3Contextual"   component={GreetingPhase3ContextualScreen} />
+
+      {/* Evaluations */}
+      <Stack.Screen name="EvaluationMenu"   component={EvaluationMenuScreen} />
+      <Stack.Screen name="EvaluationMatch"  component={EvaluationMatchScreen} />
 
       {/* Level 2 – Sentence Construction */}
       <Stack.Screen name="L2TopicSelection"  component={L2TopicSelectionScreen} />

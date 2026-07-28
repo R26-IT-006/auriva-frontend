@@ -37,6 +37,11 @@ export const ENDPOINTS = {
   DIALOGUE_LEVEL1_PHASE3_SCENARIO:  (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/phase3-scenario`,
   DIALOGUE_LEVEL1_PHASE3_COMPLETE:  (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/phase3-complete`,
 
+  // Dialogue – Level 1 Evaluations (TASK-15)
+  DIALOGUE_EVALUATIONS_STATUS: (sid) => `/teacher/dialogue/evaluations/${sid}`,
+  DIALOGUE_EVALUATIONS_BUILD:  (sid, category) => `/teacher/dialogue/evaluations/${sid}/${category}`,
+  DIALOGUE_EVALUATIONS_RECORD: (sid, category) => `/teacher/dialogue/evaluations/${sid}/${category}`,
+
   // Days of the Week – specific endpoints
   DAYS_PHASE3_QUESTION:         (sid, wid) => `/teacher/student/${sid}/level1/days/phase3-question/${wid}`,
   DAYS_SPINNING_WHEEL:          (sid, ids) => `/teacher/student/${sid}/level1/days/spinning-wheel${ids?.length ? `?attempted_word_ids=${ids.join(',')}` : ''}`,

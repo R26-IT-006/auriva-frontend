@@ -37,7 +37,16 @@ const CATEGORIES = [
     icon: require('../../../../assets/dialogue-icons/activities.png'),
     gradient: ['#7DD3FC', '#38BDF8'],
   },
-  /* Evaluations tile added in TASK-15 */
+  {
+    key: 'evaluations',
+    label: 'Evaluations',
+    subtitle: 'Show what you\'ve learned!',
+    // No bespoke Evaluations icon exists yet (later asset task); reusing
+    // days_of_the_week.png as the most neutral unused asset in dialogue-icons/
+    // (magic words / greetings / activities are all already claimed above).
+    icon: require('../../../../assets/dialogue-icons/days_of_the_week.png'),
+    gradient: ['#FDE68A', '#F59E0B'],
+  },
 ];
 
 const H_PAD = 14;
@@ -115,7 +124,9 @@ export default function DialogueCategoryScreen({ route, navigation }) {
                       activeOpacity={0.85}
                       style={[styles.card, ci === 1 && { marginLeft: GAP }]}
                       onPress={() =>
-                        navigation.navigate('Level1Overview', { student, categoryKey: cat.key })
+                        cat.key === 'evaluations'
+                          ? navigation.navigate('EvaluationMenu', { student })
+                          : navigation.navigate('Level1Overview', { student, categoryKey: cat.key })
                       }
                     >
                       <LinearGradient
