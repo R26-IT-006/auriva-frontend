@@ -26,10 +26,7 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
-import {
-  buildPronunciationResultPayload,
-  DEFAULT_PHONEME_SCORES,
-} from "./pronunciationPayloads.js";
+import { buildPronunciationResultPayload } from "./pronunciationPayloads.js";
 
 const EXPECTED_PRONUNCIATION_SCORE = 80;
 const WELL_DONE_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/well-done-female.mp3");
@@ -211,7 +208,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
     return words.find((item) => item.id === "dog") || words[0];
   }, [currentWord?.id, recommendation?.word, words]);
 
-  const sounds = phonemeScores || currentWord?.sounds || DEFAULT_PHONEME_SCORES;
+  const sounds = phonemeScores || currentWord?.sounds || [];
 
   async function unloadCelebrationSounds() {
     const soundsToUnload = celebrationSoundsRef.current;

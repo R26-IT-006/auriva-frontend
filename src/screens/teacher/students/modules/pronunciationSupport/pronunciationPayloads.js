@@ -1,9 +1,3 @@
-export const DEFAULT_PHONEME_SCORES = [
-  { text: "/k/", score: 91 },
-  { text: "/æ/", score: 40 },
-  { text: "/t/", score: 76 },
-];
-
 export function getPronunciationWordLabel(word, fallback = "cat") {
   return word?.letter || word?.word || word?.id || fallback;
 }
@@ -33,12 +27,12 @@ export function buildPronunciationScoringPayload({
 }
 
 export function normalizePhonemeScores({ sounds, displayScore }) {
-  return sounds.map((sound, index) => ({
+  return sounds.map((sound) => ({
     text: sound.text || "",
     type: sound.type || null,
     position: sound.position || null,
     cue: sound.cue || null,
-    score: sound.score ?? DEFAULT_PHONEME_SCORES[index]?.score ?? displayScore,
+    score: sound.score ?? displayScore,
   }));
 }
 
