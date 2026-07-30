@@ -21,19 +21,19 @@ import { cat3Api } from '../../../../api/cat3';
 // Context images for Phase 2 NonVerbal (abilities assets confirmed on disk)
 const CAT3_NV = {
   cat3_yes: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   cat3_no: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   clap: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/clap/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/clap/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   run: {
     correct: require('../../../../../assets/dialogue-images/words/abilities/run/Non_verbal.jpeg'),
@@ -41,29 +41,29 @@ const CAT3_NV = {
     wrong2:  require('../../../../../assets/dialogue-images/words/abilities/walk/Phase3.jpeg'),
   },
   walk: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/walk/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/walk/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   jump: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/jump/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/jump/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   talk: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/talk/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/talk/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/talk/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   dance: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/dance/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/dance/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/dance/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   sing: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/sing/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/sing/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/sing/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
 };
 

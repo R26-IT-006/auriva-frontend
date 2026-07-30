@@ -84,33 +84,33 @@ const PHASE3_SCENARIOS = {
   im_sorry: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
       captions: { correct: 'Saman bumps into\nAnjalie', wrong1: 'They are laughing\ntogether', wrong2: 'Anjalie is reading\na book' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
       captions: { correct: 'Anjalie knocks over\nSaman\'s cup', wrong1: 'Saman is eating\nlunch', wrong2: 'They are playing\noutside' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
       captions: { correct: 'Saman breaks\nAnjalie\'s toy', wrong1: 'They are singing\ntogether', wrong2: 'Anjalie is drawing' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
       captions: { correct: 'Someone steps on\nanother\'s foot', wrong1: 'They are playing\na game', wrong2: 'Saman is reading\na book' },
     },
@@ -155,33 +155,33 @@ const PHASE3_SCENARIOS = {
   excuse_me: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
       captions: { correct: 'Saman needs to\npass by Anjalie', wrong1: 'They are laughing\ntogether', wrong2: 'Saman is eating\nlunch' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
       captions: { correct: 'Anjalie walks through\na crowd', wrong1: 'Saman is reading\na book', wrong2: 'They are drawing\ntogether' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
       captions: { correct: 'Saman needs to reach\nsomething behind Anjalie', wrong1: 'They are laughing\ntogether', wrong2: 'They are drawing\ntogether' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
       captions: { correct: 'Someone politely\npasses through a group', wrong1: 'Saman is eating\nlunch', wrong2: 'Saman is reading\na book' },
     },

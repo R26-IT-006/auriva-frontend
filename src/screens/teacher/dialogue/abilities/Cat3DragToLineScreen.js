@@ -20,15 +20,15 @@ import { cat3Api } from '../../../../api/cat3';
 
 // Scene images for the DragToLine screen — use Drag_Act where available
 const CAT3_SCENE = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/scene.png'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/scene.png'),
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
   clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
   run:      require('../../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
   walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
   jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/talk/scene.png'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/dance/scene.png'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/sing/scene.png'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
 };
 
 const PROGRESS_FRACTION = 0.40;

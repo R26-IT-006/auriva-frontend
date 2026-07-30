@@ -20,15 +20,15 @@ import { cat3Api } from '../../../../api/cat3';
 
 // Scene images for Phase 3 — use Phase3 where available
 const CAT3_CONTEXT_CORRECT = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/context_correct.png'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/context_correct.png'),
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
   clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
   run:      require('../../../../../assets/dialogue-images/words/abilities/run/Phase3.jpeg'),
   walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Phase3.jpeg'),
   jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Phase3.jpeg'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/talk/context_correct.png'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/dance/context_correct.png'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/sing/context_correct.png'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
 };
 
 const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abilities/Phase3_prompt_generic.mp3');

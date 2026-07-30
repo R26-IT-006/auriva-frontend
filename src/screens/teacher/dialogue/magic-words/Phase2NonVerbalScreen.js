@@ -44,9 +44,9 @@ const NV_IMAGES = {
     wrong2:  require('../../../../../assets/dialogue-images/Non-verbal/thankyou_NV_wrong2.png'),
   },
   im_sorry: {
-    correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
   },
   // youre_welcome uses comic-strip images stacked vertically
   youre_welcome: {
@@ -55,9 +55,9 @@ const NV_IMAGES = {
     wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong2.png'),
   },
   excuse_me: {
-    correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
   },
 };
 
