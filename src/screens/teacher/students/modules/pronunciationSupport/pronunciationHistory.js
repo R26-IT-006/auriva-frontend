@@ -25,7 +25,10 @@ function normalizeWordId(result) {
 }
 
 function normalizePhonemeText(value) {
-  return String(value || "").replace(/\//g, "").trim();
+  return String(value || "")
+    .replace(/\//g, "")
+    .trim()
+    .replace(/g/g, "ɡ"); // ASCII g vs IPA U+0261 are the same sound
 }
 
 export function getScoringEvidence(resultOrDetails) {
@@ -35,6 +38,78 @@ export function getScoringEvidence(resultOrDetails) {
     resultOrDetails?.scoring_evidence ||
     null
   );
+}
+
+const SCORING_METHOD_LABELS = {
+  "wav2vec2_gop+mfcc_dtw_v1": "AI phoneme + acoustic match",
+  wav2vec2_gop_v1: "AI phoneme scoring",
+  mfcc_dtw_v2: "Acoustic pattern match",
+  prototype_signal_rule_v1: "Signal estimate (fallback)",
+};
+
+export function getScoringMethodLabel(method) {
+  return SCORING_METHOD_LABELS[method] || method || "Unknown method";
+}
+
+export function getVerificationSummary(result) {
+  const recognizedText =
+    result?.recognized_text ??
+    result?.recommendation_details?.confidence?.recognized_text ??
+    null;
+  const speechVerification =
+    result?.speech_verification ??
+    null;
+  const scoringMethod =
+    result?.scoring_method ??
+    result?.recommendation_details?.scoring_evidence?.method ??
+    null;
+  const confidenceLevel =
+    result?.confidence_level ??
+    result?.recommendation_details?.confidence?.level ??
+    null;
+  const needsReview = Boolean(
+    result?.needs_teacher_review ?? result?.recommendation_details?.needs_teacher_review
+  );
+
+  if (!recognizedText && !scoringMethod) return null;
+
+  return {
+    recognizedText,
+    verificationStatus: speechVerification?.status || null,
+    scoringMethod,
+    scoringMethodLabel: getScoringMethodLabel(scoringMethod),
+    confidenceLevel,
+    needsReview,
+  };
+}
+
+export function buildGopPhonemeComparison({ phonemeScores = [], evidence }) {
+  const gop = evidence?.gop_assessment;
+  if (!gop?.per_sound?.length) return null;
+
+  return {
+    method: evidence.method,
+    decodedPhonemes: gop.decoded_phonemes || [],
+    overallGopScore: gop.overall_gop_score,
+    rows: phonemeScores.map((phoneme, index) => {
+      const entry = gop.per_sound[index] || {};
+      return {
+        text: phoneme?.text || entry.sound || `segment ${index + 1}`,
+        position: phoneme?.position || null,
+        cue: phoneme?.cue || null,
+        studentScore: phoneme?.score ?? entry.score ?? 0,
+        gopScore: entry.score ?? null,
+        realized: entry.realized || null,
+        // A codepoint-different realization only matters to flag when the
+        // score is already low — a high score means the engine accepted it
+        // as an equivalent accent variant, so noting it would just confuse.
+        mismatchedRealization:
+          !!entry.realized &&
+          (entry.score ?? 100) < 80 &&
+          normalizePhonemeText(entry.realized) !== normalizePhonemeText(phoneme?.text || entry.sound),
+      };
+    }),
+  };
 }
 
 export function buildMfccDtwPhonemeComparison({ phonemeScores = [], evidence }) {

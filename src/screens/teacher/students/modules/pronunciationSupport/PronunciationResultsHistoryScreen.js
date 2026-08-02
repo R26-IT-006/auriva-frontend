@@ -19,31 +19,81 @@ import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getStudentIdentifier } from "./studentIdentity.js";
 import {
+  buildGopPhonemeComparison,
   buildMfccDtwPhonemeComparison,
   buildPronunciationHistorySummary,
   buildSelectedSessionComparison,
   formatDateTime,
   getScoringEvidence,
   getScoreColor,
+  getVerificationSummary,
   HISTORY_REFRESH_INTERVAL_MS,
 } from "./pronunciationHistory.js";
 
-function PhonemeRow({ item }) {
+function PhonemeRow({ item, realized }) {
   const score = item?.score ?? 0;
   return (
     <View style={styles.phonemeRow}>
       <View style={styles.phonemeTag}>
         <Text style={styles.phonemeText}>{item?.text || "/-/"}</Text>
       </View>
-      <View style={styles.progressTrack}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${score}%`, backgroundColor: getScoreColor(score) },
-          ]}
-        />
+      <View style={styles.phonemeRowMain}>
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${score}%`, backgroundColor: getScoreColor(score) },
+            ]}
+          />
+        </View>
+        {realized ? (
+          <Text style={styles.realizedText}>Heard as /{realized}/</Text>
+        ) : null}
       </View>
       <Text style={styles.phonemeScore}>{score}%</Text>
+    </View>
+  );
+}
+
+function VerificationPanel({ verification }) {
+  if (!verification) return null;
+
+  const { recognizedText, scoringMethodLabel, confidenceLevel, needsReview } = verification;
+
+  return (
+    <View style={styles.verificationBox}>
+      <View style={styles.verificationHeader}>
+        <View style={styles.verificationIcon}>
+          <Ionicons
+            name={needsReview ? "help-circle-outline" : "checkmark-circle-outline"}
+            size={18}
+            color={needsReview ? Colors.status.warning : Colors.status.success}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.verificationTitle}>
+            {recognizedText ? `Heard "${recognizedText}"` : "Word verification"}
+          </Text>
+          <Text style={styles.verificationMeta}>{scoringMethodLabel}</Text>
+        </View>
+        {confidenceLevel ? (
+          <View
+            style={[
+              styles.confidenceChip,
+              confidenceLevel === "low" && styles.confidenceChipLow,
+            ]}
+          >
+            <Text
+              style={[
+                styles.confidenceChipText,
+                confidenceLevel === "low" && styles.confidenceChipTextLow,
+              ]}
+            >
+              {confidenceLevel} confidence
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -275,6 +325,18 @@ export default function PronunciationResultsHistoryScreen({ route }) {
         phonemeScores: selectedResult?.phoneme_scores || [],
         evidence: getScoringEvidence(selectedResult),
       }),
+    [selectedResult],
+  );
+  const selectedGopComparison = useMemo(
+    () =>
+      buildGopPhonemeComparison({
+        phonemeScores: selectedResult?.phoneme_scores || [],
+        evidence: getScoringEvidence(selectedResult),
+      }),
+    [selectedResult],
+  );
+  const selectedVerification = useMemo(
+    () => getVerificationSummary(selectedResult),
     [selectedResult],
   );
 
@@ -613,6 +675,7 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                     )}
                   </View>
 
+                  <VerificationPanel verification={selectedVerification} />
                   <SessionComparison comparison={selectedComparison} />
                   <AudioAnalysisPanel comparison={selectedAudioComparison} />
 
@@ -766,9 +829,16 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                   </View>
 
                   <Text style={styles.breakdownTitle}>Sound Breakdown</Text>
-                  {(selectedResult.phoneme_scores || []).map((item, index) => (
-                    <PhonemeRow key={`${item?.text}-${index}`} item={item} />
-                  ))}
+                  {(selectedResult.phoneme_scores || []).map((item, index) => {
+                    const gopRow = selectedGopComparison?.rows?.[index];
+                    return (
+                      <PhonemeRow
+                        key={`${item?.text}-${index}`}
+                        item={item}
+                        realized={gopRow?.mismatchedRealization ? gopRow.realized : null}
+                      />
+                    );
+                  })}
 
                   {!!selectedResult.recommendation_message && (
                     <View style={styles.recommendationBox}>
@@ -1168,6 +1238,62 @@ const styles = StyleSheet.create({
   reviewMetricValue: {
     color: "#8A6D1D",
   },
+  verificationBox: {
+    marginTop: Layout.spacing.lg,
+    borderRadius: Layout.radius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    backgroundColor: Colors.surfaceAlt,
+    padding: Layout.spacing.md,
+  },
+  verificationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  verificationIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  verificationTitle: {
+    color: Colors.text.primary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+    textTransform: "capitalize",
+  },
+  verificationMeta: {
+    marginTop: 2,
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
+    fontWeight: Layout.fontWeight.semibold,
+  },
+  confidenceChip: {
+    minHeight: 26,
+    borderRadius: 13,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.status.successLight,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  confidenceChipLow: {
+    backgroundColor: Colors.status.warningLight,
+    borderColor: "#FDE68A",
+  },
+  confidenceChipText: {
+    fontSize: 11,
+    fontWeight: Layout.fontWeight.bold,
+    color: Colors.status.success,
+    textTransform: "capitalize",
+  },
+  confidenceChipTextLow: {
+    color: "#8A6D1D",
+  },
   comparisonBox: {
     marginTop: Layout.spacing.lg,
     borderRadius: Layout.radius.md,
@@ -1459,6 +1585,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Layout.spacing.sm,
     marginBottom: Layout.spacing.sm,
+  },
+  phonemeRowMain: {
+    flex: 1,
+    gap: 3,
+  },
+  realizedText: {
+    color: Colors.status.warning,
+    fontSize: Layout.fontSize.xs,
+    fontWeight: Layout.fontWeight.semibold,
   },
   phonemeTag: {
     width: 44,
