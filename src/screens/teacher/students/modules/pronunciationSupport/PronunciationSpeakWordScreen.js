@@ -275,9 +275,15 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
         responseDuration,
       });
     } catch (error) {
-      const isQualityError = error.response?.data?.code === "AUDIO_QUALITY_FAILED";
+      const errorCode = error.response?.data?.code;
+      const isQualityError = errorCode === "AUDIO_QUALITY_FAILED";
+      const isWordMismatch = errorCode === "WORD_MISMATCH";
       Alert.alert(
-        isQualityError ? "Recording quality issue" : "Scoring error",
+        isWordMismatch
+          ? "Different word detected"
+          : isQualityError
+            ? "Recording quality issue"
+            : "Scoring error",
         error.response?.data?.error ||
           error.response?.data?.message ||
           error.message ||
