@@ -268,6 +268,8 @@ const initialSessionState = {
   mockPhonemeScores: [],
   responseDuration: null,
   hesitationTime: null,
+  confidenceLevel: null,
+  needsTeacherReview: false,
   adaptiveRecommendation: null,
   listenChooseData: null,
   completedWords: [],
@@ -396,6 +398,8 @@ export const usePronunciationSessionStore = create((set, get) => ({
       mockPhonemeScores: scoringResult?.phoneme_scores || [],
       responseDuration: scoringResult?.response_duration ?? responseDuration ?? state.responseDuration,
       hesitationTime: scoringResult?.hesitation_time ?? null,
+      confidenceLevel: scoringResult?.confidence_level ?? null,
+      needsTeacherReview: Boolean(scoringResult?.needs_teacher_review),
       adaptiveRecommendation: {
         type: scoringResult?.recommendation_type || "reinforce",
         label: scoringResult?.recommendation_type || "Recommendation",

@@ -93,6 +93,9 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const hesitationTime = usePronunciationSessionStore(
     (state) => state.hesitationTime,
   );
+  const needsTeacherReview = usePronunciationSessionStore(
+    (state) => state.needsTeacherReview,
+  );
   const recommendation = usePronunciationSessionStore(
     (state) => state.adaptiveRecommendation,
   );
@@ -137,7 +140,10 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const currentWord =
     words.find((item) => item.id === wordId) || routeWord || sessionWord || words[0];
   const displayScore = mockWordScore ?? 69;
-  const isHighScore = displayScore >= EXPECTED_PRONUNCIATION_SCORE;
+  // Low scoring confidence suppresses evaluative feedback entirely: the child
+  // sees a calm neutral screen instead of praise or "keep practicing".
+  const isNeutralFeedback = Boolean(needsTeacherReview);
+  const isHighScore = !isNeutralFeedback && displayScore >= EXPECTED_PRONUNCIATION_SCORE;
   const phonemeScores = mockPhonemeScores?.length
     ? mockPhonemeScores
     : null;
@@ -326,6 +332,8 @@ export default function PronunciationResultScreen({ navigation, route }) {
   ]);
 
   useEffect(() => {
+    if (isNeutralFeedback) return undefined;
+
     if (isHighScore) {
       Vibration.vibrate(35);
       playCelebrationAudio();
@@ -393,7 +401,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
       pulseLoop.stop();
       shakeLoop.stop();
     };
-  }, [confettiPieces, isHighScore, lowScorePulse, lowScoreShake]);
+  }, [confettiPieces, isHighScore, isNeutralFeedback, lowScorePulse, lowScoreShake]);
 
   function handleGoDashboard() {
     navigation.navigate("PronunciationSessionSetup", { student });
@@ -478,13 +486,46 @@ export default function PronunciationResultScreen({ navigation, route }) {
               styles.studentResultCard,
               {
                 backgroundColor: theme.cardSurface,
-                borderColor: isHighScore ? theme.cardOutline : "#FFB7C4",
+                borderColor: isHighScore || isNeutralFeedback ? theme.cardOutline : "#FFB7C4",
               },
             ]}
           >
             {isHighScore && <ConfettiBurst pieces={confettiPieces} />}
 
-            {isHighScore ? (
+            {isNeutralFeedback ? (
+              <View style={styles.celebrationContent}>
+                <View
+                  style={[
+                    styles.resultIconWrap,
+                    { backgroundColor: theme.background },
+                  ]}
+                >
+                  <Ionicons name="people" size={44} color={theme.button} />
+                </View>
+                <Text
+                  style={[
+                    styles.studentResultTitle,
+                    isCompact && styles.studentResultTitleCompact,
+                    { color: theme.headingText },
+                  ]}
+                >
+                  Let's Try Together
+                </Text>
+                <Text
+                  style={[
+                    styles.studentResultTitleSinhala,
+                    isCompact && styles.studentResultTitleSinhalaCompact,
+                    { color: theme.headingText },
+                  ]}
+                >
+                  එකට උත්සාහ කරමු
+                </Text>
+                <View style={styles.reviewPill}>
+                  <Ionicons name="eye-outline" size={13} color="#8A6D1D" />
+                  <Text style={styles.reviewPillText}>Flagged for teacher review</Text>
+                </View>
+              </View>
+            ) : isHighScore ? (
               <View style={styles.celebrationContent}>
                 <View
                   style={[
@@ -689,6 +730,25 @@ const styles = StyleSheet.create({
   },
   completedPillText: {
     color: Colors.status.success,
+    fontSize: 11,
+    fontWeight: Layout.fontWeight.bold,
+  },
+  reviewPill: {
+    alignSelf: "center",
+    marginTop: 10,
+    minHeight: 24,
+    borderRadius: 12,
+    backgroundColor: "#FDF3D7",
+    borderWidth: 1,
+    borderColor: "#EAD9A0",
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  reviewPillText: {
+    color: "#8A6D1D",
     fontSize: 11,
     fontWeight: Layout.fontWeight.bold,
   },

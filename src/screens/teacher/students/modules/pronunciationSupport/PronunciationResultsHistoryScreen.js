@@ -127,93 +127,69 @@ function SessionComparison({ comparison }) {
   );
 }
 
+function getRecordingQuality(audioQuality) {
+  const snr = Number(audioQuality?.snr_db);
+  if (!Number.isFinite(snr)) return null;
+  if (snr >= 15) {
+    return { label: "Clear recording", color: Colors.status.success, icon: "checkmark-circle" };
+  }
+  if (snr >= 8) {
+    return { label: "Some background noise", color: Colors.status.warning, icon: "alert-circle-outline" };
+  }
+  return { label: "Noisy recording", color: Colors.status.error, icon: "warning-outline" };
+}
+
+function getPaceDescription(comparison) {
+  const ratios = (comparison?.rows || [])
+    .map((row) => Number(row.durationRatio))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (!ratios.length) return null;
+
+  const average = ratios.reduce((total, value) => total + value, 0) / ratios.length;
+  if (average > 1.3) {
+    return "Spoke slower than the example — that's okay, pace never affects the score.";
+  }
+  if (average < 0.75) {
+    return "Spoke faster than the example — that's okay, pace never affects the score.";
+  }
+  return "Spoke at a similar pace to the example word.";
+}
+
 function AudioAnalysisPanel({ comparison }) {
   if (!comparison) return null;
 
-  const config = comparison.mfccConfig || {};
-  const quality = comparison.audioQuality || {};
+  const quality = getRecordingQuality(comparison.audioQuality);
+  const pace = getPaceDescription(comparison);
+  if (!quality && !pace) return null;
 
   return (
     <View style={styles.audioAnalysisBox}>
       <View style={styles.audioAnalysisHeader}>
         <View style={styles.audioAnalysisIcon}>
-          <Ionicons name="analytics-outline" size={18} color={Colors.primary} />
+          <Ionicons name="mic-outline" size={18} color={Colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.audioAnalysisTitle}>MFCC + DTW Comparison</Text>
+          <Text style={styles.audioAnalysisTitle}>About This Recording</Text>
           <Text style={styles.audioAnalysisMeta}>
-            Student recording matched against the reference audio
+            Compared with the example word recording
           </Text>
         </View>
       </View>
 
-      <View style={styles.audioAnalysisStats}>
-        <View style={styles.audioAnalysisStat}>
-          <Text style={styles.audioAnalysisStatLabel}>DTW Distance</Text>
-          <Text style={styles.audioAnalysisStatValue}>
-            {comparison.dtwDistance ?? "-"}
+      {quality ? (
+        <View style={styles.recordingFactRow}>
+          <Ionicons name={quality.icon} size={16} color={quality.color} />
+          <Text style={[styles.recordingFactText, { color: quality.color }]}>
+            {quality.label}
           </Text>
         </View>
-        <View style={styles.audioAnalysisStat}>
-          <Text style={styles.audioAnalysisStatLabel}>Attempt Frames</Text>
-          <Text style={styles.audioAnalysisStatValue}>
-            {config.attempt_frames ?? "-"}
-          </Text>
+      ) : null}
+      {pace ? (
+        <View style={styles.recordingFactRow}>
+          <Ionicons name="time-outline" size={16} color={Colors.text.secondary} />
+          <Text style={styles.recordingFactText}>{pace}</Text>
         </View>
-        <View style={styles.audioAnalysisStat}>
-          <Text style={styles.audioAnalysisStatLabel}>Reference Frames</Text>
-          <Text style={styles.audioAnalysisStatValue}>
-            {config.reference_frames ?? "-"}
-          </Text>
-        </View>
-        <View style={styles.audioAnalysisStat}>
-          <Text style={styles.audioAnalysisStatLabel}>SNR</Text>
-          <Text style={styles.audioAnalysisStatValue}>
-            {quality.snr_db ?? "-"} dB
-          </Text>
-        </View>
-        <View style={styles.audioAnalysisStat}>
-          <Text style={styles.audioAnalysisStatLabel}>Silence</Text>
-          <Text style={styles.audioAnalysisStatValue}>
-            {quality.silence_ratio != null
-              ? `${Math.round(quality.silence_ratio * 100)}%`
-              : "-"}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.audioAnalysisRows}>
-        {comparison.rows.map((row, index) => (
-          <View key={`${row.text}-${index}`} style={styles.audioAnalysisRow}>
-            <View style={styles.audioAnalysisRowTop}>
-              <Text style={styles.audioAnalysisSound}>/{row.text}/</Text>
-              <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: `${row.segmentScore}%`,
-                      backgroundColor: getScoreColor(row.segmentScore),
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={styles.audioAnalysisScore}>{row.segmentScore}%</Text>
-            </View>
-            <View style={styles.audioAnalysisTiming}>
-              <Text style={styles.audioAnalysisTimingText}>
-                Ref {row.referenceStart ?? "-"}-{row.referenceEnd ?? "-"}s
-              </Text>
-              <Text style={styles.audioAnalysisTimingText}>
-                Student {row.studentStart ?? "-"}-{row.studentEnd ?? "-"}s
-              </Text>
-              <Text style={styles.audioAnalysisTimingText}>
-                Match {row.similarityScore ?? row.segmentScore}% | Timing {row.timingScore ?? "-"}%
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
+      ) : null}
     </View>
   );
 }
@@ -606,23 +582,19 @@ export default function PronunciationResultsHistoryScreen({ route }) {
 
                   <View style={styles.metricsGrid}>
                     <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>Mode</Text>
+                      <Text style={styles.metricLabel}>Speaking Time</Text>
                       <Text style={styles.metricValue}>
-                        {selectedResult.mode === "alphabet"
-                          ? "Alphabet"
-                          : "Word"}
+                        {selectedResult.response_duration != null
+                          ? `${selectedResult.response_duration} s`
+                          : "-"}
                       </Text>
                     </View>
                     <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>Response</Text>
+                      <Text style={styles.metricLabel}>Thinking Time</Text>
                       <Text style={styles.metricValue}>
-                        {selectedResult.response_duration ?? "-"} s
-                      </Text>
-                    </View>
-                    <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>Pause</Text>
-                      <Text style={styles.metricValue}>
-                        {selectedResult.hesitation_time ?? "-"} s
+                        {selectedResult.hesitation_time != null
+                          ? `${selectedResult.hesitation_time} s`
+                          : "-"}
                       </Text>
                     </View>
                     <View style={styles.metricBox}>
@@ -631,25 +603,11 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                         {selectedResult.attempt_number}
                       </Text>
                     </View>
-                    <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>Audio</Text>
-                      <Text style={styles.metricValue}>
-                        {selectedResult.has_raw_audio ? "Captured" : "Missing"}
-                      </Text>
-                    </View>
-                    {!!selectedResult.recommendation_details?.adaptive_model && (
-                      <View style={styles.metricBox}>
-                        <Text style={styles.metricLabel}>Adaptive</Text>
-                        <Text style={styles.metricValue}>
-                          {selectedResult.recommendation_details.adaptive_model.adaptive_score}%
-                        </Text>
-                      </View>
-                    )}
-                    {!!selectedResult.recommendation_details?.confidence && (
-                      <View style={styles.metricBox}>
-                        <Text style={styles.metricLabel}>Confidence</Text>
-                        <Text style={styles.metricValue}>
-                          {selectedResult.recommendation_details.confidence.level}
+                    {!!selectedResult.recommendation_details?.needs_teacher_review && (
+                      <View style={[styles.metricBox, styles.reviewMetricBox]}>
+                        <Text style={[styles.metricLabel, styles.reviewMetricLabel]}>Review</Text>
+                        <Text style={[styles.metricValue, styles.reviewMetricValue]}>
+                          Please listen
                         </Text>
                       </View>
                     )}
@@ -800,9 +758,6 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                               <Text style={styles.listenChooseStatText}>
                                 Attempts: {selectedResult.listen_choose_data.attempts || 1}
                               </Text>
-                              <Text style={styles.listenChooseStatText}>
-                                Choices: {(selectedResult.listen_choose_data.choice_ids || []).join(", ")}
-                              </Text>
                             </View>
                           </View>
                         )}
@@ -849,22 +804,15 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                             </Text>
                           </View>
                         )}
-                        {!!selectedResult.recommendation_details?.confidence
-                          ?.uncertainty_reasons?.length && (
+                        {!!selectedResult.recommendation_details?.needs_teacher_review && (
                           <View style={styles.candidateBox}>
                             <Text style={styles.candidateLabel}>
-                              Confidence Notes
+                              Please Double-Check
                             </Text>
-                            {selectedResult.recommendation_details.confidence.uncertainty_reasons.map(
-                              (reason, index) => (
-                                <Text
-                                  key={`${reason}-${index}`}
-                                  style={styles.candidateReason}
-                                >
-                                  {reason}
-                                </Text>
-                              ),
-                            )}
+                            <Text style={styles.candidateReason}>
+                              The system was not fully confident about this score.
+                              Listen to the recording before deciding the next step.
+                            </Text>
                           </View>
                         )}
                       </View>
@@ -1209,6 +1157,17 @@ const styles = StyleSheet.create({
     fontWeight: Layout.fontWeight.bold,
     textTransform: "capitalize",
   },
+  reviewMetricBox: {
+    backgroundColor: "#FDF3D7",
+    borderWidth: 1,
+    borderColor: "#EAD9A0",
+  },
+  reviewMetricLabel: {
+    color: "#8A6D1D",
+  },
+  reviewMetricValue: {
+    color: "#8A6D1D",
+  },
   comparisonBox: {
     marginTop: Layout.spacing.lg,
     borderRadius: Layout.radius.md,
@@ -1315,65 +1274,18 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xs,
     lineHeight: 16,
   },
-  audioAnalysisStats: {
-    marginTop: Layout.spacing.md,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Layout.spacing.sm,
-  },
-  audioAnalysisStat: {
-    flex: 1,
-    minWidth: 120,
-    borderRadius: Layout.radius.sm,
-    backgroundColor: Colors.background,
-    padding: Layout.spacing.sm,
-  },
-  audioAnalysisStatLabel: {
-    color: Colors.text.secondary,
-    fontSize: 10,
-    fontWeight: Layout.fontWeight.bold,
-    textTransform: "uppercase",
-  },
-  audioAnalysisStatValue: {
-    marginTop: 3,
-    color: Colors.text.primary,
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-  },
-  audioAnalysisRows: {
-    marginTop: Layout.spacing.md,
-    gap: Layout.spacing.sm,
-  },
-  audioAnalysisRow: {
-    gap: 4,
-  },
-  audioAnalysisRowTop: {
+  recordingFactRow: {
+    marginTop: Layout.spacing.sm,
     flexDirection: "row",
     alignItems: "center",
     gap: Layout.spacing.sm,
   },
-  audioAnalysisSound: {
-    width: 44,
+  recordingFactText: {
+    flex: 1,
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
-  },
-  audioAnalysisScore: {
-    width: 44,
-    textAlign: "right",
-    color: Colors.text.primary,
-    fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
-  },
-  audioAnalysisTiming: {
-    marginLeft: 52,
-    gap: 2,
-  },
-  audioAnalysisTimingText: {
-    color: Colors.text.secondary,
-    fontSize: Layout.fontSize.xs,
-    lineHeight: 16,
     fontWeight: Layout.fontWeight.semibold,
+    lineHeight: 19,
   },
   activitiesSection: {
     marginTop: Layout.spacing.lg,

@@ -38,7 +38,7 @@ export function getScoringEvidence(resultOrDetails) {
 }
 
 export function buildMfccDtwPhonemeComparison({ phonemeScores = [], evidence }) {
-  if (!evidence || evidence.method !== "mfcc_dtw_v1") return null;
+  if (!evidence || !String(evidence.method || "").startsWith("mfcc_dtw")) return null;
   const boundaryAlignment = evidence.phoneme_boundary_alignment || [];
 
   return {
