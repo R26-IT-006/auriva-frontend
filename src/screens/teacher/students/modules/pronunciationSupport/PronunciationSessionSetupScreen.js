@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert, Switch } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
@@ -14,6 +15,7 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
+import { getStudentIdentifier } from "./studentIdentity.js";
 
 const PRONUNCIATION_MODE_OPTIONS = [
   {
@@ -60,9 +62,14 @@ function CategoryCard({ item, selected, onPress, cardWidth, theme }) {
 
 export default function PronunciationSessionSetupScreen({ navigation, route }) {
   const student = route.params?.student;
+  const studentId = getStudentIdentifier(student);
   const theme = getAvatarTheme(student?.avatar_key);
   const [selectedMode, setSelectedMode] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [reduceStimulation, setReduceStimulation] = useState(
+    Boolean(student?.reduce_stimulation),
+  );
+  const [savingSensorySetting, setSavingSensorySetting] = useState(false);
   const startSession = usePronunciationSessionStore((state) => state.startSession);
   const setSelectedStudent = usePronunciationSessionStore(
     (state) => state.setSelectedStudent,
@@ -78,11 +85,39 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   );
   const { width } = useWindowDimensions();
   const isCompact = width < 720;
+  // Downstream screens read `student` from navigation params, not the store,
+  // so a sensory-setting change made on this screen has to travel forward
+  // through that same object — otherwise the celebration screen at the end
+  // of the session would still see the stale pre-toggle value.
+  const activeStudent = useMemo(
+    () => (student ? { ...student, reduce_stimulation: reduceStimulation } : student),
+    [student, reduceStimulation],
+  );
 
   useEffect(() => {
-    setSelectedStudent(student);
+    setSelectedStudent(activeStudent);
     setCurrentActivityStep(PRONUNCIATION_STEPS.SETUP);
-  }, [setCurrentActivityStep, setSelectedStudent, student]);
+  }, [activeStudent, setCurrentActivityStep, setSelectedStudent]);
+
+  async function handleToggleReduceStimulation(value) {
+    if (!studentId || savingSensorySetting) return;
+
+    const previous = reduceStimulation;
+    setReduceStimulation(value);
+    setSavingSensorySetting(true);
+
+    try {
+      await teacherApi.setSensorySettings(studentId, value);
+    } catch (error) {
+      setReduceStimulation(previous);
+      Alert.alert(
+        "Couldn't save setting",
+        error.response?.data?.error || error.message || "Please try again.",
+      );
+    } finally {
+      setSavingSensorySetting(false);
+    }
+  }
 
   const cardWidth = useMemo(() => {
     if (width < 560) return width - Layout.spacing.lg * 2;
@@ -97,12 +132,12 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
 
     if (selectedMode === PRONUNCIATION_MODES.ALPHABET) {
       startSession({
-        student,
+        student: activeStudent,
         mode: PRONUNCIATION_MODES.ALPHABET,
         category: null,
       });
       navigation.navigate("PronunciationWordSelection", {
-        student,
+        student: activeStudent,
         mode: PRONUNCIATION_MODES.ALPHABET,
       });
       return;
@@ -119,12 +154,12 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
     }
 
     startSession({
-      student,
+      student: activeStudent,
       mode: selectedMode,
       category: selectedCategory,
     });
     navigation.navigate("PronunciationWordSelection", {
-      student,
+      student: activeStudent,
       mode: selectedMode,
       categoryId: selectedCategory,
     });
@@ -207,6 +242,25 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               </View>
             </>
           ) : null}
+
+          <View style={[styles.sensoryRow, { borderColor: theme.cardOutline }]}>
+            <View style={styles.sensoryIconWrap}>
+              <Ionicons name="pulse-outline" size={20} color={theme.button} />
+            </View>
+            <View style={styles.sensoryCopy}>
+              <Text style={styles.sensoryTitle}>Reduce celebration effects</Text>
+              <Text style={styles.sensorySubtitle}>
+                Turns off confetti, vibration, and triumphant sounds after a strong score —
+                keeps praise calm and text-based instead.
+              </Text>
+            </View>
+            <Switch
+              value={reduceStimulation}
+              onValueChange={handleToggleReduceStimulation}
+              disabled={savingSensorySetting}
+              trackColor={{ true: theme.button }}
+            />
+          </View>
 
           <View style={[styles.panelFooter, isCompact && styles.panelFooterCompact]}>
             <Text style={[styles.selectionText, { color: theme.headingText }]}>
@@ -346,6 +400,37 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xs,
     color: Colors.text.secondary,
     marginTop: 4,
+  },
+  sensoryRow: {
+    marginTop: Layout.spacing.xl,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Layout.spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  sensoryIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F3F5F8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sensoryCopy: {
+    flex: 1,
+  },
+  sensoryTitle: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+    color: Colors.text.primary,
+  },
+  sensorySubtitle: {
+    marginTop: 2,
+    fontSize: Layout.fontSize.xs,
+    color: Colors.text.secondary,
+    lineHeight: 16,
   },
   panelFooter: {
     marginTop: Layout.spacing.lg,

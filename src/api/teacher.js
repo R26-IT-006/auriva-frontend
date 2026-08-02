@@ -38,6 +38,13 @@ export const teacherApi = {
     return data;
   },
 
+  async setSensorySettings(studentId, reduceStimulation) {
+    const { data } = await client.put(ENDPOINTS.TEACHER_STUDENT_SENSORY_SETTINGS(studentId), {
+      reduce_stimulation: reduceStimulation,
+    });
+    return data;
+  },
+
   async scorePronunciationAttempt(studentId, payload) {
     const { data } = await client.post(
       ENDPOINTS.TEACHER_PRONUNCIATION_SCORE(studentId),

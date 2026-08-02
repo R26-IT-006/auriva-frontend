@@ -156,6 +156,10 @@ export default function PronunciationResultScreen({ navigation, route }) {
   // sees a calm neutral screen instead of praise or "keep practicing".
   const isNeutralFeedback = Boolean(needsTeacherReview);
   const isHighScore = !isNeutralFeedback && displayScore >= EXPECTED_PRONUNCIATION_SCORE;
+  // Sensory sensitivity varies hugely per ASD child — confetti/vibration/
+  // sound that motivates one kid can overwhelm another. Teacher-set per
+  // student on the session setup screen; text-based praise stays either way.
+  const reduceStimulation = Boolean(student?.reduce_stimulation);
   const phonemeScores = mockPhonemeScores?.length
     ? mockPhonemeScores
     : null;
@@ -352,6 +356,8 @@ export default function PronunciationResultScreen({ navigation, route }) {
     if (isNeutralFeedback) return undefined;
 
     if (isHighScore) {
+      if (reduceStimulation) return undefined;
+
       Vibration.vibrate(35);
       playCelebrationAudio();
 
@@ -418,7 +424,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
       pulseLoop.stop();
       shakeLoop.stop();
     };
-  }, [confettiPieces, isHighScore, isNeutralFeedback, lowScorePulse, lowScoreShake]);
+  }, [confettiPieces, isHighScore, isNeutralFeedback, lowScorePulse, lowScoreShake, reduceStimulation]);
 
   function handleGoDashboard() {
     navigation.navigate("PronunciationSessionSetup", { student });
@@ -507,7 +513,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
               },
             ]}
           >
-            {isHighScore && <ConfettiBurst pieces={confettiPieces} />}
+            {isHighScore && !reduceStimulation && <ConfettiBurst pieces={confettiPieces} />}
 
             {isNeutralFeedback ? (
               <View style={styles.celebrationContent}>

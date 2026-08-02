@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
+import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
@@ -27,6 +28,34 @@ import {
   setPronunciationPlaybackMode,
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
+import { getStudentIdentifier } from "./studentIdentity.js";
+
+const MIN_FIELD_SIZE = 2;
+const MAX_FIELD_SIZE = 4;
+
+// Errorless-learning field-size progression: a target starts supported (few
+// choices) and only earns a bigger field once the child shows first-try
+// mastery on it, so a brand-new/struggling word never gets thrown into a
+// full 4-way guess. Unknown history (still loading, or fetch failed) also
+// defaults to the smallest field — safest fallback, never a regression risk.
+function computeFieldSize(history, targetWordId) {
+  if (!targetWordId) return MAX_FIELD_SIZE;
+
+  let streak = 0;
+  for (const result of history) {
+    const attempt = result?.listen_choose_data;
+    if (!attempt || attempt.target_word_id !== targetWordId) continue;
+    if (attempt.is_correct && Number(attempt.attempts) <= 1) {
+      streak += 1;
+      continue;
+    }
+    break;
+  }
+
+  if (streak >= 4) return MAX_FIELD_SIZE;
+  if (streak >= 2) return 3;
+  return MIN_FIELD_SIZE;
+}
 
 function buildActivityWords(categoryId, preferredWord) {
   const categoryWords = WORD_BANK[categoryId] || WORD_BANK.animals || [];
@@ -41,10 +70,75 @@ function buildActivityWords(categoryId, preferredWord) {
   return targets.length ? targets : categoryWords.slice(0, 1);
 }
 
-function buildChoices(categoryId, targetWord) {
+function shuffle(items) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function phonemeOverlapCount(wordA, wordB) {
+  const soundsA = new Set((wordA?.sounds || []).map((sound) => sound.text));
+  return (wordB?.sounds || []).filter((sound) => soundsA.has(sound.text)).length;
+}
+
+// Sort candidates by phoneme overlap with the target, shuffling within each
+// overlap tier so equally (dis)similar words still rotate across rounds.
+function sortByOverlap(pool, targetWord, direction) {
+  const scored = pool.map((word) => ({ word, overlap: phonemeOverlapCount(targetWord, word) }));
+  scored.sort((a, b) => (direction === "near" ? b.overlap - a.overlap : a.overlap - b.overlap));
+
+  const tiers = [];
+  let start = 0;
+  while (start < scored.length) {
+    let end = start;
+    while (end < scored.length && scored[end].overlap === scored[start].overlap) end += 1;
+    tiers.push(...shuffle(scored.slice(start, end)));
+    start = end;
+  }
+  return tiers.map((entry) => entry.word);
+}
+
+// Distractor similarity is the actual difficulty lever for discrimination
+// tasks: a beginner should see an obviously different picture (far — shares
+// no sounds with the target), while a child who has already mastered a word
+// should be tested against a near-confusable one (shares sounds with it,
+// e.g. "cat" vs "hat") — that's a real listening discrimination challenge,
+// not just an easy "spot the odd one out."
+function pickDistractors(pool, targetWord, count, mode) {
+  if (count <= 0) return [];
+
+  if (mode === "mixed") {
+    const near = sortByOverlap(pool, targetWord, "near").slice(0, 1);
+    const nearIds = new Set(near.map((word) => word.id));
+    const far = sortByOverlap(pool.filter((word) => !nearIds.has(word.id)), targetWord, "far");
+    return [...near, ...far].slice(0, count);
+  }
+
+  return sortByOverlap(pool, targetWord, mode).slice(0, count);
+}
+
+function getDistractorMode(fieldSize) {
+  if (fieldSize >= MAX_FIELD_SIZE) return "near";
+  if (fieldSize <= MIN_FIELD_SIZE) return "far";
+  return "mixed";
+}
+
+function buildChoices(categoryId, targetWord, fieldSize = MAX_FIELD_SIZE) {
   const categoryWords = WORD_BANK[categoryId] || WORD_BANK.animals || [];
   const distractors = categoryWords.filter((word) => word.id !== targetWord?.id);
-  return [targetWord, ...distractors].filter(Boolean).slice(0, 4);
+  const distractorCount = Math.max(0, fieldSize - 1);
+  const mode = getDistractorMode(fieldSize);
+  const picked = [
+    targetWord,
+    ...pickDistractors(distractors, targetWord, distractorCount, mode),
+  ].filter(Boolean);
+  // Target must not always land in the same slot — otherwise a child learns
+  // "tap the first picture" instead of actually listening, which silently
+  // invalidates the comprehension data this activity is meant to produce.
+  return shuffle(picked);
 }
 
 function ChoiceCard({ item, state, onPress, width, disabled }) {
@@ -91,12 +185,14 @@ function ChoiceCard({ item, state, onPress, width, disabled }) {
 
 export default function PronunciationListenChooseScreen({ navigation, route }) {
   const student = route.params?.student;
+  const studentId = getStudentIdentifier(student);
   const categoryId = route.params?.categoryId || "animals";
   const routeWord = route.params?.word;
   const assessedWordId = route.params?.wordId || routeWord?.id;
   const theme = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
   const soundRef = React.useRef(null);
+  const [resultsHistory, setResultsHistory] = React.useState([]);
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
   );
@@ -115,9 +211,13 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
   const choiceAttemptsRef = React.useRef([]);
 
   const targetWord = activityWords[roundIndex] || activityWords[0];
+  const fieldSize = React.useMemo(
+    () => computeFieldSize(resultsHistory, targetWord?.id),
+    [resultsHistory, targetWord?.id],
+  );
   const choices = React.useMemo(
-    () => buildChoices(categoryId, targetWord),
-    [categoryId, targetWord],
+    () => buildChoices(categoryId, targetWord, fieldSize),
+    [categoryId, targetWord, fieldSize],
   );
   const isCompact = width < 720;
   const cardWidth = React.useMemo(() => {
@@ -144,6 +244,26 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     setHasHeardTarget(false);
     choiceAttemptsRef.current = [];
   }, [roundIndex]);
+
+  React.useEffect(() => {
+    if (!studentId) return;
+
+    let cancelled = false;
+
+    teacherApi
+      .getPronunciationResults(studentId)
+      .then((data) => {
+        if (!cancelled) setResultsHistory(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        // Leave resultsHistory empty — field size just stays at the safe
+        // minimum, which is never a worse outcome than not scaffolding.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [studentId]);
 
   async function playTargetWord() {
     const audioAsset = WORD_AUDIO_ASSETS[targetWord?.id];

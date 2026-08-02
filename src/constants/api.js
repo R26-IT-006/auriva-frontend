@@ -51,6 +51,8 @@ export const ENDPOINTS = {
   TEACHER_SESSION_START: "/teacher/session/start",
   TEACHER_SESSION_END: "/teacher/session/end",
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
+  TEACHER_STUDENT_SENSORY_SETTINGS: (id) =>
+    `/teacher/students/${id}/sensory-settings`,
   TEACHER_PRONUNCIATION_SCORE: (id) =>
     `/teacher/students/${id}/pronunciation-score`,
   TEACHER_PRONUNCIATION_RESULTS: (id) =>
