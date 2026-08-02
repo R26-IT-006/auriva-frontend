@@ -348,6 +348,8 @@ export const usePronunciationSessionStore = create((set, get) => ({
       scoringMethod: null,
       recognizedText: null,
       speechVerification: null,
+      confidenceLevel: null,
+      needsTeacherReview: false,
       adaptiveRecommendation: null,
       listenChooseData: null,
       currentActivityStep: PRONUNCIATION_STEPS.LISTEN,
