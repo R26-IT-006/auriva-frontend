@@ -35,6 +35,10 @@ export function normalizePhonemeScores({ sounds, displayScore }) {
     position: sound.position || null,
     cue: sound.cue || null,
     score: sound.score ?? displayScore,
+    gop: sound.gop ?? null,
+    gop_score: sound.gop_score ?? null,
+    similarity_score: sound.similarity_score ?? null,
+    timing_score: sound.timing_score ?? null,
   }));
 }
 
@@ -55,6 +59,11 @@ export function buildPronunciationResultPayload({
   rawAudioMimeType,
   rawAudioSize,
   listenChooseData,
+  scoringMethod,
+  recognizedText,
+  speechVerification,
+  confidenceLevel,
+  needsTeacherReview,
 }) {
   return {
     mode,
@@ -68,6 +77,11 @@ export function buildPronunciationResultPayload({
     recommendation_type: recommendation?.type || null,
     recommendation_message: recommendation?.message || null,
     recommendation_details: recommendation?.details || null,
+    scoring_method: scoringMethod || recommendation?.scoringMethod || null,
+    recognized_text: recognizedText || null,
+    speech_verification: speechVerification || null,
+    confidence_level: confidenceLevel || null,
+    needs_teacher_review: Boolean(needsTeacherReview),
     next_word_id: nextWord?.id || null,
     attempt_number: Math.max(1, numberOfAttempts || 1),
     workflow_completed: true,

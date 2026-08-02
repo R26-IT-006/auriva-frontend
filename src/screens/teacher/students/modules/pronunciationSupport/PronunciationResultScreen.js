@@ -96,6 +96,18 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const needsTeacherReview = usePronunciationSessionStore(
     (state) => state.needsTeacherReview,
   );
+  const scoringMethod = usePronunciationSessionStore(
+    (state) => state.scoringMethod,
+  );
+  const recognizedText = usePronunciationSessionStore(
+    (state) => state.recognizedText,
+  );
+  const speechVerification = usePronunciationSessionStore(
+    (state) => state.speechVerification,
+  );
+  const confidenceLevel = usePronunciationSessionStore(
+    (state) => state.confidenceLevel,
+  );
   const recommendation = usePronunciationSessionStore(
     (state) => state.adaptiveRecommendation,
   );
@@ -301,6 +313,11 @@ export default function PronunciationResultScreen({ navigation, route }) {
       rawAudioMimeType,
       rawAudioSize,
       listenChooseData: savedListenChooseData,
+      scoringMethod,
+      recognizedText,
+      speechVerification,
+      confidenceLevel,
+      needsTeacherReview,
     });
 
     teacherApi.savePronunciationResult(studentId, payload).catch((error) => {
