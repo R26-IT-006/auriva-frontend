@@ -12,6 +12,7 @@ import { useToast } from '../../../../context/ToastContext';
 import BadgeNameInput, { NameBadge } from '../../../../components/level2/BadgeNameInput';
 import AgePicker from '../../../../components/level2/AgePicker';
 import HometownPicker from '../../../../components/level2/HometownPicker';
+import SinhalaNameInput from '../../../../components/level2/SinhalaNameInput';
 
 const ALL_ACTIVITIES = ['Singing', 'Dancing', 'Art', 'Cricket', 'Games', 'Reading'];
 const ACTIVITY_ICONS = { Singing: 'musical-notes-outline', Dancing: 'body-outline', Art: 'color-palette-outline', Cricket: 'baseball-outline', Games: 'game-controller-outline', Reading: 'book-outline' };
@@ -46,6 +47,7 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
 
   const [step,        setStep]       = useState(0);
   const [name,       setName]       = useState('');
+  const [nameSinhala, setNameSinhala] = useState('');
   const [age,        setAge]        = useState(null);
   const [hometown,   setHometown]   = useState('');
   const [gender,     setGender]     = useState(null); // 'boy' | 'girl'
@@ -72,6 +74,7 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
     try {
       await level2Api.saveQuestionnaire(student.sid, {
         child_first_name:    name.trim(),
+        child_first_name_sinhala: nameSinhala.trim() || null,
         child_age:           Number(age),
         child_hometown:      hometown.trim(),
         child_gender:        gender,
@@ -137,7 +140,16 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
           <Text style={[styles.teacherCaption, { color: theme.headingText }]}>{copy.teacher}</Text>
 
           {step === 0 && (
-            <BadgeNameInput name={name} onChangeName={setName} theme={theme} />
+            <>
+              <BadgeNameInput name={name} onChangeName={setName} theme={theme} />
+              <SinhalaNameInput
+                label="Sinhala Spelling  ·  සිංහල අකුරින්"
+                englishValue={name}
+                sinhalaValue={nameSinhala}
+                onSinhalaChange={setNameSinhala}
+                theme={theme}
+              />
+            </>
           )}
 
           {step === 1 && (
