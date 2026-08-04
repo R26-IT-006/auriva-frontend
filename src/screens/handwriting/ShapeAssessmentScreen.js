@@ -8,6 +8,7 @@ import {
   PanResponder,
   Dimensions,
   Animated,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +18,12 @@ import { Audio } from 'expo-av';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { computeDTW } from '../../utils/dtw';
+import { normalizeStrokesForDTW, normalizePointsForDTW } from '../../utils/dtwNormalization';
+import { buildDtwDebugExport } from '../../utils/dtwDebugExport';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
+import {
+  getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
+} from '../../utils/collectionSession';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -241,9 +247,18 @@ function calculateFeatures(paths, shapeId) {
       return s + Math.abs(Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2) - r);
     }, 0) / allPoints.length;
   } else if (shapeId === 'zigzag' || shapeId === 'curve_wave') {
+    // dtw_norm_v1: translate + scale both paths to their own 100-unit
+    // bounding box before DTW so device/canvas size and drawing the shape
+    // larger/smaller/shifted don't skew dtw_distance (see dtwNormalization.js).
+    // Stroke boundaries (pen-lifts within one shape attempt) are preserved
+    // through normalization even though DTW itself compares the
+    // concatenated point sequence, matching the existing single-sequence
+    // DTW call below.
     const template = computePathPoints(shapeId);
-    const childPts = allPoints.map(p => ({ x: p.x, y: p.y }));
-    const result = computeDTW(childPts, template);
+    const normTemplate = normalizePointsForDTW(template);
+    const normChildStrokes = normalizeStrokesForDTW(paths);
+    const childPts = normChildStrokes.flat().map(p => ({ x: p.x, y: p.y }));
+    const result = computeDTW(childPts, normTemplate);
     dtw_distance = result.normalizedDistance;
   }
 
@@ -319,13 +334,14 @@ function GuideShape({ shapeId, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ShapeAssessmentScreen({ route, navigation }) {
-  const { student, theme, collectionMode = false } = route.params;
+  const { student, theme, collectionMode = false, collectionSessionId = null } = route.params;
 
   const [currentShapeIndex, setCurrentShapeIndex] = useState(0);
   const [completedShapes,   setCompletedShapes]   = useState([]);
   const [currentPath,       setCurrentPath]       = useState([]);
   const [allPaths,          setAllPaths]          = useState([]);
   const [showNext,          setShowNext]          = useState(false);
+  const [reduceMotion,      setReduceMotion]      = useState(false);
 
   const startTime            = useRef(null);
   const sessionStartTime     = useRef(Date.now());
@@ -334,6 +350,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const completedShapesRef   = useRef([]);
   const animValue            = useRef(new Animated.Value(0)).current;
   const pulseAnim            = useRef(new Animated.Value(0)).current;
+  const bgAnim               = useRef(new Animated.Value(0)).current;
   const pulseLoopRef         = useRef(null);
   const soundRef             = useRef(null);
   const strokeIdCounter      = useRef(0);  // ML: counts strokes within the current shape
@@ -348,6 +365,18 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     () => pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.75, 0] }),
     [pulseAnim],
   );
+  const bgMoveUp = useMemo(
+    () => bgAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -16] }),
+    [bgAnim],
+  );
+  const bgMoveRight = useMemo(
+    () => bgAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 14] }),
+    [bgAnim],
+  );
+  const bgMoveLeft = useMemo(
+    () => bgAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] }),
+    [bgAnim],
+  );
 
   const playShapeAudio = useCallback(async (shapeId) => {
     try {
@@ -360,6 +389,38 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       await sound.playAsync();
     } catch (_) {}
   }, []);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      bgAnim.setValue(0);
+      return undefined;
+    }
+
+    const bgLoop = Animated.loop(Animated.sequence([
+      Animated.timing(bgAnim, {
+        toValue: 1,
+        duration: 5200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bgAnim, {
+        toValue: 0,
+        duration: 5200,
+        useNativeDriver: true,
+      }),
+    ]));
+
+    bgLoop.start();
+
+    return () => {
+      bgLoop.stop();
+    };
+  }, [bgAnim, reduceMotion]);
 
   // Precompute interpolation ranges for animated pointer
   const pathPoints = computePathPoints(currentShape.id);
@@ -452,6 +513,12 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
         session_start:   sessionStartTime.current,
         session_end:     Date.now(),
         collection_mode: collectionMode,
+        collection_session_id: collectionSessionId,
+        protocol_version:      PROTOCOL_VERSION,
+        feature_version:       FEATURE_VERSION,
+        template_version:      TEMPLATE_VERSION,
+        normalization_version: NORMALIZATION_VERSION,
+        ...getDeviceMetadata(),
         shapes: assessmentData.map(shape => ({
           shape_id:     shape.shapeId,
           stroke_count: shape.strokes.length,
@@ -470,7 +537,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       console.error('Failed to submit assessment data:', err);
       return null;
     }
-  }, [student.sid, collectionMode]);
+  }, [student.sid, collectionMode, collectionSessionId]);
 
   const handleClear = useCallback(() => {
     setAllPaths([]);
@@ -489,12 +556,24 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       soundRef.current = null;
     }
     const idx = currentShapeIndexRef.current;
+    const shapeId = SHAPES[idx].id;
     const shapeData = {
-      shapeId:   SHAPES[idx].id,
+      shapeId,
       strokes:   allPathsRef.current,
-      features:  calculateFeatures(allPathsRef.current, SHAPES[idx].id),
+      features:  calculateFeatures(allPathsRef.current, shapeId),
       timestamp: Date.now(),
     };
+
+    if (__DEV__ && (shapeId === 'zigzag' || shapeId === 'curve_wave')) {
+      // Developer-only export — full raw/normalized paths for offline
+      // inspection. Never sent to the backend, never used for scoring.
+      console.log('[DTW debug export]', buildDtwDebugExport({
+        childStrokes:   allPathsRef.current,
+        templatePoints: computePathPoints(shapeId),
+        dtwResult:      { normalizedDistance: shapeData.features.dtw_distance, strokeOrderMeta: null },
+        qualityScore:   null,
+      }));
+    }
 
     const updated = [...completedShapesRef.current, shapeData];
     completedShapesRef.current = updated;
@@ -517,6 +596,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
           caseType:       'lowercase',
           letterSequence: DATA_COLLECTION_PROTOCOL.lowercase,
           collectionMode: true,
+          collectionSessionId,
         });
       } else {
         navigation.navigate('AssessmentComplete', {
@@ -528,7 +608,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
         });
       }
     }
-  }, [navigation, student, theme, collectionMode, submitAssessment]);
+  }, [navigation, student, theme, collectionMode, collectionSessionId, submitAssessment]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   const startDot = SHAPE_STARTS[currentShape.id];
@@ -540,6 +620,36 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.bgBubbleLarge,
+          {
+            backgroundColor: theme.button + '10',
+            transform: [{ translateY: bgMoveUp }],
+          },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.bgBubbleMedium,
+          {
+            backgroundColor: theme.button + '0C',
+            transform: [{ translateX: bgMoveRight }],
+          },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.bgBubbleSmall,
+          {
+            backgroundColor: theme.button + '0A',
+            transform: [{ translateY: bgMoveUp }, { translateX: bgMoveLeft }],
+          },
+        ]}
+      />
       <SafeAreaView style={styles.safe}>
 
         <View style={styles.container}>
@@ -688,13 +798,16 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
         {/* Feedback bubble — speech bubble above avatar's head */}
         {showNext && (
           <>
-            <View style={[styles.avatarBubble, { borderColor: theme.button + '40' }]}>
-              <Ionicons name="checkmark-circle" size={16} color="#2E7D32" style={{ marginBottom: 2 }} />
-              <Text style={styles.avatarBubbleText}>Great drawing!</Text>
+            <View style={[styles.avatarBubble, { borderColor: theme.button + '28' }]}>
+              <Text style={[styles.avatarBubbleText, { color: theme.button }]}>
+                Nice tracing.
+                {'\n'}
+                Tap Next when ready.
+              </Text>
             </View>
             {/* Tail pointing right toward avatar's head */}
-            <View style={styles.avatarBubbleTailBorder} />
-            <View style={styles.avatarBubbleTail} />
+            <View style={[styles.avatarBubbleDotLarge, { borderColor: theme.button + '28' }]} />
+            <View style={[styles.avatarBubbleDotSmall, { borderColor: theme.button + '22' }]} />
           </>
         )}
 
@@ -713,6 +826,31 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
+
+  bgBubbleLarge: {
+    position: 'absolute',
+    top: '-12%',
+    right: '-10%',
+    width: SCREEN_WIDTH * 0.36,
+    height: SCREEN_WIDTH * 0.36,
+    borderRadius: SCREEN_WIDTH * 0.18,
+  },
+  bgBubbleMedium: {
+    position: 'absolute',
+    bottom: '9%',
+    left: '-7%',
+    width: SCREEN_WIDTH * 0.24,
+    height: SCREEN_WIDTH * 0.24,
+    borderRadius: SCREEN_WIDTH * 0.12,
+  },
+  bgBubbleSmall: {
+    position: 'absolute',
+    top: '38%',
+    right: '7%',
+    width: SCREEN_WIDTH * 0.11,
+    height: SCREEN_WIDTH * 0.11,
+    borderRadius: SCREEN_WIDTH * 0.055,
+  },
 
   container: {
     flex: 1,
@@ -769,7 +907,7 @@ const styles = StyleSheet.create({
   },
 
   instructionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 22,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -780,9 +918,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   instructionInner: {
     flexDirection: 'row',
@@ -823,15 +961,15 @@ const styles = StyleSheet.create({
   canvasCard: {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
-    backgroundColor: '#F8FAFF',
-    borderRadius: 20,
+    backgroundColor: 'rgba(248,250,255,0.96)',
+    borderRadius: 26,
     borderWidth: 2,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 14,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 18,
+    elevation: 5,
   },
   pointer: {
     position: 'absolute',
@@ -909,15 +1047,18 @@ const styles = StyleSheet.create({
   // Feedback speech bubble above avatar's head
   avatarBubble: {
     position: 'absolute',
-    bottom: 258,
-    right: 110,
+    bottom: 252,
+    right: 118,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 28,
     borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     alignItems: 'center',
-    maxWidth: 160,
+    justifyContent: 'center',
+    minWidth: 182,
+    minHeight: 78,
+    maxWidth: 210,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.10,
@@ -926,39 +1067,31 @@ const styles = StyleSheet.create({
     zIndex: 11,
   },
   avatarBubbleText: {
-    fontSize: 14,
-    color: '#2E7D32',
+    fontSize: 16,
     fontWeight: '800',
+    lineHeight: 22,
     textAlign: 'center',
   },
-  // Border layer of tail (slightly larger triangle in border color)
-  avatarBubbleTailBorder: {
+  avatarBubbleDotLarge: {
     position: 'absolute',
-    bottom: 268,
-    right: 93,
-    width: 0,
-    height: 0,
-    borderTopWidth: 11,
-    borderBottomWidth: 11,
-    borderLeftWidth: 16,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderLeftColor: '#00000026',
+    bottom: 238,
+    right: 104,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
     zIndex: 11,
   },
-  // White fill of tail
-  avatarBubbleTail: {
+  avatarBubbleDotSmall: {
     position: 'absolute',
-    bottom: 270,
-    right: 95,
-    width: 0,
-    height: 0,
-    borderTopWidth: 10,
-    borderBottomWidth: 10,
-    borderLeftWidth: 14,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderLeftColor: '#FFFFFF',
+    bottom: 222,
+    right: 88,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
+    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
     zIndex: 12,
   },
 });

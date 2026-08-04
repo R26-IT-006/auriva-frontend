@@ -1,9 +1,18 @@
+import { normalizeStrokesForDTW, normalizePointsForDTW, NORMALIZATION_VERSION } from './dtwNormalization';
+
+export { NORMALIZATION_VERSION };
+
 /**
  * Dynamic Time Warping — pure JavaScript, no dependencies.
  *
  * Complexity: O(n × m) time and space, where n = child points, m = template points.
  * Typical call: 60 template × ≤500 child = 30,000 cells — well under 1 ms on a
  * modern JS engine.  Safe to call synchronously inside handleNext().
+ *
+ * Operates on whatever coordinate space its inputs are already in — callers
+ * that want device/size-independent results (computeMultiStrokeDTW, shape
+ * scoring) normalize both sequences with dtwNormalization.js before calling
+ * this function. This keeps the DTW math itself coordinate-space-agnostic.
  *
  * @param {Array<{x: number, y: number}>} seqA  — child stroke points
  * @param {Array<{x: number, y: number}>} seqB  — template points
@@ -136,12 +145,23 @@ export function sampleSmoothPath(pathOrWaypoints, numSamples = 60, canvasW, canv
 }
 
 // Penalty added per unmatched stroke (child has fewer or more strokes than
-// the template).  Units: normalizedDistance.  The final multi-stroke score
-// averages per-stroke costs over templateStrokeCount, so the penalty must be
-// large enough that  penalty / maxTemplateStrokes  >  DTW_CORRECT_THRESHOLD
-// (currently 65).  150 / 2 = 75 > 65, guaranteeing a missing stroke fails
-// the gate even when the matched stroke is perfect.
-const UNMATCHED_STROKE_PENALTY = 150;
+// the template).  Units: normalizedDistance in the normalized 0-100
+// coordinate space (dtw_norm_v1 — see dtwNormalization.js), NOT raw pixels.
+// The final multi-stroke score averages per-stroke costs over
+// templateStrokeCount, so the penalty must be large enough that
+//   penalty / maxTemplateStrokes  >  DTW_CORRECT_THRESHOLD (currently 22).
+// 55 / 2 = 27.5 > 22, guaranteeing a missing stroke fails the gate even when
+// the matched stroke is perfect. Recalibrate alongside DTW_CORRECT_THRESHOLD
+// once real collection-day data is available.
+const UNMATCHED_STROKE_PENALTY = 55;
+
+// Small penalty added when the child draws a multi-stroke letter's strokes
+// in a different order than the template (e.g. crossing the 't' before
+// drawing the vertical stroke). Deliberately small — stroke order is a
+// secondary signal, not a hard failure, so it nudges the score without
+// being able to fail an otherwise-correct attempt on its own (well under
+// DTW_CORRECT_THRESHOLD).
+const STROKE_ORDER_PENALTY = 5;
 
 /**
  * Order-invariant DTW for multi-stroke letters.
@@ -171,15 +191,24 @@ const UNMATCHED_STROKE_PENALTY = 150;
 export function computeMultiStrokeDTW(templatePath, childStrokes, canvasW, canvasH) {
   const templateStrokeDefs = normalizeStrokes(templatePath);
 
-  // ── Single-stroke: existing concatenated DTW (unchanged) ──────────────
+  // ── Single-stroke: concatenated DTW over normalized coordinates ───────
+  // Child and template are each translated to their own bounding-box
+  // origin and scaled independently (dtw_norm_v1) so device/canvas size
+  // and writing a larger/smaller/shifted letter don't skew the distance.
   if (templateStrokeDefs.length <= 1) {
     const { points: templatePts } = sampleSmoothPath(templatePath, 60, canvasW, canvasH);
-    const childPts = childStrokes.flat().map(p => ({ x: p.x, y: p.y }));
-    const result = computeDTW(childPts, templatePts);
+    const normTemplatePts = normalizePointsForDTW(templatePts);
+    const normChildStrokes = normalizeStrokesForDTW(childStrokes);
+    const childPts = normChildStrokes.flat().map(p => ({ x: p.x, y: p.y }));
+    const result = computeDTW(childPts, normTemplatePts);
     return { normalizedDistance: result.normalizedDistance, strokeOrderMeta: null };
   }
 
-  // ── Multi-stroke: per-stroke bipartite matching ───────────────────────
+  // ── Multi-stroke: per-stroke bipartite matching over normalized coords ─
+  // Child strokes are normalized together (one shared bounding box across
+  // all of the child's strokes) so relative stroke position/size within
+  // the letter is preserved; the template's strokes are normalized the
+  // same way, independently, against their own bounding box.
   const aspect = canvasW / canvasH;
   const sampledTemplate = templateStrokeDefs.map(wp => {
     if (wp.length === 1) {
@@ -207,16 +236,20 @@ export function computeMultiStrokeDTW(templatePath, childStrokes, canvasW, canva
     };
   }
 
+  const normTemplateStrokePts = normalizeStrokesForDTW(sampledTemplate.map(t => t.points));
+  const childPtsPerStroke = normalizeStrokesForDTW(
+    childStrokes.map(s => s.map(p => ({ x: p.x, y: p.y })))
+  );
+
   // Cost matrix: costMatrix[c][t] = normalizedDistance child‑stroke c ↔ template‑stroke t
   // For single-point (dot) template strokes, use minimum point-to-point
   // distance from the child stroke — DTW requires ≥ 2 points per sequence.
-  const childPtsPerStroke = childStrokes.map(s => s.map(p => ({ x: p.x, y: p.y })));
   const costMatrix = [];
   for (let c = 0; c < nChild; c++) {
     costMatrix[c] = [];
     for (let t = 0; t < nTemplate; t++) {
       if (sampledTemplate[t].isDot) {
-        const dp = sampledTemplate[t].points[0];
+        const dp = normTemplateStrokePts[t][0];
         let minDist = Infinity;
         for (const p of childPtsPerStroke[c]) {
           const dx = p.x - dp.x, dy = p.y - dp.y;
@@ -224,7 +257,7 @@ export function computeMultiStrokeDTW(templatePath, childStrokes, canvasW, canva
         }
         costMatrix[c][t] = childPtsPerStroke[c].length > 0 ? minDist : UNMATCHED_STROKE_PENALTY;
       } else {
-        const r = computeDTW(childPtsPerStroke[c], sampledTemplate[t].points);
+        const r = computeDTW(childPtsPerStroke[c], normTemplateStrokePts[t]);
         costMatrix[c][t] = r.normalizedDistance ?? UNMATCHED_STROKE_PENALTY;
       }
     }
@@ -234,12 +267,18 @@ export function computeMultiStrokeDTW(templatePath, childStrokes, canvasW, canva
   const { totalCost, pairs } = _bestStrokeAssignment(costMatrix, nChild, nTemplate);
 
   const unmatchedCount = Math.abs(nChild - nTemplate);
-  const avgDist = (totalCost + unmatchedCount * UNMATCHED_STROKE_PENALTY) / nTemplate;
+  let avgDist = (totalCost + unmatchedCount * UNMATCHED_STROKE_PENALTY) / nTemplate;
 
-  // ── Stroke-order metadata (research only — does NOT affect scoring) ───
+  // ── Stroke-order metadata + penalty ────────────────────────────────────
+  // The bipartite match above is order-invariant (finds the best shape
+  // match regardless of drawing order); orderMatches records separately
+  // whether the child actually drew the strokes in the template's order,
+  // and a small penalty is applied when they didn't — geometry still
+  // dominates the score, order is a secondary signal.
   const sortedByTemplate = [...pairs].sort((a, b) => a.templateIdx - b.templateIdx);
   const childOrder = sortedByTemplate.map(p => p.childIdx);
   const orderMatches = childOrder.every((v, i) => i === 0 || v > childOrder[i - 1]);
+  if (!orderMatches) avgDist += STROKE_ORDER_PENALTY;
 
   return {
     normalizedDistance: avgDist,

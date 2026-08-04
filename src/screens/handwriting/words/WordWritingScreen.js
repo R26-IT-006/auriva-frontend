@@ -8,31 +8,45 @@ import {
   Dimensions,
   Animated,
   Modal,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Line, Circle, Polyline, Text as SvgText } from 'react-native-svg';
+import Svg, { Line, Circle, Polyline, Polygon, Path, Text as SvgText } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import WORD_DATA from '../../../constants/wordData';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
 import WORD_VIDEOS from '../../../constants/wordVideos';
+import {
+  buildWordGuide,
+  wordGuideToSvgPath,
+  wordGuideGhostDots,
+  buildWordTracerStrokes,
+  getWordStrokeDirectionHint,
+  computeWordDTW,
+} from '../../../constants/wordPaths';
+import { featuresToScore } from '../../../utils/adaptiveSequencing';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
 
-// Two-column split — all sizes relative to screen, zero hardcoded pixels
-const COL_L    = Math.round(SCREEN_W * 0.43);           // left column (image)
+// Two-column split — all sizes relative to screen, zero hardcoded pixels.
+// Image column is deliberately narrow (vs. the 0.43 letter-tracing screens
+// use for one big letter) so the canvas gets most of the width — a whole
+// word needs far more horizontal room than a single letter does.
+const COL_L    = Math.round(SCREEN_W * 0.28);           // left column (image)
 const IMG_SIZE = COL_L - 8;                              // image fills the column
 const CANVAS_W = SCREEN_W - COL_L - PAD * 2;            // canvas = right column width
-const CANVAS_H = Math.round(SCREEN_H * 0.35);           // 35 % of screen height
+const CANVAS_H = Math.round(SCREEN_H * 0.46);           // 46 % of screen height
 
-// 4-line handwriting ruling
+// 4-line handwriting ruling — baseline/descender match the LETTER_PATHS
+// fy=0.64/0.92 convention so the word guide sits exactly on these lines.
 const LINE_1 = Math.round(CANVAS_H * 0.08);  // cap line     — blue solid
 const LINE_2 = Math.round(CANVAS_H * 0.36);  // x-height     — blue solid
-const LINE_3 = Math.round(CANVAS_H * 0.70);  // baseline     — red dashed
-const LINE_4 = Math.round(CANVAS_H * 0.90);  // descender    — blue solid
+const LINE_3 = Math.round(CANVAS_H * 0.64);  // baseline     — red dashed
+const LINE_4 = Math.round(CANVAS_H * 0.92);  // descender    — blue solid
 
 // â”€â”€â”€ Attempt colours â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ATTEMPT_BADGE = {
@@ -72,11 +86,6 @@ const LENGTH_CELEBRATIONS = {
   },
 };
 
-// Uppercase words (capital first letter): cap-height fills LINE_1 → LINE_3.
-// Lowercase-only words: x-height fills LINE_2 → LINE_3.
-const GHOST_FONT_UPPER = Math.round((LINE_3 - LINE_1) / 0.71);
-const GHOST_FONT_LOWER = Math.round((LINE_3 - LINE_2) / 0.52);
-
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getLengthGroup(word) {
   const l = word.length;
@@ -105,11 +114,17 @@ function calculateSmoothness(paths) {
   return changes.length > 0 ? changes.reduce((a, b) => a + b, 0) / changes.length : 0;
 }
 
-function getFeedback(sm) {
-  if (sm < 0.15) return { label: 'Excellent! ✓',   color: '#2E7D32', bg: '#E8F5E9' };
-  if (sm < 0.35) return { label: 'Good effort! ✓', color: '#E65100', bg: '#FFF3E0' };
-  return                 { label: 'Keep going!',    color: '#C62828', bg: '#FFEBEE' };
+// Score comes from featuresToScore({ smoothness, dtw_distance }) — the same
+// weighting letter tracing uses, so word feedback is on the same 0-100 scale.
+function getFeedbackFromScore(score) {
+  if (score >= 75) return { label: 'Excellent! ✓',   color: '#2E7D32', bg: '#E8F5E9' };
+  if (score >= 50) return { label: 'Good effort! ✓', color: '#E65100', bg: '#FFF3E0' };
+  return                   { label: 'Keep going!',    color: '#C62828', bg: '#FFEBEE' };
 }
+
+// Slower than letter tracing's tracer (0.28 px/ms) — a whole word is a lot
+// more path for a child to visually follow than one letter.
+const TRACER_PX_PER_MS = 0.16;
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -142,6 +157,16 @@ export default function WordWritingScreen({ route, navigation }) {
     const entry = letterWords[0];
     return !!(entry && WORD_VIDEOS[entry.word]);
   });
+  const [reduceMotion,    setReduceMotion]    = useState(false);
+  const [tracerVisible,   setTracerVisible]   = useState(false);
+  const [tracerKeyframes, setTracerKeyframes] = useState(null);
+  const tracerProgress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     const src = WORD_VIDEOS[letterWords[wordIdx]?.word] ?? null;
@@ -166,8 +191,106 @@ export default function WordWritingScreen({ route, navigation }) {
   const guideOpacity  = attempt === 3 ? 0 : attempt === 1 ? 0.15 : 0.28;
   const badge         = ATTEMPT_BADGE[attempt];
   const displayWord   = word.charAt(0).toUpperCase() + word.slice(1);
-  const ghostFontSize = /[A-Z]/.test(displayWord[0]) ? GHOST_FONT_UPPER : GHOST_FONT_LOWER;
   const spelling      = getSpelling(word);
+
+  // â”€â”€ Reference-path guide (same LETTER_PATHS-based system as letter tracing) â”€â”€
+  const wordGuide = useMemo(() => buildWordGuide(word), [word]);
+  const guidePathD = useMemo(
+    () => wordGuideToSvgPath(wordGuide.strokeDescriptors, CANVAS_W, CANVAS_H),
+    [wordGuide]
+  );
+  const guideDots = useMemo(
+    () => wordGuideGhostDots(wordGuide.strokeDescriptors, CANVAS_W, CANVAS_H),
+    [wordGuide]
+  );
+
+  // Attempt-2 stroke-order marker — advances through the word's strokes as
+  // each one is completed, exactly like letter tracing's activeGuideStroke.
+  const activeGuideStroke = Math.min(allPaths.length, wordGuide.strokeDescriptors.length - 1);
+  const activeStrokeDesc  = wordGuide.strokeDescriptors[activeGuideStroke] ?? null;
+  const activeDirectionHint = useMemo(
+    () => activeStrokeDesc
+      ? getWordStrokeDirectionHint(activeStrokeDesc.points, CANVAS_W, CANVAS_H, activeStrokeDesc.angular)
+      : null,
+    [activeStrokeDesc]
+  );
+
+  const tracerXInterp = useMemo(() => {
+    if (!tracerKeyframes) return null;
+    return tracerProgress.interpolate({
+      inputRange:  tracerKeyframes.inputRange,
+      outputRange: tracerKeyframes.xRange,
+      extrapolate: 'clamp',
+    });
+  }, [tracerKeyframes, tracerProgress]);
+
+  const tracerYInterp = useMemo(() => {
+    if (!tracerKeyframes) return null;
+    return tracerProgress.interpolate({
+      inputRange:  tracerKeyframes.inputRange,
+      outputRange: tracerKeyframes.yRange,
+      extrapolate: 'clamp',
+    });
+  }, [tracerKeyframes, tracerProgress]);
+
+  // â”€â”€ Tracer dot animation for Attempt 1 ("Watch & Trace") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  useEffect(() => {
+    if (reduceMotion || attempt !== 1 || hasDrawn || wordGuide.strokeDescriptors.length === 0) {
+      setTracerVisible(false);
+      return undefined;
+    }
+
+    const perStroke = buildWordTracerStrokes(wordGuide.strokeDescriptors, CANVAS_W, CANVAS_H);
+
+    const inputRange = [];
+    const xRange = [];
+    const yRange = [];
+    const strokeBounds = [];
+    let offset = 0;
+    for (const { points } of perStroke) {
+      if (points.length === 0) continue;
+      const start = offset;
+      for (let k = 0; k < points.length; k++) {
+        inputRange.push(offset + k);
+        xRange.push(points[k].x);
+        yRange.push(points[k].y);
+      }
+      offset += points.length;
+      strokeBounds.push({ start, end: offset - 1 });
+    }
+
+    if (inputRange.length < 2) { setTracerVisible(false); return undefined; }
+
+    setTracerKeyframes({ inputRange, xRange, yRange });
+    tracerProgress.setValue(0);
+    setTracerVisible(true);
+
+    const strokeAnims = [];
+    for (let s = 0; s < strokeBounds.length; s++) {
+      if (s > 0) {
+        strokeAnims.push(Animated.delay(320));
+        strokeAnims.push(Animated.timing(tracerProgress, {
+          toValue: strokeBounds[s].start, duration: 1, useNativeDriver: true,
+        }));
+      }
+      const len = perStroke[s].totalLength;
+      const dur = Math.max(400, Math.round(len / TRACER_PX_PER_MS));
+      strokeAnims.push(Animated.timing(tracerProgress, {
+        toValue: strokeBounds[s].end, duration: dur, useNativeDriver: true,
+      }));
+    }
+
+    const anim = Animated.loop(
+      Animated.sequence([Animated.delay(500), ...strokeAnims, Animated.delay(1200)]),
+      { resetBeforeIteration: true }
+    );
+    anim.start();
+
+    return () => {
+      setTracerVisible(false);
+      anim.stop();
+    };
+  }, [attempt, hasDrawn, wordGuide, reduceMotion, tracerProgress]);
 
   // â”€â”€ Speech â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const MUTED_WRITING_WORDS = new Set(['axe', 'album', 'arrow']);
@@ -217,9 +340,12 @@ export default function WordWritingScreen({ route, navigation }) {
 
   useEffect(() => {
     if (hasDrawn && allPathsRef.current.length > 0) {
-      setFeedbackData(getFeedback(calculateSmoothness(allPathsRef.current)));
+      const smoothness   = calculateSmoothness(allPathsRef.current);
+      const dtw_distance = computeWordDTW(wordGuide.rawPath, allPathsRef.current, CANVAS_W, CANVAS_H);
+      const score = featuresToScore({ smoothness, dtw_distance });
+      setFeedbackData(getFeedbackFromScore(score));
     }
-  }, [hasDrawn]);
+  }, [hasDrawn, wordGuide]);
 
   // â”€â”€ PanResponder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const panResponder = useRef(
@@ -307,9 +433,6 @@ export default function WordWritingScreen({ route, navigation }) {
       setAttempt(1);
     }
   }, [celebration, navigation, student, theme, letter]);
-
-  const startDotX = CANVAS_W * 0.07;
-  const startDotY = LINE_2;
 
   // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
@@ -407,74 +530,155 @@ export default function WordWritingScreen({ route, navigation }) {
               </Text>
             </View>
 
-            {/* Writing canvas */}
-            <View
-              style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
-              {...panResponder.panHandlers}
-            >
-              <Svg width={CANVAS_W} height={CANVAS_H}>
+            {/* Writing canvas — canvasOuter wraps the card so the tracer dot
+                is never clipped by the card's overflow:hidden */}
+            <View style={styles.canvasOuter}>
+              <View
+                style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
+                {...panResponder.panHandlers}
+              >
+                <Svg width={CANVAS_W} height={CANVAS_H}>
 
-                {/* 4-line ruling */}
-                <Line x1={0} y1={LINE_1} x2={CANVAS_W} y2={LINE_1} stroke="#90CAF9" strokeWidth={1.5} />
-                <Line x1={0} y1={LINE_2} x2={CANVAS_W} y2={LINE_2} stroke="#90CAF9" strokeWidth={1} />
-                <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3} stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
-                <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#90CAF9" strokeWidth={1.5} />
+                  {/* 4-line ruling */}
+                  <Line x1={0} y1={LINE_1} x2={CANVAS_W} y2={LINE_1} stroke="#90CAF9" strokeWidth={1.5} />
+                  <Line x1={0} y1={LINE_2} x2={CANVAS_W} y2={LINE_2} stroke="#90CAF9" strokeWidth={1} />
+                  <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3} stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
+                  <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#90CAF9" strokeWidth={1.5} />
 
-                {/* Ghost word — uppercase uses cap zone (LINE_1→LINE_3),
-                    lowercase uses x-height zone (LINE_2→LINE_3);
-                    textLength compresses wide words to fit canvas width */}
-                {guideOpacity > 0 && (
-                  <SvgText
-                    x={CANVAS_W / 2}
-                    y={LINE_3}
-                    textAnchor="middle"
-                    fontSize={ghostFontSize}
-                    textLength={CANVAS_W * 0.88}
-                    lengthAdjust="spacingAndGlyphs"
-                    fill={`rgba(80,80,200,${guideOpacity})`}
-                    fontWeight="bold"
-                  >
-                    {displayWord}
-                  </SvgText>
-                )}
+                  {/* Reference-path guide — built from the same per-letter
+                      LETTER_PATHS waypoints letter tracing uses, laid out
+                      left-to-right across the word. Ghost dots mark single-
+                      point strokes (the 'i' / 'j' dots). */}
+                  {guideOpacity > 0 && guidePathD && (
+                    <>
+                      <Path
+                        d={guidePathD}
+                        stroke={`rgba(80,80,80,${guideOpacity})`}
+                        strokeWidth={5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                      />
+                      {guideDots.map((dot, idx) => (
+                        <Circle
+                          key={`ghost-dot-${idx}`}
+                          cx={dot.cx}
+                          cy={dot.cy}
+                          r={3.5}
+                          fill={`rgba(80,80,80,${guideOpacity})`}
+                        />
+                      ))}
+                    </>
+                  )}
 
-                {/* Start dot (attempt 2) */}
-                {attempt === 2 && (
-                  <>
-                    <Circle cx={startDotX} cy={startDotY} r={8} fill={theme.button} opacity={0.80} />
-                    <SvgText x={startDotX + 14} y={startDotY + 5} fontSize={12} fill={theme.button} fontWeight="bold">
-                      1
-                    </SvgText>
-                  </>
-                )}
+                  {/* Stroke-order marker (attempt 2) — same system as letter
+                      tracing: numbered start dot + direction arrow(s) for
+                      the current stroke, advancing letter by letter as each
+                      stroke is completed. Number resets per letter (1, 2, 3…),
+                      matching what single-letter tracing shows. */}
+                  {attempt === 2 && activeStrokeDesc && activeDirectionHint && (
+                    <>
+                      <Circle
+                        cx={activeDirectionHint.start.x}
+                        cy={activeDirectionHint.start.y}
+                        r={11}
+                        fill="none"
+                        stroke={theme.button}
+                        strokeWidth={2}
+                        opacity={0.72}
+                      />
+                      <Circle
+                        cx={activeDirectionHint.start.x}
+                        cy={activeDirectionHint.start.y}
+                        r={8}
+                        fill={theme.button}
+                        opacity={0.80}
+                      />
+                      <SvgText
+                        x={activeDirectionHint.start.x}
+                        y={activeDirectionHint.start.y + 4}
+                        fontSize={11}
+                        fill={theme.buttonText ?? '#FFFFFF'}
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {activeStrokeDesc.localStrokeIndex + 1}
+                      </SvgText>
+                      {activeDirectionHint.endGuides.map((guide, index) => (
+                        <Circle
+                          key={`stroke-end-${index}`}
+                          cx={guide.x}
+                          cy={guide.y}
+                          r={index === activeDirectionHint.endGuides.length - 1 ? 6 : 4.5}
+                          fill="none"
+                          stroke={theme.button}
+                          strokeWidth={2}
+                          opacity={0.72}
+                        />
+                      ))}
+                      {activeDirectionHint.arrows.map((arrow, index) => (
+                        <React.Fragment key={`stroke-arrow-${index}`}>
+                          <Line
+                            x1={arrow.shaftStart.x}
+                            y1={arrow.shaftStart.y}
+                            x2={arrow.tip.x}
+                            y2={arrow.tip.y}
+                            stroke={theme.button}
+                            strokeWidth={3.5}
+                            strokeLinecap="round"
+                          />
+                          <Polygon points={arrow.arrowHead} fill={theme.button} />
+                        </React.Fragment>
+                      ))}
+                    </>
+                  )}
 
-                {/* Completed strokes */}
-                {allPaths.map((stroke, i) => (
-                  <Polyline
-                    key={i}
-                    points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
-                    stroke={theme.button}
-                    strokeWidth={4.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
+                  {/* Completed strokes */}
+                  {allPaths.map((stroke, i) => (
+                    <Polyline
+                      key={i}
+                      points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
+                      stroke={theme.button}
+                      strokeWidth={4.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                  ))}
+
+                  {/* Live stroke */}
+                  {currentPath.length > 1 && (
+                    <Polyline
+                      points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
+                      stroke={theme.button}
+                      strokeWidth={4.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                      opacity={0.75}
+                    />
+                  )}
+
+                </Svg>
+              </View>
+
+              {/* Tracer dot — traces the whole word guide during Attempt 1 */}
+              {attempt === 1 && !hasDrawn && tracerVisible && tracerXInterp && (
+                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                  <Animated.View
+                    style={[
+                      styles.tracerDot,
+                      {
+                        backgroundColor: theme.button,
+                        transform: [
+                          { translateX: tracerXInterp },
+                          { translateY: tracerYInterp },
+                        ],
+                      },
+                    ]}
                   />
-                ))}
-
-                {/* Live stroke */}
-                {currentPath.length > 1 && (
-                  <Polyline
-                    points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
-                    stroke={theme.button}
-                    strokeWidth={4.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                    opacity={0.75}
-                  />
-                )}
-
-              </Svg>
+                </View>
+              )}
             </View>
 
           </View>
@@ -722,6 +926,10 @@ const styles = StyleSheet.create({
   attemptHint:  { fontSize: 10, marginTop: 2, textAlign: 'center', opacity: 0.85 },
 
   // Canvas
+  canvasOuter: {
+    width:  CANVAS_W,
+    height: CANVAS_H,
+  },
   canvasCard: {
     width: CANVAS_W,
     height: CANVAS_H,
@@ -734,6 +942,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.07,
     shadowRadius: 8,
     elevation: 3,
+  },
+
+  // â”€â”€ Tracer dot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  tracerDot: {
+    position: 'absolute',
+    left: -13,
+    top: -13,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.30,
+    shadowRadius: 4,
   },
 
   // â”€â”€ Feedback pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

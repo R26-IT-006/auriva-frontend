@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  Animated,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,10 +58,83 @@ export default function InstructionScreen({ route, navigation }) {
   const isLandscape = width > height;
 
   const avatar = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.megatron;
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const entrance = useRef(new Animated.Value(0)).current;
+  const bubbleFloat = useRef(new Animated.Value(0)).current;
 
   // Responsive sizing helpers
-  const cardPad   = width * 0.04;
-  const avatarH   = height * 0.28;
+  const cardPad   = Math.min(width * 0.035, 34);
+  const avatarH   = height * 0.32;
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      entrance.setValue(1);
+      bubbleFloat.setValue(0);
+      return undefined;
+    }
+
+    const entranceAnimation = Animated.timing(entrance, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    });
+
+    const bubbleAnimation = Animated.loop(Animated.sequence([
+      Animated.timing(bubbleFloat, {
+        toValue: 1,
+        duration: 4200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bubbleFloat, {
+        toValue: 0,
+        duration: 4200,
+        useNativeDriver: true,
+      }),
+    ]));
+
+    entranceAnimation.start();
+    bubbleAnimation.start();
+
+    return () => {
+      entranceAnimation.stop();
+      bubbleAnimation.stop();
+    };
+  }, [bubbleFloat, entrance, reduceMotion]);
+
+  const headerOpacity = entrance.interpolate({
+    inputRange: [0, 0.35],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const headerTranslateY = entrance.interpolate({
+    inputRange: [0, 0.35],
+    outputRange: [14, 0],
+    extrapolate: 'clamp',
+  });
+  const actionOpacity = entrance.interpolate({
+    inputRange: [0.55, 1],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const actionTranslateY = entrance.interpolate({
+    inputRange: [0.55, 1],
+    outputRange: [12, 0],
+    extrapolate: 'clamp',
+  });
+  const bubbleTranslateY = bubbleFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -18],
+  });
+  const bubbleTranslateX = bubbleFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 14],
+  });
 
   return (
     <LinearGradient
@@ -69,17 +144,20 @@ export default function InstructionScreen({ route, navigation }) {
       end={{ x: 0, y: 1 }}
     >
       {/* ── Decorative background bubbles (same style as StudentWelcomeScreen) ── */}
-      <View style={[styles.bgBubbleLarge, {
+      <Animated.View style={[styles.bgBubbleLarge, {
         backgroundColor: theme.button + '12',
         width: width * 0.42, height: width * 0.42, borderRadius: width * 0.21,
+        transform: [{ translateY: bubbleTranslateY }],
       }]} />
-      <View style={[styles.bgBubbleMedium, {
+      <Animated.View style={[styles.bgBubbleMedium, {
         backgroundColor: theme.button + '0D',
         width: width * 0.26, height: width * 0.26, borderRadius: width * 0.13,
+        transform: [{ translateX: bubbleTranslateX }],
       }]} />
-      <View style={[styles.bgBubbleSmall, {
+      <Animated.View style={[styles.bgBubbleSmall, {
         backgroundColor: theme.button + '09',
         width: width * 0.15, height: width * 0.15, borderRadius: width * 0.075,
+        transform: [{ translateY: bubbleTranslateY }],
       }]} />
 
       <SafeAreaView style={styles.safe}>
@@ -90,43 +168,69 @@ export default function InstructionScreen({ route, navigation }) {
           <View style={[styles.contentCol, { padding: cardPad }]}>
 
             {/* ── Header ─────────────────────────────────────────────────── */}
-            <View style={styles.header}>
+            <Animated.View
+              style={[
+                styles.header,
+                {
+                  opacity: headerOpacity,
+                  transform: [{ translateY: headerTranslateY }],
+                },
+              ]}
+            >
               <View style={[styles.teacherBadge, { backgroundColor: theme.button + '22', borderColor: theme.button }]}>
                 <Ionicons name="person-outline" size={13} color={theme.button} />
                 <Text style={[styles.teacherBadgeText, { color: theme.button }]}>FOR TEACHER</Text>
               </View>
 
               <Text style={[styles.title, { color: theme.headingText }]}>
-                Initial Motor Assessment
+                Before the child starts
               </Text>
               <Text style={[styles.subtitle, { color: theme.button }]}>
-                Instructions for the Teacher
+                Initial Motor Assessment
               </Text>
               <Text style={styles.intro}>
-                Please guide {student?.full_name ?? 'the child'} through the following{' '}
-                {STEPS.length} steps before the drawing tasks begin.
+                Set up a calm writing moment for {student?.full_name ?? 'the child'}.
+                Use these quick checks before the drawing tasks begin.
               </Text>
-            </View>
+            </Animated.View>
 
             {/* ── Steps ──────────────────────────────────────────────────── */}
-            <View style={styles.stepsContainer}>
+            <View
+              style={[
+                styles.stepsContainer,
+                {
+                  backgroundColor: theme.button + '0B',
+                  borderColor: theme.button + '22',
+                },
+              ]}
+            >
               {STEPS.map((step, index) => (
                 <StepCard
                   key={index}
                   step={step}
                   index={index}
                   theme={theme}
+                  progress={entrance}
                 />
               ))}
             </View>
 
             {/* ── Action buttons ─────────────────────────────────────────── */}
-            <View style={styles.actionRow}>
+            <Animated.View
+              style={[
+                styles.actionRow,
+                {
+                  opacity: actionOpacity,
+                  transform: [{ translateY: actionTranslateY }],
+                },
+              ]}
+            >
               <TouchableOpacity
                 style={[styles.beginBtn, { backgroundColor: theme.button }]}
                 onPress={() => navigation.navigate('StudentWelcome', { student, theme })}
                 activeOpacity={0.85}
               >
+                <Ionicons name="play" size={18} color={theme.buttonText} />
                 <Text style={[styles.beginBtnText, { color: theme.buttonText }]}>
                   Begin Assessment
                 </Text>
@@ -142,26 +246,42 @@ export default function InstructionScreen({ route, navigation }) {
                 </Text>
                 <Ionicons name="arrow-forward-outline" size={16} color={theme.button} />
               </TouchableOpacity>
-            </View>
+            </Animated.View>
 
           </View>
 
           {/* ══ Avatar column (landscape: side, portrait: hidden or shown bottom-right) ══ */}
           {isLandscape ? (
-            <View style={styles.avatarCol}>
+            <Animated.View
+              style={[
+                styles.avatarCol,
+                {
+                  opacity: actionOpacity,
+                  transform: [{ translateY: actionTranslateY }],
+                },
+              ]}
+            >
               <Image
                 source={avatar}
                 style={[styles.avatarLandscape, { height: avatarH }]}
                 resizeMode="contain"
               />
               <View style={[styles.speechBubble, { borderColor: theme.button + '33' }]}>
-                <Text style={styles.speechText}>Every small step is progress toward{'\n'}something great.</Text>
+                <Text style={styles.speechText}>
+                  Every small step is progress toward{'\n'}something great.
+                </Text>
               </View>
-            </View>
+            </Animated.View>
           ) : (
-            <Image
+            <Animated.Image
               source={avatar}
-              style={styles.avatarPortrait}
+              style={[
+                styles.avatarPortrait,
+                {
+                  opacity: actionOpacity,
+                  transform: [{ translateY: actionTranslateY }],
+                },
+              ]}
               resizeMode="contain"
               pointerEvents="none"
             />
@@ -175,20 +295,45 @@ export default function InstructionScreen({ route, navigation }) {
 
 // ─── Step card component ──────────────────────────────────────────────────────
 
-function StepCard({ step, index, theme }) {
+function StepCard({ step, index, theme, progress }) {
+  const start = 0.16 + index * 0.08;
+  const end = Math.min(start + 0.26, 1);
+  const opacity = progress.interpolate({
+    inputRange: [start, end],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const translateY = progress.interpolate({
+    inputRange: [start, end],
+    outputRange: [12, 0],
+    extrapolate: 'clamp',
+  });
+
   return (
-    <View style={[styles.stepCard, { borderLeftColor: theme.button }]}>
+    <Animated.View
+      style={[
+        styles.stepCard,
+        {
+          borderLeftColor: theme.button,
+          opacity,
+          transform: [{ translateY }],
+        },
+      ]}
+    >
       {/* Number circle + icon */}
-      <View style={[styles.stepCircle, { backgroundColor: theme.button }]}>
-        <Text style={styles.stepNumber}>{index + 1}</Text>
+      <View style={[styles.stepCircle, { backgroundColor: theme.button + '18' }]}>
+        <Text style={[styles.stepNumber, { color: theme.button }]}>{index + 1}</Text>
       </View>
 
       {/* Text block */}
       <View style={styles.stepBody}>
-        <Text style={[styles.stepTitle, { color: theme.headingText }]}>{step.title}</Text>
+        <View style={styles.stepTitleRow}>
+          <Ionicons name={step.icon} size={20} color={theme.button} />
+          <Text style={[styles.stepTitle, { color: theme.headingText }]}>{step.title}</Text>
+        </View>
         <Text style={styles.stepDesc}>{step.desc}</Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -226,12 +371,13 @@ const styles = StyleSheet.create({
   // ── Content column ────────────────────────────────────────────────────────
   contentCol: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 10,
   },
 
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
-    marginBottom: '1.5%',
+    marginBottom: 4,
   },
 
   teacherBadge: {
@@ -246,63 +392,71 @@ const styles = StyleSheet.create({
     marginBottom: '2%',
   },
   teacherBadgeText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.8,
   },
 
   title: {
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: '900',
-    lineHeight: 42,
-    marginBottom: '1%',
+    lineHeight: 36,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: '1.5%',
+    marginBottom: 6,
     letterSpacing: 0.3,
   },
   intro: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#555555',
-    lineHeight: 27,
+    lineHeight: 23,
   },
 
   // ── Steps ─────────────────────────────────────────────────────────────────
   stepsContainer: {
-    flex: 1,
-    justifyContent: 'space-evenly',
-    paddingVertical: '1%',
+    backgroundColor: 'rgba(255,255,255,0.58)',
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 10,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 3,
   },
 
   stepCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7F9FC',
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    paddingHorizontal: '2.5%',
-    paddingVertical: '1.5%',
-    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderLeftWidth: 5,
+    borderWidth: 1,
+    borderColor: '#E8EDF7',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    gap: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
     elevation: 2,
   },
 
   stepCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   stepNumber: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
   },
 
@@ -310,24 +464,27 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  stepTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   stepTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '800',
     flexShrink: 1,
-    marginBottom: 2,
   },
   stepDesc: {
-    fontSize: 17,
+    fontSize: 14,
     color: '#555555',
-    lineHeight: 25,
+    lineHeight: 20,
   },
-
   // ── Action buttons ────────────────────────────────────────────────────────
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    marginTop: '2%',
+    marginTop: 2,
     gap: 10,
   },
   beginBtn: {

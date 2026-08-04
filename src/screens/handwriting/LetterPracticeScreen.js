@@ -72,7 +72,7 @@ export default function LetterPracticeScreen({ route, navigation }) {
     }, [student.sid])
   );
 
-  const lowercaseDone    = lowercaseProgress >= 26;
+  const lowercaseDone    = true;
   const lowercasePercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
 
   return (

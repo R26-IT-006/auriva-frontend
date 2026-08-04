@@ -19,10 +19,18 @@ import { getAllLetters } from '../../constants/letterCategories';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../utils/adaptiveSequencing';
 import { computeDTW, sampleSmoothPath, normalizeStrokes, computeMultiStrokeDTW } from '../../utils/dtw';
+import { buildDtwDebugExport } from '../../utils/dtwDebugExport';
 import { useToast } from '../../context/ToastContext';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import AttemptAvatarFeedback from './AttemptAvatarFeedback';
+import {
+  getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
+} from '../../utils/collectionSession';
+
+// Shapes occupy task_order 0-5 in the collection protocol; lowercase
+// letters continue from 6, matching DATA_COLLECTION_PROTOCOL's fixed order.
+const LOWERCASE_TASK_ORDER_OFFSET = 6;
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
@@ -436,6 +444,7 @@ export default function LetterWritingScreen({ route, navigation }) {
     caseType        = 'lowercase',
     letterSequence  = [],
     collectionMode  = false,
+    collectionSessionId = null,
   } = route.params;
 
   const sequence = useMemo(() => {
@@ -759,6 +768,14 @@ export default function LetterWritingScreen({ route, navigation }) {
           score:        attemptScore,
           passed:       wroteCorrectly,
         });
+        // Developer-only export — full raw/normalized paths for offline
+        // inspection. Never sent to the backend, never used for scoring.
+        console.log('[DTW debug export]', buildDtwDebugExport({
+          childStrokes:   allPathsRef.current,
+          templatePoints: templatePath ? sampleSmoothPath(templatePath, 60, CANVAS_W, CANVAS_H).points : [],
+          dtwResult:      dtwResult,
+          qualityScore:   attemptScore,
+        }));
       }
 
       try {
@@ -772,6 +789,13 @@ export default function LetterWritingScreen({ route, navigation }) {
           canvas_height:   CANVAS_H,                    // ML: coordinate space
           attempts:        sessionAttemptsRef.current,  // ML: per-attempt features + raw strokes
           collection_mode: collectionMode,
+          collection_session_id: collectionSessionId,
+          protocol_version:      PROTOCOL_VERSION,
+          feature_version:       FEATURE_VERSION,
+          template_version:      TEMPLATE_VERSION,
+          normalization_version: NORMALIZATION_VERSION,
+          task_order:            LOWERCASE_TASK_ORDER_OFFSET + letterIdx,
+          ...getDeviceMetadata(),
         });
         if (!collectionMode && (!wroteCorrectly || response.data.completed === false)) {
           if (response.data.completed === false) {
@@ -824,7 +848,7 @@ export default function LetterWritingScreen({ route, navigation }) {
       setAttempt(1);
       resetCanvas();
     }
-  }, [attempt, caseType, collectionMode, isLastAttempt, isLastLetter, letter, letterIdx,
+  }, [attempt, caseType, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
       resetCanvas, sequence, showCelebrationFor, student.sid]);
 
   const handleDismissCelebration = useCallback(() => {
@@ -837,6 +861,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           theme,
           letterSequence: DATA_COLLECTION_PROTOCOL.uppercase,
           collectionMode: true,
+          collectionSessionId,
         });
       } else {
         navigation.goBack();
@@ -845,7 +870,7 @@ export default function LetterWritingScreen({ route, navigation }) {
       setLetterIdx(i => i + 1);
       setAttempt(1);
     }
-  }, [celebration, collectionMode, caseType, navigation, student, theme]);
+  }, [celebration, collectionMode, collectionSessionId, caseType, navigation, student, theme]);
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Render

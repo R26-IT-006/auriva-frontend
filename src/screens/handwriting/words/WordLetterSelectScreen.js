@@ -52,12 +52,9 @@ const AVATAR_MAP = {
 
 // ─── Unlock logic ─────────────────────────────────────────────────────────────
 
-function computeUnlocked(wordProgress) {
+function computeUnlocked() {
   const map = {};
-  LETTERS.forEach((letter, i) => {
-    const prev = i > 0 ? LETTERS[i - 1].toLowerCase() : null;
-    map[letter] = i < 3 || (prev ? !!wordProgress[prev] : false);
-  });
+  LETTERS.forEach(letter => { map[letter] = true; });
   return map;
 }
 
@@ -91,7 +88,7 @@ export default function WordLetterSelectScreen({ route, navigation }) {
     }, [student?.sid])
   );
 
-  const unlocked     = computeUnlocked(wordProgress);
+  const unlocked     = computeUnlocked();
   const doneCount    = LETTERS.filter(l => !!wordProgress[l.toLowerCase()]).length;
   const progressText = `${doneCount} / ${LETTERS.length} letters`;
 
@@ -159,7 +156,7 @@ export default function WordLetterSelectScreen({ route, navigation }) {
         {/* ── Motivation card ──────────────────────────────────────────── */}
         <View style={[styles.motivationCard, { backgroundColor: 'rgba(255,255,255,0.22)' }]}>
           <Text style={[styles.motivationText, { color: theme.headingText }]}>
-            Complete each letter to unlock the next one! ⭐
+            Pick any letter to start practising words! ⭐
           </Text>
         </View>
 

@@ -1,7 +1,7 @@
 // For Android emulator: http://10.0.2.2:3000/api
 // For iOS simulator: http://localhost:3000/api
 // For physical device: use your machine's local IP
-export const API_BASE_URL = "http://192.168.1.7:3000/api";
+export const API_BASE_URL = "http://192.168.1.5:3000/api";
 
 export const ENDPOINTS = {
   // Auth
@@ -33,4 +33,10 @@ export const ENDPOINTS = {
   HANDWRITING_INITIAL_REPORT: (studentId) => `/handwriting/initial-report/${studentId}`,
   LETTER_COMPLETE:            '/handwriting/letter-complete',
   LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
+  LETTER_PROGRESS_REPORT:     (studentId) => `/handwriting/letter-progress-report/${studentId}`,
+
+  // Data Collection Mode
+  COLLECTION_SESSION_START:    '/handwriting/collection-session/start',
+  COLLECTION_SESSION_COMPLETE: (id) => `/handwriting/collection-session/${id}/complete`,
+  TEACHER_VALIDATION:          '/handwriting/teacher-validation',
 };

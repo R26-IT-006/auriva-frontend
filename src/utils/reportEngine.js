@@ -115,7 +115,9 @@ export function computeLetterMetrics(letterProgressMap) {
     const avgDev  = attempts.reduce((s, a) => s + (a.deviation ?? 0), 0)        / attempts.length;
     const avgPause= attempts.reduce((s, a) => s + (a.pauseCount ?? 0), 0)       / attempts.length;
     const avgTime = attempts.reduce((s, a) => s + (a.completionTime ?? 0), 0)   / attempts.length;
-    const accuracy= Math.max(0, Math.min(100, Math.round((1 - avgDev / 50) * 100)));
+    const accuracy = data?.serverBestScore != null
+      ? Math.round(data.serverBestScore)
+      : Math.max(0, Math.min(100, Math.round((1 - avgDev / 50) * 100)));
 
     return {
       letter,

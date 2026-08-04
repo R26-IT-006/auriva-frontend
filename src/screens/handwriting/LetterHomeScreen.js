@@ -141,7 +141,7 @@ export default function LetterHomeScreen({ route, navigation }) {
   );
 
   const progressPercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
-  const wordsUnlocked   = lowercaseProgress >= 26;
+  const wordsUnlocked   = true;
 
   const avgSmoothness = assessmentData.length > 0
     ? assessmentData.reduce((sum, s) => sum + (s.features?.smoothness ?? 0), 0) / assessmentData.length
@@ -350,7 +350,7 @@ export default function LetterHomeScreen({ route, navigation }) {
             </TouchableOpacity>
 
             <Text style={styles.footerNote}>
-              Complete all 26 Letters to unlock the Words section.
+              Practice Letters and Words in any order you like.
             </Text>
 
           </View>

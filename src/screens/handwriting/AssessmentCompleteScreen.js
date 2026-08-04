@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
+  Animated,
+  AccessibilityInfo,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,7 +64,11 @@ function getScoreColor(score) {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function AssessmentCompleteScreen({ route, navigation }) {
-  const { student, theme, assessmentData = [], assessmentId, collectionMode = false } = route.params;
+  const { student, theme, assessmentData = [], assessmentId, collectionMode = false, collectionSessionId = null } = route.params;
+  const { width } = useWindowDimensions();
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const entrance = useRef(new Animated.Value(0)).current;
+  const bgAnim = useRef(new Animated.Value(0)).current;
 
   const scores       = assessmentData.map(s => getAccuracyScore(s.features));
   const overallScore = scores.length
@@ -69,6 +76,65 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
     : 0;
 
   const scoreTheme = getScoreColor(overallScore);
+  const bgMoveUp = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -16],
+  });
+  const bgMoveRight = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 14],
+  });
+  const cardOpacity = entrance.interpolate({
+    inputRange: [0, 0.45],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const cardTranslateY = entrance.interpolate({
+    inputRange: [0, 0.45],
+    outputRange: [18, 0],
+    extrapolate: 'clamp',
+  });
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      entrance.setValue(1);
+      bgAnim.setValue(0);
+      return undefined;
+    }
+
+    const entranceAnimation = Animated.timing(entrance, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    });
+
+    const bgLoop = Animated.loop(Animated.sequence([
+      Animated.timing(bgAnim, {
+        toValue: 1,
+        duration: 5200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bgAnim, {
+        toValue: 0,
+        duration: 5200,
+        useNativeDriver: true,
+      }),
+    ]));
+
+    entranceAnimation.start();
+    bgLoop.start();
+
+    return () => {
+      entranceAnimation.stop();
+      bgLoop.stop();
+    };
+  }, [bgAnim, entrance, reduceMotion]);
 
   return (
     <LinearGradient
@@ -77,8 +143,42 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.bgBubbleLarge,
+          {
+            backgroundColor: theme.button + '10',
+            width: width * 0.38,
+            height: width * 0.38,
+            borderRadius: width * 0.19,
+            transform: [{ translateY: bgMoveUp }],
+          },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.bgBubbleSmall,
+          {
+            backgroundColor: theme.button + '0D',
+            width: width * 0.22,
+            height: width * 0.22,
+            borderRadius: width * 0.11,
+            transform: [{ translateX: bgMoveRight }],
+          },
+        ]}
+      />
       <SafeAreaView style={styles.safe}>
-        <View style={styles.card}>
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              opacity: cardOpacity,
+              transform: [{ translateY: cardTranslateY }],
+            },
+          ]}
+        >
 
           {/* ── Header ── */}
           <View style={styles.header}>
@@ -108,7 +208,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
               const score      = scores[i];
 
               return (
-                <View
+                <Animated.View
                   key={`${shape.shapeId}-${i}`}
                   style={[styles.resultCard, { backgroundColor: theme.background }]}
                 >
@@ -148,7 +248,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                       {shape.strokes.length} stroke{shape.strokes.length !== 1 ? 's' : ''}
                     </Text>
                   </View>
-                </View>
+                </Animated.View>
               );
             })}
           </View>
@@ -176,6 +276,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                     caseType:       'lowercase',
                     letterSequence: DATA_COLLECTION_PROTOCOL.lowercase,
                     collectionMode: true,
+                    collectionSessionId,
                   });
                   return;
                 }
@@ -211,7 +312,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
 
-        </View>
+        </Animated.View>
 
       </SafeAreaView>
     </LinearGradient>
@@ -222,18 +323,29 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
+  bgBubbleLarge: {
+    position: 'absolute',
+    top: '-10%',
+    right: '-9%',
+  },
+  bgBubbleSmall: {
+    position: 'absolute',
+    bottom: '7%',
+    left: '-7%',
+  },
+
   card: {
     flex: 1,
     marginHorizontal: 18,
     marginVertical: 14,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.94)',
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.11,
+    shadowRadius: 18,
+    elevation: 5,
   },
 
   // Header
@@ -288,12 +400,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
   },
   resultCard: {
-    borderRadius: 14,
+    borderRadius: 18,
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    borderWidth: 1,
+    borderColor: '#E8EDF7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
   },
   shapeIconWrap: {
     width: 36,

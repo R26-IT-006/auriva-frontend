@@ -35,14 +35,21 @@ import { LETTER_CATEGORIES } from '../constants/letterCategories';
 // Raw assessment data uses two quality metrics (lower = worse performance):
 //   accuracy    : pixel-deviation from ideal path (0 = perfect, 100+ = poor)
 //   smoothness  : angular jerk in radians         (0 = perfect, 1+  = poor)
-//   dtw_distance: normalised DTW trajectory error (0 = perfect, 166+ = far off)
+//   dtw_distance: normalised DTW trajectory error, in the dtw_norm_v1
+//                 coordinate space (both child and template scaled to their
+//                 own 100-unit bounding box before DTW runs — see
+//                 utils/dtwNormalization.js). 0 = perfect, ~45+ = far off.
+//                 NOT raw pixels — device/canvas size no longer affects it.
 //
 // We combine these into a 0-100 performance score where 100 = perfect.
 
-// DTW_CAP: observed ceiling for normalised DTW distance.
-// Real data: good letter 'l' ≈ 27, very wrong shape ≈ 166.
-// Cap at 120 so anything beyond scores the maximum penalty without overflowing.
-const DTW_CAP = 120;
+// DTW_CAP: ceiling for normalised (dtw_norm_v1) DTW distance. Placeholder
+// calibration — a genuine trace typically deviates by a small fraction of
+// the 100-unit bounding box (child hand jitter), a badly wrong shape by a
+// much larger fraction. Cap anything beyond this so it scores the maximum
+// penalty without overflowing. Recalibrate from real collection-day data;
+// this is a pipeline-safe starting point, not a clinically validated value.
+const DTW_CAP = 45;
 
 /** Scoring weights for the letter-writing formula. DTW is dominant (0.7)
  *  because it measures shape fidelity; smoothness is secondary (0.3). */
@@ -50,11 +57,14 @@ export const SCORE_WEIGHTS = { trajectory: 0.7, smoothness: 0.3 };
 
 /**
  * Completion gate: a letter attempt passes only when its DTW distance is
- * strictly below this value.  Calibrated from observed data (good≈27, bad≈166);
- * 65 sits well inside the "good" zone.  Recalibrate after the first school visit.
+ * strictly below this value, in the dtw_norm_v1 normalized coordinate
+ * space (see utils/dtwNormalization.js) — NOT raw pixels, so this value is
+ * comparable across every device/screen size. Placeholder calibration
+ * pending real collection-day data; sits well inside the expected "good"
+ * zone by the same margin the previous raw-pixel threshold did.
  * Exported so LetterWritingScreen and storage.js share one source of truth.
  */
-export const DTW_CORRECT_THRESHOLD = 65;
+export const DTW_CORRECT_THRESHOLD = 22;
 
 /**
  * Converts a single shape/letter-attempt's features into a 0-100 score.

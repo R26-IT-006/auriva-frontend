@@ -19,10 +19,17 @@ import { getAllLetters } from '../../../constants/letterCategories';
 import { DATA_COLLECTION_PROTOCOL } from '../../../constants/dataCollectionProtocol';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../../utils/adaptiveSequencing';
 import { computeDTW, sampleSmoothPath, normalizeStrokes, computeMultiStrokeDTW } from '../../../utils/dtw';
+import { buildDtwDebugExport } from '../../../utils/dtwDebugExport';
 import { useToast } from '../../../context/ToastContext';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
 import AttemptAvatarFeedback from '../AttemptAvatarFeedback';
+import {
+  getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
+} from '../../../utils/collectionSession';
+
+// Shapes occupy 0-5, lowercase letters occupy 6-15 — uppercase continues from 16.
+const UPPERCASE_TASK_ORDER_OFFSET = 16;
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
@@ -401,6 +408,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     theme,
     letterSequence  = [],
     collectionMode  = false,
+    collectionSessionId = null,
   } = route.params;
 
   const caseType = 'uppercase';
@@ -704,6 +712,25 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       // DTW gate: shape must match the template within the calibrated threshold.
       // dtw_distance != null guard: if no template exists for this letter, do not
       // hard-fail the child — the bounds checks are still enforced.
+
+      if (__DEV__) {
+        console.log('[DTW debug]', {
+          letter,
+          dtw_distance: features.dtw_distance,
+          threshold:    DTW_CORRECT_THRESHOLD,
+          score:        attemptScore,
+          passed:       wroteCorrectly,
+        });
+        // Developer-only export — full raw/normalized paths for offline
+        // inspection. Never sent to the backend, never used for scoring.
+        console.log('[DTW debug export]', buildDtwDebugExport({
+          childStrokes:   allPathsRef.current,
+          templatePoints: templatePath ? sampleSmoothPath(templatePath, 60, CANVAS_W, CANVAS_H).points : [],
+          dtwResult:      dtwResult,
+          qualityScore:   attemptScore,
+        }));
+      }
+
       try {
         const response = await client.post(ENDPOINTS.LETTER_COMPLETE, {
           student_id:      student.sid,
@@ -715,6 +742,13 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           canvas_height:   CANVAS_H,                    // ML: coordinate space
           attempts:        sessionAttemptsRef.current,  // ML: per-attempt features + raw strokes
           collection_mode: collectionMode,
+          collection_session_id: collectionSessionId,
+          protocol_version:      PROTOCOL_VERSION,
+          feature_version:       FEATURE_VERSION,
+          template_version:      TEMPLATE_VERSION,
+          normalization_version: NORMALIZATION_VERSION,
+          task_order:            UPPERCASE_TASK_ORDER_OFFSET + letterIdx,
+          ...getDeviceMetadata(),
         });
         if (!collectionMode && (!wroteCorrectly || response.data.completed === false)) {
           if (response.data.completed === false) {
@@ -767,7 +801,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       setAttempt(1);
       resetCanvas();
     }
-  }, [attempt, collectionMode, isLastAttempt, isLastLetter, letter, letterIdx,
+  }, [attempt, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
       resetCanvas, sequence, show, showCelebrationFor, student.sid]);
 
   const handleDismissCelebration = useCallback(() => {
@@ -775,7 +809,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     setCelebration(null);
     if (isAllDone) {
       if (collectionMode) {
-        navigation.navigate('DataCollectionDone', { student, theme });
+        navigation.navigate('DataCollectionDone', { student, theme, collectionSessionId });
       } else {
         navigation.goBack();
       }
@@ -783,7 +817,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       setLetterIdx(i => i + 1);
       setAttempt(1);
     }
-  }, [celebration, collectionMode, navigation, student, theme]);
+  }, [celebration, collectionMode, collectionSessionId, navigation, student, theme]);
 
   return (
     <LinearGradient

@@ -39,18 +39,20 @@ import ExerciseA_WriteFirst  from '../../../components/word/ExerciseA_WriteFirst
 import ExerciseB_CircleImage from '../../../components/word/ExerciseB_CircleImage';
 import ExerciseC_FillBlank   from '../../../components/word/ExerciseC_FillBlank';
 import ExerciseD_SpellWord   from '../../../components/word/ExerciseD_SpellWord';
+import ExerciseE_WriteWord   from '../../../components/word/ExerciseE_WriteWord';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
 // ─── Exercise registry ────────────────────────────────────────────────────────
 
-const EXERCISES = ['A', 'B', 'C', 'D'];
+const EXERCISES = ['A', 'B', 'C', 'D', 'E'];
 
 const EXERCISE_LABELS = {
   A: 'First Letter',
   B: 'Find the Picture',
   C: 'Fill the Gap',
   D: 'Spell It!',
+  E: 'Write the Word',
 };
 
 // ─── Status display config ────────────────────────────────────────────────────
@@ -61,7 +63,7 @@ const STATUS = {
   good:    { icon: 'help-circle-outline', dotColor: '#FF9800', badgeBg: '#FFF3E0', badgeBorder: '#FFB74D', iconColor: '#E65100', label: 'With help'  },
 };
 
-const BLANK_STATUS = { A: 'pending', B: 'pending', C: 'pending', D: 'pending' };
+const BLANK_STATUS = { A: 'pending', B: 'pending', C: 'pending', D: 'pending', E: 'pending' };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -255,6 +257,7 @@ export default function WordActivityScreen({ route, navigation }) {
       case 'B': return <ExerciseB_CircleImage key={`${currentWord.word}-B`} {...props} />;
       case 'C': return <ExerciseC_FillBlank   key={`${currentWord.word}-C`} {...props} />;
       case 'D': return <ExerciseD_SpellWord   key={`${currentWord.word}-D`} {...props} />;
+      case 'E': return <ExerciseE_WriteWord   key={`${currentWord.word}-E`} {...props} />;
       default:  return null;
     }
   }
@@ -306,7 +309,7 @@ export default function WordActivityScreen({ route, navigation }) {
         {/* ── Exercise progress dots (live status colours) ── */}
         <View style={styles.dotsRow}>
           {EXERCISES.map((ex, i) => {
-            const cfg       = STATUS[exStatus[ex]];
+            const cfg       = STATUS[exStatus?.[ex]] ?? STATUS.pending;
             const isCurrent = i === exIdx;
             return (
               <View key={ex} style={styles.dotItem}>
@@ -462,7 +465,7 @@ function WordResultRow({ item }) {
       <Text style={rowStyles.word} numberOfLines={1}>{item.word}</Text>
       <View style={rowStyles.badges}>
         {EXERCISES.map(ex => {
-          const cfg = STATUS[item.status[ex]];
+          const cfg = STATUS[item.status?.[ex]] ?? STATUS.pending;
           return (
             <View key={ex} style={[rowStyles.badge, { backgroundColor: cfg.badgeBg, borderColor: cfg.badgeBorder }]}>
               <Text style={[rowStyles.badgeLetter, { color: cfg.iconColor }]}>{ex}</Text>

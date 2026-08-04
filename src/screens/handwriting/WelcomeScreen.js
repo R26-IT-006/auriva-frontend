@@ -12,6 +12,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import client from '../../api/client';
+import { ENDPOINTS } from '../../constants/api';
+import {
+  generateCollectionSessionId, getDeviceMetadata, PROTOCOL_VERSION,
+} from '../../utils/collectionSession';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -42,6 +47,8 @@ export default function WelcomeScreen({ route, navigation }) {
   const sliderX = useRef(new Animated.Value(0)).current;
   const sliderPosition = useRef(0);
   const knobScale = useRef(new Animated.Value(1)).current;
+  const knobPulse = useRef(new Animated.Value(0)).current;
+  const chevronPulse = useRef(new Animated.Value(0)).current;
   const [trackWidth, setTrackWidth] = useState(0);
   const shine = useRef(new Animated.Value(0)).current;
 
@@ -58,6 +65,8 @@ export default function WelcomeScreen({ route, navigation }) {
       floatSmall.setValue(0);
       buttonEntrance.setValue(0);
       buttonOpacity.setValue(1);
+      knobPulse.setValue(0);
+      chevronPulse.setValue(0);
       shine.setValue(0);
       return undefined;
     }
@@ -98,13 +107,28 @@ export default function WelcomeScreen({ route, navigation }) {
       Animated.delay(1400),
     ]));
 
+    const knobPulseLoop = Animated.loop(Animated.sequence([
+      Animated.timing(knobPulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+      Animated.timing(knobPulse, { toValue: 0, duration: 900, useNativeDriver: true }),
+      Animated.delay(550),
+    ]));
+
+    const chevronPulseLoop = Animated.loop(Animated.sequence([
+      Animated.timing(chevronPulse, { toValue: 1, duration: 850, useNativeDriver: true }),
+      Animated.timing(chevronPulse, { toValue: 0, duration: 850, useNativeDriver: true }),
+    ]));
+
     floating.start();
     entrance.start();
     shineLoop.start();
+    knobPulseLoop.start();
+    chevronPulseLoop.start();
     return () => {
       floating.stop();
       entrance.stop();
       shineLoop.stop();
+      knobPulseLoop.stop();
+      chevronPulseLoop.stop();
     };
   }, [
     buttonEntrance,
@@ -112,6 +136,8 @@ export default function WelcomeScreen({ route, navigation }) {
     floatLarge,
     floatMedium,
     floatSmall,
+    chevronPulse,
+    knobPulse,
     reduceMotion,
     shine,
   ]);
@@ -122,14 +148,32 @@ export default function WelcomeScreen({ route, navigation }) {
   });
 
   const maxSlide = Math.max(0, trackWidth - 66);
+  const knobPulseScale = knobPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.28],
+  });
+  const knobPulseOpacity = knobPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.24, 0],
+  });
+  const chevronTranslate = chevronPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 7],
+  });
+  const sliderTextOpacity = sliderX.interpolate({
+    inputRange: [0, Math.max(1, maxSlide * 0.7)],
+    outputRange: [1, 0.28],
+    extrapolate: 'clamp',
+  });
 
   const sliderPanResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
     onPanResponderGrant: () => {
+      knobPulse.setValue(0);
       if (!reduceMotion) {
         Animated.spring(knobScale, {
-          toValue: 1.08,
+          toValue: 1.12,
           speed: 28,
           bounciness: 4,
           useNativeDriver: true,
@@ -275,8 +319,17 @@ export default function WelcomeScreen({ route, navigation }) {
                   ]}
                 />
               )}
-              <Text style={[styles.sliderText, { color: themeColor }]}>Slide to start</Text>
-              <View style={styles.sliderChevrons} pointerEvents="none">
+              <View style={[styles.startZone, { borderColor: themeColor + '26' }]} pointerEvents="none" />
+              <Animated.Text style={[styles.sliderText, { color: themeColor, opacity: sliderTextOpacity }]}>
+                Press and drag right
+              </Animated.Text>
+              <Animated.View
+                style={[
+                  styles.sliderChevrons,
+                  { transform: [{ translateX: chevronTranslate }] },
+                ]}
+                pointerEvents="none"
+              >
                 <Ionicons name="chevron-forward" size={17} color={themeColor + '70'} />
                 <Ionicons
                   name="chevron-forward"
@@ -284,7 +337,7 @@ export default function WelcomeScreen({ route, navigation }) {
                   color={themeColor + 'A0'}
                   style={{ marginLeft: -7 }}
                 />
-              </View>
+              </Animated.View>
               <Animated.View
                 {...sliderPanResponder.panHandlers}
                 style={[
@@ -298,6 +351,17 @@ export default function WelcomeScreen({ route, navigation }) {
                   },
                 ]}
               >
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.knobPulse,
+                    {
+                      borderColor: themeColor,
+                      opacity: knobPulseOpacity,
+                      transform: [{ scale: knobPulseScale }],
+                    },
+                  ]}
+                />
                 <Ionicons name="arrow-forward" size={26} color={textOnBtn} />
               </Animated.View>
             </View>
@@ -306,7 +370,22 @@ export default function WelcomeScreen({ route, navigation }) {
           {/* ── Data Collection (research protocol) — secondary action ── */}
           <TouchableOpacity
             style={[styles.dataCollectionBtn, { borderColor: themeColor + '80' }]}
-            onPress={() => navigation.navigate('ShapeAssessment', { student, theme, collectionMode: true })}
+            onPress={() => {
+              const collectionSessionId = generateCollectionSessionId();
+              // Best-effort — a failed "start" ping never blocks the teacher
+              // from running the protocol (matches the non-fatal-save
+              // convention used throughout the backend controller).
+              client.post(ENDPOINTS.COLLECTION_SESSION_START, {
+                id:               collectionSessionId,
+                student_id:       student.sid,
+                protocol_version: PROTOCOL_VERSION,
+                ...getDeviceMetadata(),
+              }).catch(err => console.warn('Collection session start failed (non-fatal):', err?.message));
+
+              navigation.navigate('ShapeAssessment', {
+                student, theme, collectionMode: true, collectionSessionId,
+              });
+            }}
             activeOpacity={0.75}
           >
             <Ionicons name="flask-outline" size={14} color={themeColor} />
@@ -414,6 +493,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
+  startZone: {
+    position: 'absolute',
+    left: 4,
+    top: 4,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 2,
+    backgroundColor: 'rgba(255,255,255,0.42)',
+  },
   buttonShine: {
     position: 'absolute',
     top: -18,
@@ -447,6 +536,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 5,
     elevation: 7,
+  },
+  knobPulse: {
+    position: 'absolute',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 3,
+    backgroundColor: 'transparent',
   },
 
   // ── Right panel — pixel-identical to original ────────────────────────────────
