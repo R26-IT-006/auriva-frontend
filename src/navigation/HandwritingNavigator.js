@@ -6,6 +6,7 @@ import WelcomeScreen            from '../screens/handwriting/WelcomeScreen';
 import InstructionScreen        from '../screens/handwriting/InstructionScreen';
 import StudentWelcomeScreen     from '../screens/handwriting/StudentWelcomeScreen';
 import ShapeAssessmentScreen    from '../screens/handwriting/ShapeAssessmentScreen';
+import PreWritingActivityScreen from '../screens/handwriting/PreWritingActivityScreen';
 import AssessmentCompleteScreen from '../screens/handwriting/AssessmentCompleteScreen';
 import LetterHomeScreen         from '../screens/handwriting/LetterHomeScreen';
 import LetterPracticeScreen     from '../screens/handwriting/LetterPracticeScreen';
@@ -48,6 +49,11 @@ export default function HandwritingNavigator({ route }) {
       <Stack.Screen
         name="ShapeAssessment"
         component={ShapeAssessmentScreen}
+        initialParams={{ student, theme }}
+      />
+      <Stack.Screen
+        name="PreWritingActivity"
+        component={PreWritingActivityScreen}
         initialParams={{ student, theme }}
       />
       <Stack.Screen

@@ -29,6 +29,7 @@ export const ENDPOINTS = {
 
   // Handwriting
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
+  PRE_WRITING_ACTIVITY:       '/handwriting/pre-writing-activity',
   HANDWRITING_FINALIZE:       (id)       => `/handwriting/assessment/${id}/finalize`,
   HANDWRITING_INITIAL_REPORT: (studentId) => `/handwriting/initial-report/${studentId}`,
   LETTER_COMPLETE:            '/handwriting/letter-complete',

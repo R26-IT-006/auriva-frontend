@@ -27,6 +27,7 @@ import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../utils/collectionSession';
+import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../constants/preWritingActivities';
 
 // Shapes occupy task_order 0-5 in the collection protocol; lowercase
 // letters continue from 6, matching DATA_COLLECTION_PROTOCOL's fixed order.
@@ -866,11 +867,34 @@ export default function LetterWritingScreen({ route, navigation }) {
       } else {
         navigation.goBack();
       }
-    } else {
+    } else if (collectionMode) {
+      // Fixed research protocol — always advance in place, never detour
+      // through a warm-up. Unchanged from before this branch existed.
       setLetterIdx(i => i + 1);
       setAttempt(1);
+    } else {
+      // Category boundary mid-session (e.g. straight letters done, curved
+      // letters next) — warm up the new primitive before continuing, same
+      // gating LetterPracticeScreen does at session start. Detours through
+      // a fresh LetterWriting instance starting at the next letter rather
+      // than continuing in place, since PreWritingActivityScreen is a
+      // separate screen in the stack.
+      const nextLetterObj = sequence[letterIdx + 1];
+      const group      = nextLetterObj ? getLetterPrimitiveGroup(nextLetterObj.letter) : null;
+      const activities = group ? selectPreWritingActivities(group) : [];
+
+      if (activities.length > 0) {
+        navigation.navigate('PreWritingActivity', {
+          student, theme, activities,
+          nextRoute:  'LetterWriting',
+          nextParams: { student, theme, caseType, letterSequence: sequence.slice(letterIdx + 1) },
+        });
+      } else {
+        setLetterIdx(i => i + 1);
+        setAttempt(1);
+      }
     }
-  }, [celebration, collectionMode, collectionSessionId, caseType, navigation, student, theme]);
+  }, [celebration, collectionMode, collectionSessionId, caseType, navigation, student, theme, sequence, letterIdx]);
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Render

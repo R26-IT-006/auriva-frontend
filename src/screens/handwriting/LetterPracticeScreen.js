@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { LETTER_CATEGORIES } from '../../constants/letterCategories';
+import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../constants/preWritingActivities';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -34,24 +35,47 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
   const closePicker = () => { setPickerCase(null); setPickerCategory(null); };
 
+  // Before entering LetterWriting/UppercaseWriting, check whether the first
+  // letter the child is about to write shares a motor primitive (curved,
+  // diagonal, vertical/horizontal) with a pre-writing warm-up group — if so,
+  // detour through a short warm-up first. Falls straight through to the
+  // letter screen unchanged when there's nothing to warm up for (mixed
+  // letters, or an unrecognised/empty sequence), so a disabled/failed
+  // pre-writing feature never blocks normal practice.
+  const goToLetterScreen = (caseType, params, seq) => {
+    const screen = caseType === 'lowercase' ? 'LetterWriting' : 'UppercaseWriting';
+
+    const firstLetter = seq?.[0]?.letter
+      ?? LETTER_CATEGORIES[caseType]?.[params.motorProfile?.categoryOrder?.[0] ?? 'straight']?.[0]?.letter
+      ?? null;
+    const group = firstLetter ? getLetterPrimitiveGroup(firstLetter) : null;
+    const activities = group ? selectPreWritingActivities(group) : [];
+
+    if (activities.length > 0) {
+      navigation.navigate('PreWritingActivity', {
+        student, theme, activities, nextRoute: screen, nextParams: params,
+      });
+    } else {
+      navigation.navigate(screen, params);
+    }
+  };
+
   const navigateToWriting = (ct, seq) => {
     closePicker();
-    const screen = ct === 'lowercase' ? 'LetterWriting' : 'UppercaseWriting';
     const params = ct === 'lowercase'
       ? { student, theme, caseType: 'lowercase', letterSequence: seq }
       : { student, theme, letterSequence: seq };
-    navigation.navigate(screen, params);
+    goToLetterScreen(ct, params, seq);
   };
 
   const handleCategoryPick = (category) => {
     if (category === 'all') {
       const ct = pickerCase;
       closePicker();
-      const screen = ct === 'lowercase' ? 'LetterWriting' : 'UppercaseWriting';
       const params = ct === 'lowercase'
         ? { student, theme, caseType: 'lowercase', letterSequence, motorProfile }
         : { student, theme, letterSequence, motorProfile };
-      navigation.navigate(screen, params);
+      goToLetterScreen(ct, params, letterSequence);
     } else {
       setPickerCategory(category);
     }
@@ -176,9 +200,10 @@ export default function LetterPracticeScreen({ route, navigation }) {
               {/* Lowercase — always unlocked */}
               <TouchableOpacity
                 style={styles.lowercasePill}
-                onPress={() => navigation.navigate('LetterWriting', {
-                  student, theme, caseType: 'lowercase', letterSequence, motorProfile,
-                })}
+                onPress={() => goToLetterScreen('lowercase',
+                  { student, theme, caseType: 'lowercase', letterSequence, motorProfile },
+                  letterSequence,
+                )}
                 onLongPress={() => setPickerCase('lowercase')}
                 activeOpacity={0.85}
               >
@@ -192,9 +217,10 @@ export default function LetterPracticeScreen({ route, navigation }) {
               {/* Uppercase — locked until lowercase done */}
               <TouchableOpacity
                 style={[styles.uppercasePill, !lowercaseDone && styles.uppercaseLocked]}
-                onPress={() => lowercaseDone && navigation.navigate('UppercaseWriting', {
-                  student, theme, letterSequence, motorProfile,
-                })}
+                onPress={() => lowercaseDone && goToLetterScreen('uppercase',
+                  { student, theme, letterSequence, motorProfile },
+                  letterSequence,
+                )}
                 onLongPress={() => setPickerCase('uppercase')}
                 activeOpacity={0.85}
               >

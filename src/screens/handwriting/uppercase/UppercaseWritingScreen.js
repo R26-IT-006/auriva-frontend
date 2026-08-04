@@ -27,6 +27,7 @@ import AttemptAvatarFeedback from '../AttemptAvatarFeedback';
 import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../../utils/collectionSession';
+import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../../constants/preWritingActivities';
 
 // Shapes occupy 0-5, lowercase letters occupy 6-15 — uppercase continues from 16.
 const UPPERCASE_TASK_ORDER_OFFSET = 16;
@@ -813,11 +814,30 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       } else {
         navigation.goBack();
       }
-    } else {
+    } else if (collectionMode) {
+      // Fixed research protocol — always advance in place, never detour
+      // through a warm-up. Unchanged from before this branch existed.
       setLetterIdx(i => i + 1);
       setAttempt(1);
+    } else {
+      // Category boundary mid-session — warm up the new primitive before
+      // continuing, same gating LetterPracticeScreen does at session start.
+      const nextLetterObj = sequence[letterIdx + 1];
+      const group      = nextLetterObj ? getLetterPrimitiveGroup(nextLetterObj.letter) : null;
+      const activities = group ? selectPreWritingActivities(group) : [];
+
+      if (activities.length > 0) {
+        navigation.navigate('PreWritingActivity', {
+          student, theme, activities,
+          nextRoute:  'UppercaseWriting',
+          nextParams: { student, theme, letterSequence: sequence.slice(letterIdx + 1) },
+        });
+      } else {
+        setLetterIdx(i => i + 1);
+        setAttempt(1);
+      }
     }
-  }, [celebration, collectionMode, collectionSessionId, navigation, student, theme]);
+  }, [celebration, collectionMode, collectionSessionId, navigation, student, theme, sequence, letterIdx]);
 
   return (
     <LinearGradient
