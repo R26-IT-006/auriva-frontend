@@ -62,6 +62,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
   function handleModulePress(key) {
     if (key === 'concept') navigation.navigate('ConceptCategories', { student });
+    else if (key === 'writing') navigation.navigate('HandwritingModule', { student });
     else toast.show('Coming soon!', 'info');
   }
 
