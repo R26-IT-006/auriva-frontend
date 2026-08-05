@@ -18,6 +18,23 @@ import { conceptApi } from '../../../api/concept';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
 
+function LetterBubble({ char, index, color }) {
+  const scale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, bounciness: 16, speed: 8 }).start();
+    }, 200 + index * 90);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <Animated.View style={[styles.letterBubble, { borderColor: color, transform: [{ scale }] }]}>
+      <Text style={[styles.letterText, { color }]}>{char}</Text>
+    </Animated.View>
+  );
+}
+
 export default function Tier2ImageScreen({ route, navigation }) {
   const { student, category, conceptKey, sessionId } = route.params;
 
@@ -161,9 +178,7 @@ export default function Tier2ImageScreen({ route, navigation }) {
         {/* Letter bubbles */}
         <View style={styles.letterRow}>
           {concept.label.toUpperCase().split('').map((char, i) => (
-            <View key={i} style={styles.letterBubble}>
-              <Text style={styles.letterText}>{char}</Text>
-            </View>
+            <LetterBubble key={i} char={char} index={i} color={theme.button} />
           ))}
         </View>
 
@@ -248,22 +263,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   letterBubble: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FFFDE7',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 4,
   },
   letterText: {
-    fontSize: 26,
+    fontSize: 32,
     fontFamily: 'Nunito_900Black',
-    color: '#2C2C2C',
   },
 
   imageContainer: { position: 'relative' },

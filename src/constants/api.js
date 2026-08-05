@@ -1,9 +1,9 @@
 // For Android emulator: http://10.0.2.2:3000/api
 // For iOS simulator: http://localhost:3000/api
 // For physical device: use your machine's local IP
-// Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.180:3000/api
+// Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.19:3000/api
 // Android emulator → 10.0.2.2 maps to host machine's localhost
-export const API_BASE_URL = 'http://192.168.1.180:3000/api';
+export const API_BASE_URL = 'http://192.168.1.19:3000/api';
 
 export const ENDPOINTS = {
   // Auth
@@ -33,6 +33,7 @@ export const ENDPOINTS = {
   HANDWRITING_INITIAL_REPORT: (studentId) => `/handwriting/initial-report/${studentId}`,
   LETTER_COMPLETE:            '/handwriting/letter-complete',
   LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
+
   // Dialogue – Level 1
   DIALOGUE_LEVEL1_OVERVIEW:        (sid) => `/teacher/student/${sid}/level1/overview`,
   DIALOGUE_LEVEL1_NEXT_WORD:       (sid) => `/teacher/student/${sid}/level1/next-word`,
@@ -59,6 +60,7 @@ export const ENDPOINTS = {
   LEVEL2_ACTIVITY_SELECTION:    (sid, sessId) => `/teacher/student/${sid}/level2/session/${sessId}/activity-selection`,
   LEVEL2_PARAGRAPH_ATTEMPT:     (sid, sessId) => `/teacher/student/${sid}/level2/session/${sessId}/paragraph-attempt`,
   LEVEL2_SXS_ATTEMPT:           (sid, sessId, sentIdx) => `/teacher/student/${sid}/level2/session/${sessId}/sentence-by-sentence/${sentIdx}`,
+  
   // Concept Learning
   CONCEPT_ITEMS:              (cat) => `/teacher/concepts/${cat}/items`,
   CONCEPT_TIER1_START:        '/teacher/concepts/tier1/start',

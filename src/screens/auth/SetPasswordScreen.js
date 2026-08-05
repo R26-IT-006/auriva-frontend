@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -7,21 +7,27 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '../../components/common/Button';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '../../components/common/Input';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { useAuthStore } from '../../store/authStore';
 import { validatePassword } from '../../utils/validation';
 
+const TEAL       = '#3A9BA8';
+const TEAL_GRAD  = ['#4AABB8', '#52C07C'];
+const TEAL_LIGHT = '#E3F5F7';
+
 function Requirement({ met, label }) {
   return (
     <View style={styles.reqRow}>
       <View style={[styles.reqDot, met && styles.reqDotMet]}>
-        {met && <Ionicons name="checkmark" size={10} color="#fff" />}
+        {met && <Ionicons name="checkmark" size={13} color="#fff" />}
       </View>
       <Text style={[styles.reqText, met && styles.reqTextMet]}>{label}</Text>
     </View>
@@ -67,137 +73,164 @@ export default function SetPasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Shield icon */}
-          <View style={styles.iconSection}>
-            <View style={styles.shieldContainer}>
-              <Ionicons name="shield-checkmark-outline" size={40} color={Colors.primary} />
+    <LinearGradient
+      colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']}
+      style={styles.root}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.card}>
+
+              {/* Icon */}
+              <View style={styles.iconCircle}>
+                <Ionicons name="shield-checkmark-outline" size={32} color={TEAL} />
+              </View>
+
+              {/* Heading */}
+              <Text style={styles.cardTitle}>Set new password</Text>
+
+              {/* New password */}
+              <Input
+                label="New Password"
+                value={newPassword}
+                onChangeText={(v) => { setNewPassword(v); setErrors((e) => ({ ...e, newPassword: null })); }}
+                placeholder="Enter secure password"
+                secureTextEntry
+                error={errors.newPassword}
+              />
+
+              {/* Confirm password */}
+              <Input
+                label="Confirm New Password"
+                value={confirmPassword}
+                onChangeText={(v) => { setConfirmPassword(v); setErrors((e) => ({ ...e, confirmPassword: null })); }}
+                placeholder="Repeat your password"
+                secureTextEntry
+                error={errors.confirmPassword}
+              />
+
+              {/* Requirements */}
+              <View style={styles.requirements}>
+                <Text style={styles.reqTitle}>PASSWORD MUST INCLUDE</Text>
+                <Requirement met={rules.minLength}    label="At least 8 characters" />
+                <Requirement met={rules.hasUppercase} label="One uppercase letter" />
+                <Requirement met={rules.hasLowercase} label="One lowercase letter" />
+                <Requirement met={rules.hasNumber}    label="One number" />
+                <Requirement met={rules.hasSpecial}   label="One special character" />
+              </View>
+
+              {/* Update button */}
+              <TouchableOpacity
+                onPress={handleUpdate}
+                disabled={loading}
+                activeOpacity={0.85}
+                style={[styles.btn, loading && { opacity: 0.75 }]}
+              >
+                <LinearGradient
+                  colors={TEAL_GRAD}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.btnGradient}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#FFF" size="small" />
+                    : <Text style={styles.btnText}>Update Password</Text>
+                  }
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <Text style={styles.footerNote}>
+                By updating your password, you agree to our security{'\n'}guidelines for educator accounts.
+              </Text>
             </View>
-          </View>
 
-          <Text style={styles.title}>Set New Password</Text>
-          <Text style={styles.subtitle}>
-            To keep your teacher account secure,{'\n'}please change your initial password.
-          </Text>
-
-          {/* Form */}
-          <View style={styles.formCard}>
-            <Input
-              label="New Password"
-              value={newPassword}
-              onChangeText={(v) => { setNewPassword(v); setErrors((e) => ({ ...e, newPassword: null })); }}
-              placeholder="Enter secure password"
-              secureTextEntry
-              error={errors.newPassword}
-            />
-
-            {/* Security Requirements */}
-            <View style={styles.requirements}>
-              <Text style={styles.reqTitle}>SECURITY REQUIREMENTS</Text>
-              <Requirement met={rules.minLength} label="8 or more characters" />
-              <Requirement met={rules.hasUppercase} label="At least one uppercase letter" />
-              <Requirement met={rules.hasLowercase} label="At least one lowercase letter" />
-              <Requirement met={rules.hasNumber} label="At least one number" />
-              <Requirement met={rules.hasSpecial} label="At least one special character" />
-            </View>
-
-            <Input
-              label="Confirm New Password"
-              value={confirmPassword}
-              onChangeText={(v) => { setConfirmPassword(v); setErrors((e) => ({ ...e, confirmPassword: null })); }}
-              placeholder="Repeat your password"
-              secureTextEntry
-              error={errors.confirmPassword}
-              style={{ marginTop: Layout.spacing.sm }}
-            />
-
-            <Button
-              title="Update Password"
-              onPress={handleUpdate}
-              loading={loading}
-              style={styles.updateBtn}
-            />
-
-            <Text style={styles.footerNote}>
-              By updating your password, you agree to our security{'\n'}guidelines for educator accounts.
-            </Text>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <Text style={styles.footer}>AURIVA 2026</Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  root:      { flex: 1 },
+  safeInner: { flex: 1 },
+
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xl,
-  },
-  iconSection: {
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: Layout.spacing.xl,
-    paddingBottom: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.xxl,
   },
-  shieldContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.status.infoLight,
+
+  // ── Card ─────────────────────────────────────────────────────────────────
+  card: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 32,
+    paddingVertical: 36,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+
+  // ── Icon circle ───────────────────────────────────────────────────────────
+  iconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: TEAL_LIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.primaryLight,
+    alignSelf: 'center',
+    marginBottom: 20,
   },
-  title: {
-    fontSize: Layout.fontSize.xxl,
+
+  // ── Headings ──────────────────────────────────────────────────────────────
+  cardTitle: {
+    fontSize: 26,
     fontFamily: 'Nunito_800ExtraBold',
-    color: Colors.text.primary,
+    color: '#1A1A2E',
     textAlign: 'center',
-    marginBottom: Layout.spacing.sm,
+    marginBottom: 24,
   },
-  subtitle: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.secondary,
+  cardSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: '#9B9FB0',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: Layout.spacing.lg,
+    lineHeight: 22,
+    marginBottom: 24,
   },
-  formCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.md,
-  },
+
+  // ── Requirements ──────────────────────────────────────────────────────────
   requirements: {
-    backgroundColor: Colors.surfaceAlt,
-    borderRadius: Layout.radius.md,
-    padding: Layout.spacing.md,
-    marginBottom: Layout.spacing.sm,
+    backgroundColor: '#F7F9FC',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E8ECF4',
   },
   reqTitle: {
     fontSize: 10,
     fontFamily: 'Nunito_700Bold',
-    color: Colors.text.muted,
+    color: '#9B9FB0',
     letterSpacing: 1.2,
-    marginBottom: Layout.spacing.sm,
+    marginBottom: 10,
   },
   reqRow: {
     flexDirection: 'row',
@@ -205,34 +238,63 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   reqDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    marginRight: Layout.spacing.sm,
+    borderColor: '#C8CDD8',
+    marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   reqDotMet: {
-    backgroundColor: Colors.status.success,
-    borderColor: Colors.status.success,
+    backgroundColor: '#52C07C',
+    borderColor: '#52C07C',
   },
   reqText: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.muted,
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: '#9B9FB0',
   },
   reqTextMet: {
-    color: Colors.text.secondary,
+    color: '#1A1A2E',
+    fontFamily: 'Nunito_600SemiBold',
   },
-  updateBtn: {
-    marginTop: Layout.spacing.md,
-    marginBottom: Layout.spacing.md,
+
+  // ── Update button ─────────────────────────────────────────────────────────
+  btn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 8,
   },
+  btnGradient: {
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: 'Nunito_700Bold',
+    letterSpacing: 0.4,
+  },
+
+  // ── Footer note ───────────────────────────────────────────────────────────
   footerNote: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
+    fontSize: 11,
+    color: '#9B9FB0',
     textAlign: 'center',
     lineHeight: 18,
+    marginTop: 16,
+  },
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  footer: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontSize: 10,
+    letterSpacing: 1.8,
+    color: Colors.text.muted,
+    fontFamily: 'Nunito_600SemiBold',
   },
 });

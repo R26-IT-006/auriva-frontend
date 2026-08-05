@@ -4,6 +4,7 @@ import {
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   useWindowDimensions,
   Animated,
@@ -23,6 +24,47 @@ import { Layout } from '../../../constants/layout';
 
 const CORRECT_GIF = require('../../../../assets/feedback/correct.gif');
 const WRONG_GIF   = require('../../../../assets/feedback/wrong.gif');
+
+function OptionCard({ option, cardW, cardH, imgSize, locked, isCorrect, isWrong, cardSurface, cardOutline, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    if (locked) return;
+    Animated.spring(scale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
+
+  return (
+    <Animated.View
+      style={[
+        styles.optionCard,
+        {
+          width:  cardW,
+          height: cardH,
+          backgroundColor: isCorrect ? '#C8F0CC' : isWrong ? '#FFD6D6' : cardSurface,
+          borderColor:      isCorrect ? '#4CAF50' : isWrong ? '#F44336' : cardOutline,
+          transform: [{ scale }],
+        },
+        isCorrect && styles.optionCardCorrect,
+        isWrong   && styles.optionCardWrong,
+      ]}
+    >
+      <Pressable
+        disabled={locked}
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={styles.optionTouchable}
+      >
+        <View style={{ width: imgSize, height: imgSize }}>
+          <Image source={option.real} style={styles.optionImage} resizeMode="contain" />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -286,31 +328,19 @@ export default function ConceptMatchScreen({ route, navigation }) {
               const isWrong   = isTapped && feedbackResult === 'wrong';
 
               return (
-                <View
+                <OptionCard
                   key={option.key}
-                  style={[
-                    styles.optionCard,
-                    {
-                      width:           CARD_W,
-                      height:          CARD_H,
-                      backgroundColor: isCorrect ? '#C8F0CC' : isWrong ? '#FFD6D6' : theme.cardSurface,
-                      borderColor:     isCorrect ? '#4CAF50' : isWrong ? '#F44336' : theme.cardOutline,
-                    },
-                    isCorrect && styles.optionCardCorrect,
-                    isWrong   && styles.optionCardWrong,
-                  ]}
-                >
-                  <TouchableOpacity
-                    activeOpacity={locked ? 1 : 0.8}
-                    disabled={locked}
-                    onPress={() => handleOptionTap(option)}
-                    style={styles.optionTouchable}
-                  >
-                    <View style={{ width: IMG_SIZE, height: IMG_SIZE }}>
-                      <Image source={option.real} style={styles.optionImage} resizeMode="contain" />
-                    </View>
-                  </TouchableOpacity>
-                </View>
+                  option={option}
+                  cardW={CARD_W}
+                  cardH={CARD_H}
+                  imgSize={IMG_SIZE}
+                  locked={locked}
+                  isCorrect={isCorrect}
+                  isWrong={isWrong}
+                  cardSurface={theme.cardSurface}
+                  cardOutline={theme.cardOutline}
+                  onPress={() => handleOptionTap(option)}
+                />
               );
             })}
           </View>
@@ -410,10 +440,10 @@ const styles = StyleSheet.create({
     borderWidth: 3.5,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
   },
   optionCardCorrect: {
     shadowColor: '#4CAF50',

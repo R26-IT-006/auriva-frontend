@@ -150,7 +150,7 @@ export default function LoginScreen({ navigation }) {
                 label={role === 'teacher' ? 'Teacher ID' : 'Username'}
                 value={identifier}
                 onChangeText={(v) => { setIdentifier(v); setErrors((e) => ({ ...e, identifier: null })); }}
-                placeholder={role === 'teacher' ? 'e.g. T-1024' : 'Enter your username'}
+                placeholder="Enter your username"
                 error={errors.identifier}
               />
               <Input
@@ -190,7 +190,7 @@ export default function LoginScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.footer}>SECURE EDUCATOR ACCESS  •  AURIVA 2025</Text>
+            <Text style={styles.footer}>AURIVA 2026</Text>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

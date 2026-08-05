@@ -111,8 +111,8 @@ export default function TeacherDetailScreen({ route, navigation }) {
 
   const isActive     = !teacher.is_first_login;
   const studentCount = teacher.students?.length ?? 0;
-  const capacityPct  = Math.round((studentCount / 3) * 100);
-  const dotColor     = studentCount >= 3 ? CORAL : studentCount > 0 ? AMBER : GREEN;
+  const capacityPct  = Math.round((studentCount / 5) * 100);
+  const dotColor     = studentCount >= 5 ? CORAL : studentCount >= 3 ? AMBER : GREEN;
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -199,10 +199,10 @@ export default function TeacherDetailScreen({ route, navigation }) {
                 <View style={styles.capacityLabelRow}>
                   <Text style={styles.capacityLabel}>Class Capacity</Text>
                   <View style={styles.capacityCountRow}>
-                    {[0, 1, 2].map((i) => (
+                    {[0, 1, 2, 3, 4].map((i) => (
                       <View key={i} style={[styles.capDot, { backgroundColor: i < studentCount ? dotColor : BORDER }]} />
                     ))}
-                    <Text style={[styles.capacityCount, { color: dotColor }]}>{studentCount}/3</Text>
+                    <Text style={[styles.capacityCount, { color: dotColor }]}>{studentCount}/5</Text>
                   </View>
                 </View>
                 <View style={styles.capacityTrack}>
@@ -240,7 +240,7 @@ export default function TeacherDetailScreen({ route, navigation }) {
                   ))}
 
                   {/* Empty slots */}
-                  {Array.from({ length: 3 - studentCount }).map((_, i) => (
+                  {Array.from({ length: 5 - studentCount }).map((_, i) => (
                     <React.Fragment key={`empty-${i}`}>
                       <View style={styles.studentDivider} />
                       <View style={[styles.studentRow, styles.studentRowEmpty]}>

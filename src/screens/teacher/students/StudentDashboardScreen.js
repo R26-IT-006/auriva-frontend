@@ -208,20 +208,21 @@ const styles = StyleSheet.create({
   heroVideo:      { width: 210, height: 210 },
 
   // ── Module cards ──────────────────────────────────────────────────────────
-  modulesRow: { flex: 1, flexDirection: 'row', gap: 16 },
+  modulesRow: { flex: 1, flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
   moduleCard: {
     flex: 1,
+    height: 190,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 18,
-    paddingVertical: 28,
+    gap: 14,
+    paddingVertical: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
-  moduleIcon:  { width: 130, height: 130 },
+  moduleIcon:  { width: 100, height: 100 },
   moduleLabel: {
     fontSize: 15, fontFamily: 'Nunito_600SemiBold',
     color: '#1A2E3B', textAlign: 'center', paddingHorizontal: 10,

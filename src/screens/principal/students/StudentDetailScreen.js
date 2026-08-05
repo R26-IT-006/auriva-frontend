@@ -109,7 +109,7 @@ export default function StudentDetailScreen({ route, navigation }) {
     return unsub;
   }, [fetch, navigation]);
 
-  const availableTeachers = teachers.filter((t) => (t.students?.length ?? 0) < 3);
+  const availableTeachers = teachers.filter((t) => (t.students?.length ?? 0) < 5);
 
   const filteredModalTeachers = availableTeachers.filter((t) => {
     const q = modalSearch.trim().toLowerCase();
@@ -392,7 +392,7 @@ export default function StudentDetailScreen({ route, navigation }) {
                 ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
                 renderItem={({ item: t }) => {
                   const count = t.students?.length ?? 0;
-                  const dotColor = count >= 2 ? AMBER : GREEN;
+                  const dotColor = count >= 4 ? AMBER : GREEN;
                   return (
                     <View style={styles.teacherPickRow}>
                       <Avatar name={t.full_name} uri={t.profile_photo_url} size={44} />
@@ -400,10 +400,10 @@ export default function StudentDetailScreen({ route, navigation }) {
                         <Text style={styles.teacherPickName}>{t.full_name}</Text>
                         <Text style={styles.teacherPickCode}>{t.teacher_code}</Text>
                         <View style={styles.slotDotRow}>
-                          {[0, 1, 2].map((i) => (
+                          {[0, 1, 2, 3, 4].map((i) => (
                             <View key={i} style={[styles.slotDot, { backgroundColor: i < count ? dotColor : BORDER }]} />
                           ))}
-                          <Text style={[styles.slotLabel, { color: dotColor }]}>{count}/3 slots used</Text>
+                          <Text style={[styles.slotLabel, { color: dotColor }]}>{count}/5 slots used</Text>
                         </View>
                       </View>
                       <TouchableOpacity

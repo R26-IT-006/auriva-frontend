@@ -16,7 +16,6 @@ import { useAuthStore } from '../../store/authStore';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 // ── palette ─────────────────────────────────────────────────────────────────
-const PULSE_BG   = '#1A3A4A';
 const GREEN      = '#3EBF78';
 const GREEN_L    = '#E0F7EC';
 const BLUE       = '#4A8FD8';
@@ -98,21 +97,6 @@ function ActionTile({ icon, iconBg, iconColor, label, sub, onPress }) {
   );
 }
 
-// ── Pulse metric pill ─────────────────────────────────────────────────────────
-function PulsePill({ icon, value, label, highlight }) {
-  return (
-    <View style={styles.pulsePill}>
-      <View style={styles.pillIconBox}>
-        <Ionicons name={icon} size={15} color="rgba(255,255,255,0.65)" />
-      </View>
-      <View>
-        <Text style={[styles.pillValue, highlight && { color: GREEN }]}>{value ?? '—'}</Text>
-        <Text style={styles.pillLabel}>{label}</Text>
-      </View>
-    </View>
-  );
-}
-
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function PrincipalDashboardScreen({ navigation }) {
   const [stats,         setStats]         = useState(null);
@@ -184,26 +168,6 @@ export default function PrincipalDashboardScreen({ navigation }) {
           <TouchableOpacity style={styles.logoutBtn} onPress={() => setLogoutVisible(true)} activeOpacity={0.75}>
             <Ionicons name="log-out-outline" size={18} color={TEXT_MUTED} />
           </TouchableOpacity>
-        </View>
-
-        {/* ── School Pulse ── */}
-        <View style={styles.pulseBar}>
-          <View style={styles.pulseLabel}>
-            <Ionicons name="pulse" size={13} color={AMBER} />
-            <Text style={styles.pulseLabelTxt}>SCHOOL PULSE</Text>
-          </View>
-          <View style={styles.pillsRow}>
-            <PulsePill icon="people-outline"         value={tc}                             label="Faculty Total"   />
-            <View style={styles.pillDivider} />
-            <PulsePill icon="school-outline"         value={sc}                             label="Enrolled"        />
-            <View style={styles.pillDivider} />
-            <PulsePill
-              icon={systemOk ? 'checkmark-circle-outline' : 'alert-circle-outline'}
-              value={systemOk ? 'Healthy' : `${ua} pending`}
-              label="System Status"
-              highlight={systemOk}
-            />
-          </View>
         </View>
 
         {/* ── Today's Overview ── */}
@@ -361,61 +325,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F5F8',
     alignItems: 'center', justifyContent: 'center',
     marginTop: 4,
-  },
-
-  // ── School Pulse ──────────────────────────────────────────────────────────
-  pulseBar: {
-    backgroundColor: PULSE_BG,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  pulseLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexShrink: 0,
-  },
-  pulseLabelTxt: {
-    fontSize: 9,
-    fontFamily: 'Nunito_800ExtraBold',
-    color: AMBER,
-    letterSpacing: 1.2,
-  },
-  pillsRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 0,
-  },
-  pulsePill: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pillIconBox: {
-    width: 30, height: 30, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  pillValue: {
-    fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
-    color: '#FFFFFF',
-  },
-  pillLabel: {
-    fontSize: 10,
-    fontFamily: 'Nunito_400Regular',
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 1,
-  },
-  pillDivider: {
-    width: 1, height: 28,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginHorizontal: 12,
   },
 
   // ── Section ───────────────────────────────────────────────────────────────

@@ -174,7 +174,7 @@ export default function CreateStudentScreen({ navigation }) {
     setLoadingTeachers(true);
     try {
       const data = await principalApi.getTeachers();
-      setAvailableTeachers(data.filter((t) => (t.students?.length ?? 0) < 3));
+      setAvailableTeachers(data.filter((t) => (t.students?.length ?? 0) < 5));
     } catch {
       setAvailableTeachers([]);
     } finally {
@@ -477,7 +477,7 @@ export default function CreateStudentScreen({ navigation }) {
             <View style={{ flex: 1 }}>
               <Text style={styles.assignTitle}>Assign to a Teacher</Text>
               <Text style={styles.assignSub}>
-                Only teachers with fewer than 3 students are shown. You can skip this and assign later.
+                Only teachers with fewer than 5 students are shown. You can skip this and assign later.
               </Text>
             </View>
           </View>
@@ -495,7 +495,7 @@ export default function CreateStudentScreen({ navigation }) {
                   const count    = t.students?.length ?? 0;
                   const selected = selectedTeacherId === t.tid;
                   const initials = t.full_name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-                  const slotColor = count === 0 ? GREEN : count === 1 ? BLUE : AMBER;
+                  const slotColor = count <= 1 ? GREEN : count <= 3 ? BLUE : AMBER;
                   return (
                     <TouchableOpacity
                       key={t.tid}
@@ -519,11 +519,11 @@ export default function CreateStudentScreen({ navigation }) {
                           <View style={styles.teacherCodePill}>
                             <Text style={styles.teacherCodeText}>{t.teacher_code}</Text>
                           </View>
-                          <Text style={styles.teacherSlotText}>{count}/3 students</Text>
+                          <Text style={styles.teacherSlotText}>{count}/5 students</Text>
                         </View>
                         {/* Capacity dots */}
                         <View style={styles.capacityDots}>
-                          {[0, 1, 2].map((i) => (
+                          {[0, 1, 2, 3, 4].map((i) => (
                             <View
                               key={i}
                               style={[
@@ -533,7 +533,7 @@ export default function CreateStudentScreen({ navigation }) {
                             />
                           ))}
                           <Text style={[styles.capacityLabel, { color: slotColor }]}>
-                            {3 - count} slot{3 - count !== 1 ? 's' : ''} available
+                            {5 - count} slot{5 - count !== 1 ? 's' : ''} available
                           </Text>
                         </View>
                       </View>
