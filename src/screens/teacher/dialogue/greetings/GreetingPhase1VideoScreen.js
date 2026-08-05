@@ -39,7 +39,7 @@ const WORD_VIDEOS = {
     { source: require('../../../../../assets/dialogue-videos/words/greetings/good_morning/Good-morning_V3.mp4'), caption: 'Saman meets his friend at the park in the morning.\nHe says "Good Morning"' },
   ],
   good_afternoon: [
-    { source: PLACEHOLDER_V1, caption: 'Anjalie comes home after school.\nShe greets her mum: "Good Afternoon"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_afternoon/Good-afternoon_V1.mp4'), caption: 'Anjalie comes home after school.\nShe greets her mum: "Good Afternoon"' },
     { source: PLACEHOLDER_V2, caption: 'Saman meets his teacher after lunch.\nHe says "Good Afternoon"' },
     { source: PLACEHOLDER_V3, caption: 'Anjalie sees a neighbour in the afternoon.\nShe says "Good Afternoon"' },
   ],
