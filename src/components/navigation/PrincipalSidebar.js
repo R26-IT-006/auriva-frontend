@@ -1,8 +1,10 @@
-import { useContext, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
+  Modal,
   StyleSheet,
   Animated,
 } from 'react-native';
@@ -38,6 +40,23 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
   const user   = useAuthStore((s) => s.user);
   const { isOpen, toggle, sidebarAnim } = useContext(SidebarContext);
   const [signOutVisible, setSignOutVisible] = useState(false);
+
+  // Collapsed-mode tooltip: shown on hover (mouse/trackpad) or long-press (touch).
+  // Rendered in a Modal so it isn't clipped by the sidebar's overflow:hidden container.
+  const [tooltip, setTooltip] = useState(null); // { label, x, y }
+  const itemRefs = useRef({});
+
+  function showTooltip(key, label) {
+    if (isOpen) return;
+    const node = itemRefs.current[key];
+    if (!node?.measureInWindow) return;
+    node.measureInWindow((x, y, width, height) => {
+      setTooltip({ label, x: x + width, y: y + height / 2 });
+    });
+  }
+  function hideTooltip() {
+    setTooltip(null);
+  }
 
   // Animated values for label fade/slide
   const labelOpacity = sidebarAnim.interpolate({
@@ -99,11 +118,16 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         {NAV_ITEMS.map((item) => {
           const active = activeRoute === item.name;
           return (
-            <TouchableOpacity
+            <Pressable
               key={item.name}
+              ref={(node) => { itemRefs.current[item.name] = node; }}
               onPress={() => navRef.current?.navigate(item.name)}
-              activeOpacity={0.75}
-              style={[styles.row, active && styles.rowActive]}
+              onLongPress={() => showTooltip(item.name, item.label)}
+              onPressOut={hideTooltip}
+              onHoverIn={() => showTooltip(item.name, item.label)}
+              onHoverOut={hideTooltip}
+              delayLongPress={350}
+              style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && { opacity: 0.75 }]}
             >
               {/* Left accent bar */}
               <View style={[styles.accentBar, active && { backgroundColor: item.color }]} />
@@ -128,7 +152,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
                   <View style={[styles.activeDotInner, { backgroundColor: item.color }]} />
                 </Animated.View>
               )}
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </View>
@@ -136,10 +160,15 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
       {/* ── Bottom ── */}
       <View style={styles.divider} />
 
-      <TouchableOpacity
+      <Pressable
+        ref={(node) => { itemRefs.current.signOut = node; }}
         onPress={() => setSignOutVisible(true)}
-        activeOpacity={0.75}
-        style={styles.signOutRow}
+        onLongPress={() => showTooltip('signOut', 'Sign Out')}
+        onPressOut={hideTooltip}
+        onHoverIn={() => showTooltip('signOut', 'Sign Out')}
+        onHoverOut={hideTooltip}
+        delayLongPress={350}
+        style={({ pressed }) => [styles.signOutRow, pressed && { opacity: 0.75 }]}
       >
         <View style={styles.iconSlot}>
           <Ionicons name="log-out-outline" size={ICON_SZ} color="#F26B6B" />
@@ -147,7 +176,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         <Animated.Text numberOfLines={1} style={[styles.signOutLabel, ls]}>
           Sign Out
         </Animated.Text>
-      </TouchableOpacity>
+      </Pressable>
 
       <ConfirmDialog
         visible={signOutVisible}
@@ -160,6 +189,18 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         onConfirm={logout}
         onCancel={() => setSignOutVisible(false)}
       />
+
+      {/* ── Collapsed-mode tooltip ── */}
+      {tooltip && (
+        <Modal transparent visible animationType="none" onRequestClose={hideTooltip}>
+          <View style={styles.tooltipLayer} pointerEvents="none">
+            <View style={[styles.tooltipBubble, { left: tooltip.x + 8, top: tooltip.y - 14 }]}>
+              <View style={styles.tooltipArrow} />
+              <Text style={styles.tooltipText} numberOfLines={1}>{tooltip.label}</Text>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -292,5 +333,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_700Bold',
     color: '#F26B6B',
     flexShrink: 1,
+  },
+
+  // ── Collapsed-mode tooltip ───────────────────────────────────────────────
+  tooltipLayer: { flex: 1 },
+  tooltipBubble: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#12303F',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    left: -4,
+    width: 8, height: 8,
+    backgroundColor: '#12303F',
+    transform: [{ rotate: '45deg' }],
+  },
+  tooltipText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_700Bold',
+    color: '#FFFFFF',
   },
 });

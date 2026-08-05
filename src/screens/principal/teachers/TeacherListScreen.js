@@ -82,8 +82,8 @@ function ActionBtn({ icon, color, bg, onPress }) {
 function TableRow({ teacher, index, onView, onEdit, onDelete }) {
   const isActive = !teacher.is_first_login;
   const count    = teacher.students?.length ?? 0;
-  const isFull   = count >= 3;
-  const dotColor = isFull ? CORAL : count > 0 ? AMBER : GREEN;
+  const isFull   = count >= 5;
+  const dotColor = isFull ? CORAL : count >= 3 ? AMBER : GREEN;
 
   return (
     <View style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
@@ -111,9 +111,9 @@ function TableRow({ teacher, index, onView, onEdit, onDelete }) {
 
       {/* Students */}
       <View style={[styles.cell, { flex: COLS[4].flex, flexDirection: 'column', alignItems: 'center', gap: 3 }]}>
-        <Text style={[styles.capCount, { color: dotColor }]}>{count}/3</Text>
+        <Text style={[styles.capCount, { color: dotColor }]}>{count}/5</Text>
         <View style={styles.dotRow}>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <View key={i} style={[styles.dot, { backgroundColor: i < count ? dotColor : BORDER }]} />
           ))}
         </View>

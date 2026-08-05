@@ -6,6 +6,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,17 +20,68 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 const TEAL      = '#3A9BA8';
 const TEAL_GRAD = ['#4AABB8', '#52C07C'];
-const AMBER     = '#F0A940';
 
-function StatCard({ icon, value, label, color, bg }) {
+function KpiTile({ icon, value, label, colors }) {
   return (
-    <View style={styles.statCard}>
-      <View style={[styles.statIconBox, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={20} color={color} />
+    <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.kpiTile}>
+      <Ionicons
+        name={icon}
+        size={64}
+        color="rgba(255,255,255,0.16)"
+        style={styles.kpiWatermark}
+      />
+      <View style={styles.kpiIconBox}>
+        <Ionicons name={icon} size={18} color="#FFF" />
       </View>
-      <Text style={styles.statValue}>{value ?? '—'}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.kpiValue}>{value ?? '—'}</Text>
+      <Text style={styles.kpiLabel}>{label}</Text>
+    </LinearGradient>
+  );
+}
+
+function scoreColor(score) {
+  if (score == null) return '#C8CDD8';
+  if (score >= 0.75) return '#52C07C';
+  if (score >= 0.45) return '#F0A940';
+  return '#E05C48';
+}
+
+function ScoreBar({ score }) {
+  const pct = score != null ? Math.round(score * 100) : null;
+  const color = scoreColor(score);
+  return (
+    <View style={styles.scoreBarWrap}>
+      <View style={styles.scoreBarTrack}>
+        <View style={[styles.scoreBarFill, { width: `${pct ?? 0}%`, backgroundColor: color }]} />
+      </View>
+      <Text style={[styles.scoreBarText, { color }]}>{pct != null ? `${pct}%` : '—'}</Text>
     </View>
+  );
+}
+
+function ProficiencyRow({ student, index, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[styles.profRow, index % 2 === 1 && styles.profRowAlt]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <View style={[styles.avatarRing, { borderColor: scoreColor(student.avgScore) }]}>
+        <Avatar name={student.fullName} uri={student.profilePhotoUrl} size={32} />
+      </View>
+      <Text style={styles.profName} numberOfLines={1}>{student.fullName}</Text>
+
+      <View style={styles.profMasteredPill}>
+        <Ionicons name="ribbon-outline" size={12} color="#52C07C" />
+        <Text style={styles.profMasteredText}>{student.conceptsMastered}/{student.conceptsAssigned}</Text>
+      </View>
+
+      <ScoreBar score={student.avgScore} />
+
+      <Text style={styles.profLastActive} numberOfLines={1}>
+        {student.lastSessionAt ? timeAgo(student.lastSessionAt) : 'No sessions yet'}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -47,6 +99,38 @@ function ActionCard({ icon, label, sub, color, bg, onPress }) {
         <Ionicons name="chevron-forward" size={16} color={color} />
       </View>
     </TouchableOpacity>
+  );
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function formatConceptLabel(conceptKey) {
+  if (!conceptKey) return 'a concept';
+  return conceptKey.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function ActivityRow({ icon, iconColor, iconBg, title, subtitle, time }) {
+  return (
+    <View style={styles.activityRow}>
+      <View style={[styles.activityIconBox, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={16} color={iconColor} />
+      </View>
+      <View style={styles.activityText}>
+        <Text style={styles.activityTitle} numberOfLines={1}>{title}</Text>
+        <Text style={styles.activitySubtitle} numberOfLines={1}>{subtitle}</Text>
+      </View>
+      <Text style={styles.activityTime}>{time}</Text>
+    </View>
   );
 }
 
@@ -71,8 +155,11 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const profile = data?.profile;
-  const stats   = data?.stats;
+  const profile            = data?.profile;
+  const stats               = data?.stats;
+  const proficiency         = data?.proficiency ?? [];
+  const recentSessions      = data?.recentSessions ?? [];
+  const recentAchievements  = data?.recentAchievements ?? [];
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -80,6 +167,21 @@ export default function TeacherDashboardScreen({ navigation }) {
   const engagementDisplay = stats?.avgEngagement != null
     ? `${Math.round(stats.avgEngagement * 100)}%`
     : null;
+
+  if (!data) {
+    return (
+      <LinearGradient
+        colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']}
+        style={styles.root}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <SafeAreaView style={[styles.safe, styles.loadingCenter]} edges={['top', 'bottom']}>
+          <ActivityIndicator color={TEAL} size="large" />
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -147,32 +249,59 @@ export default function TeacherDashboardScreen({ navigation }) {
             </View>
           </View>
 
-          {/* ── Stats row — 3 cards ── */}
-          <View style={styles.statsRow}>
-            <StatCard
+          {/* ── KPI tiles ── */}
+          <View style={styles.kpiRow}>
+            <KpiTile
               icon="people-outline"
-              value={stats?.totalStudents}
+              value={stats?.totalStudents ?? '—'}
               label="Students"
-              color={TEAL}
-              bg="#D6F0F4"
+              colors={['#4AABB8', '#3A9BA8']}
             />
-            <View style={styles.statDivider} />
-            <StatCard
+            <KpiTile
               icon="checkmark-circle-outline"
-              value={stats?.conceptsMastered}
+              value={stats?.conceptsMastered ?? '—'}
               label="Mastered"
-              color="#52C07C"
-              bg="#DCF5E8"
+              colors={['#5FCB8C', '#3FAE6F']}
             />
-            <View style={styles.statDivider} />
-            <StatCard
+            <KpiTile
               icon="pulse-outline"
-              value={engagementDisplay}
+              value={engagementDisplay ?? '—'}
               label="Engagement"
-              color={AMBER}
-              bg="#FDF0D6"
+              colors={['#F5B85B', '#E89A2E']}
             />
           </View>
+
+          {/* ── Students proficiency ── */}
+          <Text style={styles.sectionTitle}>Students Proficiency</Text>
+          {proficiency.length > 0 ? (
+            <View style={styles.listCard}>
+              <View style={styles.profHeaderRow}>
+                <Text style={[styles.profHeaderText, { flex: 1, marginLeft: 48 }]}>Student</Text>
+                <Text style={[styles.profHeaderText, { width: 64, textAlign: 'center' }]}>Mastered</Text>
+                <Text style={[styles.profHeaderText, { width: 90, textAlign: 'center' }]}>Avg Score</Text>
+                <Text style={[styles.profHeaderText, { width: 88, textAlign: 'right' }]}>Last Active</Text>
+              </View>
+              {proficiency.map((s, index) => (
+                <ProficiencyRow
+                  key={s.studentId}
+                  student={s}
+                  index={index}
+                  onPress={() => navigation.navigate('Students', {
+                    screen: 'TeacherStudentDetail',
+                    params: { student: { sid: s.studentId, full_name: s.fullName, profile_photo_url: s.profilePhotoUrl } },
+                  })}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="people-outline" size={26} color={TEAL} />
+              </View>
+              <Text style={styles.emptyTitle}>No students yet</Text>
+              <Text style={styles.emptySub}>Once students are assigned to you, their progress will show up here.</Text>
+            </View>
+          )}
 
           {/* ── Quick actions ── */}
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -186,6 +315,46 @@ export default function TeacherDashboardScreen({ navigation }) {
               onPress={() => navigation.navigate('Students')}
             />
           </View>
+
+          {/* ── Recent achievements ── */}
+          {recentAchievements.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Recent Achievements</Text>
+              <View style={styles.listCard}>
+                {recentAchievements.map((a, i) => (
+                  <ActivityRow
+                    key={i}
+                    icon="ribbon-outline"
+                    iconColor="#52C07C"
+                    iconBg="#DCF5E8"
+                    title={`${a.studentName} mastered ${formatConceptLabel(a.conceptKey)}`}
+                    subtitle={formatConceptLabel(a.categoryKey)}
+                    time={timeAgo(a.passedAt)}
+                  />
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* ── Recent activity ── */}
+          {recentSessions.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              <View style={styles.listCard}>
+                {recentSessions.map((s, i) => (
+                  <ActivityRow
+                    key={i}
+                    icon={s.isActive ? 'radio-button-on-outline' : 'time-outline'}
+                    iconColor={TEAL}
+                    iconBg="#D6F0F4"
+                    title={`Session with ${s.studentName}`}
+                    subtitle={s.isActive ? 'In progress' : 'Completed'}
+                    time={timeAgo(s.startedAt)}
+                  />
+                ))}
+              </View>
+            </>
+          )}
 
           {/* ── Banner ── */}
           <TouchableOpacity
@@ -231,6 +400,7 @@ export default function TeacherDashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
+  loadingCenter: { alignItems: 'center', justifyContent: 'center' },
   scroll: {
     padding: Layout.spacing.lg,
     paddingBottom: Layout.spacing.xxl,
@@ -310,42 +480,161 @@ const styles = StyleSheet.create({
     color: TEAL,
   },
 
-  // ── Stats row ─────────────────────────────────────────────────────────────
-  statsRow: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+  // ── KPI tiles ─────────────────────────────────────────────────────────────
+  kpiRow: {
     flexDirection: 'row',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    shadowColor: TEAL,
+    gap: 10,
+  },
+  kpiTile: {
+    flex: 1,
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    gap: 6,
+    overflow: 'hidden',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
     elevation: 3,
   },
-  statCard: { flex: 1, alignItems: 'center', gap: 5 },
-  statIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  kpiWatermark: {
+    position: 'absolute',
+    right: -12,
+    bottom: -14,
+  },
+  kpiIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
   },
-  statValue: {
-    fontSize: 24,
+  kpiValue: {
+    fontSize: 26,
     fontFamily: 'Nunito_900Black',
+    color: '#FFF',
+  },
+  kpiLabel: {
+    fontSize: 11,
+    fontFamily: 'Nunito_700Bold',
+    color: 'rgba(255,255,255,0.85)',
+  },
+
+  // ── Students proficiency table ───────────────────────────────────────────
+  profHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  profHeaderText: {
+    fontSize: 10,
+    fontFamily: 'Nunito_700Bold',
+    color: '#9BAFA8',
+    letterSpacing: 0.5,
+  },
+  profRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F4F2',
+  },
+  profRowAlt: {
+    backgroundColor: '#FAFCFB',
+  },
+  avatarRing: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profName: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
     color: '#1A3D2E',
   },
-  statLabel: {
+  profMasteredPill: {
+    width: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  profMasteredText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_700Bold',
+    color: '#3FAE6F',
+  },
+  scoreBarWrap: {
+    width: 90,
+    alignItems: 'center',
+    gap: 3,
+  },
+  scoreBarTrack: {
+    width: '100%',
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EEF2F0',
+    overflow: 'hidden',
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  scoreBarText: {
+    fontSize: 10,
+    fontFamily: 'Nunito_700Bold',
+  },
+  profLastActive: {
+    width: 88,
     fontSize: 11,
     fontFamily: 'Nunito_600SemiBold',
     color: '#6B8A80',
+    textAlign: 'right',
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#E8F0EC',
-    marginHorizontal: 8,
+
+  // ── Empty states ──────────────────────────────────────────────────────────
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  emptyIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#D6F0F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontFamily: 'Nunito_700Bold',
+    color: '#1A3D2E',
+    marginBottom: 4,
+  },
+  emptySub: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: '#6B8A80',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 
   // ── Section title ─────────────────────────────────────────────────────────
@@ -396,6 +685,51 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // ── Activity / achievements lists ────────────────────────────────────────
+  listCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  activityIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  activityText: { flex: 1, gap: 1 },
+  activityTitle: {
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
+    color: '#1A3D2E',
+  },
+  activitySubtitle: {
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+    color: '#6B8A80',
+  },
+  activityTime: {
+    fontSize: 11,
+    fontFamily: 'Nunito_600SemiBold',
+    color: '#9BAFA8',
+    flexShrink: 0,
   },
 
   // ── Banner ────────────────────────────────────────────────────────────────

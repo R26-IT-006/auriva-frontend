@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   Animated,
   useWindowDimensions,
@@ -23,8 +23,16 @@ const AVATAR_CONGRATS_IMAGES = {
 };
 
 const STAR_COUNT = 8;
+const CONFETTI_GLYPHS = ['⭐', '✨', '🎉'];
+const AUTO_ADVANCE_MS = 4500;
 
-function FallingStar({ delay, startX }) {
+function getEncouragement(correctCount) {
+  if (correctCount >= 3) return 'Perfect score! You really know this one.';
+  if (correctCount === 2) return 'So close — great effort!';
+  return "Nice try — let's practice this one more.";
+}
+
+function FallingStar({ delay, startX, glyph, size, fallDistance, duration }) {
   const translateY = useRef(new Animated.Value(-20)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
   const rotate     = useRef(new Animated.Value(0)).current;
@@ -34,9 +42,9 @@ function FallingStar({ delay, startX }) {
       Animated.loop(
         Animated.sequence([
           Animated.parallel([
-            Animated.timing(translateY, { toValue: 140, duration: 1900, useNativeDriver: true }),
-            Animated.timing(opacity,    { toValue: 1,   duration: 300,  useNativeDriver: true }),
-            Animated.timing(rotate,     { toValue: 1,   duration: 1900, useNativeDriver: true }),
+            Animated.timing(translateY, { toValue: fallDistance, duration, useNativeDriver: true }),
+            Animated.timing(opacity,    { toValue: 1,            duration: 300, useNativeDriver: true }),
+            Animated.timing(rotate,     { toValue: 1,            duration, useNativeDriver: true }),
           ]),
           Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
           Animated.parallel([
@@ -56,10 +64,10 @@ function FallingStar({ delay, startX }) {
     <Animated.Text
       style={[
         styles.fallingStar,
-        { left: startX, top: 0, transform: [{ translateY }, { rotate: spin }], opacity },
+        { left: startX, top: 0, fontSize: size, transform: [{ translateY }, { rotate: spin }], opacity },
       ]}
     >
-      ⭐
+      {glyph}
     </Animated.Text>
   );
 }
@@ -82,6 +90,15 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
   ];
+  const btnScale     = useRef(new Animated.Value(1)).current;
+  const autoProgress = useRef(new Animated.Value(0)).current;
+
+  function btnPressIn() {
+    Animated.spring(btnScale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function btnPressOut() {
+    Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
 
   useEffect(() => {
     Animated.parallel([
@@ -121,7 +138,13 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
       );
     }, 600);
 
-    const t = setTimeout(() => handleContinue(), 4500);
+    Animated.timing(autoProgress, {
+      toValue: 1,
+      duration: AUTO_ADVANCE_MS,
+      useNativeDriver: false,
+    }).start();
+
+    const t = setTimeout(() => handleContinue(), AUTO_ADVANCE_MS);
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -143,8 +166,12 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
   }
 
   const fallingStars = Array.from({ length: STAR_COUNT }, (_, i) => ({
-    delay:  i * 260,
-    startX: (width / STAR_COUNT) * i + Math.random() * 18,
+    delay:        i * 260,
+    startX:       (width / STAR_COUNT) * i + Math.random() * 18,
+    glyph:        CONFETTI_GLYPHS[i % CONFETTI_GLYPHS.length],
+    size:         18 + Math.random() * 14,
+    fallDistance: 120 + Math.random() * 60,
+    duration:     1600 + Math.random() * 700,
   }));
 
   const avatarSource = student?.avatar_key ? AVATAR_CONGRATS_IMAGES[student.avatar_key] : null;
@@ -160,7 +187,15 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           {fallingStars.map((s, i) => (
-            <FallingStar key={i} delay={s.delay} startX={s.startX} />
+            <FallingStar
+              key={i}
+              delay={s.delay}
+              startX={s.startX}
+              glyph={s.glyph}
+              size={s.size}
+              fallDistance={s.fallDistance}
+              duration={s.duration}
+            />
           ))}
         </View>
 
@@ -183,9 +218,17 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
               { backgroundColor: theme.cardSurface, transform: [{ scale: cardScale }], opacity: cardOpacity },
             ]}
           >
-            <Animated.Text style={[styles.burst, { transform: [{ scale: burstScale }] }]}>
-              🌟
-            </Animated.Text>
+            <View style={styles.burstWrap}>
+              <Animated.View
+                style={[
+                  styles.burstGlow,
+                  { backgroundColor: theme.cardOutline, transform: [{ scale: burstScale }] },
+                ]}
+              />
+              <Animated.Text style={[styles.burst, { transform: [{ scale: burstScale }] }]}>
+                🌟
+              </Animated.Text>
+            </View>
 
             <Text style={[styles.heading, { color: theme.headingText }]}>
               {correctCount >= 3 ? 'Well Done!' : 'Good Job!'}
@@ -217,19 +260,40 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
                 Correct!
               </Text>
             </View>
+
+            <Text style={[styles.encouragement, { color: theme.headingText }]}>
+              {getEncouragement(correctCount)}
+            </Text>
           </Animated.View>
 
         </View>
 
-        <TouchableOpacity
-          style={[styles.continueBtn, { backgroundColor: theme.button }]}
-          onPress={handleContinue}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>
-            Keep Going!  🎊
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.btnStack}>
+          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+            <Pressable
+              style={[styles.continueBtn, { backgroundColor: theme.button }]}
+              onPress={handleContinue}
+              onPressIn={btnPressIn}
+              onPressOut={btnPressOut}
+            >
+              <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>
+                Keep Going!  🎊
+              </Text>
+            </Pressable>
+          </Animated.View>
+
+          <View style={styles.autoTrack}>
+            <Animated.View
+              style={[
+                styles.autoFill,
+                {
+                  backgroundColor: theme.button,
+                  width: autoProgress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                },
+              ]}
+            />
+          </View>
+        </View>
 
       </SafeAreaView>
     </LinearGradient>
@@ -267,9 +331,20 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
+  burstWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  burstGlow: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    opacity: 0.25,
+  },
   burst: {
     fontSize: 44,
-    marginBottom: 4,
   },
 
   heading: {
@@ -304,6 +379,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Nunito_600SemiBold',
     opacity: 0.65,
+  },
+
+  encouragement: {
+    fontSize: 13,
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 8,
+  },
+
+  btnStack: {
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  autoTrack: {
+    width: 120,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    overflow: 'hidden',
+  },
+  autoFill: {
+    height: '100%',
+    borderRadius: 3,
   },
 
   continueBtn: {

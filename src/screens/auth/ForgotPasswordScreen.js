@@ -121,7 +121,7 @@ export default function ForgotPasswordScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.footer}>SECURE EDUCATOR ACCESS  •  AURIVA 2025</Text>
+            <Text style={styles.footer}>AURIVA 2026</Text>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

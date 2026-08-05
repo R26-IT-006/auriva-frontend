@@ -1,10 +1,12 @@
-﻿import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
+  Animated,
   FlatList,
   useWindowDimensions,
 } from 'react-native';
@@ -29,6 +31,36 @@ const CATEGORIES = [
   { key: 'fruits',        label: 'Fruits',               image: require('../../../../assets/concepts/category-images/Fruits.png') },
 ];
 
+function CategoryCard({ item, cardW, cardH, theme, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={[
+          styles.card,
+          { width: cardW, height: cardH, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+        ]}
+      >
+        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
+        <Text style={styles.cardLabel} numberOfLines={2}>
+          {item.label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function ConceptCategoriesScreen({ route, navigation }) {
   const student = route.params?.student;
   const { width, height } = useWindowDimensions();
@@ -36,28 +68,21 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
 
   const theme       = getAvatarTheme(student?.avatar_key);
   const isLandscape = width > height;
-  const VISIBLE = isLandscape ? 4 : 2;
-  const H_PAD   = Layout.spacing.md;
-  const GAP     = 12;
-  const cardW   = (width - H_PAD * 2 - GAP * (VISIBLE - 1)) / VISIBLE;
+  const NUM_COLUMNS = isLandscape ? 4 : 3;
+  const H_PAD   = Layout.spacing.xl;
+  const GAP     = 22;
+  const cardW   = (width - H_PAD * 2 - GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
   const cardH   = cardW * 0.85;
-  const snapInterval = cardW + GAP;
 
-  function renderCard({ item, index }) {
+  function renderCard({ item }) {
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        style={[styles.card, { width: cardW, height: cardH, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}
+      <CategoryCard
+        item={item}
+        cardW={cardW}
+        cardH={cardH}
+        theme={theme}
         onPress={() => navigation.navigate('ConceptItems', { student, category: item })}
-      >
-        <View style={[styles.badge, { backgroundColor: theme.cardOutline }]}>
-          <Text style={styles.badgeText}>{index + 1}</Text>
-        </View>
-        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
-        <Text style={styles.cardLabel} numberOfLines={2}>
-          {item.label}
-        </Text>
-      </TouchableOpacity>
+      />
     );
   }
 
@@ -68,12 +93,16 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      {/* Decorative floating shapes */}
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
+
       <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
 
         {/* Top bar */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
             onPress={() => setGateVisible(true)}
             activeOpacity={0.7}
           >
@@ -81,7 +110,9 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
           </TouchableOpacity>
 
           <View style={styles.titleRow}>
-            <Ionicons name="bulb-outline" size={20} color={theme.headingText} />
+            <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="bulb" size={18} color="#FFF" />
+            </View>
             <Text style={[styles.title, { color: theme.headingText }]}>Concept Learning</Text>
           </View>
 
@@ -95,14 +126,13 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
         <FlatList
           data={CATEGORIES}
           keyExtractor={(item) => item.key}
-          horizontal
+          numColumns={NUM_COLUMNS}
+          key={NUM_COLUMNS}
           renderItem={renderCard}
           contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD }]}
-          ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
-          snapToInterval={snapInterval}
-          snapToAlignment="start"
-          decelerationRate="fast"
-          showsHorizontalScrollIndicator={false}
+          columnWrapperStyle={{ gap: GAP }}
+          ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
+          showsVerticalScrollIndicator={false}
         />
       </SafeAreaView>
 
@@ -119,6 +149,25 @@ const styles = StyleSheet.create({
   safe:      { flex: 1 },
   safeInner: { flex: 1 },
 
+  // ── Decorative background shapes ──────────────────────────────────────────
+  blob: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.08,
+  },
+  blobTopRight: {
+    width: 220,
+    height: 220,
+    top: -60,
+    right: -60,
+  },
+  blobBottomLeft: {
+    width: 260,
+    height: 260,
+    bottom: -80,
+    left: -80,
+  },
+
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -131,12 +180,29 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
     marginTop: 70,
+  },
+  titleIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
   },
   title: {
     fontSize: 32,
@@ -152,37 +218,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   list: {
-    alignItems: 'center',
     paddingVertical: Layout.spacing.md,
   },
   card: {
     borderRadius: 20,
-    borderWidth: 2.5,
+    borderWidth: 2,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
-    paddingTop: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
-  },
-  badge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontSize: 11,
-    fontFamily: 'Nunito_800ExtraBold',
-    color: '#FFF',
   },
   cardImage: {
     width: '70%',

@@ -4,6 +4,7 @@ import {
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   useWindowDimensions,
   Animated,
@@ -18,10 +19,53 @@ import { stopConceptAudio } from '../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItem, getConceptItemsForCategory } from '../../../constants/conceptData';
 import { conceptApi } from '../../../api/concept';
+import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
 
 const CORRECT_GIF = require('../../../../assets/feedback/correct.gif');
 const WRONG_GIF   = require('../../../../assets/feedback/wrong.gif');
+
+function LabelPill({ option, index, locked, isCorrect, isWrong, cardOutline, headingText, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const pop   = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.spring(pop, { toValue: 1, useNativeDriver: true, bounciness: 14, speed: 8 }).start();
+    }, 150 + index * 110);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function pressIn() {
+    if (locked) return;
+    Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
+
+  return (
+    <Animated.View style={{ transform: [{ scale: Animated.multiply(scale, pop) }] }}>
+      <Pressable
+        disabled={locked}
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={[
+          styles.labelPill,
+          {
+            backgroundColor: isCorrect ? '#C8F0CC' : isWrong ? '#FFD6D6' : '#FFFFFF',
+            borderColor:     isCorrect ? '#4CAF50' : isWrong ? '#F44336' : cardOutline,
+          },
+        ]}
+      >
+        <Text style={[styles.labelText, { color: isCorrect ? '#2E7D32' : isWrong ? '#C62828' : headingText }]}>
+          {option.label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -55,6 +99,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
   const [feedbackKey,    setFeedbackKey]    = useState(null);
   const [feedbackResult, setFeedbackResult] = useState(null);
   const [attempts,       setAttempts]       = useState([]);
+  const [gateVisible,    setGateVisible]    = useState(false);
   const feedbackSlide  = useRef(new Animated.Value(250)).current;
   const attemptStart   = useRef(Date.now());
 
@@ -193,7 +238,13 @@ export default function Tier2ActivityScreen({ route, navigation }) {
 
         {/* Top bar */}
         <View style={styles.topBar}>
-          <View style={{ width: 40 }} />
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            onPress={() => setGateVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          </TouchableOpacity>
           <View style={{ flex: 1 }} />
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
@@ -203,6 +254,11 @@ export default function Tier2ActivityScreen({ route, navigation }) {
             <Ionicons name="volume-high-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
+
+        {/* Question prompt */}
+        <Text style={[styles.question, { color: theme.headingText }]}>
+          What is this called?
+        </Text>
 
         {/* Attempt dots */}
         <View style={styles.attemptRow}>
@@ -237,29 +293,23 @@ export default function Tier2ActivityScreen({ route, navigation }) {
           <View style={styles.labelsContainer}>
             {!displayLabels ? (
               <ActivityIndicator size="large" color={theme.button} />
-            ) : displayLabels.map((option) => {
+            ) : displayLabels.map((option, index) => {
               const isTapped  = feedbackKey === option.key;
               const isCorrect = isTapped && feedbackResult === 'correct';
               const isWrong   = isTapped && feedbackResult === 'wrong';
 
               return (
-                <TouchableOpacity
+                <LabelPill
                   key={option.key}
-                  activeOpacity={locked ? 1 : 0.8}
-                  disabled={locked}
+                  option={option}
+                  index={index}
+                  locked={locked}
+                  isCorrect={isCorrect}
+                  isWrong={isWrong}
+                  cardOutline={theme.cardOutline}
+                  headingText={theme.headingText}
                   onPress={() => handleLabelTap(option)}
-                  style={[
-                    styles.labelPill,
-                    {
-                      backgroundColor: isCorrect ? '#C8F0CC' : isWrong ? '#FFD6D6' : '#FFFDE7',
-                      borderColor:     isCorrect ? '#4CAF50' : isWrong ? '#F44336' : theme.cardOutline,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.labelText, { color: isCorrect ? '#2E7D32' : isWrong ? '#C62828' : '#2C2C2C' }]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
+                />
               );
             })}
           </View>
@@ -281,6 +331,12 @@ export default function Tier2ActivityScreen({ route, navigation }) {
         </Animated.View>
 
       </SafeAreaView>
+
+      <ParentGateModal
+        visible={gateVisible}
+        onSuccess={() => { setGateVisible(false); navigation.goBack(); }}
+        onCancel={() => setGateVisible(false)}
+      />
     </LinearGradient>
   );
 }
@@ -302,6 +358,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  question: {
+    fontSize: 24,
+    fontFamily: 'Nunito_900Black',
+    letterSpacing: -0.4,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 8,
+    paddingHorizontal: 24,
   },
 
   attemptRow: {
@@ -342,10 +408,10 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 5,
   },
   labelText: {
     fontSize: 22,
