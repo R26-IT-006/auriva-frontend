@@ -4,6 +4,7 @@ import {
   Text,
   Image,
   TouchableOpacity,
+  Modal,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
@@ -13,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
+import { LETTER_CATEGORIES } from '../../constants/letterCategories';
+import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../constants/preWritingActivities';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -27,6 +30,60 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
   const [lowercaseProgress, setLowercaseProgress] = useState(0);
   const [uppercaseProgress, setUppercaseProgress] = useState(0);
+  const [pickerCase, setPickerCase] = useState(null);
+  const [pickerCategory, setPickerCategory] = useState(null);
+
+  const closePicker = () => { setPickerCase(null); setPickerCategory(null); };
+
+  // Before entering LetterWriting/UppercaseWriting, check whether the first
+  // letter the child is about to write shares a motor primitive (curved,
+  // diagonal, vertical/horizontal) with a pre-writing warm-up group — if so,
+  // detour through a short warm-up first. Falls straight through to the
+  // letter screen unchanged when there's nothing to warm up for (mixed
+  // letters, or an unrecognised/empty sequence), so a disabled/failed
+  // pre-writing feature never blocks normal practice.
+  const goToLetterScreen = (caseType, params, seq) => {
+    const screen = caseType === 'lowercase' ? 'LetterWriting' : 'UppercaseWriting';
+
+    const firstLetter = seq?.[0]?.letter
+      ?? LETTER_CATEGORIES[caseType]?.[params.motorProfile?.categoryOrder?.[0] ?? 'straight']?.[0]?.letter
+      ?? null;
+    const group = firstLetter ? getLetterPrimitiveGroup(firstLetter) : null;
+    const activities = group ? selectPreWritingActivities(group) : [];
+
+    if (activities.length > 0) {
+      navigation.navigate('PreWritingActivity', {
+        student, theme, activities, nextRoute: screen, nextParams: params,
+      });
+    } else {
+      navigation.navigate(screen, params);
+    }
+  };
+
+  const navigateToWriting = (ct, seq) => {
+    closePicker();
+    const params = ct === 'lowercase'
+      ? { student, theme, caseType: 'lowercase', letterSequence: seq }
+      : { student, theme, letterSequence: seq };
+    goToLetterScreen(ct, params, seq);
+  };
+
+  const handleCategoryPick = (category) => {
+    if (category === 'all') {
+      const ct = pickerCase;
+      closePicker();
+      const params = ct === 'lowercase'
+        ? { student, theme, caseType: 'lowercase', letterSequence, motorProfile }
+        : { student, theme, letterSequence, motorProfile };
+      goToLetterScreen(ct, params, letterSequence);
+    } else {
+      setPickerCategory(category);
+    }
+  };
+
+  const pickerLetters = (pickerCase && pickerCategory)
+    ? LETTER_CATEGORIES[pickerCase][pickerCategory] ?? []
+    : [];
 
   useFocusEffect(
     useCallback(() => {
@@ -39,7 +96,7 @@ export default function LetterPracticeScreen({ route, navigation }) {
     }, [student.sid])
   );
 
-  const lowercaseDone    = lowercaseProgress >= 26;
+  const lowercaseDone    = true;
   const lowercasePercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
 
   return (
@@ -143,9 +200,11 @@ export default function LetterPracticeScreen({ route, navigation }) {
               {/* Lowercase — always unlocked */}
               <TouchableOpacity
                 style={styles.lowercasePill}
-                onPress={() => navigation.navigate('LetterWriting', {
-                  student, theme, caseType: 'lowercase', letterSequence, motorProfile,
-                })}
+                onPress={() => goToLetterScreen('lowercase',
+                  { student, theme, caseType: 'lowercase', letterSequence, motorProfile },
+                  letterSequence,
+                )}
+                onLongPress={() => setPickerCase('lowercase')}
                 activeOpacity={0.85}
               >
                 <View style={styles.pillIconCircle}>
@@ -158,9 +217,11 @@ export default function LetterPracticeScreen({ route, navigation }) {
               {/* Uppercase — locked until lowercase done */}
               <TouchableOpacity
                 style={[styles.uppercasePill, !lowercaseDone && styles.uppercaseLocked]}
-                onPress={() => navigation.navigate('UppercaseWriting', {
-                  student, theme, letterSequence, motorProfile,
-                })}
+                onPress={() => lowercaseDone && goToLetterScreen('uppercase',
+                  { student, theme, letterSequence, motorProfile },
+                  letterSequence,
+                )}
+                onLongPress={() => setPickerCase('uppercase')}
                 activeOpacity={0.85}
               >
                 <View style={[
@@ -190,6 +251,93 @@ export default function LetterPracticeScreen({ route, navigation }) {
           </View>
 
         </View>
+
+        {/* ── Category picker modal (testing convenience) ── */}
+        <Modal
+          visible={pickerCase !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={closePicker}
+        >
+          <View style={styles.pickerOverlay}>
+            <View style={styles.pickerCard}>
+              {/* ── Step 1: category list ── */}
+              {!pickerCategory && (
+                <>
+                  <Text style={styles.pickerTitle}>
+                    Choose category ({pickerCase})
+                  </Text>
+                  {[
+                    { key: 'straight', label: 'Straight', icon: 'remove-outline',    color: '#1565C0' },
+                    { key: 'curved',   label: 'Curved',   icon: 'ellipse-outline',   color: '#6A1B9A' },
+                    { key: 'mixed',    label: 'Mixed',    icon: 'git-merge-outline', color: '#E65100' },
+                    { key: 'all',      label: 'All (Normal)', icon: 'grid-outline',  color: '#2E7D32' },
+                  ].map(opt => (
+                    <TouchableOpacity
+                      key={opt.key}
+                      style={[styles.pickerBtn, { borderColor: opt.color + '40' }]}
+                      onPress={() => handleCategoryPick(opt.key)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name={opt.icon} size={22} color={opt.color} />
+                      <Text style={[styles.pickerBtnText, { color: opt.color }]}>
+                        {opt.label}
+                      </Text>
+                      {opt.key !== 'all' && pickerCase && (
+                        <Text style={styles.pickerCount}>
+                          {LETTER_CATEGORIES[pickerCase]?.[opt.key]?.length ?? 0} letters
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={styles.pickerCancel}
+                    onPress={closePicker}
+                  >
+                    <Text style={styles.pickerCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* ── Step 2: letter grid ── */}
+              {pickerCategory && (
+                <>
+                  <Text style={styles.pickerTitle}>
+                    {pickerCategory.charAt(0).toUpperCase() + pickerCategory.slice(1)} — pick a letter
+                  </Text>
+                  <View style={styles.letterGrid}>
+                    {pickerLetters.map(obj => (
+                      <TouchableOpacity
+                        key={obj.letter}
+                        style={styles.letterTile}
+                        onPress={() => navigateToWriting(pickerCase, [obj])}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.letterTileText}>{obj.letter}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.pickerBtn, { borderColor: '#2E7D3240' }]}
+                    onPress={() => navigateToWriting(pickerCase, pickerLetters)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="play-outline" size={20} color="#2E7D32" />
+                    <Text style={[styles.pickerBtnText, { color: '#2E7D32' }]}>
+                      Trace all ({pickerLetters.length})
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.pickerCancel}
+                    onPress={() => setPickerCategory(null)}
+                  >
+                    <Text style={styles.pickerCancelText}>Back</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </Modal>
 
       </SafeAreaView>
     </LinearGradient>
@@ -437,5 +585,85 @@ const styles = StyleSheet.create({
   },
   lockedSubLabel: {
     color: '#BBBBBB',
+  },
+
+  // Category picker modal
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerCard: {
+    width: 320,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 24,
+    gap: 12,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.20,
+    shadowRadius: 16,
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#333333',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  pickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    backgroundColor: '#FAFAFA',
+  },
+  pickerBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    flex: 1,
+  },
+  pickerCount: {
+    fontSize: 12,
+    color: '#888888',
+    fontWeight: '600',
+  },
+  pickerCancel: {
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    marginTop: 2,
+  },
+  pickerCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999999',
+  },
+  letterGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  letterTile: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#F0F4FF',
+    borderWidth: 1.5,
+    borderColor: '#B0BEC5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  letterTileText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#333333',
   },
 });

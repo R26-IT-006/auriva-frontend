@@ -247,6 +247,7 @@ export default function TeacherReportScreen({ route, navigation }) {
   const [loading,  setLoading]  = useState(true);
   const [report,   setReport]   = useState(null);
   const [duration, setDuration] = useState(0);
+  const [letterProgressReport, setLetterProgressReport] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -261,6 +262,16 @@ export default function TeacherReportScreen({ route, navigation }) {
             if (res.data?.hasData) serverData = res.data;
           } catch (netErr) {
             console.warn('Could not reach server for initial report (falling back to local):', netErr?.message);
+          }
+
+          // 1b. Fetch per-letter attempt history + motor-pattern rollup (independent
+          // of the shape assessment — non-fatal if unreachable, same as above)
+          let letterReport = null;
+          try {
+            const lpRes = await client.get(ENDPOINTS.LETTER_PROGRESS_REPORT(student?.sid));
+            letterReport = lpRes.data ?? null;
+          } catch (netErr) {
+            console.warn('Could not reach server for letter progress report:', netErr?.message);
           }
 
           // 2. Map server shapes → client format (shape_id → shapeId)
@@ -281,10 +292,18 @@ export default function TeacherReportScreen({ route, navigation }) {
           const wordProgress     = { ...persistent, ...getSessionProgress() };
           const completedLetters = await getCompletedLetters(student?.sid ?? 0);
 
+          // Exact-match on letter string, which already encodes case
+          // ('l' vs 'L') the same way AsyncStorage/completedLetters does —
+          // no merging lowercase/uppercase scores together.
+          const letterMasteryByLetter = {};
+          for (const m of (serverData?.letterMastery ?? [])) {
+            if (m.best_score != null) letterMasteryByLetter[m.letter] = m.best_score;
+          }
+
           const letterProgressMap = {};
           for (const letter of (completedLetters ?? [])) {
             const lp = await getLetterProgress(student?.sid ?? 0, letter);
-            if (lp) letterProgressMap[letter] = lp;
+            if (lp) letterProgressMap[letter] = { ...lp, serverBestScore: letterMasteryByLetter[letter] ?? null };
           }
 
           // 5. Generate report using server-sourced motor data + local letter/word data
@@ -317,7 +336,11 @@ export default function TeacherReportScreen({ route, navigation }) {
             };
           }
 
-          if (active) { setReport(computed); setDuration(getSessionDurationMinutes()); }
+          if (active) {
+            setReport(computed);
+            setDuration(getSessionDurationMinutes());
+            setLetterProgressReport(letterReport);
+          }
         } catch (e) {
           console.warn('Report load error:', e);
         } finally {
@@ -461,6 +484,19 @@ export default function TeacherReportScreen({ route, navigation }) {
 
             {/* ══ 4. Motor Difficulty Analysis ════════════════════════════ */}
             <MotorDifficultyCard analysis={report.difficultyAnalysis} />
+
+            {/* ══ Motor Pattern Progress ══════════════════════════════════ */}
+            <SectionCard title="Motor Pattern Progress" icon="git-network" accentColor="#0891B2">
+              {letterProgressReport?.motorPatterns?.some(p => p.hasData) ? (
+                <View style={{ gap: 14 }}>
+                  {letterProgressReport.motorPatterns.map(p => (
+                    <MotorPatternRow key={p.group} pattern={p} />
+                  ))}
+                </View>
+              ) : (
+                <Empty message="Complete letter practice to see motor pattern progress" />
+              )}
+            </SectionCard>
 
             {/* ══ 5. Letters Mastery ══════════════════════════════════════ */}
             <SectionCard title="Letters Mastery" icon="text" accentColor="#059669">
@@ -951,6 +987,44 @@ const mda = StyleSheet.create({
   exText:     { flex: 1, fontSize: 12, color: TEXT_1, fontWeight: '500', lineHeight: 18 },
   exPill:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
   exPillText: { fontSize: 10, fontWeight: '800' },
+});
+
+// ─── Motor Pattern Progress row ──────────────────────────────────────────────
+
+function MotorPatternRow({ pattern }) {
+  if (!pattern.hasData) {
+    return (
+      <View style={mp.row}>
+        <Text style={mp.label}>{pattern.label}</Text>
+        <Text style={mp.noData}>No data yet</Text>
+      </View>
+    );
+  }
+  const color = pattern.delta > 0 ? '#15803D' : pattern.delta < 0 ? '#B91C1C' : '#475569';
+  return (
+    <View style={mp.row}>
+      <Text style={mp.label}>{pattern.label}</Text>
+      <View style={mp.scoreLine}>
+        <Text style={mp.scoreText}>{pattern.initial}%</Text>
+        <Ionicons name="arrow-forward" size={12} color="#94A3B8" />
+        <Text style={mp.scoreText}>{pattern.current}%</Text>
+        <Text style={[mp.delta, { color }]}>
+          {pattern.delta > 0 ? '+' : ''}{pattern.delta}
+        </Text>
+      </View>
+      <Text style={[mp.message, { color }]}>{pattern.message}</Text>
+    </View>
+  );
+}
+
+const mp = StyleSheet.create({
+  row:       { gap: 4 },
+  label:     { fontSize: 13, fontWeight: '800', color: TEXT_1 },
+  noData:    { fontSize: 12, color: TEXT_3, fontStyle: 'italic' },
+  scoreLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  scoreText: { fontSize: 14, fontWeight: '700', color: TEXT_2 },
+  delta:     { fontSize: 13, fontWeight: '900', marginLeft: 4 },
+  message:   { fontSize: 12, lineHeight: 17 },
 });
 
 // ─── Screen-level styles ──────────────────────────────────────────────────────

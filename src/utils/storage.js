@@ -14,6 +14,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { DTW_CORRECT_THRESHOLD } from './adaptiveSequencing';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth Token  (SecureStore)
@@ -152,10 +153,12 @@ export async function storeLetterProgress(studentId, letter, attemptData) {
 
   existing.attempts.push({ ...attemptData, timestamp: attemptData.timestamp ?? Date.now() });
 
-  // Mark as completed when any attempt meets the passing threshold
-  // (attempt 2 improved, or attempt 3 finished regardless)
+  // Mark as completed when any attempt passes the DTW trajectory gate,
+  // or after the third attempt regardless (no-child-stuck fallback).
+  // Replaces the vacuous "deviation < 25" check: deviation is always 0 at
+  // call sites so it was never a real gate.
   const completed = existing.attempts.some(a =>
-    a.attempt >= 2 || a.deviation < 25
+    a.attempt >= 3 || (a.dtw_distance != null && a.dtw_distance < DTW_CORRECT_THRESHOLD)
   );
   existing.completed = completed;
 

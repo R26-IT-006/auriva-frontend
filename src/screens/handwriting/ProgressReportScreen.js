@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  Animated,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,6 +34,9 @@ export default function ProgressReportScreen({ route, navigation }) {
 
   const { width } = useWindowDimensions();
   const [report, setReport] = useState(null);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const entrance = useRef(new Animated.Value(0)).current;
+  const bubbleFloat = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     client.get(ENDPOINTS.LETTER_PROGRESS(student.sid))
@@ -44,6 +49,47 @@ export default function ProgressReportScreen({ route, navigation }) {
       }));
   }, [student.sid]);
 
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      entrance.setValue(1);
+      bubbleFloat.setValue(0);
+      return undefined;
+    }
+
+    const entranceAnimation = Animated.timing(entrance, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    });
+
+    const bubbleAnimation = Animated.loop(Animated.sequence([
+      Animated.timing(bubbleFloat, {
+        toValue: 1,
+        duration: 5200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bubbleFloat, {
+        toValue: 0,
+        duration: 5200,
+        useNativeDriver: true,
+      }),
+    ]));
+
+    entranceAnimation.start();
+    bubbleAnimation.start();
+
+    return () => {
+      entranceAnimation.stop();
+      bubbleAnimation.stop();
+    };
+  }, [bubbleFloat, entrance, reduceMotion]);
+
   const lowercase  = report?.lowercase_completed   ?? initLow;
   const uppercase  = report?.uppercase_completed   ?? initUp;
   const nextLetter = report?.next_lowercase_letter ?? (lowercase < 26 ? LETTERS[lowercase] : null);
@@ -52,6 +98,31 @@ export default function ProgressReportScreen({ route, navigation }) {
   const lowercasePercent = Math.min(100, Math.round((lowercase / 26) * 100));
   const uppercasePercent = Math.min(100, Math.round((uppercase / 26) * 100));
   const lowercaseDone    = lowercase >= 26;
+  const totalCompleted = lowercase + uppercase;
+  const totalPercent = Math.min(100, Math.round((totalCompleted / 52) * 100));
+  const nextDisplayLetter = nextLetter && !lowercaseDone
+    ? nextLetter
+    : lowercaseDone && uppercase < 26
+      ? LETTERS[uppercase].toUpperCase()
+      : '-';
+  const bubbleTranslateY = bubbleFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -16],
+  });
+  const bubbleTranslateX = bubbleFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 14],
+  });
+  const cardOpacity = entrance.interpolate({
+    inputRange: [0, 0.45],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const cardTranslateY = entrance.interpolate({
+    inputRange: [0, 0.45],
+    outputRange: [18, 0],
+    extrapolate: 'clamp',
+  });
 
   return (
     <LinearGradient
@@ -61,17 +132,20 @@ export default function ProgressReportScreen({ route, navigation }) {
       end={{ x: 0, y: 1 }}
     >
       {/* Decorative background bubbles */}
-      <View style={[styles.bgBubbleLarge, {
+      <Animated.View style={[styles.bgBubbleLarge, {
         backgroundColor: theme.button + '0E',
         width: width * 0.45, height: width * 0.45, borderRadius: width * 0.225,
+        transform: [{ translateY: bubbleTranslateY }],
       }]} />
-      <View style={[styles.bgBubbleMedium, {
+      <Animated.View style={[styles.bgBubbleMedium, {
         backgroundColor: theme.button + '09',
         width: width * 0.28, height: width * 0.28, borderRadius: width * 0.14,
+        transform: [{ translateX: bubbleTranslateX }],
       }]} />
-      <View style={[styles.bgBubbleSmall, {
+      <Animated.View style={[styles.bgBubbleSmall, {
         backgroundColor: theme.button + '07',
         width: width * 0.16, height: width * 0.16, borderRadius: width * 0.08,
+        transform: [{ translateY: bubbleTranslateY }],
       }]} />
 
       <SafeAreaView style={styles.safe}>
@@ -93,36 +167,60 @@ export default function ProgressReportScreen({ route, navigation }) {
 
         {/* ── Main card ── */}
         <View style={styles.content}>
-          <View style={styles.card}>
+          <Animated.View
+            style={[
+              styles.card,
+              {
+                opacity: cardOpacity,
+                transform: [{ translateY: cardTranslateY }],
+              },
+            ]}
+          >
 
             {/* Student banner */}
             <View style={[styles.studentBanner, { backgroundColor: theme.button + '10' }]}>
-              <Image
-                source={AVATAR_MAP[student?.avatar_key]}
-                style={styles.bannerAvatar}
-                resizeMode="contain"
-              />
+              <View style={[styles.avatarFrame, { backgroundColor: theme.button + '14' }]}>
+                <Image
+                  source={AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.megatron}
+                  style={styles.bannerAvatar}
+                  resizeMode="contain"
+                />
+              </View>
               <View style={styles.bannerText}>
                 <Text style={[styles.bannerName, { color: theme.headingText }]}>
                   {student?.full_name}
                 </Text>
-                <Text style={styles.bannerSub}>Letter Progress</Text>
+                <Text style={styles.bannerSub}>Handwriting progress</Text>
+                <View style={styles.summaryPills}>
+                  <View style={styles.summaryPill}>
+                    <Text style={styles.summaryPillLabel}>Done</Text>
+                    <Text style={[styles.summaryPillValue, { color: theme.button }]}>
+                      {totalCompleted}/52
+                    </Text>
+                  </View>
+                  <View style={styles.summaryPill}>
+                    <Text style={styles.summaryPillLabel}>Next</Text>
+                    <Text style={[styles.summaryPillValue, { color: theme.button }]}>
+                      {nextDisplayLetter}
+                    </Text>
+                  </View>
+                </View>
               </View>
               <View style={[styles.overallBadge, { backgroundColor: theme.button }]}>
                 <Text style={[styles.overallBadgeValue, { color: theme.buttonText }]}>
-                  {lowercasePercent}%
+                  {totalPercent}%
                 </Text>
                 <Text style={[styles.overallBadgeLabel, { color: theme.buttonText }]}>
-                  Overall
+                  Total
                 </Text>
               </View>
             </View>
 
             {/* ── Lowercase section ── */}
-            <View style={[styles.sectionCard, { borderColor: '#A5D6A7', backgroundColor: '#F1F8E9' }]}>
+            <View style={[styles.sectionCard, { borderColor: '#A5D6A7', backgroundColor: '#F6FBF1' }]}>
 
               <View style={styles.sectionHeader}>
-                <View style={[styles.sectionIconWrap, { backgroundColor: '#DCEDC8' }]}>
+                <View style={[styles.sectionIconWrap, { backgroundColor: '#E6F4D7' }]}>
                   <Ionicons name="text-outline" size={20} color="#2E7D32" />
                 </View>
                 <View style={styles.sectionTitleCol}>
@@ -156,51 +254,32 @@ export default function ProgressReportScreen({ route, navigation }) {
             </View>
 
             {/* ── Uppercase section ── */}
-            <View style={[
-              styles.sectionCard,
-              lowercaseDone
-                ? { borderColor: '#CE93D8', backgroundColor: '#F3E5F5' }
-                : { borderColor: '#E0E0E0', backgroundColor: '#F8F8F8' },
-            ]}>
+            <View style={[styles.sectionCard, { borderColor: '#CE93D8', backgroundColor: '#FBF4FC' }]}>
 
               <View style={styles.sectionHeader}>
-                <View style={[styles.sectionIconWrap, {
-                  backgroundColor: lowercaseDone ? '#E1BEE7' : '#EEEEEE',
-                }]}>
-                  <Ionicons
-                    name={lowercaseDone ? 'arrow-up-circle-outline' : 'lock-closed'}
-                    size={20}
-                    color={lowercaseDone ? '#7B1FA2' : '#AAAAAA'}
-                  />
+                <View style={[styles.sectionIconWrap, { backgroundColor: '#E1BEE7' }]}>
+                  <Ionicons name="arrow-up-circle-outline" size={20} color="#7B1FA2" />
                 </View>
                 <View style={styles.sectionTitleCol}>
-                  <Text style={[styles.sectionTitle, {
-                    color: lowercaseDone ? '#7B1FA2' : '#AAAAAA',
-                  }]}>
+                  <Text style={[styles.sectionTitle, { color: '#7B1FA2' }]}>
                     Uppercase Letters
                   </Text>
                   <Text style={styles.sectionSub}>
-                    {lowercaseDone
-                      ? `${uppercase} / 26 letters completed`
-                      : 'Complete all lowercase to unlock'}
+                    {uppercase} / 26 letters completed
                   </Text>
                 </View>
-                {lowercaseDone && (
-                  <Text style={[styles.sectionPercent, { color: '#7B1FA2' }]}>
-                    {uppercasePercent}%
-                  </Text>
-                )}
+                <Text style={[styles.sectionPercent, { color: '#7B1FA2' }]}>
+                  {uppercasePercent}%
+                </Text>
               </View>
 
-              {lowercaseDone && (
-                <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { width: `${uppercasePercent}%`, backgroundColor: '#AB47BC' }]} />
-                </View>
-              )}
+              <View style={styles.barTrack}>
+                <View style={[styles.barFill, { width: `${uppercasePercent}%`, backgroundColor: '#AB47BC' }]} />
+              </View>
 
             </View>
 
-          </View>
+          </Animated.View>
         </View>
 
       </SafeAreaView>
@@ -260,15 +339,15 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 620,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 26,
-    padding: 20,
-    gap: 16,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: 30,
+    padding: 18,
+    gap: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.10,
+    shadowRadius: 18,
+    elevation: 5,
   },
 
   // Student banner
@@ -276,13 +355,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    borderRadius: 18,
+    borderRadius: 24,
     padding: 14,
   },
+  avatarFrame: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
   bannerAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 68,
+    height: 68,
     flexShrink: 0,
   },
   bannerText: {
@@ -297,12 +383,37 @@ const styles = StyleSheet.create({
     color: '#888888',
     marginTop: 2,
   },
+  summaryPills: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    flexWrap: 'wrap',
+  },
+  summaryPill: {
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    minWidth: 72,
+  },
+  summaryPillLabel: {
+    fontSize: 10,
+    color: '#7B8190',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryPillValue: {
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 1,
+  },
   overallBadge: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     flexShrink: 0,
   },
   overallBadgeValue: {
@@ -318,10 +429,15 @@ const styles = StyleSheet.create({
 
   // Section cards
   sectionCard: {
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1.5,
     padding: 16,
     gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -357,14 +473,14 @@ const styles = StyleSheet.create({
   // Progress bar
   barTrack: {
     width: '100%',
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#E0E0E0',
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 6,
   },
 
   // Detail row (next letter + reason)
@@ -401,6 +517,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   reasonText: {
     flex: 1,

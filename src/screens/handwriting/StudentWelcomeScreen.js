@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  Animated,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +24,82 @@ export default function StudentWelcomeScreen({ route, navigation }) {
   const { width, height } = useWindowDimensions();
 
   const avatarSize = Math.min(width, height) * 0.50;
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const avatarFloat = useRef(new Animated.Value(0)).current;
+  const bubbleFloat = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      avatarFloat.setValue(0);
+      bubbleFloat.setValue(0);
+      return undefined;
+    }
+
+    const avatarAnimation = Animated.loop(Animated.sequence([
+      Animated.timing(avatarFloat, {
+        toValue: 1,
+        duration: 1800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(avatarFloat, {
+        toValue: 0,
+        duration: 1800,
+        useNativeDriver: true,
+      }),
+    ]));
+
+    const bubbleAnimation = Animated.loop(Animated.sequence([
+      Animated.timing(bubbleFloat, {
+        toValue: 1,
+        duration: 4800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bubbleFloat, {
+        toValue: 0,
+        duration: 4800,
+        useNativeDriver: true,
+      }),
+    ]));
+
+    avatarAnimation.start();
+    bubbleAnimation.start();
+
+    return () => {
+      avatarAnimation.stop();
+      bubbleAnimation.stop();
+    };
+  }, [avatarFloat, bubbleFloat, reduceMotion]);
+
+  const avatarTranslateY = avatarFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -10],
+  });
+  const avatarScale = avatarFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.025],
+  });
+  const bubbleUp = bubbleFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -18],
+  });
+  const bubbleDown = bubbleFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 14],
+  });
+  const bubbleRight = bubbleFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 16],
+  });
+  const bubbleLeft = bubbleFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -14],
+  });
 
   return (
     <LinearGradient
@@ -31,22 +109,49 @@ export default function StudentWelcomeScreen({ route, navigation }) {
       end={{ x: 0, y: 1 }}
     >
       {/* ── Decorative background shapes ─────────────────────────────────── */}
-      <View style={[styles.bgCircleLarge, {
+      <Animated.View style={[styles.bgCircleLarge, {
         backgroundColor: theme.button + '12',
         width: width * 0.55, height: width * 0.55, borderRadius: width * 0.275,
+        transform: [{ translateY: bubbleUp }],
       }]} />
-      <View style={[styles.bgCircleSmall, {
+      <Animated.View style={[styles.bgCircleSmall, {
         backgroundColor: theme.button + '0D',
         width: width * 0.32, height: width * 0.32, borderRadius: width * 0.16,
+        transform: [{ translateX: bubbleRight }],
+      }]} />
+      <Animated.View style={[styles.bgCircleMedium, {
+        backgroundColor: theme.button + '0A',
+        width: width * 0.22, height: width * 0.22, borderRadius: width * 0.11,
+        transform: [{ translateY: bubbleDown }, { translateX: bubbleLeft }],
+      }]} />
+      <Animated.View style={[styles.bgCircleTinyTop, {
+        backgroundColor: theme.button + '10',
+        width: width * 0.10, height: width * 0.10, borderRadius: width * 0.05,
+        transform: [{ translateY: bubbleDown }],
+      }]} />
+      <Animated.View style={[styles.bgCircleTinyBottom, {
+        backgroundColor: theme.button + '0E',
+        width: width * 0.14, height: width * 0.14, borderRadius: width * 0.07,
+        transform: [{ translateX: bubbleLeft }],
       }]} />
 
       <SafeAreaView style={styles.safe}>
         <View style={[styles.center, { paddingHorizontal: width * 0.08 }]}>
 
           {/* ── Avatar ───────────────────────────────────────────────────── */}
-          <Image
+          <Animated.Image
             source={AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.megatron}
-            style={[styles.avatar, { width: avatarSize, height: avatarSize }]}
+            style={[
+              styles.avatar,
+              {
+                width: avatarSize,
+                height: avatarSize,
+                transform: [
+                  { translateY: avatarTranslateY },
+                  { scale: avatarScale },
+                ],
+              },
+            ]}
             resizeMode="contain"
           />
 
@@ -71,6 +176,7 @@ export default function StudentWelcomeScreen({ route, navigation }) {
                 Start Assessment
               </Text>
             </TouchableOpacity>
+
           </View>
 
         </View>
@@ -92,6 +198,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: '8%',
     left: '-8%',
+  },
+  bgCircleMedium: {
+    position: 'absolute',
+    top: '22%',
+    left: '7%',
+  },
+  bgCircleTinyTop: {
+    position: 'absolute',
+    top: '11%',
+    right: '18%',
+  },
+  bgCircleTinyBottom: {
+    position: 'absolute',
+    bottom: '22%',
+    right: '12%',
   },
 
   center: {

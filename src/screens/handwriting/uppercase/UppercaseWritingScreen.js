@@ -7,16 +7,30 @@ import {
   PanResponder,
   Dimensions,
   Animated,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Line, Circle, Polyline, Text as SvgText } from 'react-native-svg';
+import Svg, { Line, Circle, Polyline, Polygon, Path, Text as SvgText } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import { storeLetterProgress } from '../../../utils/storage';
 import { getAllLetters } from '../../../constants/letterCategories';
+import { DATA_COLLECTION_PROTOCOL } from '../../../constants/dataCollectionProtocol';
+import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../../utils/adaptiveSequencing';
+import { computeDTW, sampleSmoothPath, normalizeStrokes, computeMultiStrokeDTW } from '../../../utils/dtw';
+import { buildDtwDebugExport } from '../../../utils/dtwDebugExport';
+import { useToast } from '../../../context/ToastContext';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
+import AttemptAvatarFeedback from '../AttemptAvatarFeedback';
+import {
+  getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
+} from '../../../utils/collectionSession';
+import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../../constants/preWritingActivities';
+
+// Shapes occupy 0-5, lowercase letters occupy 6-15 — uppercase continues from 16.
+const UPPERCASE_TASK_ORDER_OFFSET = 16;
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
@@ -24,14 +38,18 @@ const PAD = 16;
 const COL_L            = Math.round(SCREEN_W * 0.43);
 const LETTER_CARD_SIZE = COL_L - 8;
 const CANVAS_W         = SCREEN_W - COL_L - PAD * 2;
-const CANVAS_H         = Math.round(SCREEN_H * 0.35);
+const CANVAS_H         = Math.round(SCREEN_H * 0.50);
 
-const LINE_1 = Math.round(CANVAS_H * 0.10);
-const LINE_2 = Math.round(CANVAS_H * 0.42);
-const LINE_3 = Math.round(CANVAS_H * 0.72);
-const LINE_4 = Math.round(CANVAS_H * 0.90);
+const ASPECT  = CANVAS_W / CANVAS_H;
+const aspectX = (fx) => 0.5 + (fx - 0.5) / ASPECT;
 
-const GHOST_FONT_UPPER = Math.round((LINE_3 - LINE_1) / 0.71);
+// 4-line handwriting ruling — evenly spaced (0.28 gap), 0.08 margins
+const LINE_1 = Math.round(CANVAS_H * 0.08);
+const LINE_2 = Math.round(CANVAS_H * 0.36);
+const LINE_3 = Math.round(CANVAS_H * 0.64);
+const LINE_4 = Math.round(CANVAS_H * 0.92);
+
+
 
 const ATTEMPT_BADGE = {
   1: { bg: '#FFCBA8', border: '#FF8C42', text: '#7A2D00' },
@@ -47,7 +65,7 @@ const ATTEMPT_TITLES = {
 
 const ATTEMPT_HINTS = {
   1: 'Watch the dot — then draw it yourself!',
-  2: 'Trace the capital — ① marks where to start.',
+  2: 'Start at the number, then follow the arrow.',
   3: 'Write from memory — no guide this time!',
 };
 
@@ -74,33 +92,252 @@ const PHONETICS = {
 };
 
 const LETTER_PATHS = {
-  A:[{fx:0.50,fy:0.12},{fx:0.30,fy:0.72},{fx:0.50,fy:0.12},{fx:0.70,fy:0.72},{fx:0.36,fy:0.50},{fx:0.64,fy:0.50}],
-  B:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.12},{fx:0.55,fy:0.14},{fx:0.63,fy:0.24},{fx:0.63,fy:0.37},{fx:0.55,fy:0.45},{fx:0.37,fy:0.46},{fx:0.57,fy:0.48},{fx:0.64,fy:0.58},{fx:0.64,fy:0.65},{fx:0.55,fy:0.72},{fx:0.37,fy:0.72}],
-  C:[{fx:0.67,fy:0.28},{fx:0.50,fy:0.12},{fx:0.33,fy:0.28},{fx:0.33,fy:0.52},{fx:0.50,fy:0.72},{fx:0.67,fy:0.58}],
-  D:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.12},{fx:0.55,fy:0.15},{fx:0.65,fy:0.30},{fx:0.65,fy:0.54},{fx:0.55,fy:0.68},{fx:0.37,fy:0.72}],
-  E:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.12},{fx:0.65,fy:0.12},{fx:0.37,fy:0.42},{fx:0.62,fy:0.42},{fx:0.37,fy:0.72},{fx:0.65,fy:0.72}],
-  F:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.12},{fx:0.65,fy:0.12},{fx:0.37,fy:0.42},{fx:0.62,fy:0.42}],
-  G:[{fx:0.67,fy:0.28},{fx:0.50,fy:0.12},{fx:0.33,fy:0.28},{fx:0.33,fy:0.52},{fx:0.50,fy:0.72},{fx:0.67,fy:0.60},{fx:0.67,fy:0.42},{fx:0.50,fy:0.42}],
-  H:[{fx:0.35,fy:0.12},{fx:0.35,fy:0.72},{fx:0.35,fy:0.42},{fx:0.65,fy:0.42},{fx:0.65,fy:0.12},{fx:0.65,fy:0.72}],
-  I:[{fx:0.50,fy:0.12},{fx:0.50,fy:0.72}],
-  J:[{fx:0.57,fy:0.12},{fx:0.57,fy:0.55},{fx:0.50,fy:0.68},{fx:0.40,fy:0.72},{fx:0.32,fy:0.68},{fx:0.29,fy:0.57}],
-  K:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.44},{fx:0.64,fy:0.12},{fx:0.37,fy:0.44},{fx:0.64,fy:0.72}],
-  L:[{fx:0.38,fy:0.12},{fx:0.38,fy:0.72},{fx:0.62,fy:0.72}],
-  M:[{fx:0.28,fy:0.72},{fx:0.28,fy:0.12},{fx:0.50,fy:0.50},{fx:0.72,fy:0.12},{fx:0.72,fy:0.72}],
-  N:[{fx:0.32,fy:0.72},{fx:0.32,fy:0.12},{fx:0.68,fy:0.72},{fx:0.68,fy:0.12}],
-  O:[{fx:0.62,fy:0.32},{fx:0.50,fy:0.12},{fx:0.38,fy:0.32},{fx:0.38,fy:0.52},{fx:0.50,fy:0.72},{fx:0.62,fy:0.52},{fx:0.62,fy:0.32}],
-  P:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.12},{fx:0.55,fy:0.15},{fx:0.64,fy:0.25},{fx:0.64,fy:0.38},{fx:0.55,fy:0.48},{fx:0.37,fy:0.48}],
-  Q:[{fx:0.62,fy:0.32},{fx:0.50,fy:0.12},{fx:0.38,fy:0.32},{fx:0.38,fy:0.52},{fx:0.50,fy:0.72},{fx:0.62,fy:0.52},{fx:0.62,fy:0.32},{fx:0.58,fy:0.62},{fx:0.68,fy:0.76}],
-  R:[{fx:0.37,fy:0.12},{fx:0.37,fy:0.72},{fx:0.37,fy:0.12},{fx:0.55,fy:0.15},{fx:0.64,fy:0.25},{fx:0.64,fy:0.38},{fx:0.55,fy:0.48},{fx:0.37,fy:0.46},{fx:0.64,fy:0.72}],
-  S:[{fx:0.65,fy:0.24},{fx:0.50,fy:0.12},{fx:0.35,fy:0.24},{fx:0.50,fy:0.42},{fx:0.65,fy:0.58},{fx:0.50,fy:0.72},{fx:0.35,fy:0.62}],
-  T:[{fx:0.28,fy:0.12},{fx:0.72,fy:0.12},{fx:0.50,fy:0.12},{fx:0.50,fy:0.72}],
-  U:[{fx:0.34,fy:0.12},{fx:0.34,fy:0.52},{fx:0.40,fy:0.68},{fx:0.50,fy:0.72},{fx:0.60,fy:0.68},{fx:0.66,fy:0.52},{fx:0.66,fy:0.12}],
-  V:[{fx:0.30,fy:0.12},{fx:0.50,fy:0.72},{fx:0.70,fy:0.12}],
-  W:[{fx:0.22,fy:0.12},{fx:0.35,fy:0.72},{fx:0.50,fy:0.46},{fx:0.65,fy:0.72},{fx:0.78,fy:0.12}],
-  X:[{fx:0.30,fy:0.12},{fx:0.50,fy:0.42},{fx:0.70,fy:0.72},{fx:0.70,fy:0.12},{fx:0.50,fy:0.42},{fx:0.30,fy:0.72}],
-  Y:[{fx:0.30,fy:0.12},{fx:0.50,fy:0.42},{fx:0.70,fy:0.12},{fx:0.50,fy:0.42},{fx:0.50,fy:0.72}],
-  Z:[{fx:0.32,fy:0.12},{fx:0.68,fy:0.12},{fx:0.32,fy:0.72},{fx:0.68,fy:0.72}],
+  A:[[{fx:0.28,fy:0.64},{fx:0.50,fy:0.08}],[{fx:0.50,fy:0.08},{fx:0.72,fy:0.64}],[{fx:0.40,fy:0.36},{fx:0.60,fy:0.36}]],
+  B:[
+    [{fx:0.34,fy:0.08},{fx:0.34,fy:0.64}],
+    [{fx:0.34,fy:0.08},{fx:0.52,fy:0.10},{fx:0.60,fy:0.16},{fx:0.60,fy:0.24},{fx:0.52,fy:0.34},{fx:0.34,fy:0.36}],
+    [{fx:0.34,fy:0.36},{fx:0.52,fy:0.38},{fx:0.60,fy:0.44},{fx:0.60,fy:0.52},{fx:0.52,fy:0.62},{fx:0.34,fy:0.64}]
+  ],
+  C:[{fx:0.70,fy:0.18},{fx:0.60,fy:0.11},{fx:0.50,fy:0.08},{fx:0.38,fy:0.11},{fx:0.30,fy:0.19},{fx:0.27,fy:0.36},{fx:0.30,fy:0.53},{fx:0.38,fy:0.61},{fx:0.50,fy:0.64},{fx:0.60,fy:0.61},{fx:0.70,fy:0.54}],
+  D:[
+    [{fx:0.34,fy:0.08},{fx:0.34,fy:0.64}],
+    [{fx:0.34,fy:0.08},{fx:0.54,fy:0.11},{fx:0.66,fy:0.22},{fx:0.68,fy:0.36},{fx:0.66,fy:0.50},{fx:0.54,fy:0.61},{fx:0.34,fy:0.64}]
+  ],
+  E:[[{fx:0.34,fy:0.08},{fx:0.34,fy:0.64}],[{fx:0.34,fy:0.08},{fx:0.66,fy:0.08}],[{fx:0.34,fy:0.36},{fx:0.60,fy:0.36}],[{fx:0.34,fy:0.64},{fx:0.66,fy:0.64}]],
+  F:[
+    [{fx:0.34,fy:0.08},{fx:0.34,fy:0.64}],
+    [{fx:0.34,fy:0.08},{fx:0.66,fy:0.08}],
+    [{fx:0.34,fy:0.36},{fx:0.60,fy:0.36}]
+  ],
+  G:[
+    [{fx:0.66,fy:0.18},{fx:0.56,fy:0.10},{fx:0.44,fy:0.09},{fx:0.34,fy:0.15},{fx:0.29,fy:0.26},{fx:0.28,fy:0.36},{fx:0.29,fy:0.46},{fx:0.34,fy:0.57},{fx:0.44,fy:0.63},{fx:0.55,fy:0.64},{fx:0.64,fy:0.58},{fx:0.66,fy:0.50}],
+    [{fx:0.50,fy:0.36},{fx:0.66,fy:0.36}],
+    [{fx:0.66,fy:0.36},{fx:0.66,fy:0.50}]
+  ],
+  H:[
+    [{fx:0.32,fy:0.08},{fx:0.32,fy:0.64}],
+    [{fx:0.32,fy:0.36},{fx:0.68,fy:0.36}],
+    [{fx:0.68,fy:0.08},{fx:0.68,fy:0.64}]
+  ],
+  I:[[{fx:0.50,fy:0.08},{fx:0.50,fy:0.64}],[{fx:0.38,fy:0.08},{fx:0.62,fy:0.08}],[{fx:0.38,fy:0.64},{fx:0.62,fy:0.64}]],
+  J:[{fx:0.60,fy:0.08},{fx:0.60,fy:0.52},{fx:0.56,fy:0.60},{fx:0.46,fy:0.64},{fx:0.36,fy:0.60},{fx:0.33,fy:0.52}],
+  K:[
+    [{fx:0.34,fy:0.08},{fx:0.34,fy:0.64}],
+    [{fx:0.34,fy:0.36},{fx:0.66,fy:0.08}],
+    [{fx:0.34,fy:0.36},{fx:0.68,fy:0.64}]
+  ],
+  L:[{fx:0.36,fy:0.08},{fx:0.36,fy:0.64},{fx:0.64,fy:0.64}],
+  M:[
+    [{fx:0.24,fy:0.64},{fx:0.24,fy:0.08}],
+    [{fx:0.24,fy:0.08},{fx:0.50,fy:0.64}],
+    [{fx:0.50,fy:0.64},{fx:0.76,fy:0.08}],
+    [{fx:0.76,fy:0.08},{fx:0.76,fy:0.64}]
+  ],
+  N:[
+    [{fx:0.30,fy:0.64},{fx:0.30,fy:0.08}],
+    [{fx:0.30,fy:0.08},{fx:0.70,fy:0.64}],
+    [{fx:0.70,fy:0.64},{fx:0.70,fy:0.08}]
+  ],
+  O:[{fx:0.50,fy:0.08},{fx:0.62,fy:0.11},{fx:0.70,fy:0.19},{fx:0.73,fy:0.36},{fx:0.70,fy:0.53},{fx:0.62,fy:0.61},{fx:0.50,fy:0.64},{fx:0.38,fy:0.61},{fx:0.30,fy:0.53},{fx:0.27,fy:0.36},{fx:0.30,fy:0.19},{fx:0.38,fy:0.11},{fx:0.50,fy:0.08}],
+  P:[
+    [{fx:0.34,fy:0.08},{fx:0.34,fy:0.64}],
+    [{fx:0.34,fy:0.08},{fx:0.54,fy:0.10},{fx:0.63,fy:0.17},{fx:0.63,fy:0.27},{fx:0.54,fy:0.35},{fx:0.34,fy:0.37}]
+  ],
+  Q:[
+    [{fx:0.50,fy:0.08},{fx:0.62,fy:0.11},{fx:0.70,fy:0.19},{fx:0.73,fy:0.36},{fx:0.70,fy:0.53},{fx:0.62,fy:0.61},{fx:0.50,fy:0.64},{fx:0.38,fy:0.61},{fx:0.30,fy:0.53},{fx:0.27,fy:0.36},{fx:0.30,fy:0.19},{fx:0.38,fy:0.11},{fx:0.50,fy:0.08}],
+    [{fx:0.56,fy:0.52},{fx:0.72,fy:0.68}]
+  ],
+  R:[
+    [{fx:0.34,fy:0.08},{fx:0.34,fy:0.64}],
+    [{fx:0.34,fy:0.08},{fx:0.54,fy:0.10},{fx:0.63,fy:0.17},{fx:0.63,fy:0.27},{fx:0.54,fy:0.35},{fx:0.34,fy:0.37}],
+    [{fx:0.34,fy:0.37},{fx:0.66,fy:0.64}]
+  ],
+  S:[{fx:0.64,fy:0.20},{fx:0.62,fy:0.13},{fx:0.54,fy:0.09},{fx:0.45,fy:0.09},{fx:0.37,fy:0.12},{fx:0.33,fy:0.19},{fx:0.34,fy:0.26},{fx:0.40,fy:0.31},{fx:0.50,fy:0.35},{fx:0.59,fy:0.40},{fx:0.65,fy:0.46},{fx:0.66,fy:0.54},{fx:0.62,fy:0.60},{fx:0.54,fy:0.64},{fx:0.45,fy:0.64},{fx:0.37,fy:0.61},{fx:0.34,fy:0.55}],
+  T:[[{fx:0.30,fy:0.08},{fx:0.70,fy:0.08}],[{fx:0.50,fy:0.08},{fx:0.50,fy:0.64}]],
+  U:[{fx:0.30,fy:0.08},{fx:0.30,fy:0.46},{fx:0.34,fy:0.58},{fx:0.42,fy:0.63},{fx:0.50,fy:0.64},{fx:0.58,fy:0.63},{fx:0.66,fy:0.58},{fx:0.70,fy:0.46},{fx:0.70,fy:0.08}],
+  V:[{fx:0.30,fy:0.08},{fx:0.50,fy:0.64},{fx:0.70,fy:0.08}],
+  W:[{fx:0.22,fy:0.08},{fx:0.36,fy:0.64},{fx:0.50,fy:0.08},{fx:0.64,fy:0.64},{fx:0.78,fy:0.08}],
+  X:[
+    [{fx:0.30,fy:0.08},{fx:0.70,fy:0.64}],
+    [{fx:0.70,fy:0.08},{fx:0.30,fy:0.64}]
+  ],
+  Y:[
+    [{fx:0.30,fy:0.08},{fx:0.50,fy:0.36}],
+    [{fx:0.70,fy:0.08},{fx:0.50,fy:0.36}],
+    [{fx:0.50,fy:0.36},{fx:0.50,fy:0.64}]
+  ],
+  Z:[{fx:0.32,fy:0.08},{fx:0.68,fy:0.08},{fx:0.32,fy:0.64},{fx:0.68,fy:0.64}],
 };
+
+const ANGULAR_LETTERS = new Set([
+  'x','y',
+  'V','W','Z','X','Y','K','L','A','E','M','N','T','I','H','F',
+]);
+
+function toSmoothPath(rawPath) {
+  const strokes = normalizeStrokes(rawPath);
+  let d = '';
+  for (const waypoints of strokes) {
+    if (!waypoints || waypoints.length < 2) continue;
+    const pts = waypoints.map(p => [aspectX(p.fx) * CANVAS_W, p.fy * CANVAS_H]);
+    d += ` M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+    }
+  }
+  return d.trim();
+}
+
+function toStraightPath(rawPath) {
+  const strokes = normalizeStrokes(rawPath);
+  let d = '';
+  for (const waypoints of strokes) {
+    if (!waypoints || waypoints.length < 2) continue;
+    const pts = waypoints.map(p => [aspectX(p.fx) * CANVAS_W, p.fy * CANVAS_H]);
+    d += ` M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 1; i < pts.length; i++) {
+      d += ` L ${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}`;
+    }
+  }
+  return d.trim();
+}
+
+function sampleStraightStroke(waypoints, numSamples, canvasW, canvasH) {
+  if (!waypoints || waypoints.length < 2) return { points: [], totalLength: 0 };
+  const aspect = canvasW / canvasH;
+  const pts = waypoints.map(p => ({
+    x: (0.5 + (p.fx - 0.5) / aspect) * canvasW,
+    y: p.fy * canvasH,
+  }));
+  const cumulativeLength = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i - 1].x;
+    const dy = pts[i].y - pts[i - 1].y;
+    cumulativeLength.push(cumulativeLength[i - 1] + Math.sqrt(dx * dx + dy * dy));
+  }
+  const totalLength = cumulativeLength[cumulativeLength.length - 1];
+  if (totalLength === 0) return { points: [pts[0]], totalLength: 0 };
+
+  const points = [];
+  for (let sample = 0; sample < numSamples; sample++) {
+    const target = (sample / (numSamples - 1)) * totalLength;
+    let segment = 0;
+    while (
+      segment < pts.length - 2
+      && cumulativeLength[segment + 1] < target
+    ) segment++;
+    const span = cumulativeLength[segment + 1] - cumulativeLength[segment];
+    const fraction = span > 0 ? (target - cumulativeLength[segment]) / span : 0;
+    points.push({
+      x: pts[segment].x + fraction * (pts[segment + 1].x - pts[segment].x),
+      y: pts[segment].y + fraction * (pts[segment + 1].y - pts[segment].y),
+    });
+  }
+  return { points, totalLength };
+}
+
+function getGhostDots(rawPath) {
+  const strokes = normalizeStrokes(rawPath);
+  const dots = [];
+  for (const s of strokes) {
+    if (s && s.length === 1) {
+      dots.push({ cx: aspectX(s[0].fx) * CANVAS_W, cy: s[0].fy * CANVAS_H });
+    }
+  }
+  return dots;
+}
+
+function getStrokeDirectionHint(stroke, showEverySegment = false) {
+  if (!stroke?.length) return null;
+  const points = stroke.map(point => ({
+    x: aspectX(point.fx) * CANVAS_W,
+    y: point.fy * CANVAS_H,
+  }));
+  const segmentCount = showEverySegment
+    ? points.length - 1
+    : Math.min(1, points.length - 1);
+  const arrows = [];
+
+  for (let index = 0; index < segmentCount; index++) {
+    const segmentStart = points[index];
+    const segmentEnd = points[index + 1];
+    const dx = segmentEnd.x - segmentStart.x;
+    const dy = segmentEnd.y - segmentStart.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance <= 2) continue;
+    const ux = dx / distance;
+    const uy = dy / distance;
+    const shaftOffset = Math.min(22, distance * 0.35);
+    const tipOffset = Math.max(shaftOffset + 10, Math.min(68, distance * 0.82));
+    const shaftStart = {
+      x: segmentStart.x + ux * shaftOffset,
+      y: segmentStart.y + uy * shaftOffset,
+    };
+    const tip = {
+      x: segmentStart.x + ux * tipOffset,
+      y: segmentStart.y + uy * tipOffset,
+    };
+    const base = { x: tip.x - ux * 12, y: tip.y - uy * 12 };
+    const px = -uy * 7;
+    const py = ux * 7;
+    arrows.push({
+      shaftStart,
+      tip,
+      arrowHead: `${tip.x},${tip.y} ${base.x + px},${base.y + py} ${base.x - px},${base.y - py}`,
+    });
+  }
+
+  const endGuides = points.length < 2
+    ? []
+    : showEverySegment ? points.slice(1) : points.slice(-1);
+
+  return {
+    start: points[0],
+    arrows,
+    endGuides,
+  };
+}
+
+const TRACER_PX_PER_MS = 0.28;
+const ATTEMPT_FEEDBACK_MS = 2200;
+
+// Returns total drawn length + bounding-box dimensions in one pass.
+// Used on attempt 3 to catch cases where the child drew too little
+// (e.g. a short line on 'O') regardless of how smooth it was.
+function getDrawingBounds(paths) {
+  const all = paths.flat();
+  if (all.length === 0) return { length: 0, width: 0, height: 0 };
+  let minX = all[0].x, maxX = all[0].x;
+  let minY = all[0].y, maxY = all[0].y;
+  let length = 0;
+  for (let i = 1; i < all.length; i++) {
+    if (all[i].x < minX) minX = all[i].x;
+    if (all[i].x > maxX) maxX = all[i].x;
+    if (all[i].y < minY) minY = all[i].y;
+    if (all[i].y > maxY) maxY = all[i].y;
+    const dx = all[i].x - all[i-1].x;
+    const dy = all[i].y - all[i-1].y;
+    length += Math.sqrt(dx * dx + dy * dy);
+  }
+  return { length, width: maxX - minX, height: maxY - minY };
+}
+
+function didPassAttempt(features, paths) {
+  const { length, width, height } = getDrawingBounds(paths);
+  return features.smoothness < 0.35
+    && length >= CANVAS_H * 0.25
+    && (width >= CANVAS_W * 0.10 || height >= CANVAS_H * 0.15)
+    && features.dtw_distance != null
+    && features.dtw_distance < DTW_CORRECT_THRESHOLD;
+}
 
 function calculateDrawingFeatures(paths) {
   const allPoints = paths.flat();
@@ -170,7 +407,9 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   const {
     student,
     theme,
-    letterSequence = [],
+    letterSequence  = [],
+    collectionMode  = false,
+    collectionSessionId = null,
   } = route.params;
 
   const caseType = 'uppercase';
@@ -185,27 +424,68 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   const [currentPath,  setCurrentPath]  = useState([]);
   const [allPaths,     setAllPaths]     = useState([]);
   const [hasDrawn,     setHasDrawn]     = useState(false);
-  const [feedbackData, setFeedbackData] = useState(null);
+  const [attemptFeedback, setAttemptFeedback] = useState(null);
   const [celebration,  setCelebration]  = useState(null);
+  const [reduceMotion,  setReduceMotion] = useState(false);
 
-  const startTimeRef = useRef(null);
-  const allPathsRef  = useRef([]);
+  const startTimeRef       = useRef(null);
+  const allPathsRef        = useRef([]);
+  const attemptScoresRef   = useRef([]);   // accumulates featuresToScore result for each attempt
+  const sessionAttemptsRef = useRef([]);   // ML: accumulates {attempt_number, features, strokes} per letter
+  const strokeIdCounter    = useRef(0);    // ML: counts strokes within the current attempt
 
-  const tracerX         = useRef(new Animated.Value(0)).current;
-  const tracerY         = useRef(new Animated.Value(0)).current;
-  const [tracerVisible, setTracerVisible] = useState(false);
+  const tracerProgress    = useRef(new Animated.Value(0)).current;
+  const [tracerVisible,   setTracerVisible]   = useState(false);
+  const [tracerKeyframes, setTracerKeyframes] = useState(null);
 
   const celebScale   = useRef(new Animated.Value(0.5)).current;
   const celebOpacity = useRef(new Animated.Value(0)).current;
+
+  const { show } = useToast();
 
   const letterObj     = sequence[letterIdx];
   const letter        = letterObj?.letter ?? 'A';
   const isLastLetter  = letterIdx >= sequence.length - 1;
   const isLastAttempt = attempt === 3;
-  const startPos      = START_POS[letter] ?? DEFAULT_START;
-  const guideOpacity  = attempt === 3 ? 0 : attempt === 1 ? 0.14 : 0.26;
+  const templateStrokes = useMemo(
+    () => normalizeStrokes(LETTER_PATHS[letter] ?? []),
+    [letter]
+  );
+  const activeGuideStroke = Math.min(allPaths.length, templateStrokes.length - 1);
+  const activeGuideStart = templateStrokes[activeGuideStroke]?.[0]
+    ?? START_POS[letter]
+    ?? DEFAULT_START;
+  const activeDirectionHint = getStrokeDirectionHint(
+    templateStrokes[activeGuideStroke],
+    ANGULAR_LETTERS.has(letter)
+  );
+  const guideOpacity  = (attempt === 3 && !collectionMode) ? 0 : attempt === 1 ? 0.14 : 0.26;
   const phonetic      = PHONETICS[letter.toLowerCase()] ?? '';
   const badge         = ATTEMPT_BADGE[attempt];
+
+  const tracerXInterp = useMemo(() => {
+    if (!tracerKeyframes) return null;
+    return tracerProgress.interpolate({
+      inputRange: tracerKeyframes.inputRange,
+      outputRange: tracerKeyframes.xRange,
+      extrapolate: 'clamp',
+    });
+  }, [tracerKeyframes, tracerProgress]);
+
+  const tracerYInterp = useMemo(() => {
+    if (!tracerKeyframes) return null;
+    return tracerProgress.interpolate({
+      inputRange: tracerKeyframes.inputRange,
+      outputRange: tracerKeyframes.yRange,
+      extrapolate: 'clamp',
+    });
+  }, [tracerKeyframes, tracerProgress]);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
 
   const playLetterSound = useCallback((l = letter) => {
     Speech.stop();
@@ -221,60 +501,114 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   }, [letter]);
 
   useEffect(() => {
-    const path = LETTER_PATHS[letter];
-    if (attempt !== 1 || hasDrawn || !path || path.length < 2) {
+    const rawPath = LETTER_PATHS[letter];
+    if (reduceMotion || attempt !== 1 || hasDrawn || !rawPath || rawPath.length < 1) {
       setTracerVisible(false);
       return;
     }
 
-    const startX = path[0].fx * CANVAS_W;
-    const startY = path[0].fy * CANVAS_H;
-    tracerX.setValue(startX);
-    tracerY.setValue(startY);
+    const strokes = normalizeStrokes(rawPath);
+    const isAngular = ANGULAR_LETTERS.has(letter);
+    const sampledStrokes = strokes.map(stroke => {
+      if (stroke?.length === 1) {
+        const point = {
+          x: aspectX(stroke[0].fx) * CANVAS_W,
+          y: stroke[0].fy * CANVAS_H,
+        };
+        return { points: [point, point], totalLength: 0 };
+      }
+      return isAngular
+        ? sampleStraightStroke(stroke, 60, CANVAS_W, CANVAS_H)
+        : sampleSmoothPath(stroke, 60, CANVAS_W, CANVAS_H);
+    });
+
+    const inputRange = [];
+    const xRange = [];
+    const yRange = [];
+    const strokeBounds = [];
+    let offset = 0;
+    for (const { points } of sampledStrokes) {
+      if (points.length === 0) continue;
+      const start = offset;
+      for (const point of points) {
+        inputRange.push(offset);
+        xRange.push(point.x);
+        yRange.push(point.y);
+        offset++;
+      }
+      strokeBounds.push({ start, end: offset - 1 });
+    }
+
+    if (inputRange.length < 2) { setTracerVisible(false); return; }
+
+    setTracerKeyframes({ inputRange, xRange, yRange });
+    tracerProgress.setValue(0);
     setTracerVisible(true);
 
-    const steps = path.slice(1).map(pt =>
-      Animated.parallel([
-        Animated.timing(tracerX, { toValue: pt.fx * CANVAS_W, duration: 420, useNativeDriver: false }),
-        Animated.timing(tracerY, { toValue: pt.fy * CANVAS_H, duration: 420, useNativeDriver: false }),
-      ])
-    );
+    const strokeAnimations = [];
+    for (let index = 0; index < strokeBounds.length; index++) {
+      if (index > 0) {
+        strokeAnimations.push(Animated.delay(400));
+        strokeAnimations.push(Animated.timing(tracerProgress, {
+          toValue: strokeBounds[index].start,
+          duration: 1,
+          useNativeDriver: true,
+        }));
+      }
+      strokeAnimations.push(Animated.timing(tracerProgress, {
+        toValue: strokeBounds[index].end,
+        duration: Math.max(600, Math.round(sampledStrokes[index].totalLength / TRACER_PX_PER_MS)),
+        useNativeDriver: true,
+      }));
+    }
 
     const anim = Animated.loop(
-      Animated.sequence([Animated.delay(350), ...steps, Animated.delay(700)]),
+      Animated.sequence([Animated.delay(350), ...strokeAnimations, Animated.delay(700)]),
       { resetBeforeIteration: true }
     );
     anim.start();
 
     return () => { setTracerVisible(false); anim.stop(); };
-  }, [attempt, hasDrawn, letter, tracerX, tracerY]);
-
-  useEffect(() => {
-    if (hasDrawn && allPathsRef.current.length > 0) {
-      const { smoothness } = calculateDrawingFeatures(allPathsRef.current);
-      setFeedbackData(getAttemptBadge(smoothness));
-    }
-  }, [hasDrawn]);
+  }, [attempt, hasDrawn, letter, reduceMotion, tracerProgress]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
-        startTimeRef.current = Date.now();
+        setAttemptFeedback(null);
         const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath([{ x: locationX, y: locationY, t: 0 }]);
+        const now = Date.now();
+        startTimeRef.current = now;
+        strokeIdCounter.current += 1;  // ML: new stroke begins
+        setCurrentPath([{ x: locationX, y: locationY, t: 0, tAbs: now, stroke_id: strokeIdCounter.current }]);
         if (allPathsRef.current.length === 0) {
           playLetterSoundRef.current?.();
         }
       },
       onPanResponderMove: (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath(prev => [...prev, {
-          x: locationX, y: locationY, t: Date.now() - startTimeRef.current,
-        }]);
+        const now = Date.now();
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          if (last && Math.hypot(locationX - last.x, locationY - last.y) < 1.5) return prev;
+          return [...prev, {
+            x: locationX, y: locationY, t: now - startTimeRef.current, tAbs: now, stroke_id: strokeIdCounter.current,
+          }];
+        });
       },
       onPanResponderRelease: () => {
+        setCurrentPath(prev => {
+          if (prev.length > 2) {
+            const updated = [...allPathsRef.current, prev];
+            allPathsRef.current = updated;
+            setAllPaths(updated);
+            setHasDrawn(true);
+          }
+          return [];
+        });
+      },
+      onPanResponderTerminate: () => {
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -293,38 +627,152 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     allPathsRef.current = [];
     setCurrentPath([]);
     setHasDrawn(false);
-    setFeedbackData(null);
+    strokeIdCounter.current = 0;  // ML: stroke IDs restart from 1 on the next attempt
   }, []);
 
-  const handleClear = useCallback(() => resetCanvas(), [resetCanvas]);
+  const handleClear = useCallback(() => {
+    setAttemptFeedback(null);
+    resetCanvas();
+  }, [resetCanvas]);
 
   const showCelebrationFor = useCallback((data, nextCategory, isAllDone) => {
     setCelebration({ data, nextCategory, isAllDone });
-    celebScale.setValue(0.5);
+    celebScale.setValue(reduceMotion ? 1 : 0.5);
     celebOpacity.setValue(0);
+    if (reduceMotion) {
+      Animated.timing(celebOpacity, {
+        toValue: 1,
+        duration: 160,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
     Animated.parallel([
-      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: false }),
-      Animated.timing(celebOpacity, { toValue: 1, duration: 260, useNativeDriver: false }),
+      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: true }),
+      Animated.timing(celebOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
     ]).start();
-  }, [celebOpacity, celebScale]);
+  }, [celebOpacity, celebScale, reduceMotion]);
 
   const handleNext = useCallback(async () => {
     const features = calculateDrawingFeatures(allPathsRef.current);
-    await storeLetterProgress(student.sid, letter, {
-      attempt,
-      deviation:      0,
-      pauseCount:     features.pauseCount,
-      completionTime: features.completionTime,
-      strokeCount:    features.strokeCount,
-      smoothness:     features.smoothness,
-    });
+
+    // DTW trajectory accuracy — same bezier template as the tracer animation.
+    // Multi-stroke templates use per-stroke bipartite matching so the child's
+    // stroke order doesn't affect the score.
+    const templatePath = LETTER_PATHS[letter];
+    const dtwResult = templatePath
+      ? computeMultiStrokeDTW(templatePath, allPathsRef.current, CANVAS_W, CANVAS_H)
+      : { normalizedDistance: null, strokeOrderMeta: null };
+    features.dtw_distance = dtwResult.normalizedDistance;
+    features.stroke_order_meta = dtwResult.strokeOrderMeta;
+
+    // ML: snapshot before resetCanvas() wipes allPathsRef
+    sessionAttemptsRef.current = [
+      ...sessionAttemptsRef.current,
+      {
+        attempt_number: attempt,
+        features: {
+          smoothness:       features.smoothness,
+          pauseCount:       features.pauseCount,
+          completionTime:   features.completionTime,
+          strokeCount:      features.strokeCount,
+          dtw_distance:     features.dtw_distance,
+          stroke_order_meta: features.stroke_order_meta,
+        },
+        strokes: allPathsRef.current.map((pts, i) => ({
+          stroke_id: i + 1,
+          points:    pts,   // each point: {x, y, t, tAbs, stroke_id}
+        })),
+      },
+    ];
+
+    const attemptScore = Math.round(featuresToScore({ smoothness: features.smoothness, dtw_distance: features.dtw_distance }));
+    attemptScoresRef.current = [...attemptScoresRef.current, attemptScore];
+    const attemptPassed = didPassAttempt(features, allPathsRef.current);
+    setAttemptFeedback({ passed: attemptPassed, attempt });
+
+    try {
+      await Promise.all([
+        storeLetterProgress(student.sid, letter, {
+          attempt,
+          deviation:      0,
+          pauseCount:     features.pauseCount,
+          completionTime: features.completionTime,
+          strokeCount:    features.strokeCount,
+          smoothness:     features.smoothness,
+          dtw_distance:   features.dtw_distance,
+        }),
+        new Promise(resolve => setTimeout(resolve, ATTEMPT_FEEDBACK_MS)),
+      ]);
+    } finally {
+      setAttemptFeedback(null);
+    }
 
     if (isLastAttempt) {
-      client.post(ENDPOINTS.LETTER_COMPLETE, {
-        student_id: student.sid,
-        letter,
-        case_type: caseType,
-      }).catch(() => {});
+      const wroteCorrectly = attemptPassed;
+      // DTW gate: shape must match the template within the calibrated threshold.
+      // dtw_distance != null guard: if no template exists for this letter, do not
+      // hard-fail the child — the bounds checks are still enforced.
+
+      if (__DEV__) {
+        console.log('[DTW debug]', {
+          letter,
+          dtw_distance: features.dtw_distance,
+          threshold:    DTW_CORRECT_THRESHOLD,
+          score:        attemptScore,
+          passed:       wroteCorrectly,
+        });
+        // Developer-only export — full raw/normalized paths for offline
+        // inspection. Never sent to the backend, never used for scoring.
+        console.log('[DTW debug export]', buildDtwDebugExport({
+          childStrokes:   allPathsRef.current,
+          templatePoints: templatePath ? sampleSmoothPath(templatePath, 60, CANVAS_W, CANVAS_H).points : [],
+          dtwResult:      dtwResult,
+          qualityScore:   attemptScore,
+        }));
+      }
+
+      try {
+        const response = await client.post(ENDPOINTS.LETTER_COMPLETE, {
+          student_id:      student.sid,
+          letter,
+          case_type:       caseType,
+          attempt_scores:  attemptScoresRef.current,
+          wrote_correctly: wroteCorrectly,
+          canvas_width:    CANVAS_W,                    // ML: coordinate space
+          canvas_height:   CANVAS_H,                    // ML: coordinate space
+          attempts:        sessionAttemptsRef.current,  // ML: per-attempt features + raw strokes
+          collection_mode: collectionMode,
+          collection_session_id: collectionSessionId,
+          protocol_version:      PROTOCOL_VERSION,
+          feature_version:       FEATURE_VERSION,
+          template_version:      TEMPLATE_VERSION,
+          normalization_version: NORMALIZATION_VERSION,
+          task_order:            UPPERCASE_TASK_ORDER_OFFSET + letterIdx,
+          ...getDeviceMetadata(),
+        });
+        if (!collectionMode && (!wroteCorrectly || response.data.completed === false)) {
+          if (response.data.completed === false) {
+            show('Keep practising — try again!', 'info');
+          }
+          attemptScoresRef.current   = [];
+          sessionAttemptsRef.current = [];
+          setAttempt(1);
+          resetCanvas();
+          return;
+        }
+      } catch {
+        // network failure — gate only in normal mode
+        if (!collectionMode && !wroteCorrectly) {
+          attemptScoresRef.current   = [];
+          sessionAttemptsRef.current = [];
+          setAttempt(1);
+          resetCanvas();
+          return;
+        }
+      }
+      attemptScoresRef.current   = [];
+      sessionAttemptsRef.current = [];
     }
 
     if (!isLastAttempt) {
@@ -354,19 +802,42 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       setAttempt(1);
       resetCanvas();
     }
-  }, [attempt, isLastAttempt, isLastLetter, letter, letterIdx,
-      resetCanvas, sequence, showCelebrationFor, student.sid]);
+  }, [attempt, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
+      resetCanvas, sequence, show, showCelebrationFor, student.sid]);
 
   const handleDismissCelebration = useCallback(() => {
     const isAllDone = celebration?.isAllDone;
     setCelebration(null);
     if (isAllDone) {
-      navigation.goBack();
-    } else {
+      if (collectionMode) {
+        navigation.navigate('DataCollectionDone', { student, theme, collectionSessionId });
+      } else {
+        navigation.goBack();
+      }
+    } else if (collectionMode) {
+      // Fixed research protocol — always advance in place, never detour
+      // through a warm-up. Unchanged from before this branch existed.
       setLetterIdx(i => i + 1);
       setAttempt(1);
+    } else {
+      // Category boundary mid-session — warm up the new primitive before
+      // continuing, same gating LetterPracticeScreen does at session start.
+      const nextLetterObj = sequence[letterIdx + 1];
+      const group      = nextLetterObj ? getLetterPrimitiveGroup(nextLetterObj.letter) : null;
+      const activities = group ? selectPreWritingActivities(group) : [];
+
+      if (activities.length > 0) {
+        navigation.navigate('PreWritingActivity', {
+          student, theme, activities,
+          nextRoute:  'UppercaseWriting',
+          nextParams: { student, theme, letterSequence: sequence.slice(letterIdx + 1) },
+        });
+      } else {
+        setLetterIdx(i => i + 1);
+        setAttempt(1);
+      }
     }
-  }, [celebration, navigation]);
+  }, [celebration, collectionMode, collectionSessionId, navigation, student, theme, sequence, letterIdx]);
 
   return (
     <LinearGradient
@@ -458,6 +929,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
             <View style={styles.canvasOuter}>
               <View
                 style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
+                pointerEvents={attemptFeedback ? 'none' : 'auto'}
                 {...panResponder.panHandlers}
               >
                 <Svg width={CANVAS_W} height={CANVAS_H}>
@@ -467,33 +939,86 @@ export default function UppercaseWritingScreen({ route, navigation }) {
                   <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3} stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
                   <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#90CAF9" strokeWidth={1.5} />
 
-                  {guideOpacity > 0 && (
-                    <SvgText
-                      x={CANVAS_W / 2}
-                      y={LINE_3}
-                      textAnchor="middle"
-                      fontSize={GHOST_FONT_UPPER}
-                      fill={`rgba(60,60,180,${guideOpacity})`}
-                      fontWeight="bold"
-                    >
-                      {letter}
-                    </SvgText>
+                  {guideOpacity > 0 && LETTER_PATHS[letter] && (
+                    <>
+                      <Path
+                        d={ANGULAR_LETTERS.has(letter) ? toStraightPath(LETTER_PATHS[letter]) : toSmoothPath(LETTER_PATHS[letter])}
+                        stroke={`rgba(80,80,80,${guideOpacity})`}
+                        strokeWidth={7}
+                        strokeLinecap="round"
+                        strokeLinejoin={ANGULAR_LETTERS.has(letter) ? 'miter' : 'round'}
+                        fill="none"
+                      />
+                      {getGhostDots(LETTER_PATHS[letter]).map((dot, idx) => (
+                        <Circle
+                          key={`ghost-dot-${idx}`}
+                          cx={dot.cx}
+                          cy={dot.cy}
+                          r={5}
+                          fill={`rgba(80,80,80,${guideOpacity})`}
+                        />
+                      ))}
+                    </>
                   )}
 
-                  {attempt === 2 && (
+                  {attempt === 2
+                    && activeGuideStart
+                    && (
                     <>
                       <Circle
-                        cx={startPos.fx * CANVAS_W}
-                        cy={startPos.fy * CANVAS_H}
+                        cx={aspectX(activeGuideStart.fx) * CANVAS_W}
+                        cy={activeGuideStart.fy * CANVAS_H}
+                        r={12}
+                        fill="none"
+                        stroke={theme.button}
+                        strokeWidth={2}
+                        opacity={0.72}
+                      />
+                      <Circle
+                        cx={aspectX(activeGuideStart.fx) * CANVAS_W}
+                        cy={activeGuideStart.fy * CANVAS_H}
                         r={9} fill={theme.button} opacity={0.80}
                       />
                       <SvgText
-                        x={startPos.fx * CANVAS_W + 17}
-                        y={startPos.fy * CANVAS_H + 5}
-                        fontSize={14} fill={theme.button} fontWeight="bold"
+                        x={aspectX(activeGuideStart.fx) * CANVAS_W}
+                        y={activeGuideStart.fy * CANVAS_H + 5}
+                        fontSize={12}
+                        fill={theme.buttonText ?? '#FFFFFF'}
+                        fontWeight="bold"
+                        textAnchor="middle"
                       >
-                        1
+                        {activeGuideStroke + 1}
                       </SvgText>
+                      {activeDirectionHint && (
+                        <>
+                          {activeDirectionHint.endGuides.map((guide, index) => (
+                            <Circle
+                              key={`stroke-end-${index}`}
+                              cx={guide.x}
+                              cy={guide.y}
+                              r={index === activeDirectionHint.endGuides.length - 1 ? 7 : 5}
+                              fill="none"
+                              stroke={theme.button}
+                              strokeWidth={2.5}
+                              opacity={0.72}
+                            />
+                          ))}
+                          {activeDirectionHint.arrows.map((arrow, index) => (
+                            <React.Fragment key={`stroke-arrow-${index}`}>
+                              <Line
+                                x1={arrow.shaftStart.x}
+                                y1={arrow.shaftStart.y}
+                                x2={arrow.tip.x}
+                                y2={arrow.tip.y}
+                                stroke={theme.button}
+                                strokeWidth={4}
+                                strokeLinecap="round"
+                              />
+                              <Polygon points={arrow.arrowHead} fill={theme.button} />
+                            </React.Fragment>
+                          ))}
+                        </>
+                      )}
                     </>
                   )}
 
@@ -524,7 +1049,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
                 </Svg>
               </View>
 
-              {attempt === 1 && !hasDrawn && tracerVisible && (
+              {attempt === 1 && !hasDrawn && tracerVisible && tracerXInterp && (
                 <View style={StyleSheet.absoluteFill} pointerEvents="none">
                   <Animated.View
                     style={[
@@ -532,8 +1057,8 @@ export default function UppercaseWritingScreen({ route, navigation }) {
                       {
                         backgroundColor: theme.button,
                         transform: [
-                          { translateX: tracerX },
-                          { translateY: tracerY },
+                          { translateX: tracerXInterp },
+                          { translateY: tracerYInterp },
                         ],
                       },
                     ]}
@@ -546,19 +1071,12 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         </View>
 
         {/* Feedback pill */}
-        {feedbackData && (
-          <View style={[styles.feedbackBadge, { backgroundColor: feedbackData.bg }]}>
-            <Text style={[styles.feedbackText, { color: feedbackData.color }]}>
-              {feedbackData.label}
-            </Text>
-          </View>
-        )}
-
         {/* Action buttons */}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
             style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
             onPress={handleClear}
+            disabled={Boolean(attemptFeedback)}
             activeOpacity={0.7}
           >
             <Ionicons name="refresh-outline" size={16} color={theme.headingText} />
@@ -567,8 +1085,13 @@ export default function UppercaseWritingScreen({ route, navigation }) {
 
           {hasDrawn && (
             <TouchableOpacity
-              style={[styles.nextBtn, { backgroundColor: theme.button }]}
+              style={[
+                styles.nextBtn,
+                { backgroundColor: theme.button },
+                attemptFeedback && { opacity: 0.55 },
+              ]}
               onPress={handleNext}
+              disabled={Boolean(attemptFeedback)}
               activeOpacity={0.85}
             >
               <Text style={[styles.nextText, { color: theme.buttonText }]}>
@@ -594,6 +1117,15 @@ export default function UppercaseWritingScreen({ route, navigation }) {
             />
           ))}
         </View>
+
+        {attemptFeedback && (
+          <AttemptAvatarFeedback
+            avatarKey={student?.avatar_key}
+            passed={attemptFeedback.passed}
+            attempt={attemptFeedback.attempt}
+            theme={theme}
+          />
+        )}
 
         {/* Celebration overlay */}
         {celebration && (

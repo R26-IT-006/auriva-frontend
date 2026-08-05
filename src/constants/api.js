@@ -29,10 +29,17 @@ export const ENDPOINTS = {
 
   // Handwriting
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
+  PRE_WRITING_ACTIVITY:       '/handwriting/pre-writing-activity',
   HANDWRITING_FINALIZE:       (id)       => `/handwriting/assessment/${id}/finalize`,
   HANDWRITING_INITIAL_REPORT: (studentId) => `/handwriting/initial-report/${studentId}`,
   LETTER_COMPLETE:            '/handwriting/letter-complete',
   LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
+  LETTER_PROGRESS_REPORT:     (studentId) => `/handwriting/letter-progress-report/${studentId}`,
+
+  // Data Collection Mode
+  COLLECTION_SESSION_START:    '/handwriting/collection-session/start',
+  COLLECTION_SESSION_COMPLETE: (id) => `/handwriting/collection-session/${id}/complete`,
+  TEACHER_VALIDATION:          '/handwriting/teacher-validation',
 
   // Dialogue – Level 1
   DIALOGUE_LEVEL1_OVERVIEW:        (sid) => `/teacher/student/${sid}/level1/overview`,

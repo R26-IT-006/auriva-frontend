@@ -141,7 +141,7 @@ export default function LetterHomeScreen({ route, navigation }) {
   );
 
   const progressPercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
-  const wordsUnlocked   = lowercaseProgress >= 26;
+  const wordsUnlocked   = true;
 
   const avgSmoothness = assessmentData.length > 0
     ? assessmentData.reduce((sum, s) => sum + (s.features?.smoothness ?? 0), 0) / assessmentData.length
@@ -187,6 +187,18 @@ export default function LetterHomeScreen({ route, navigation }) {
           </View>
 
           <View style={styles.topBtnGroup}>
+            <TouchableOpacity
+              style={[styles.summaryBtn, {
+                backgroundColor: theme.button + '14',
+                borderColor: theme.button + '40',
+              }]}
+              onPress={() => navigation.navigate('TeacherMain')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="home-outline" size={14} color={theme.button} />
+              <Text style={[styles.summaryBtnText, { color: theme.button }]}>Dashboard</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.summaryBtn, {
                 backgroundColor: theme.button + '14',
@@ -338,7 +350,7 @@ export default function LetterHomeScreen({ route, navigation }) {
             </TouchableOpacity>
 
             <Text style={styles.footerNote}>
-              Complete all 26 Letters to unlock the Words section.
+              Practice Letters and Words in any order you like.
             </Text>
 
           </View>
