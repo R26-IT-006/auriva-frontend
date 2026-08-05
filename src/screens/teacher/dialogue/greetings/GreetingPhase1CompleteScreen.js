@@ -85,6 +85,7 @@ export default function GreetingPhase1CompleteScreen({ route, navigation }) {
                   student,
                   wordKey,
                   wordId: route.params?.wordId,
+                  cueGrapheme: route.params?.cueGrapheme ?? null,
                 })
               }
             >

@@ -78,7 +78,7 @@ export default function Phase1CompleteScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.continueBtn, { backgroundColor: theme.button }]}
               activeOpacity={0.85}
-              onPress={() => navigation.navigate('Phase2Production', { student, wordKey, wordId: route.params?.wordId })}
+              onPress={() => navigation.navigate('Phase2Production', { student, wordKey, wordId: route.params?.wordId, cueGrapheme: route.params?.cueGrapheme ?? null })}
             >
               <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>
                 Let's say it!  ·  අපි කියමු!

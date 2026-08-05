@@ -17,6 +17,11 @@ export const dialogueApi = {
     return data;
   },
 
+  async getWordById(wordId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_WORD_BY_ID(wordId));
+    return data;
+  },
+
   async recordPhase1Exposure(studentId, wordId) {
     const { data } = await client.post(
       ENDPOINTS.DIALOGUE_LEVEL1_PHASE1_EXPOSURE(studentId, wordId)

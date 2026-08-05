@@ -17,6 +17,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
+import { dialogueApi } from '../../../../api/dialogue'; // RC-PROMPT: shared word lookup (TASK-06 A1)
 import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 
 const PROGRESS_FRACTION = 0.70;
@@ -65,6 +66,22 @@ const P = {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+/**
+ * RC-PROMPT: Split a word label into [prefix, cue, suffix] for grapheme highlight.
+ * cueGrapheme is case-insensitive. Returns ['', '', wordLabel] if no match found.
+ * Example: splitWordByCue('Thank you', 'TH') → ['', 'Th', 'ank you']
+ */
+function splitWordByCue(wordLabel, cueGrapheme) {
+  if (!cueGrapheme) return ['', '', wordLabel];
+  const idx = wordLabel.toUpperCase().indexOf(cueGrapheme.toUpperCase());
+  if (idx === -1) return ['', '', wordLabel];
+  return [
+    wordLabel.slice(0, idx),
+    wordLabel.slice(idx, idx + cueGrapheme.length),
+    wordLabel.slice(idx + cueGrapheme.length),
+  ];
+}
+
 async function uriToBase64(uri) {
   const response = await fetch(uri);
   const blob     = await response.blob();
@@ -86,6 +103,8 @@ export default function Cat3Phase2Screen({ route, navigation }) {
   const [phase, _setPhase]      = useState(P.INTRO);
   const [cloudText, setCloud]   = useState(`Can you say "${wordLabel}"?`);
   const [btnGlow,   setBtnGlow] = useState(false);
+  const [showCue,   setShowCue] = useState(false);   // RC-PROMPT: grapheme highlight active
+  const [cueGrapheme, setCueGrapheme] = useState(null);  // RC-PROMPT: fetched by wordId at mount (TASK-06 A1) — not relied on via route.params
   const [showGate,     setShowGate]     = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [gatePurpose,  setGatePurpose]  = useState('settings');
@@ -93,6 +112,7 @@ export default function Cat3Phase2Screen({ route, navigation }) {
   const phaseRef      = useRef(P.INTRO);
   const activeRef     = useRef(true);
   const soundRef      = useRef(null);
+  const slowSoundRef  = useRef(null);  // RC-PROMPT: separate ref for slowed playback
   const timerRef      = useRef(null);
   const attemptRef    = useRef(0);
   const sessionIdRef  = useRef(sessionId ?? null);
@@ -145,6 +165,46 @@ export default function Cat3Phase2Screen({ route, navigation }) {
     } catch { /* ignore */ }
   }
 
+  /**
+   * RC-PROMPT Tier 2: play the word audio at 60% speed with pitch correction.
+   * Uses a separate soundRef so it never cancels the main playSound() chain.
+   */
+  async function playSlowWord() {
+    try {
+      if (slowSoundRef.current) {
+        await slowSoundRef.current.stopAsync().catch(() => {});
+        await slowSoundRef.current.unloadAsync().catch(() => {});
+        slowSoundRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(WORD_AUDIO[wordKey]);
+      slowSoundRef.current = sound;
+      // 0.6 = 60% speed; true = correct pitch so it doesn't sound distorted
+      await sound.setRateAsync(0.6, true);
+      await sound.playAsync();
+      await new Promise(resolve => {
+        sound.setOnPlaybackStatusUpdate(status => {
+          if (status.didJustFinish) {
+            sound.setOnPlaybackStatusUpdate(null);
+            resolve();
+          }
+        });
+      });
+    } catch { /* ignore */ }
+  }
+
+  // ── RC-PROMPT: fetch cue_grapheme by wordId (TASK-06 A1) ────────────────────
+  // Degrades gracefully — a failed fetch or a word with no cue_grapheme just
+  // leaves cueGrapheme null, so splitWordByCue() never highlights anything.
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!wordId) return undefined;
+    dialogueApi.getWordById(wordId)
+      .then(word => { if (!cancelled) setCueGrapheme(word?.cue_grapheme ?? null); })
+      .catch(() => { if (!cancelled) setCueGrapheme(null); });
+    return () => { cancelled = true; };
+  }, [wordId]);
+
   // ── Boot into listening on mount ──────────────────────────────────────────
 
   useEffect(() => {
@@ -171,6 +231,8 @@ export default function Cat3Phase2Screen({ route, navigation }) {
       clearTimer();
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
+      slowSoundRef.current?.stopAsync().catch(() => {});
+      slowSoundRef.current?.unloadAsync().catch(() => {});
       resetRecorder();
     };
   }, []));
@@ -274,6 +336,7 @@ export default function Cat3Phase2Screen({ route, navigation }) {
       }
 
       if (res.advance_to_phase3) {
+        setShowCue(false);
         setPhase(P.DONE);
         say('Great job!');
         await delay(1200);
@@ -287,6 +350,7 @@ export default function Cat3Phase2Screen({ route, navigation }) {
 
       if (res.score >= 1) {
         if (attemptRef.current >= 3) {
+          setShowCue(false);
           setPhase(P.DONE);
           say('Good job!');
           await playSound(AUDIO.goodJob);
@@ -296,12 +360,32 @@ export default function Cat3Phase2Screen({ route, navigation }) {
               student, wordId, wordKey, wordLabel, sessionId: sessionIdRef.current,
             });
           }
-        } else {
+        } else if (attemptRef.current === 2) {
+          // ── RC-PROMPT Tier 3: simultaneous production ───────────────────
+          setShowCue(true);
           setPhase(P.PARTIAL);
-          say(`Try again! Can you say "${wordLabel}"?`);
+          say(`Say it with me! ${wordLabel}`);
+          const promptAudio = CAN_YOU_SAY_AUDIO[wordKey];
+          if (promptAudio) {
+            playSound(promptAudio)
+              .then(() => { avatarAudioEndRef.current = Date.now(); }) // RC3
+              .catch(() => {});
+          }
+          await delay(800);
+          if (!activeRef.current) return;
+          if (WORD_AUDIO[wordKey]) await playSound(WORD_AUDIO[wordKey]);
+          timerRef.current = setTimeout(enterReprompt, 20_000);
+        } else {
+          // ── RC-PROMPT Tier 2: grapheme highlight + slow audio ───────────
+          setShowCue(true);
+          setPhase(P.PARTIAL);
+          say(`Listen carefully... "${wordLabel}"`);
+          await playSlowWord();
+          avatarAudioEndRef.current = Date.now(); // RC3
           timerRef.current = setTimeout(enterReprompt, 20_000);
         }
       } else {
+        setShowCue(false);
         await enterReprompt();
       }
     } catch {
@@ -383,7 +467,18 @@ export default function Cat3Phase2Screen({ route, navigation }) {
               <View style={[styles.speakerCircle, { backgroundColor: theme.button + '22' }]}>
                 <Ionicons name="volume-high" size={36} color={theme.button} />
               </View>
-              <Text style={[styles.wordText, { color: theme.button }]}>{wordLabel}</Text>
+              {showCue ? (() => {
+                const [pre, cue, suf] = splitWordByCue(wordLabel, cueGrapheme);
+                return (
+                  <Text style={[styles.wordText, { color: theme.button }]}>
+                    {pre}
+                    <Text style={styles.wordTextCue}>{cue}</Text>
+                    {suf}
+                  </Text>
+                );
+              })() : (
+                <Text style={[styles.wordText, { color: theme.button }]}>{wordLabel}</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.hintRow}>
@@ -493,6 +588,11 @@ const styles = StyleSheet.create({
   },
   speakerCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   wordText:      { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center' },
+  wordTextCue: {
+    fontWeight: '900',
+    textDecorationLine: 'underline',
+    color: '#E05C2A',   // warm orange — contrasts with theme.button on all avatar themes
+  },
 
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Layout.spacing.sm, opacity: 0.55 },
   hintText: { fontSize: Layout.fontSize.xs, fontWeight: '500' },

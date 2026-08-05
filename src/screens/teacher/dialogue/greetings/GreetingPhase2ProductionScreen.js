@@ -96,6 +96,22 @@ const P = {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+/**
+ * RC-PROMPT: Split a word label into [prefix, cue, suffix] for grapheme highlight.
+ * cueGrapheme is case-insensitive. Returns ['', '', wordLabel] if no match found.
+ * Example: splitWordByCue('Thank you', 'TH') → ['', 'Th', 'ank you']
+ */
+function splitWordByCue(wordLabel, cueGrapheme) {
+  if (!cueGrapheme) return ['', '', wordLabel];
+  const idx = wordLabel.toUpperCase().indexOf(cueGrapheme.toUpperCase());
+  if (idx === -1) return ['', '', wordLabel];
+  return [
+    wordLabel.slice(0, idx),
+    wordLabel.slice(idx, idx + cueGrapheme.length),
+    wordLabel.slice(idx + cueGrapheme.length),
+  ];
+}
+
 async function uriToBase64(uri) {
   const response = await fetch(uri);
   const blob = await response.blob();
@@ -120,6 +136,8 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
   const [cloudText, setCloudText]  = useState(wordLabel);
   const [tileGlow, setTileGlow]    = useState(false);
   const [btnGlow, setBtnGlow]      = useState(false);
+  const [showCue, setShowCue]      = useState(false);   // RC-PROMPT: grapheme highlight active
+  const [cueGrapheme, setCueGrapheme] = useState(null);  // RC-PROMPT: fetched by wordId at mount (TASK-06 A1) — not relied on via route.params
   const [showGate, setShowGate]    = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [gatePurpose, setGatePurpose]   = useState('settings');
@@ -127,6 +145,7 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
   const phaseRef      = useRef(P.INTRO);
   const activeRef     = useRef(true);
   const soundRef      = useRef(null);
+  const slowSoundRef  = useRef(null);  // RC-PROMPT: separate ref for slowed playback
   const timerRef      = useRef(null);
   const tileTapTimer  = useRef(null);
   const attemptRef    = useRef(0);
@@ -183,6 +202,46 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
     } catch { /* ignore */ }
   }
 
+  /**
+   * RC-PROMPT Tier 2: play the word audio at 60% speed with pitch correction.
+   * Uses a separate soundRef so it never cancels the main playSound() chain.
+   */
+  async function playSlowWord() {
+    try {
+      if (slowSoundRef.current) {
+        await slowSoundRef.current.stopAsync().catch(() => {});
+        await slowSoundRef.current.unloadAsync().catch(() => {});
+        slowSoundRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(wordAudio.word);
+      slowSoundRef.current = sound;
+      // 0.6 = 60% speed; true = correct pitch so it doesn't sound distorted
+      await sound.setRateAsync(0.6, true);
+      await sound.playAsync();
+      await new Promise(resolve => {
+        sound.setOnPlaybackStatusUpdate(status => {
+          if (status.didJustFinish) {
+            sound.setOnPlaybackStatusUpdate(null);
+            resolve();
+          }
+        });
+      });
+    } catch { /* ignore */ }
+  }
+
+  // ── RC-PROMPT: fetch cue_grapheme by wordId (TASK-06 A1) ────────────────────
+  // Degrades gracefully — a failed fetch or a word with no cue_grapheme just
+  // leaves cueGrapheme null, so splitWordByCue() never highlights anything.
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!wordId) return undefined;
+    dialogueApi.getWordById(wordId)
+      .then(word => { if (!cancelled) setCueGrapheme(word?.cue_grapheme ?? null); })
+      .catch(() => { if (!cancelled) setCueGrapheme(null); });
+    return () => { cancelled = true; };
+  }, [wordId]);
+
   useEffect(() => {
     let cancelled = false;
     async function runIntro() {
@@ -221,6 +280,8 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
       if (tileTapTimer.current) clearTimeout(tileTapTimer.current);
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
+      slowSoundRef.current?.stopAsync().catch(() => {});
+      slowSoundRef.current?.unloadAsync().catch(() => {});
       resetRecorder();
     };
   }, []));
@@ -364,6 +425,7 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
       if (!activeRef.current) return;
 
       if (res.advance_to_phase3) {
+        setShowCue(false);
         setPhase(P.DONE);
         say('Great job!');
         await delay(1500);
@@ -395,20 +457,25 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
             });
           }
         } else if (n === 2) {
+          // ── RC-PROMPT Tier 3: simultaneous production ───────────────────
           setPhase(P.PARTIAL_2);
-          say(`Repeat after me, ${wordLabel}`);
+          setShowCue(true);
+          say(`Say it with me! ${wordLabel}`);
           await playSound(AUDIO.repeatAfterMe);
-          await delay(2000);
+          await delay(500);
           if (!activeRef.current) return;
           await playSound(wordAudio.word);
           avatarAudioEndRef.current = Date.now(); // RC3
         } else {
+          // ── RC-PROMPT Tier 2: grapheme highlight + slow audio ───────────
           setPhase(P.PARTIAL_1);
-          say(`Can you say "${wordLabel}"?`);
-          await playSound(wordAudio.canYouSay);
+          setShowCue(true);
+          say(`Listen carefully... "${wordLabel}"`);
+          await playSlowWord();
           avatarAudioEndRef.current = Date.now(); // RC3
         }
       } else {
+        setShowCue(false);
         await enterReprompt1();
       }
     } catch {
@@ -497,9 +564,20 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
               <View style={[styles.speakerCircle, { backgroundColor: theme.button + '22' }]}>
                 <Ionicons name="volume-high" size={36} color={theme.button} />
               </View>
-              <Text style={[styles.wordText, { color: theme.button }]}>
-                {wordLabel.replace(' ', '\n')}
-              </Text>
+              {showCue ? (() => {
+                const [pre, cue, suf] = splitWordByCue(wordLabel, cueGrapheme);
+                return (
+                  <Text style={[styles.wordText, { color: theme.button }]}>
+                    {pre}
+                    <Text style={styles.wordTextCue}>{cue}</Text>
+                    {suf.replace(' ', '\n')}
+                  </Text>
+                );
+              })() : (
+                <Text style={[styles.wordText, { color: theme.button }]}>
+                  {wordLabel.replace(' ', '\n')}
+                </Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.hintRow}>
@@ -649,6 +727,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   wordText: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', lineHeight: 28 },
+  wordTextCue: {
+    fontWeight: '900',
+    textDecorationLine: 'underline',
+    color: '#E05C2A',   // warm orange — contrasts with theme.button on all avatar themes
+  },
 
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Layout.spacing.sm, opacity: 0.6 },
   hintText: { fontSize: Layout.fontSize.xs, fontWeight: '500' },

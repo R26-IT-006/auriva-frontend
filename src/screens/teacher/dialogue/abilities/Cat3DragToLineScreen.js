@@ -183,7 +183,7 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
     cat3Api.recordDragToLine(student?.sid, wordId, result, sessionId).catch(() => {});
     setTimeout(() => {
       if (activeRef.current) {
-        navigation.navigate('Cat3Phase2', { student, wordId, wordKey, wordLabel, sessionId });
+        navigation.navigate('Cat3Phase2', { student, wordId, wordKey, wordLabel, sessionId, cueGrapheme: route.params?.cueGrapheme ?? null });
       }
     }, 1600);
   }
