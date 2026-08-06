@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import * as Speech from 'expo-speech';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItem } from '../../../constants/conceptData';
 import { conceptApi } from '../../../api/concept';
+import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
 
 export default function Tier3VideoScreen({ route, navigation }) {
@@ -22,21 +24,53 @@ export default function Tier3VideoScreen({ route, navigation }) {
   const concept = getConceptItem(category.key, conceptKey);
   const theme   = getAvatarTheme(student?.avatar_key);
 
-  const [videoEnded, setVideoEnded] = useState(false);
+  const [videoEnded,  setVideoEnded]  = useState(false);
+  const [loading,     setLoading]     = useState(true);
+  const [gateVisible, setGateVisible] = useState(false);
 
   const videoRef     = useRef(null);
   const sessionStart = useRef(Date.now());
   const btnScale     = useRef(new Animated.Value(0)).current;
 
+  const hasVideo = Boolean(concept?.tier3Video);
+
   useEffect(() => {
     conceptApi.startTier3({ studentId: student.sid, categoryKey: category.key, conceptKey }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => () => Speech.stop(), []);
+
+  const revealContinue = useCallback(() => {
+    setVideoEnded(true);
+    Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, bounciness: 14, speed: 6 }).start();
+  }, [btnScale]);
+
+  // No video for this concept — don't strand the child behind a button that can
+  // never appear; let them move on immediately.
+  useEffect(() => {
+    if (!hasVideo) { setLoading(false); revealContinue(); }
+  }, [hasVideo, revealContinue]);
+
+  const speakName = useCallback(() => {
+    if (!concept) return;
+    Speech.stop();
+    Speech.speak(concept.label, { language: 'en-US', rate: 0.8 });
+    if (concept.labelSi) {
+      setTimeout(() => Speech.speak(concept.labelSi, { language: 'si-LK', rate: 0.7 }), 1100);
+    }
+  }, [concept]);
+
   function onPlaybackStatusUpdate(status) {
-    if (!status.isLoaded) return;
+    if (!status.isLoaded) {
+      // A load error would otherwise leave Continue hidden forever.
+      if (status.error) { setLoading(false); revealContinue(); }
+      return;
+    }
+
+    if (loading) setLoading(false);
+
     if (status.didJustFinish && !videoEnded) {
-      setVideoEnded(true);
-      Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, bounciness: 14, speed: 6 }).start();
+      revealContinue();
       setTimeout(() => {
         Speech.speak('Great job! You watched the video!', { language: 'en-US', rate: 0.8 });
       }, 300);
@@ -62,6 +96,7 @@ export default function Tier3VideoScreen({ route, navigation }) {
   }
 
   async function handleReplay() {
+    Speech.stop();
     if (videoRef.current) {
       await videoRef.current.setPositionAsync(0);
       await videoRef.current.playAsync();
@@ -81,99 +116,168 @@ export default function Tier3VideoScreen({ route, navigation }) {
     >
       <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
 
-        {/* Row: video box on left, continue button on right */}
+        {/* Top bar — matches the other concept screens, and means the child is
+            never stuck here if the video misbehaves. */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            onPress={() => setGateVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          </TouchableOpacity>
+
+          <View style={{ flex: 1 }} />
+
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            onPress={speakName}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="volume-high-outline" size={20} color={theme.headingText} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Video on the left, concept name + controls on the right */}
         <View style={styles.contentRow}>
 
-          {/* Square video box */}
           <View style={[styles.videoBox, { borderColor: theme.cardOutline }]}>
-            {concept.tier3Video ? (
-              <Video
-                ref={videoRef}
-                source={concept.tier3Video}
-                style={styles.video}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay
-                useNativeControls={false}
-                onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-              />
+            {hasVideo ? (
+              <>
+                <Video
+                  ref={videoRef}
+                  source={concept.tier3Video}
+                  style={styles.video}
+                  resizeMode={ResizeMode.COVER}
+                  shouldPlay
+                  useNativeControls={false}
+                  onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+                />
+
+                {loading && (
+                  <View style={styles.loadingOverlay}>
+                    <ActivityIndicator size="large" color="#FFF" />
+                  </View>
+                )}
+
+                {videoEnded && (
+                  <TouchableOpacity style={styles.replayBtn} onPress={handleReplay} activeOpacity={0.8}>
+                    <Ionicons name="refresh" size={24} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </>
             ) : (
               <View style={styles.noVideoWrap}>
                 <Ionicons name="videocam-off-outline" size={48} color={theme.cardOutline} />
-                <Text style={[styles.noVideoText, { color: theme.headingText }]}>No video available</Text>
+                <Text style={[styles.noVideoText, { color: '#FFF' }]}>No video available</Text>
               </View>
-            )}
-
-            {videoEnded && (
-              <TouchableOpacity style={styles.replayBtn} onPress={handleReplay} activeOpacity={0.8}>
-                <Ionicons name="refresh" size={24} color="#fff" />
-              </TouchableOpacity>
             )}
           </View>
 
-          {/* Continue (and optional Watch Again) — springs in when video ends */}
-          <Animated.View style={[styles.continueBtnWrap, { transform: [{ scale: btnScale }] }]}>
-            {needsReplay && (
+          <View style={styles.sideColumn}>
+            {/* Shown from the start, so the child always knows what they're watching
+                and the column isn't empty until the video ends. */}
+            <View style={[styles.namePill, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+              <Text style={[styles.nameText, { color: theme.headingText }]}>{concept.label}</Text>
+              {concept.labelSi && (
+                <Text style={[styles.nameTextSi, { color: theme.headingText }]}>{concept.labelSi}</Text>
+              )}
+            </View>
+
+            <Animated.View style={[styles.continueBtnWrap, { transform: [{ scale: btnScale }] }]}>
+              {needsReplay && (
+                <TouchableOpacity
+                  style={[styles.watchAgainBtn, { borderColor: theme.button }]}
+                  onPress={handleReplay}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="refresh" size={18} color={theme.button} />
+                  <Text style={[styles.watchAgainText, { color: theme.button }]}>Watch Again</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
-                style={[styles.watchAgainBtn, { borderColor: theme.button }]}
-                onPress={handleReplay}
+                style={[styles.continueBtn, { backgroundColor: theme.button }]}
+                onPress={handleContinue}
                 activeOpacity={0.85}
               >
-                <Ionicons name="refresh" size={18} color={theme.button} />
-                <Text style={[styles.watchAgainText, { color: theme.button }]}>Watch Again</Text>
+                <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>Continue</Text>
+                <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
               </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.continueBtn, { backgroundColor: theme.button }]}
-              onPress={handleContinue}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>Continue</Text>
-              <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
-            </TouchableOpacity>
-          </Animated.View>
+            </Animated.View>
+          </View>
 
         </View>
 
       </SafeAreaView>
+
+      <ParentGateModal
+        visible={gateVisible}
+        onSuccess={() => { setGateVisible(false); navigation.replace('ConceptItems', { student, category }); }}
+        onCancel={() => setGateVisible(false)}
+      />
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   safe:      { flex: 1 },
-  safeInner: {
-    flex: 1,
+  safeInner: { flex: 1 },
+
+  topBar: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
+  },
+  iconBtn: {
+    width: 40, height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Layout.spacing.md,
-    paddingTop: 60,
   },
 
   contentRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 40,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingBottom: Layout.spacing.lg,
+  },
+
+  sideColumn: {
+    alignItems: 'center',
+    gap: 24,
   },
 
   namePill: {
+    alignItems: 'center',
     paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 32,
-    borderWidth: 2,
+    paddingVertical: 16,
+    borderRadius: 28,
+    borderWidth: 2.5,
+    gap: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
   nameText: {
-    fontSize: 28,
+    fontSize: 30,
     fontFamily: 'Nunito_900Black',
-    letterSpacing: 1.5,
+    letterSpacing: 0.5,
+  },
+  nameTextSi: {
+    fontSize: 17,
+    fontFamily: 'Nunito_700Bold',
+    opacity: 0.6,
   },
 
   videoBox: {
-    width: '52%',
+    width: '48%',
     aspectRatio: 1,
     borderRadius: 28,
     borderWidth: 3,
@@ -188,6 +292,13 @@ const styles = StyleSheet.create({
   video: {
     width: '100%',
     height: '100%',
+  },
+
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
 
   noVideoWrap: {

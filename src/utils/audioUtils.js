@@ -13,14 +13,8 @@ export async function playConceptAudio(source) {
       _currentSound = null;
     }
 
-    // Configure audio session — essential for Android speaker + iOS silent mode
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS:       false,
-      playsInSilentModeIOS:     true,
-      shouldDuckAndroid:        false,
-      playThroughEarpieceAndroid: false,
-      staysActiveInBackground:  false,
-    });
+    // The audio session is configured once at app startup (see App.js) — it is
+    // needed by speech and video too, not just this helper.
 
     // Resolve the bundled asset to an on-device URI before loading
     const asset = Asset.fromModule(source);
