@@ -13,18 +13,43 @@ import { dialogueApi } from '../../../api/dialogue';
 
 const PROGRESS_FRACTION = 0.72;
 
+// Scope Amendment A2 — this screen has no animation (confirmed by reading it
+// fresh: static Text only, no AnimatedWord.js dependency), so 'struggling'
+// gets a minimum display-time delay instead of "one additional loop". Same
+// duration as AnimatedWordScreen.js's STRUGGLING_EXTRA_LOOP_MS, for
+// consistency between the two screens, per this amendment's instruction.
+const STRUGGLING_MIN_DISPLAY_MS = 1800;
+
 // Shared, category-agnostic familiarisation screen (Phase 1, Screen B) —
 // the animation-to-static fade: same word/image, static bold high-contrast
 // text, no animation. Same param contract as AnimatedWordScreen.
 export default function BoldWordScreen({ route, navigation }) {
   const {
     student, wordText, wordImage, wordAudio, wordId,
-    trackExposure = false, nextScreen, nextParams,
+    trackExposure = false, nextScreen, nextParams, adaptiveDwell,
   } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
 
   const [showGate, setShowGate] = useState(false);
   const soundRef = useRef(null);
+
+  // Scope Amendment A2 — same shape as AnimatedWordScreen.js: only
+  // 'struggling' gates Next; 'typical'/undefined/'fast' keep today's literal
+  // behaviour (Next always immediately tappable — no pre-existing gating
+  // here either, confirmed by reading this file fresh before this
+  // amendment).
+  const isStruggling = adaptiveDwell === 'struggling';
+  const [struggleAudioDone, setStruggleAudioDone] = useState(false);
+  const [struggleDelayDone, setStruggleDelayDone] = useState(false);
+  const nextReady = !isStruggling || (struggleAudioDone && struggleDelayDone);
+
+  useEffect(() => {
+    if (!isStruggling) return undefined;
+    if (!wordAudio) setStruggleAudioDone(true); // nothing to wait for
+
+    const delayTimer = setTimeout(() => setStruggleDelayDone(true), STRUGGLING_MIN_DISPLAY_MS);
+    return () => clearTimeout(delayTimer);
+  }, [isStruggling, wordAudio]);
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -50,6 +75,16 @@ export default function BoldWordScreen({ route, navigation }) {
       }
       const { sound } = await Audio.Sound.createAsync(wordAudio);
       soundRef.current = sound;
+      // Scope Amendment A2 — only tracked for the 'struggling' dwell gate;
+      // 'typical'/undefined/'fast' never read struggleAudioDone at all.
+      if (isStruggling) {
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.didJustFinish) {
+            sound.setOnPlaybackStatusUpdate(null);
+            setStruggleAudioDone(true);
+          }
+        });
+      }
       await sound.playAsync();
     } catch { /* ignore */ }
   }
@@ -114,9 +149,9 @@ export default function BoldWordScreen({ route, navigation }) {
 
             <View style={styles.btnRow}>
               <TouchableOpacity
-                style={[styles.nextBtn, { backgroundColor: theme.button }]}
-                activeOpacity={0.85}
-                onPress={goNext}
+                style={[styles.nextBtn, { backgroundColor: theme.button }, !nextReady && styles.nextBtnDisabled]}
+                activeOpacity={nextReady ? 0.85 : 1}
+                onPress={nextReady ? goNext : undefined}
               >
                 <Text style={[styles.nextBtnText, { color: theme.buttonText }]}>Let's try!</Text>
                 <Ionicons name="checkmark-circle-outline" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
@@ -218,5 +253,6 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.full,
     ...Layout.shadow.md,
   },
+  nextBtnDisabled: { opacity: 0.45 },
   nextBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
 });

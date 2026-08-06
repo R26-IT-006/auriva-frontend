@@ -13,17 +13,47 @@ import { dialogueApi } from '../../../api/dialogue';
 
 const PROGRESS_FRACTION = 0.65;
 
+// Scope Amendment A2 — one additional full AnimatedWord.js animation loop,
+// for the 'struggling' dwell gate below. Matches AnimatedWord.js's own
+// CYCLE_DURATION (900ms half-cycle, confirmed by reading that file fresh)
+// x2 for a full up/down loop. Kept as a local constant rather than exported
+// from the shared component, per this amendment's explicit preference for a
+// timer-based approach over touching AnimatedWord.js's shared Animated.loop.
+const STRUGGLING_EXTRA_LOOP_MS = 1800;
+
 // Shared, category-agnostic familiarisation screen (Phase 1, Screen A).
 // Receives word/image/audio via route params — no hardcoded words.
 export default function AnimatedWordScreen({ route, navigation }) {
   const {
     student, wordText, wordImage, wordAudio, wordId,
-    trackExposure = false, nextScreen, nextParams,
+    trackExposure = false, nextScreen, nextParams, adaptiveDwell,
   } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
 
   const [showGate, setShowGate] = useState(false);
   const soundRef = useRef(null);
+
+  // Scope Amendment A2 — familiarisation dwell adaptivity. Only 'struggling'
+  // gets new gating; 'typical' and undefined keep today's literal behaviour
+  // (Next always immediately tappable — there is no pre-existing minimum-
+  // dwell mechanism to preserve or extend, confirmed by reading this file
+  // and AnimatedWord.js fresh before this amendment). 'fast' currently falls
+  // through this exact same unstruggling path as 'typical': there is no
+  // baseline minimum-dwell timer yet for 'fast' to skip, so there is nothing
+  // to differentiate — expected, not a bug, until a real baseline dwell is
+  // ever added for 'typical'.
+  const isStruggling = adaptiveDwell === 'struggling';
+  const [struggleAudioDone, setStruggleAudioDone] = useState(false);
+  const [struggleLoopDone, setStruggleLoopDone] = useState(false);
+  const nextReady = !isStruggling || (struggleAudioDone && struggleLoopDone);
+
+  useEffect(() => {
+    if (!isStruggling) return undefined;
+    if (!wordAudio) setStruggleAudioDone(true); // nothing to wait for
+
+    const loopTimer = setTimeout(() => setStruggleLoopDone(true), STRUGGLING_EXTRA_LOOP_MS);
+    return () => clearTimeout(loopTimer);
+  }, [isStruggling, wordAudio]);
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -49,6 +79,16 @@ export default function AnimatedWordScreen({ route, navigation }) {
       }
       const { sound } = await Audio.Sound.createAsync(wordAudio);
       soundRef.current = sound;
+      // Scope Amendment A2 — only tracked for the 'struggling' dwell gate;
+      // 'typical'/undefined/'fast' never read struggleAudioDone at all.
+      if (isStruggling) {
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.didJustFinish) {
+            sound.setOnPlaybackStatusUpdate(null);
+            setStruggleAudioDone(true);
+          }
+        });
+      }
       await sound.playAsync();
     } catch { /* ignore */ }
   }
@@ -64,6 +104,7 @@ export default function AnimatedWordScreen({ route, navigation }) {
   function goNext() {
     navigation.navigate('BoldWord', {
       student, wordText, wordImage, wordAudio, wordId, trackExposure, nextScreen, nextParams,
+      adaptiveDwell,
     });
   }
 
@@ -111,9 +152,9 @@ export default function AnimatedWordScreen({ route, navigation }) {
 
             <View style={styles.btnRow}>
               <TouchableOpacity
-                style={[styles.nextBtn, { backgroundColor: theme.button }]}
-                activeOpacity={0.85}
-                onPress={goNext}
+                style={[styles.nextBtn, { backgroundColor: theme.button }, !nextReady && styles.nextBtnDisabled]}
+                activeOpacity={nextReady ? 0.85 : 1}
+                onPress={nextReady ? goNext : undefined}
               >
                 <Text style={[styles.nextBtnText, { color: theme.buttonText }]}>Next</Text>
                 <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
@@ -208,5 +249,6 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.full,
     ...Layout.shadow.md,
   },
+  nextBtnDisabled: { opacity: 0.45 },
   nextBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
 });

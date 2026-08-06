@@ -16,6 +16,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
+import { dialogueApi } from '../../../../api/dialogue';
 
 const PROGRESS_FRACTION = 0.10;
 
@@ -274,7 +275,15 @@ export default function Cat3Phase1Screen({ route, navigation }) {
     }
   }
 
-  function goNext() {
+  async function goNext() {
+    // Trajectory fetch is an enhancement, not a requirement — never block
+    // navigation on it failing.
+    let adaptiveDwell = 'typical';
+    try {
+      const { trajectory } = await dialogueApi.getTrajectory(student?.sid, wordId);
+      if (trajectory) adaptiveDwell = trajectory;
+    } catch { /* ignore — fall back to 'typical' */ }
+
     navigation.navigate('AnimatedWord', {
       student,
       wordText: wordLabel,
@@ -284,6 +293,7 @@ export default function Cat3Phase1Screen({ route, navigation }) {
       trackExposure: false, // abilities uses cat3Api.recordPhase1Tap (tap-gated), not dialogueApi.recordPhase1Exposure — see STATE.md
       nextScreen: 'Cat3DragToLine',
       nextParams: { student, wordId, wordKey, wordLabel, sessionId },
+      adaptiveDwell,
     });
   }
 

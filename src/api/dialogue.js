@@ -93,6 +93,11 @@ export const dialogueApi = {
     );
     return data;
   },
+
+  async getTrajectory(studentId, wordId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_TRAJECTORY(studentId, wordId));
+    return data;
+  },
 };
 
 // Days of the Week – specific API methods
