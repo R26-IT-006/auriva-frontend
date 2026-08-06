@@ -43,11 +43,18 @@ export default function Cat3LandingScreen({ route, navigation }) {
   const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        setGatePurpose('back');
-        setShowGate(true);
+        goBackSmart();
         return true;
       });
       return () => {
@@ -90,7 +97,7 @@ export default function Cat3LandingScreen({ route, navigation }) {
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <TouchableOpacity
-            onPress={() => { setGatePurpose('back'); setShowGate(true); }}
+            onPress={goBackSmart}
             activeOpacity={0.7}
             style={styles.headerSide}
           >

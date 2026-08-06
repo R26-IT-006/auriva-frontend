@@ -136,11 +136,18 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
   const settingsFade = useRef(new Animated.Value(0)).current;
   const [gatePurpose, setGatePurpose] = useState('settings');
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => {
@@ -245,7 +252,7 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>

@@ -246,7 +246,11 @@ export default function Cat3Phase3Screen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('DialogueCategory', { student });
+      }
       return;
     }
     setShowSettings(true);
