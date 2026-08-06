@@ -114,9 +114,10 @@ export default function ConceptItemsScreen({ route, navigation }) {
   const { student, category } = route.params;
   const { width }             = useWindowDimensions();
 
-  const [progressItems, setProgressItems] = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [gateVisible,   setGateVisible]   = useState(false);
+  const [progressItems,  setProgressItems]  = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [gateVisible,    setGateVisible]    = useState(false);
+  const [activityStatus, setActivityStatus] = useState(null);
 
   const theme    = getAvatarTheme(student?.avatar_key);
   const H_PAD    = Layout.spacing.md;
@@ -135,6 +136,13 @@ export default function ConceptItemsScreen({ route, navigation }) {
         .then((items) => { if (active) setProgressItems(items); })
         .catch(() => {})
         .finally(() => { if (active) setLoading(false); });
+
+      // Fetched separately from the items call so the banner doesn't wait on that
+      // request's GKB round-trip.
+      conceptApi.getActivityStatus(category.key, student.sid)
+        .then((status) => { if (active) setActivityStatus(status); })
+        .catch(() => { if (active) setActivityStatus(null); });
+
       return () => { active = false; };
     }, [category.key, student.sid])
   );
@@ -216,6 +224,52 @@ export default function ConceptItemsScreen({ route, navigation }) {
     );
   }
 
+  // Deliberately a banner and not an auto-navigate: dropping a child straight into
+  // a new activity type without warning is the kind of unannounced transition that
+  // causes distress. The child (or teacher) starts it.
+  function renderActivityBanner() {
+    if (!activityStatus?.eligible) return null;
+
+    const isResume = Boolean(activityStatus.pending_activity_id);
+    const previewKeys = (activityStatus.mastered_uncovered || []).slice(0, 3);
+    const previews = previewKeys
+      .map((k) => localItems.find((i) => i.key === k))
+      .filter(Boolean);
+
+    return (
+      <TouchableOpacity
+        style={[styles.activityBanner, { backgroundColor: theme.button }]}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('ConceptActivity', { student, category, sessionId: null })}
+      >
+        <View style={styles.activityBannerIcon}>
+          <Ionicons name="ribbon" size={26} color={theme.button} />
+        </View>
+
+        <View style={styles.activityBannerText}>
+          <Text style={[styles.activityBannerTitle, { color: theme.buttonText }]}>
+            {isResume ? 'Continue your activity' : 'Activity Ready! 🎯'}
+          </Text>
+          <Text style={[styles.activityBannerSub, { color: theme.buttonText }]}>
+            {isResume
+              ? 'Pick up where you left off.'
+              : 'Practise the concepts you have learned.'}
+          </Text>
+        </View>
+
+        <View style={styles.activityBannerPreviews}>
+          {previews.map((item) => (
+            <View key={item.key} style={styles.activityBannerThumb}>
+              <Image source={item.icon ?? item.real} style={styles.activityBannerThumbImg} resizeMode="contain" />
+            </View>
+          ))}
+        </View>
+
+        <Ionicons name="chevron-forward" size={22} color={theme.buttonText} />
+      </TouchableOpacity>
+    );
+  }
+
   function renderReviewSection() {
     if (weakConcepts.length === 0) return null;
     return (
@@ -293,6 +347,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
             contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD }]}
             columnWrapperStyle={{ gap: GAP }}
             ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
+            ListHeaderComponent={renderActivityBanner}
             ListFooterComponent={renderReviewSection}
             showsVerticalScrollIndicator={false}
           />
@@ -424,6 +479,54 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
   },
+
+  // ── Activity banner ────────────────────────────────────────────────────────
+  activityBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  activityBannerIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityBannerText: { flex: 1, gap: 2 },
+  activityBannerTitle: {
+    fontSize: 17,
+    fontFamily: 'Nunito_800ExtraBold',
+  },
+  activityBannerSub: {
+    fontSize: 12,
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.85,
+  },
+  activityBannerPreviews: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  activityBannerThumb: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+  },
+  activityBannerThumbImg: { width: '100%', height: '100%' },
 
   reviewSection: {
     marginTop: 28,

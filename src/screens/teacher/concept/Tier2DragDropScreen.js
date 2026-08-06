@@ -49,7 +49,7 @@ export default function Tier2DragDropScreen({ route, navigation }) {
 
   const H_PAD    = Layout.spacing.md;
   const CARD_GAP = 12;
-  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.62;
+  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.48;
   const CARD_H   = CARD_W;
   const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
   const ZONE_SIZE = Math.min(width, height) * 0.28;
@@ -63,9 +63,11 @@ export default function Tier2DragDropScreen({ route, navigation }) {
   const [feedbackResult, setFeedbackResult] = useState(null);
   const [hintKey,        setHintKey]        = useState(null);
   const [zoneContent,    setZoneContent]    = useState(null); // { source, isCorrect }
+  const [droppedKey,     setDroppedKey]     = useState(null); // card left in the box
 
   const feedbackSlide  = useRef(new Animated.Value(250)).current;
   const dropZoneLayout = useRef(null);
+  const dropZoneRef    = useRef(null);
   const attemptStart   = useRef(Date.now());
 
   const pans = useRef([
@@ -124,14 +126,26 @@ export default function Tier2DragDropScreen({ route, navigation }) {
     }).start();
   }
 
+  function measureDropZone() {
+    // measureInWindow gives page coordinates directly, and re-running it on every
+    // layout keeps the hit box correct after rotation.
+    dropZoneRef.current?.measureInWindow((x, y, dzWidth, dzHeight) => {
+      if (dzWidth && dzHeight) dropZoneLayout.current = { x, y, width: dzWidth, height: dzHeight };
+    });
+  }
+
   function isOverDropZone(gestureState) {
     const dz = dropZoneLayout.current;
     if (!dz) return false;
+    // Forgiving by a third of the zone on each side: these children are often still
+    // developing fine motor control, and a near-miss shouldn't read as a wrong answer.
+    const padX = dz.width  * 0.33;
+    const padY = dz.height * 0.33;
     return (
-      gestureState.moveX >= dz.x &&
-      gestureState.moveX <= dz.x + dz.width &&
-      gestureState.moveY >= dz.y &&
-      gestureState.moveY <= dz.y + dz.height
+      gestureState.moveX >= dz.x - padX &&
+      gestureState.moveX <= dz.x + dz.width + padX &&
+      gestureState.moveY >= dz.y - padY &&
+      gestureState.moveY <= dz.y + dz.height + padY
     );
   }
 
@@ -150,9 +164,10 @@ export default function Tier2DragDropScreen({ route, navigation }) {
     const updatedAttempts = [...attempts, { attemptNumber: currentAttempt, selectedKey: option.key, wasCorrect, timeTakenMs }];
     setAttempts(updatedAttempts);
 
-    // Image fills the drop zone; card snaps back to its base position
+    // The image stays in the drop zone, and the card is left where it was released
+    // rather than springing home — so the drop reads as "it went in the box".
     setZoneContent({ source: option.real, isCorrect: wasCorrect });
-    snapBack(pan);
+    setDroppedKey(option.key);
 
     setFeedbackResult(wasCorrect ? 'correct' : 'wrong');
     showFeedback();
@@ -178,6 +193,7 @@ export default function Tier2DragDropScreen({ route, navigation }) {
         hideFeedbackThen(() => {
           setFeedbackResult(null);
           setZoneContent(null);
+          setDroppedKey(null);
           if (wasCorrect) {
             setHintKey(null);
             setDisplayOptions(prev => {
@@ -296,11 +312,8 @@ export default function Tier2DragDropScreen({ route, navigation }) {
 
         {/* Drop zone */}
         <View
-          onLayout={(e) => {
-            e.target.measure((_x, _y, w, h, pageX, pageY) => {
-              dropZoneLayout.current = { x: pageX, y: pageY, width: w, height: h };
-            });
-          }}
+          ref={dropZoneRef}
+          onLayout={measureDropZone}
           style={[
             styles.dropZone,
             {
@@ -343,6 +356,8 @@ export default function Tier2DragDropScreen({ route, navigation }) {
                     shadowOpacity:   isHint ? 0.55 : 0.08,
                     shadowRadius:    isHint ? 14 : 8,
                     elevation:       isHint ? 10 : 3,
+                    // The dropped card fades out: its image is now sitting in the box.
+                    opacity: droppedKey === option.key ? 0 : 1,
                     transform: [
                       { translateX: pans.current[i].x },
                       { translateY: pans.current[i].y },

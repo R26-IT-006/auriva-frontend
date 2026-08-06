@@ -133,4 +133,49 @@ export const conceptApi = {
     });
     return data;
   },
+
+  // ── Cross-concept activities ──────────────────────────────────────────────
+
+  async getActivityStatus(categoryKey, studentId) {
+    const { data } = await client.get(ENDPOINTS.CONCEPT_ACTIVITY_STATUS(categoryKey), {
+      params: { student_id: studentId },
+    });
+    return data;
+  },
+
+  async startActivity({ studentId, categoryKey, sessionId }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_ACTIVITY_START, {
+      student_id:   studentId,
+      category_key: categoryKey,
+      session_id:   sessionId || null,
+    });
+    return data;
+  },
+
+  async logActivityAttempt({ studentId, sessionId, activityId, categoryKey, conceptKey, roundNumber, questionType, selectedKey, wasCorrect, timeTakenMs, optionKeys }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_ACTIVITY_ATTEMPT, {
+      student_id:    studentId,
+      session_id:    sessionId  || null,
+      activity_id:   activityId,
+      category_key:  categoryKey,
+      concept_key:   conceptKey,
+      round_number:  roundNumber,
+      question_type: questionType,
+      selected_key:  selectedKey,
+      was_correct:   wasCorrect,
+      time_taken_ms: timeTakenMs || 0,
+      option_keys:   optionKeys  || [],
+    });
+    return data;
+  },
+
+  async completeActivity({ studentId, sessionId, activityId, roundResults }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_ACTIVITY_COMPLETE, {
+      student_id:    studentId,
+      session_id:    sessionId || null,
+      activity_id:   activityId,
+      round_results: roundResults || [],
+    });
+    return data;
+  },
 };

@@ -74,4 +74,10 @@ export const ENDPOINTS = {
   CONCEPT_TIER3_START:        '/teacher/concepts/tier3/start',
   CONCEPT_TIER3_COMPLETE:     '/teacher/concepts/tier3/complete',
   CONCEPT_DISTRACTORS:        '/teacher/concepts/distractors',
+
+  // Concept Learning – cross-concept activities
+  CONCEPT_ACTIVITY_STATUS:    (cat) => `/teacher/concepts/${cat}/activity/status`,
+  CONCEPT_ACTIVITY_START:     '/teacher/concepts/activity/start',
+  CONCEPT_ACTIVITY_ATTEMPT:   '/teacher/concepts/activity/attempt',
+  CONCEPT_ACTIVITY_COMPLETE:  '/teacher/concepts/activity/complete',
 };

@@ -25,11 +25,14 @@ const AVATAR_CONGRATS_IMAGES = {
 const STAR_COUNT = 8;
 const CONFETTI_GLYPHS = ['⭐', '✨', '🎉'];
 const AUTO_ADVANCE_MS = 4500;
+const STAR_CAP = 5;   // most score stars we'll draw, however many rounds there were
 
-function getEncouragement(correctCount) {
-  if (correctCount >= 3) return 'Perfect score! You really know this one.';
-  if (correctCount === 2) return 'So close — great effort!';
-  return "Nice try — let's practice this one more.";
+// Proportional, so it reads correctly for a 6-round activity as well as a 3-round tier.
+function getEncouragement(correctCount, totalCount) {
+  const ratio = totalCount > 0 ? correctCount / totalCount : 0;
+  if (ratio >= 1)    return 'Perfect score! You really know these.';
+  if (ratio >= 2 / 3) return 'So close — great effort!';
+  return "Nice try — let's practice these some more.";
 }
 
 function FallingStar({ delay, startX, glyph, size, fallDistance, duration }) {
@@ -73,7 +76,13 @@ function FallingStar({ delay, startX, glyph, size, fallDistance, duration }) {
 }
 
 export default function ConceptCongratulationsScreen({ route, navigation }) {
-  const { student, category, conceptKey, correctCount = 3, completedTier = 1 } = route.params;
+  const {
+    student, category, conceptKey,
+    correctCount = 3,
+    totalCount   = 3,
+    completedTier = 1,
+    mode = 'tier',        // 'tier' | 'activity'
+  } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
   const theme   = getAvatarTheme(student?.avatar_key);
@@ -85,11 +94,15 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
   const cardOpacity  = useRef(new Animated.Value(0)).current;
   const burstScale   = useRef(new Animated.Value(0)).current;
 
-  const starScales = [
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-  ];
+  // Activities can have up to 6 rounds, so the star row is no longer fixed at 3.
+  // One ref holding an array — a loop of useRef calls would break the rules of hooks.
+  const starScalesRef = useRef(null);
+  if (starScalesRef.current === null) {
+    starScalesRef.current = Array.from({ length: STAR_CAP }, () => new Animated.Value(0));
+  }
+  const starCount  = Math.min(Math.max(totalCount, 1), STAR_CAP);
+  const starScales = starScalesRef.current;
+
   const btnScale     = useRef(new Animated.Value(1)).current;
   const autoProgress = useRef(new Animated.Value(0)).current;
 
@@ -125,7 +138,7 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
       ).start();
     });
 
-    starScales.forEach((s, i) => {
+    starScales.slice(0, starCount).forEach((s, i) => {
       setTimeout(() => {
         Animated.spring(s, { toValue: 1, useNativeDriver: true, bounciness: 20, speed: 7 }).start();
       }, 450 + i * 200);
@@ -133,7 +146,7 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
     setTimeout(() => {
       Speech.speak(
-        `Well done! You got ${correctCount} out of 3!`,
+        `Well done! You got ${correctCount} out of ${totalCount}!`,
         { language: 'en-US', rate: 0.8 },
       );
     }, 600);
@@ -150,6 +163,11 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
   function handleContinue() {
     Speech.stop();
+    // Activities are no-fail and don't feed the tier ladder — always back to the grid.
+    if (mode === 'activity') {
+      navigation.navigate('ConceptItems', { student, category });
+      return;
+    }
     if (completedTier === 1) {
       if (correctCount === 3) {
         // Perfect T1 pass — skip image re-show, jump straight to name-match
@@ -231,30 +249,37 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
             </View>
 
             <Text style={[styles.heading, { color: theme.headingText }]}>
-              {correctCount >= 3 ? 'Well Done!' : 'Good Job!'}
+              {correctCount >= totalCount ? 'Well Done!' : 'Good Job!'}
             </Text>
 
-            {concept && (
+            {mode === 'activity' ? (
+              <Text style={[styles.conceptName, { color: theme.button }]}>Practice Activity</Text>
+            ) : concept ? (
               <Text style={[styles.conceptName, { color: theme.button }]}>{concept.label}</Text>
-            )}
+            ) : null}
 
             <View style={[styles.scorePill, { borderColor: theme.button }]}>
-              {[0, 1, 2].map((i) => (
-                <Animated.Text
-                  key={i}
-                  style={[
-                    styles.pillStar,
-                    {
-                      opacity:   i < correctCount ? 1 : 0.2,
-                      transform: [{ scale: starScales[i] }],
-                    },
-                  ]}
-                >
-                  ⭐
-                </Animated.Text>
-              ))}
+              {Array.from({ length: starCount }, (_, i) => {
+                // Stars are capped, so on a 6-round activity each one stands for
+                // more than a single correct answer.
+                const filled = (i + 1) / starCount <= correctCount / totalCount;
+                return (
+                  <Animated.Text
+                    key={i}
+                    style={[
+                      styles.pillStar,
+                      {
+                        opacity:   filled ? 1 : 0.2,
+                        transform: [{ scale: starScales[i] }],
+                      },
+                    ]}
+                  >
+                    ⭐
+                  </Animated.Text>
+                );
+              })}
               <Text style={[styles.pillCount, { color: theme.headingText }]}>
-                {correctCount} / 3
+                {correctCount} / {totalCount}
               </Text>
               <Text style={[styles.pillLabel, { color: theme.headingText }]}>
                 Correct!
@@ -262,7 +287,7 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
             </View>
 
             <Text style={[styles.encouragement, { color: theme.headingText }]}>
-              {getEncouragement(correctCount)}
+              {getEncouragement(correctCount, totalCount)}
             </Text>
           </Animated.View>
 

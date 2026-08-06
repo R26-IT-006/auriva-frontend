@@ -23,6 +23,7 @@ import Tier2ActivityScreen           from '../screens/teacher/concept/Tier2Activ
 import Tier2DragDropScreen           from '../screens/teacher/concept/Tier2DragDropScreen';
 import Tier3VideoScreen              from '../screens/teacher/concept/Tier3VideoScreen';
 import ConceptColoringScreen              from '../screens/teacher/concept/ConceptColoringScreen';
+import ConceptActivityScreen              from '../screens/teacher/concept/ConceptActivityScreen';
 import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
 
 const Tab   = createBottomTabNavigator();
@@ -114,6 +115,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="Tier2DragDrop"       component={Tier2DragDropScreen} />
       <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />
       <Stack.Screen name="ConceptColoring"          component={ConceptColoringScreen} />
+      <Stack.Screen name="ConceptActivity"          component={ConceptActivityScreen} />
       <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
     </Stack.Navigator>
