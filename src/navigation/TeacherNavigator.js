@@ -14,6 +14,8 @@ import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelect
 import DialogueLandingScreen      from '../screens/teacher/students/DialogueLandingScreen';
 import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
+import AnimatedWordScreen         from '../screens/teacher/dialogue/AnimatedWordScreen';
+import BoldWordScreen             from '../screens/teacher/dialogue/BoldWordScreen';
 import MagicWordLandingScreen     from '../screens/teacher/dialogue/magic-words/MagicWordLandingScreen';
 import Phase1VideoScreen          from '../screens/teacher/dialogue/magic-words/Phase1VideoScreen';
 import DragToLineScreen           from '../screens/teacher/dialogue/magic-words/DragToLineScreen';
@@ -136,6 +138,8 @@ export default function TeacherNavigator() {
       <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
       <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
       <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
+      <Stack.Screen name="AnimatedWord"      component={AnimatedWordScreen} />
+      <Stack.Screen name="BoldWord"          component={BoldWordScreen} />
       <Stack.Screen name="MagicWordLanding"  component={MagicWordLandingScreen} />
       <Stack.Screen name="Phase1Video"       component={Phase1VideoScreen} />
       <Stack.Screen name="DragToLine"        component={DragToLineScreen} />

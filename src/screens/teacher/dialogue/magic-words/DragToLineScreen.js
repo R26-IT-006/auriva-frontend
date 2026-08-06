@@ -247,10 +247,17 @@ export default function DragToLineScreen({ route, navigation }) {
   const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => sub.remove();
@@ -387,7 +394,7 @@ export default function DragToLineScreen({ route, navigation }) {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>

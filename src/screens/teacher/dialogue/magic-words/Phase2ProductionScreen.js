@@ -518,7 +518,11 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('DialogueCategory', { student });
+      }
       return;
     }
     if (gatePurpose === 'next') {

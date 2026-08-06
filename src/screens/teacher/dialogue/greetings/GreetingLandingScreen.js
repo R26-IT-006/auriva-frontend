@@ -56,12 +56,19 @@ export default function GreetingLandingScreen({ route, navigation }) {
   const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   // Stop audio when navigating away; also intercept Android hardware back
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        setGatePurpose('back');
-        setShowGate(true);
+        goBackSmart();
         return true;
       });
       return () => {
@@ -107,7 +114,7 @@ export default function GreetingLandingScreen({ route, navigation }) {
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <TouchableOpacity
-            onPress={() => { setGatePurpose('back'); setShowGate(true); }}
+            onPress={goBackSmart}
             activeOpacity={0.7}
             style={styles.headerSide}
           >

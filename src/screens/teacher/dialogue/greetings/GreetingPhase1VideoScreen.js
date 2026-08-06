@@ -17,6 +17,36 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { DIALOGUE_WORD_ASSETS } from '../../../../constants/dialogueAssets';
+
+const WORD_LABELS = {
+  hello:          'Hello',
+  goodbye:        'Goodbye',
+  good_morning:   'Good Morning',
+  good_afternoon: 'Good Afternoon',
+  good_night:     'Good Night',
+  happy_birthday: 'Happy Birthday',
+  how_are_you:    'How Are You?',
+  im_fine:        "I'm Fine",
+  happy_new_year: 'Happy New Year',
+};
+
+// good_afternoon/good_night/happy_birthday/how_are_you/im_fine/happy_new_year
+// have no real word-audio asset yet — falls back to the same placeholder
+// GreetingPhase2ProductionScreen.js uses for these words.
+const PLACEHOLDER_WORD_AUDIO = require('../../../../../assets/dialogue-audios/magic_words/Thankyou.mp3');
+
+const WORD_AUDIO = {
+  hello:          require('../../../../../assets/dialogue-audios/greetings/hello.mp3'),
+  goodbye:        require('../../../../../assets/dialogue-audios/greetings/goodbye.mp3'),
+  good_morning:   require('../../../../../assets/dialogue-audios/greetings/good_morning.mp3'),
+  good_afternoon: PLACEHOLDER_WORD_AUDIO,
+  good_night:     PLACEHOLDER_WORD_AUDIO,
+  happy_birthday: PLACEHOLDER_WORD_AUDIO,
+  how_are_you:    PLACEHOLDER_WORD_AUDIO,
+  im_fine:        PLACEHOLDER_WORD_AUDIO,
+  happy_new_year: PLACEHOLDER_WORD_AUDIO,
+};
 
 const PLACEHOLDER_V1 = require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4');
 const PLACEHOLDER_V2 = require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4');
@@ -107,8 +137,7 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBack();
       return true;
     });
     return () => { sub.remove(); };
@@ -135,12 +164,19 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
     }
   }
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   function goBack() {
     if (videoIndex > startIndex) {
       setVideoIndex(videoIndex - 1);
     } else {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
     }
   }
 
@@ -148,7 +184,16 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
     if (videoIndex < videos.length - 1) {
       setVideoIndex(videoIndex + 1);
     } else {
-      navigation.navigate('GreetingDragToLine', { student, wordKey, wordId, attempt: 1 });
+      navigation.navigate('AnimatedWord', {
+        student,
+        wordText: WORD_LABELS[wordKey] ?? wordKey.replace(/_/g, ' '),
+        wordImage: DIALOGUE_WORD_ASSETS[wordKey]?.scene,
+        wordAudio: WORD_AUDIO[wordKey],
+        wordId,
+        trackExposure: true,
+        nextScreen: 'GreetingDragToLine',
+        nextParams: { student, wordKey, wordId, attempt: 1 },
+      });
     }
   }
 

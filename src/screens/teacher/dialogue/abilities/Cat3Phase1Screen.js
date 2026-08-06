@@ -40,6 +40,35 @@ const WORD_LABELS = {
   sing:     'Sing',
 };
 
+// Scene images for the AnimatedWord/BoldWord familiarisation screens — same
+// per-word images Cat3DragToLineScreen.js uses (abilities has no entries in
+// constants/dialogueAssets.js by design; the scene/context concept there
+// doesn't apply to this category — confirmed 2026-07-28).
+const CAT3_WORD_IMAGE = {
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
+  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
+  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+};
+
+// Word audio for the familiarisation screens — mirrors Cat3Phase2Screen.js's
+// WORD_AUDIO. cat3_yes/cat3_no have no audio asset yet (same gap as Phase2);
+// the familiarisation screens already guard playback on wordAudio presence.
+const CAT3_WORD_AUDIO = {
+  clap:  require('../../../../../assets/dialogue-audios/abilities/clap.mp3'),
+  run:   require('../../../../../assets/dialogue-audios/abilities/run.mp3'),
+  walk:  require('../../../../../assets/dialogue-audios/abilities/walk.mp3'),
+  jump:  require('../../../../../assets/dialogue-audios/abilities/jump.mp3'),
+  dance: require('../../../../../assets/dialogue-audios/abilities/dance.mp3'),
+  sing:  require('../../../../../assets/dialogue-audios/abilities/sing.mp3'),
+  talk:  require('../../../../../assets/dialogue-audios/abilities/talk.mp3'),
+};
+
 // ── Jump animation ────────────────────────────────────────────────────────────
 
 function JumpAvatar({ source }) {
@@ -239,7 +268,16 @@ export default function Cat3Phase1Screen({ route, navigation }) {
   }
 
   function goNext() {
-    navigation.navigate('Cat3DragToLine', { student, wordId, wordKey, wordLabel, sessionId });
+    navigation.navigate('AnimatedWord', {
+      student,
+      wordText: wordLabel,
+      wordImage: CAT3_WORD_IMAGE[wordKey],
+      wordAudio: CAT3_WORD_AUDIO[wordKey],
+      wordId,
+      trackExposure: false, // abilities uses cat3Api.recordPhase1Tap (tap-gated), not dialogueApi.recordPhase1Exposure — see STATE.md
+      nextScreen: 'Cat3DragToLine',
+      nextParams: { student, wordId, wordKey, wordLabel, sessionId },
+    });
   }
 
   function openSettings() { setGatePurpose('settings'); setShowGate(true); }

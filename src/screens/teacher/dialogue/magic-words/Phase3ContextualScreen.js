@@ -436,7 +436,11 @@ export default function Phase3ContextualScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('DialogueCategory', { student });
+      }
       return;
     }
     setShowSettings(true);

@@ -391,10 +391,17 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
   const current          = activities[activityIdx];
   const progressFraction = 0.75 + (activityIdx / activities.length) * 0.15;
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => { sub.remove(); };
@@ -512,7 +519,7 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
