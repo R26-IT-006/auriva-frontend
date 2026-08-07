@@ -498,6 +498,7 @@ export default function LetterWritingScreen({ route, navigation }) {
     templateStrokes[activeGuideStroke],
     ANGULAR_LETTERS.has(letter)
   );
+
   const guideOpacity  = (attempt === 3 && !collectionMode) ? 0 : attempt === 1 ? 0.14 : 0.26;
   const phonetic      = PHONETICS[letter.toLowerCase()] ?? '';
   const badge         = ATTEMPT_BADGE[attempt];

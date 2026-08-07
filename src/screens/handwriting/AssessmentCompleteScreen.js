@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Animated,
   AccessibilityInfo,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,10 +14,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { generateAdaptiveSequence, calculateMotorProfile } from '../../utils/adaptiveSequencing';
 import { storeLetterSequence, storeMotorProfile } from '../../utils/storage';
+import { attemptFinalization } from '../../utils/finalizeSync';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
-import client from '../../api/client';
-import { ENDPOINTS } from '../../constants/api';
 import { computeMotorComfortScore } from '../../utils/reportEngine';
+import { useToast } from '../../context/ToastContext';
 
 const SHAPE_LABELS = {
   horizontal_line: 'Horizontal Line',
@@ -66,7 +67,9 @@ function getScoreColor(score) {
 export default function AssessmentCompleteScreen({ route, navigation }) {
   const { student, theme, assessmentData = [], assessmentId, collectionMode = false, collectionSessionId = null } = route.params;
   const { width } = useWindowDimensions();
+  const { show } = useToast();
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const entrance = useRef(new Animated.Value(0)).current;
   const bgAnim = useRef(new Animated.Value(0)).current;
 
@@ -267,9 +270,13 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
               <Text style={[styles.retakeText, { color: theme.button }]}>Back to Assessment</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.doneButton, { backgroundColor: theme.button }]}
+              style={[styles.doneButton, { backgroundColor: theme.button }, isSaving && styles.doneButtonDisabled]}
               onPress={async () => {
+                if (isSaving) return; // double-tap protection — one logical attempt at a time
+
                 if (collectionMode) {
+                  // Research/collection-mode workflow is untouched — it never
+                  // called finalize before, and still doesn't.
                   navigation.navigate('LetterWriting', {
                     student,
                     theme,
@@ -281,6 +288,9 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                   return;
                 }
 
+                setIsSaving(true);
+
+                // Unchanged: same scoring/sequencing calls, same inputs/outputs.
                 const { letters, motorProfile } = generateAdaptiveSequence(
                   assessmentData, 'lowercase'
                 );
@@ -288,15 +298,28 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                 await storeLetterSequence(student.sid, letters);
                 await storeMotorProfile(student.sid, motorProfile);
 
-                if (assessmentId) {
-                  const { score: motor_score } = computeMotorComfortScore(assessmentData, motorProfile);
-                  if (motor_score !== null) {
-                    client.patch(ENDPOINTS.HANDWRITING_FINALIZE(assessmentId), {
-                      motor_score,
-                      motor_profile: motorProfile,
-                    }).catch(err => console.warn('Assessment finalize failed (non-fatal):', err?.message));
-                  }
+                const { score: motor_score } = computeMotorComfortScore(assessmentData, motorProfile);
+
+                // Reliability Step 2: persist a pending-finalization record
+                // locally BEFORE attempting the PATCH, then actually await
+                // it — replaces the old fire-and-forget
+                // client.patch(...).catch(...) pattern. Never blocks
+                // navigation: every branch below still proceeds to LetterHome.
+                const { status } = await attemptFinalization({
+                  studentId:    student.sid,
+                  assessmentId, // may be null — attemptFinalization() handles that explicitly
+                  motorScore:   motor_score,
+                  motorProfile,
+                });
+
+                if (status === 'pending' || status === 'conflict') {
+                  // Calm, child-appropriate message only — never raw
+                  // networking/HTTP/database detail. Teacher/admin tooling
+                  // can surface the 'conflict' distinction later.
+                  show('Progress saved on this device.\nIt will sync when connection is available.', 'info');
                 }
+
+                setIsSaving(false);
 
                 navigation.navigate('LetterHome', {
                   student,
@@ -306,9 +329,19 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                 });
               }}
               activeOpacity={0.85}
+              disabled={isSaving}
             >
-              <Text style={[styles.doneText, { color: theme.buttonText }]}>Continue</Text>
-              <Ionicons name="arrow-forward" size={18} color={theme.buttonText} />
+              {isSaving ? (
+                <>
+                  <ActivityIndicator size="small" color={theme.buttonText} />
+                  <Text style={[styles.doneText, { color: theme.buttonText }]}>Saving assessment...</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.doneText, { color: theme.buttonText }]}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={18} color={theme.buttonText} />
+                </>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -496,6 +529,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 48,
     paddingVertical: 14,
     borderRadius: 50,
+  },
+  doneButtonDisabled: {
+    opacity: 0.75,
   },
   doneText: {
     fontSize: 16,

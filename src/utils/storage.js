@@ -6,10 +6,11 @@
  *   AsyncStorage  — letter learning data (serialised JSON)
  *
  * AsyncStorage key convention:
- *   student_<id>_letterSequence        — adaptive letter sequence array
- *   student_<id>_motorProfile          — motor profile calculated from assessment
- *   student_<id>_letter_<l>_progress   — attempt history for one letter
- *   student_<id>_completedLetters      — running list of completed letters
+ *   student_<id>_letterSequence            — adaptive letter sequence array
+ *   student_<id>_motorProfile              — motor profile calculated from assessment
+ *   student_<id>_letter_<l>_progress       — attempt history for one letter
+ *   student_<id>_completedLetters          — running list of completed letters
+ *   student_<id>_pendingFinalize_<assessId> — replayable finalize record (Reliability Step 2)
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -232,4 +233,81 @@ export async function storeWordProgress(studentId, letter, wordResults) {
  */
 export async function getAllWordProgress(studentId) {
   return (await safeGet(wordProgressKey(studentId))) ?? {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pending Assessment Finalization  (Reliability Step 2)
+//
+// Persisted BEFORE the finalize PATCH is attempted (see utils/finalizeSync.js)
+// so a network failure or the app closing mid-request can never lose the
+// child's ability to retry. Keyed per assessment (not just per student) so a
+// later, different assessment session can never collide with or silently
+// clobber an still-unsynced earlier one.
+//
+// Deliberately does NOT use safeSet() — safeSet() swallows write failures
+// with no way for the caller to know persistence didn't happen, which would
+// recreate exactly the reliability gap this record exists to close. These
+// three functions use their own explicit try/catch and report success/
+// failure back to the caller instead.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function pendingFinalizeKey(studentId, assessmentId) {
+  return `student_${studentId}_pendingFinalize_${assessmentId}`;
+}
+
+/**
+ * Persists a replayable finalize record. Store only what's needed to replay
+ * PATCH /handwriting/assessment/:assessmentId/finalize — never raw
+ * trajectories, ShapeFeature data, names, tokens, or API error objects.
+ *
+ * @param {number|string} studentId
+ * @param {number|string} assessmentId
+ * @param {Object}        record — {
+ *   assessmentId, studentId, motorScore, motorProfile,
+ *   createdAt, attemptCount, status: 'pending'|'conflict',
+ * }
+ * @returns {Promise<boolean>} true only if the write actually succeeded —
+ *   callers MUST check this rather than assuming success.
+ */
+export async function storePendingFinalization(studentId, assessmentId, record) {
+  try {
+    await AsyncStorage.setItem(pendingFinalizeKey(studentId, assessmentId), JSON.stringify(record));
+    return true;
+  } catch (err) {
+    console.error(`Pending finalization write failed [student ${studentId}, assessment ${assessmentId}]:`, err);
+    return false;
+  }
+}
+
+/**
+ * @param {number|string} studentId
+ * @param {number|string} assessmentId
+ * @returns {Promise<Object|null>} the pending record, or null if none exists
+ *   or the stored value is missing/corrupted.
+ */
+export async function getPendingFinalization(studentId, assessmentId) {
+  try {
+    const raw = await AsyncStorage.getItem(pendingFinalizeKey(studentId, assessmentId));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error(`Pending finalization read failed [student ${studentId}, assessment ${assessmentId}]:`, err);
+    return null;
+  }
+}
+
+/**
+ * Removes a pending finalize record once server persistence is confirmed.
+ * @param {number|string} studentId
+ * @param {number|string} assessmentId
+ * @returns {Promise<boolean>} true unless the removal itself failed.
+ */
+export async function clearPendingFinalization(studentId, assessmentId) {
+  try {
+    await AsyncStorage.removeItem(pendingFinalizeKey(studentId, assessmentId));
+    return true;
+  } catch (err) {
+    console.error(`Pending finalization clear failed [student ${studentId}, assessment ${assessmentId}]:`, err);
+    return false;
+  }
 }
