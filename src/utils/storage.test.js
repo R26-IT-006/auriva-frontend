@@ -16,6 +16,7 @@ jest.mock('expo-secure-store', () => ({
 const AsyncStorage = require('@react-native-async-storage/async-storage');
 const {
   storePendingFinalization, getPendingFinalization, clearPendingFinalization,
+  getPendingFinalizationsForStudent,
 } = require('./storage');
 
 function makeRecord(overrides = {}) {
@@ -91,25 +92,32 @@ describe('Storage Test 4 — different students do not collide', () => {
 // ─── Storage Test 5 — Write failure is observable ──────────────────────────
 
 describe('Storage Test 5 — write failure is observable', () => {
+  // Deliberately NOT jest.spyOn(...).mockRestore() here: AsyncStorage.setItem/
+  // removeItem are ALREADY jest.fn()s from the bundled async-storage-mock, and
+  // spyOn+mockRestore on an already-mocked function does not reliably restore
+  // its real (mock-package) implementation afterward — it can leave the
+  // property as an inert stub that silently no-ops for every later test in
+  // this file (discovered empirically: it broke every Discovery test below
+  // until fixed). Calling .mockRejectedValueOnce() directly on the existing
+  // jest.fn() is simpler and self-clears after one use with no restore step.
+  let consoleSpy;
+  beforeEach(() => { consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {}); });
+  afterEach(() => { consoleSpy.mockRestore(); });
+
   it('storePendingFinalization returns false when AsyncStorage.setItem rejects', async () => {
-    const spy = jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('disk full'));
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    AsyncStorage.setItem.mockRejectedValueOnce(new Error('disk full'));
 
     const ok = await storePendingFinalization(13, 202, makeRecord());
 
     expect(ok).toBe(false);
     expect(consoleSpy).toHaveBeenCalled();
-    spy.mockRestore();
-    consoleSpy.mockRestore();
   });
 
   it('clearPendingFinalization returns false when AsyncStorage.removeItem rejects', async () => {
-    const spy = jest.spyOn(AsyncStorage, 'removeItem').mockRejectedValueOnce(new Error('disk full'));
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    AsyncStorage.removeItem.mockRejectedValueOnce(new Error('disk full'));
 
     const ok = await clearPendingFinalization(13, 202);
     expect(ok).toBe(false);
-    spy.mockRestore();
   });
 });
 
@@ -124,5 +132,97 @@ describe('Storage Test 6 — malformed stored data', () => {
 
     expect(result).toBeNull();
     consoleSpy.mockRestore();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════
+// Pending discovery / index — Reliability Step 3
+// ═════════════════════════════════════════════════════════════════════════
+
+// ─── Discovery Test 1 — one record ──────────────────────────────────────────
+
+describe('Discovery Test 1 — one pending record', () => {
+  it('getPendingFinalizationsForStudent returns it', async () => {
+    const record = makeRecord();
+    await storePendingFinalization(13, 202, record);
+
+    const results = await getPendingFinalizationsForStudent(13);
+    expect(results).toEqual([record]);
+  });
+});
+
+// ─── Discovery Test 2 — two pending assessments ────────────────────────────
+
+describe('Discovery Test 2 — two pending assessments for one student', () => {
+  it('returns both', async () => {
+    await storePendingFinalization(13, 202, makeRecord({ assessmentId: 202 }));
+    await storePendingFinalization(13, 305, makeRecord({ assessmentId: 305 }));
+
+    const results = await getPendingFinalizationsForStudent(13);
+    expect(results.map(r => r.assessmentId).sort()).toEqual([202, 305]);
+  });
+});
+
+// ─── Discovery Test 3 — different students isolated ────────────────────────
+
+describe('Discovery Test 3 — different students remain isolated', () => {
+  it('student 14s record never appears in student 13s discovery list', async () => {
+    await storePendingFinalization(13, 202, makeRecord({ studentId: 13 }));
+    await storePendingFinalization(14, 305, makeRecord({ studentId: 14, assessmentId: 305 }));
+
+    const results13 = await getPendingFinalizationsForStudent(13);
+    expect(results13).toHaveLength(1);
+    expect(results13[0].assessmentId).toBe(202);
+  });
+});
+
+// ─── Discovery Test 4 — clearing removes from discovery ────────────────────
+
+describe('Discovery Test 4 — clearing removes it from discovery', () => {
+  it('a cleared record no longer appears', async () => {
+    await storePendingFinalization(13, 202, makeRecord({ assessmentId: 202 }));
+    await storePendingFinalization(13, 305, makeRecord({ assessmentId: 305 }));
+    await clearPendingFinalization(13, 202);
+
+    const results = await getPendingFinalizationsForStudent(13);
+    expect(results.map(r => r.assessmentId)).toEqual([305]);
+  });
+});
+
+// ─── Discovery Test 5 — stale index entry handled safely ──────────────────
+
+describe('Discovery Test 5 — stale index entry', () => {
+  it('an index entry whose record is missing is dropped safely, without throwing', async () => {
+    await storePendingFinalization(13, 202, makeRecord({ assessmentId: 202 }));
+    // Simulate corruption: the record itself is gone, but the index (written
+    // separately) still references it — e.g. a partial/interrupted write.
+    await AsyncStorage.removeItem('student_13_pendingFinalize_202');
+
+    const results = await getPendingFinalizationsForStudent(13);
+    expect(results).toEqual([]);
+
+    // Self-healed: a second call finds the same (empty) result without
+    // re-attempting to read the now-permanently-missing record forever.
+    const resultsAgain = await getPendingFinalizationsForStudent(13);
+    expect(resultsAgain).toEqual([]);
+  });
+});
+
+// ─── Discovery Test 6 — app-restart simulation ─────────────────────────────
+
+describe('Discovery Test 6 — app-restart simulation', () => {
+  it('a record stored before a simulated restart is still discoverable after', async () => {
+    await storePendingFinalization(13, 202, makeRecord());
+
+    // Simulate an app restart: force storage.js to be freshly re-required,
+    // as it would be on a fresh JS process — while AsyncStorage's own module
+    // (standing in for the device's real persistent store, which does NOT
+    // reset on restart) is deliberately left untouched, keeping its data.
+    delete require.cache[require.resolve('./storage')];
+    const freshStorage = require('./storage');
+
+    const results = await freshStorage.getPendingFinalizationsForStudent(13);
+    expect(results).toHaveLength(1);
+    expect(results[0].assessmentId).toBe(202);
   });
 });

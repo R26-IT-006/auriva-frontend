@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { getLetterSequence, getMotorProfile } from '../../utils/storage';
+import { retryPendingFinalizationForStudent } from '../../utils/finalizeSync';
 import { recordAssessmentSnapshot } from '../../constants/sessionProgress';
 
 const AVATAR_MAP = {
@@ -119,6 +120,13 @@ export default function LetterHomeScreen({ route, navigation }) {
   const [motorProfile,      setMotorProfile]      = useState(passedProfile);
   const [adaptiveSequence,  setAdaptiveSequence]  = useState([]);
 
+  // Reliability Step 3: guards against useFocusEffect firing a second
+  // overlapping retry attempt (e.g. the child navigates away and quickly
+  // back again while the previous attempt's single PATCH is still in
+  // flight). A ref rather than state — it must not trigger a re-render or
+  // itself become a focus-effect dependency.
+  const pendingRetryInFlightRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
       client.get(ENDPOINTS.LETTER_PROGRESS(student.sid))
@@ -137,6 +145,21 @@ export default function LetterHomeScreen({ route, navigation }) {
           }
         })
         .catch(() => {});
+
+      // Quiet, bounded, one-shot retry of any pending assessment
+      // finalization for this student (Reliability Step 3) — see
+      // utils/finalizeSync.js. Works from student.sid alone (no
+      // assessmentId route param needed), so it discovers a pending record
+      // the same way whether this is the first LetterHome visit right after
+      // AssessmentComplete or a much later one after an app restart.
+      // Deliberately silent either way: no loader, no toast, no blocking —
+      // LetterHome renders and behaves identically regardless of outcome.
+      if (!pendingRetryInFlightRef.current) {
+        pendingRetryInFlightRef.current = true;
+        retryPendingFinalizationForStudent(student.sid)
+          .catch(() => {}) // defense-in-depth; retryPendingFinalizationForStudent never rejects
+          .finally(() => { pendingRetryInFlightRef.current = false; });
+      }
     }, [student.sid])
   );
 

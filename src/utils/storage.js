@@ -255,10 +255,44 @@ function pendingFinalizeKey(studentId, assessmentId) {
   return `student_${studentId}_pendingFinalize_${assessmentId}`;
 }
 
+// Student-level index (Reliability Step 3) — required because LetterHomeScreen
+// only ever has student.sid available, never assessmentId (confirmed: it is
+// not passed through navigation, and even if it were, that wouldn't help
+// after an app restart via a different navigation path). AsyncStorage has no
+// prefix-query API, and this project does not otherwise use
+// AsyncStorage.getAllKeys() anywhere, so a small maintained index — rather
+// than a global key scan — keeps discovery to exactly the keys that matter
+// for one student. Format: array of assessmentIds, e.g. [202, 305].
+function pendingFinalizeIndexKey(studentId) {
+  return `student_${studentId}_pendingFinalizeIndex`;
+}
+
+async function addToPendingIndex(studentId, assessmentId) {
+  const key = pendingFinalizeIndexKey(studentId);
+  const raw = await AsyncStorage.getItem(key);
+  const index = raw ? JSON.parse(raw) : [];
+  if (!index.includes(assessmentId)) {
+    index.push(assessmentId);
+    await AsyncStorage.setItem(key, JSON.stringify(index));
+  }
+}
+
+async function removeFromPendingIndex(studentId, assessmentId) {
+  const key = pendingFinalizeIndexKey(studentId);
+  const raw = await AsyncStorage.getItem(key);
+  if (!raw) return;
+  const index = JSON.parse(raw).filter(id => id !== assessmentId);
+  await AsyncStorage.setItem(key, JSON.stringify(index));
+}
+
 /**
  * Persists a replayable finalize record. Store only what's needed to replay
  * PATCH /handwriting/assessment/:assessmentId/finalize — never raw
  * trajectories, ShapeFeature data, names, tokens, or API error objects.
+ *
+ * Also maintains the per-student discovery index (addToPendingIndex) in the
+ * same try/catch as the record write, so a caller's `true` return means both
+ * the record AND its discoverability are confirmed persisted.
  *
  * @param {number|string} studentId
  * @param {number|string} assessmentId
@@ -272,6 +306,7 @@ function pendingFinalizeKey(studentId, assessmentId) {
 export async function storePendingFinalization(studentId, assessmentId, record) {
   try {
     await AsyncStorage.setItem(pendingFinalizeKey(studentId, assessmentId), JSON.stringify(record));
+    await addToPendingIndex(studentId, assessmentId);
     return true;
   } catch (err) {
     console.error(`Pending finalization write failed [student ${studentId}, assessment ${assessmentId}]:`, err);
@@ -305,9 +340,56 @@ export async function getPendingFinalization(studentId, assessmentId) {
 export async function clearPendingFinalization(studentId, assessmentId) {
   try {
     await AsyncStorage.removeItem(pendingFinalizeKey(studentId, assessmentId));
+    await removeFromPendingIndex(studentId, assessmentId);
     return true;
   } catch (err) {
     console.error(`Pending finalization clear failed [student ${studentId}, assessment ${assessmentId}]:`, err);
     return false;
   }
+}
+
+/**
+ * Discovers all pending/conflict finalization records for a student from
+ * only studentId — no assessmentId needed. This is what makes retry work
+ * after an app restart or via any navigation path into LetterHomeScreen,
+ * not just the immediate post-assessment transition.
+ *
+ * Self-heals: if the index references an assessmentId whose record is
+ * missing or corrupted, that entry is dropped from the index (never
+ * throws, never re-adds a phantom entry).
+ *
+ * @param {number|string} studentId
+ * @returns {Promise<Object[]>} records found (possibly empty) — never null.
+ */
+export async function getPendingFinalizationsForStudent(studentId) {
+  let index;
+  try {
+    const raw = await AsyncStorage.getItem(pendingFinalizeIndexKey(studentId));
+    index = raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    console.error(`Pending finalization index read failed [student ${studentId}]:`, err);
+    return [];
+  }
+
+  const records  = [];
+  const staleIds = [];
+  for (const assessmentId of index) {
+    const record = await getPendingFinalization(studentId, assessmentId);
+    if (record) {
+      records.push(record);
+    } else {
+      staleIds.push(assessmentId);
+    }
+  }
+
+  if (staleIds.length > 0) {
+    const cleaned = index.filter(id => !staleIds.includes(id));
+    try {
+      await AsyncStorage.setItem(pendingFinalizeIndexKey(studentId), JSON.stringify(cleaned));
+    } catch (err) {
+      console.error(`Pending finalization index cleanup failed [student ${studentId}]:`, err);
+    }
+  }
+
+  return records;
 }

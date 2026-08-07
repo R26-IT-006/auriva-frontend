@@ -20,7 +20,9 @@
 
 import client from '../api/client';
 import { ENDPOINTS } from '../constants/api';
-import { storePendingFinalization, clearPendingFinalization } from './storage';
+import {
+  storePendingFinalization, clearPendingFinalization, getPendingFinalizationsForStudent,
+} from './storage';
 
 /**
  * Attempts the finalize PATCH for a pending record. Never throws — always
@@ -115,4 +117,106 @@ export async function attemptFinalization({ studentId, assessmentId, motorScore,
     await storePendingFinalization(studentId, assessmentId, { ...record, attemptCount: record.attemptCount + 1 });
   }
   return { status: 'pending' };
+}
+
+// ─── Reliability Step 3: quiet retry from LetterHomeScreen ─────────────────
+
+/**
+ * Picks which pending record to retry, given possibly more than one. Only
+ * 'pending' records are eligible — 'conflict' records are never auto-retried.
+ * Deliberately synchronous/pure so it's trivially testable and so callers
+ * never need Promise.all: at most one record is ever selected per call.
+ *
+ * @param {Object[]} records
+ * @returns {Object|null} the oldest eligible record, or null if none.
+ */
+export function selectOldestPendingRecord(records) {
+  const eligible = (records ?? []).filter(r => r?.status === 'pending');
+  if (eligible.length === 0) return null;
+  return [...eligible].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
+}
+
+// A record missing any of these cannot be safely replayed into a PATCH body.
+function isReplayableRecord(record) {
+  return (
+    record?.assessmentId != null &&
+    record?.studentId != null &&
+    record?.motorScore != null &&
+    record?.motorProfile != null && typeof record.motorProfile === 'object'
+  );
+}
+
+/**
+ * Retries a single ALREADY-STORED pending record. Unlike attemptFinalization()
+ * (which creates a brand-new record with attemptCount:0/createdAt:now for a
+ * fresh assessment-complete event), this preserves the existing record's
+ * createdAt and increments its existing attemptCount — it must never reset
+ * either, since that would erase real retry history for a record that may
+ * already have survived an app restart.
+ *
+ * @param {Object} record — an existing pending-finalization record (as
+ *   returned by getPendingFinalization/getPendingFinalizationsForStudent).
+ * @returns {Promise<{ status: 'success'|'pending'|'conflict' }>}
+ */
+export async function retryPendingFinalization(record) {
+  const syncResult = await syncPendingFinalization(record);
+
+  if (syncResult.ok) {
+    await clearPendingFinalization(record.studentId, record.assessmentId);
+    return { status: 'success' };
+  }
+
+  if (syncResult.conflict) {
+    await storePendingFinalization(record.studentId, record.assessmentId, {
+      ...record,
+      status: 'conflict',
+      attemptCount: record.attemptCount + 1,
+    });
+    return { status: 'conflict' };
+  }
+
+  await storePendingFinalization(record.studentId, record.assessmentId, {
+    ...record,
+    attemptCount: record.attemptCount + 1,
+  });
+  return { status: 'pending' };
+}
+
+/**
+ * The full quiet, bounded, one-shot retry LetterHomeScreen calls on every
+ * focus event: discover this student's pending records (works purely from
+ * studentId — no assessmentId needed, so this works after an app restart via
+ * any navigation path, not just the immediate post-assessment transition),
+ * select at most one, retry it if safe to replay.
+ *
+ * Never throws. Makes at most one network call. 'conflict' records are
+ * logged (IDs only) but never retried automatically.
+ *
+ * @param {number|string} studentId
+ * @returns {Promise<{ status: 'none'|'invalid_record'|'success'|'pending'|'conflict' }>}
+ */
+export async function retryPendingFinalizationForStudent(studentId) {
+  const records = await getPendingFinalizationsForStudent(studentId);
+
+  const conflicts = records.filter(r => r?.status === 'conflict');
+  if (conflicts.length > 0) {
+    console.warn(
+      `Pending finalization conflict requires review [student ${studentId}]: assessment(s) ${conflicts.map(c => c.assessmentId).join(', ')}`
+    );
+  }
+
+  const candidate = selectOldestPendingRecord(records);
+  if (!candidate) return { status: 'none' };
+
+  if (!isReplayableRecord(candidate)) {
+    // Corrupt/incomplete record — never send a malformed PATCH. Left in
+    // place rather than deleted (manual diagnosis may be useful) or given a
+    // new 'invalid' status (not needed: skipping + logging is enough, since
+    // re-attempting it next focus event is equally safe and equally cheap —
+    // it will simply be skipped again).
+    console.warn(`Skipping corrupt pending finalization record [student ${studentId}, assessment ${candidate?.assessmentId}]`);
+    return { status: 'invalid_record' };
+  }
+
+  return retryPendingFinalization(candidate);
 }
