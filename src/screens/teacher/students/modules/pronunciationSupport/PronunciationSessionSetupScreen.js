@@ -145,14 +145,6 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
 
     if (!selectedCategory) return;
 
-    if (selectedCategory !== "animals") {
-      Alert.alert(
-        "Coming Soon",
-        "This pronunciation activity is currently available for Animals only.",
-      );
-      return;
-    }
-
     startSession({
       student: activeStudent,
       mode: selectedMode,

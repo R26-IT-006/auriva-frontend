@@ -184,7 +184,7 @@ export default function PronunciationWordSelectionScreen({
     ...item,
     completed: completedIds.has(item.id),
   }));
-  const moreWords = (isAlphabetMode ? [] : WORD_BANK.moreAnimals || []).map((item) => ({
+  const moreWords = (isAlphabetMode || categoryId !== "animals" ? [] : WORD_BANK.moreAnimals || []).map((item) => ({
     ...item,
     completed: completedIds.has(item.id),
   }));
