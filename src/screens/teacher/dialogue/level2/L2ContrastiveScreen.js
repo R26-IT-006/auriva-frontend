@@ -115,7 +115,7 @@ export default function L2ContrastiveScreen({ route, navigation }) {
           {/* Next */}
           <TouchableOpacity
             style={[styles.nextBtn, { backgroundColor: theme.button }]}
-            onPress={() => navigation.replace('L2SentenceTeach', { student, sessionData, sentenceIndex: 1 })}
+            onPress={() => navigation.replace('L2SentencePath', { student, sessionData })}
             activeOpacity={0.85}
           >
             <Text style={[styles.nextText, { color: theme.buttonText }]}>Let's Start!</Text>

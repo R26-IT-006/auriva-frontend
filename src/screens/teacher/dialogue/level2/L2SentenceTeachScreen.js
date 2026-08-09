@@ -1,8 +1,11 @@
 /**
  * L2SentenceTeachScreen
- * Manages the full per-sentence teaching flow for all 5 sentences.
+ * Teaches ONE sentence, picked from L2SentencePath (route.params.sentenceIndex).
  * Steps: activityPre (sentence 5 only) → step1 → step2 → step3 → step4
- * After sentence 5 step4 → navigate to L2ListenTogether
+ * After step4 → navigate back to L2SentencePath, flagged as completed.
+ * (Previously this screen looped through all 5 sentences internally and
+ * ended at L2ListenTogether — that loop now lives one level up, as the
+ * path screen's 6 separate stops.)
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Image, BackHandler, ScrollView } from 'react-native';
@@ -64,13 +67,12 @@ const ALL_ACTIVITIES = ['Singing', 'Dancing', 'Art', 'Cricket', 'Games', 'Readin
 const ACT_ICONS = { Singing: 'musical-notes-outline', Dancing: 'body-outline', Art: 'color-palette-outline', Cricket: 'baseball-outline', Games: 'game-controller-outline', Reading: 'book-outline' };
 
 export default function L2SentenceTeachScreen({ route, navigation }) {
-  const { student, sessionData, sentenceIndex: initIdx = 1 } = route.params ?? {};
+  const { student, sessionData, sentenceIndex = 1, returnTo = 'L2SentencePath' } = route.params ?? {};
   const theme     = getAvatarTheme(student?.avatar_key);
   const avatarImg = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
-  const [sentenceIndex, setSentenceIndex] = useState(initIdx);
-  const [step,          setStep]          = useState(initIdx === 5 ? 'activityPre' : 'step1');
-  const [showGate,      setShowGate]      = useState(false);
+  const [step,     setStep]     = useState(sentenceIndex === 5 ? 'activityPre' : 'step1');
+  const [showGate, setShowGate] = useState(false);
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { setShowGate(true); return true; });
@@ -80,21 +82,18 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
   const sentence = sessionData?.sentences?.find(s => s.index === sentenceIndex);
   const sessionId = sessionData?.session_id;
 
-  const progress = ((sentenceIndex - 1) * 4 + (['step1', 'step2', 'step3', 'step4'].indexOf(step) + 1)) / 20;
+  // Steps for this one sentence only: activityPre (sentence 5) is step 0 of 5;
+  // everyone else is 4 steps (step1–step4).
+  const STEP_ORDER = sentenceIndex === 5 ? ['activityPre', 'step1', 'step2', 'step3', 'step4'] : ['step1', 'step2', 'step3', 'step4'];
+  const progress = (STEP_ORDER.indexOf(step) + 1) / STEP_ORDER.length;
 
   function advanceStep() {
     const steps = ['step1', 'step2', 'step3', 'step4'];
     const curIdx = steps.indexOf(step);
     if (step === 'activityPre') { setStep('step1'); return; }
     if (curIdx < steps.length - 1) { setStep(steps[curIdx + 1]); return; }
-    // End of step4 for this sentence
-    if (sentenceIndex < 5) {
-      const nextIdx = sentenceIndex + 1;
-      setSentenceIndex(nextIdx);
-      setStep(nextIdx === 5 ? 'activityPre' : 'step1');
-    } else {
-      navigation.replace('L2ListenTogether', { student, sessionData });
-    }
+    // Done with this sentence — back to the path, flagged as completed.
+    navigation.navigate(returnTo, { student, sessionData, justCompleted: sentenceIndex });
   }
 
   function handleStep3Result(result) {
@@ -134,7 +133,7 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.button }]} />
           </View>
           <View style={[styles.headerSide, styles.sentBadge]}>
-            <Text style={[styles.sentBadgeText, { color: theme.headingText }]}>{sentenceIndex}/5</Text>
+            <Text style={[styles.sentBadgeText, { color: theme.headingText }]}>Lesson {sentenceIndex}</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -165,7 +164,7 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
 
       <ParentGateModal
         visible={showGate}
-        onSuccess={() => { setShowGate(false); navigation.navigate('L2TopicSelection', { student }); }}
+        onSuccess={() => { setShowGate(false); navigation.navigate(returnTo, { student, sessionData }); }}
         onCancel={() => setShowGate(false)}
       />
     </View>
@@ -241,7 +240,7 @@ const styles = StyleSheet.create({
   headerWrap: {},
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
   headerSide: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  sentBadge: {},
+  sentBadge: { width: 74 },
   sentBadgeText: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
   progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
