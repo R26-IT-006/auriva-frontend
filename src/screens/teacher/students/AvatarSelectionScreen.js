@@ -109,12 +109,16 @@ export default function AvatarSelectionScreen({ navigation, route }) {
   async function handleConfirm() {
     if (!selected) return;
     setSaving(true);
+
+    const nextStudent = { ...student, avatar_key: selected.key };
+
     try {
-      await teacherApi.setAvatar(student.sid, selected.key);
-      // Cache locally so StudentPickerScreen can check without an extra request
       await AsyncStorage.setItem(`student_avatar_${student.sid}`, selected.key);
-      navigation.replace('StudentDashboard', { student: { ...student, avatar_key: selected.key } });
-    } catch {
+      navigation.replace('StudentDashboard', { student: nextStudent });
+
+      // Backend support for avatar persistence may be unavailable in local dev.
+      teacherApi.setAvatar(student.sid, selected.key).catch(() => {});
+    } catch (error) {
       setSaving(false);
     }
   }

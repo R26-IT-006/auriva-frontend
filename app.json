@@ -11,16 +11,20 @@
       "resizeMode": "contain",
       "backgroundColor": "#F0F2FA"
     },
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.auriva.app"
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F0F2FA"
       },
-      "package": "com.auriva.app"
+      "package": "com.auriva.app",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.auriva.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow Auriva to use the microphone for pronunciation practice."
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,6 +42,9 @@
       "@react-native-community/datetimepicker",
       "expo-audio",
       "expo-video"
-    ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://192.168.8.132:3000/api"
+    }
   }
 }

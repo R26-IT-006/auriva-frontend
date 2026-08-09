@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ButtonFeedback } from '../../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -58,9 +59,9 @@ function StyledInput({ error, secureTextEntry, ...props }) {
           secureTextEntry={hidden}
           {...props}
         />
-        <TouchableOpacity onPress={() => setHidden((h) => !h)} activeOpacity={0.7} style={styles.eyeBtn}>
+        <ButtonFeedback onPress={() => setHidden((h) => !h)} activeOpacity={0.7} style={styles.eyeBtn}>
           <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={16} color={MUTED} />
-        </TouchableOpacity>
+        </ButtonFeedback>
       </View>
     );
   }
@@ -136,13 +137,13 @@ export default function CreateTeacherScreen({ navigation }) {
 
       {/* ── Top bar ── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+        <ButtonFeedback onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={20} color={TEXT} />
-        </TouchableOpacity>
+        </ButtonFeedback>
         <View style={styles.breadcrumb}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <ButtonFeedback onPress={() => navigation.goBack()} activeOpacity={0.7}>
             <Text style={styles.breadcrumbParent}>Faculty</Text>
-          </TouchableOpacity>
+          </ButtonFeedback>
           <Ionicons name="chevron-forward" size={14} color={MUTED} />
           <Text style={styles.breadcrumbCurrent}>Add Teacher</Text>
         </View>
@@ -158,7 +159,7 @@ export default function CreateTeacherScreen({ navigation }) {
 
             {/* ── Photo strip ── */}
             <View style={styles.photoStrip}>
-              <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8} style={styles.photoWrap}>
+              <ButtonFeedback onPress={pickPhoto} activeOpacity={0.8} style={styles.photoWrap}>
                 {photo ? (
                   <Image source={{ uri: photo.uri }} style={styles.photoImg} />
                 ) : (
@@ -169,17 +170,17 @@ export default function CreateTeacherScreen({ navigation }) {
                 <View style={styles.photoCameraBtn}>
                   <Ionicons name="camera" size={12} color={SURFACE} />
                 </View>
-              </TouchableOpacity>
+              </ButtonFeedback>
               <View style={styles.photoMeta}>
                 <Text style={styles.photoName}>{displayName}</Text>
                 <View style={styles.photoCodePill}>
                   <Text style={styles.photoCodeText}>Code: Auto-generated</Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={pickPhoto} style={styles.changePhotoBtn} activeOpacity={0.8}>
+              <ButtonFeedback onPress={pickPhoto} style={styles.changePhotoBtn} activeOpacity={0.8}>
                 <Ionicons name="image-outline" size={14} color={BLUE} />
                 <Text style={styles.changePhotoBtnText}>{photo ? 'Change Photo' : 'Add Photo'}</Text>
-              </TouchableOpacity>
+              </ButtonFeedback>
             </View>
 
             {/* ── Account Information ── */}
@@ -252,10 +253,10 @@ export default function CreateTeacherScreen({ navigation }) {
 
             {/* ── Action buttons ── */}
             <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+              <ButtonFeedback style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </ButtonFeedback>
+              <ButtonFeedback
                 style={[styles.createBtn, loading && { opacity: 0.7 }]}
                 onPress={handleCreate}
                 disabled={loading}
@@ -263,7 +264,7 @@ export default function CreateTeacherScreen({ navigation }) {
               >
                 <Ionicons name="person-add-outline" size={15} color={SURFACE} />
                 <Text style={styles.createBtnText}>{loading ? 'Creating…' : 'Create Teacher'}</Text>
-              </TouchableOpacity>
+              </ButtonFeedback>
             </View>
 
           </View>

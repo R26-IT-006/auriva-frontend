@@ -1,53 +1,47 @@
-import React, { useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  useWindowDimensions,
-  ScrollView,
-  Alert,
-} from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert, Switch } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { SESSION_CATEGORIES } from "./sessionCategories.js";
+import {
+  PRONUNCIATION_MODES,
+  PRONUNCIATION_STEPS,
+  usePronunciationSessionStore,
+} from "./pronunciationSessionStore.js";
+import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
+import { getStudentIdentifier } from "./studentIdentity.js";
 
-function Step({ label, active, done }) {
+const PRONUNCIATION_MODE_OPTIONS = [
+  {
+    id: PRONUNCIATION_MODES.WORD,
+    title: "Word Pronunciation",
+    subtitle: "Practise full words by category",
+    icon: "chatbubble-ellipses-outline",
+    panelColor: "#DCEEFE",
+  },
+  {
+    id: PRONUNCIATION_MODES.ALPHABET,
+    title: "Alphabet Pronunciation",
+    subtitle: "Practise letter sounds one by one",
+    icon: "text-outline",
+    panelColor: "#DFF3E2",
+  },
+];
+
+function CategoryCard({ item, selected, onPress, cardWidth, theme }) {
   return (
-    <View style={styles.stepWrap}>
-      <View
-        style={[
-          styles.stepCircle,
-          active && styles.stepCircleActive,
-          done && styles.stepCircleDone,
-        ]}
-      >
-        {done ? (
-          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-        ) : (
-          <Text style={[styles.stepNumber, active && styles.stepNumberActive]}>
-            {label}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
-}
-
-function StepConnector() {
-  return <View style={styles.stepConnector} />;
-}
-
-function CategoryCard({ item, selected, onPress, cardWidth }) {
-  return (
-    <TouchableOpacity
+    <ButtonFeedback
       activeOpacity={0.85}
       onPress={onPress}
       style={[
         styles.categoryCard,
-        { width: cardWidth },
+        { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
         selected && styles.categoryCardSelected,
       ]}
     >
@@ -62,125 +56,256 @@ function CategoryCard({ item, selected, onPress, cardWidth }) {
           {item.subtitle}
         </Text>
       </View>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
 export default function PronunciationSessionSetupScreen({ navigation, route }) {
   const student = route.params?.student;
+  const studentId = getStudentIdentifier(student);
+  const theme = getAvatarTheme(student?.avatar_key);
+  const [selectedMode, setSelectedMode] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [reduceStimulation, setReduceStimulation] = useState(
+    Boolean(student?.reduce_stimulation),
+  );
+  const [savingSensorySetting, setSavingSensorySetting] = useState(false);
+  const startSession = usePronunciationSessionStore((state) => state.startSession);
+  const setSelectedStudent = usePronunciationSessionStore(
+    (state) => state.setSelectedStudent,
+  );
+  const setSelectedCategoryInSession = usePronunciationSessionStore(
+    (state) => state.setSelectedCategory,
+  );
+  const setSelectedModeInSession = usePronunciationSessionStore(
+    (state) => state.setSelectedMode,
+  );
+  const setCurrentActivityStep = usePronunciationSessionStore(
+    (state) => state.setCurrentActivityStep,
+  );
   const { width } = useWindowDimensions();
+  const isCompact = width < 720;
+  // Downstream screens read `student` from navigation params, not the store,
+  // so a sensory-setting change made on this screen has to travel forward
+  // through that same object — otherwise the celebration screen at the end
+  // of the session would still see the stale pre-toggle value.
+  const activeStudent = useMemo(
+    () => (student ? { ...student, reduce_stimulation: reduceStimulation } : student),
+    [student, reduceStimulation],
+  );
+
+  useEffect(() => {
+    setSelectedStudent(activeStudent);
+    setCurrentActivityStep(PRONUNCIATION_STEPS.SETUP);
+  }, [activeStudent, setCurrentActivityStep, setSelectedStudent]);
+
+  async function handleToggleReduceStimulation(value) {
+    if (!studentId || savingSensorySetting) return;
+
+    const previous = reduceStimulation;
+    setReduceStimulation(value);
+    setSavingSensorySetting(true);
+
+    try {
+      await teacherApi.setSensorySettings(studentId, value);
+    } catch (error) {
+      setReduceStimulation(previous);
+      Alert.alert(
+        "Couldn't save setting",
+        error.response?.data?.error || error.message || "Please try again.",
+      );
+    } finally {
+      setSavingSensorySetting(false);
+    }
+  }
 
   const cardWidth = useMemo(() => {
+    if (width < 560) return width - Layout.spacing.lg * 2;
     if (width >= 1180) return 220;
     if (width >= 1024) return 200;
     if (width >= 840) return 180;
-    return Math.min(260, width - Layout.spacing.lg * 2);
+    return Math.min(260, (width - Layout.spacing.lg * 2 - Layout.spacing.sm) / 2);
   }, [width]);
 
   function handleContinue() {
-    if (!selectedCategory) return;
+    if (!selectedMode) return;
 
-    if (selectedCategory !== "animals") {
-      Alert.alert(
-        "Coming Soon",
-        "Word selection is currently available for Animals only.",
-      );
+    if (selectedMode === PRONUNCIATION_MODES.ALPHABET) {
+      startSession({
+        student: activeStudent,
+        mode: PRONUNCIATION_MODES.ALPHABET,
+        category: null,
+      });
+      navigation.navigate("PronunciationWordSelection", {
+        student: activeStudent,
+        mode: PRONUNCIATION_MODES.ALPHABET,
+      });
       return;
     }
 
+    if (!selectedCategory) return;
+
+    startSession({
+      student: activeStudent,
+      mode: selectedMode,
+      category: selectedCategory,
+    });
     navigation.navigate("PronunciationWordSelection", {
-      student,
+      student: activeStudent,
+      mode: selectedMode,
       categoryId: selectedCategory,
     });
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backBtn}
+          <ButtonFeedback
+            style={[styles.backBtn, { borderColor: theme.cardOutline }]}
             onPress={() => navigation.goBack()}
             activeOpacity={0.8}
           >
             <Ionicons
               name="chevron-back"
               size={20}
-              color={Colors.text.primary}
+              color={theme.headingText}
             />
-          </TouchableOpacity>
+          </ButtonFeedback>
 
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>New Session Setup</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: theme.headingText }]}>New Session Setup</Text>
+            <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Pronunciation Support Module
               {student?.full_name ? ` for ${student.full_name}` : ""}
             </Text>
           </View>
         </View>
 
-        <View style={styles.stepsRow}>
-          <Step label="1" done />
-          <StepConnector />
-          <Step label="2" active />
-          <StepConnector />
-          <Step label="3" />
-        </View>
+        <PronunciationStepIndicator currentStep={2} theme={theme} />
 
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Select Category</Text>
+        <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+          <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Mode</Text>
 
           <View style={styles.cardsRow}>
-            {SESSION_CATEGORIES.map((item) => (
+            {PRONUNCIATION_MODE_OPTIONS.map((item) => (
               <CategoryCard
                 key={item.id}
                 item={item}
-                selected={selectedCategory === item.id}
-                onPress={() => setSelectedCategory(item.id)}
+                selected={selectedMode === item.id}
+                onPress={() => {
+                  setSelectedMode(item.id);
+                  setSelectedModeInSession(item.id);
+                  if (item.id === PRONUNCIATION_MODES.ALPHABET) {
+                    setSelectedCategory(null);
+                    setSelectedCategoryInSession(null);
+                  }
+                }}
                 cardWidth={cardWidth}
+                theme={theme}
               />
             ))}
           </View>
 
-          <View style={styles.panelFooter}>
-            <Text style={styles.selectionText}>
-              {selectedCategory
-                ? `Selected: ${SESSION_CATEGORIES.find((c) => c.id === selectedCategory)?.title}`
-                : "Choose one category to continue to activity setup"}
+          {selectedMode === PRONUNCIATION_MODES.WORD ? (
+            <>
+              <Text style={[styles.panelTitle, styles.categoryPanelTitle, { color: theme.headingText }]}>
+                Select Category
+              </Text>
+
+              <View style={styles.cardsRow}>
+                {SESSION_CATEGORIES.map((item) => (
+                  <CategoryCard
+                    key={item.id}
+                    item={item}
+                    selected={selectedCategory === item.id}
+                    onPress={() => {
+                      setSelectedCategory(item.id);
+                      setSelectedCategoryInSession(item.id);
+                    }}
+                    cardWidth={cardWidth}
+                    theme={theme}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          <View style={[styles.sensoryRow, { borderColor: theme.cardOutline }]}>
+            <View style={styles.sensoryIconWrap}>
+              <Ionicons name="pulse-outline" size={20} color={theme.button} />
+            </View>
+            <View style={styles.sensoryCopy}>
+              <Text style={styles.sensoryTitle}>Reduce celebration effects</Text>
+              <Text style={styles.sensorySubtitle}>
+                Turns off confetti, vibration, and triumphant sounds after a strong score —
+                keeps praise calm and text-based instead.
+              </Text>
+            </View>
+            <Switch
+              value={reduceStimulation}
+              onValueChange={handleToggleReduceStimulation}
+              disabled={savingSensorySetting}
+              trackColor={{ true: theme.button }}
+            />
+          </View>
+
+          <View style={[styles.panelFooter, isCompact && styles.panelFooterCompact]}>
+            <Text style={[styles.selectionText, { color: theme.headingText }]}>
+              {selectedMode === PRONUNCIATION_MODES.ALPHABET
+                ? "Selected: Alphabet Pronunciation"
+                : selectedCategory
+                  ? `Selected: ${SESSION_CATEGORIES.find((c) => c.id === selectedCategory)?.title}`
+                  : selectedMode
+                    ? "Choose one category to continue"
+                    : "Choose word or alphabet pronunciation to continue"}
             </Text>
-            <TouchableOpacity
+            <ButtonFeedback
               activeOpacity={0.85}
               style={[
                 styles.continueBtn,
-                !selectedCategory && styles.continueBtnDisabled,
+                { backgroundColor: theme.button },
+                isCompact && styles.continueBtnCompact,
+                (!selectedMode ||
+                  (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory)) &&
+                  styles.continueBtnDisabled,
               ]}
-              disabled={!selectedCategory}
+              disabled={
+                !selectedMode ||
+                (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory)
+              }
               onPress={handleContinue}
             >
               <Text style={styles.continueText}>Continue</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
+            </ButtonFeedback>
           </View>
         </View>
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#DCE9F5",
+  },
+  safeInner: {
+    flex: 1,
   },
   scroll: {
     paddingHorizontal: Layout.spacing.lg,
     paddingVertical: Layout.spacing.lg,
+    alignItems: "center",
   },
   headerRow: {
+    width: "100%",
+    maxWidth: 1040,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: Layout.spacing.md,
@@ -210,50 +335,9 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     color: Colors.text.secondary,
   },
-  stepsRow: {
-    marginTop: Layout.spacing.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 2,
-    borderColor: "#98A8BC",
-    backgroundColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepCircleActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  stepCircleDone: {
-    backgroundColor: "#4F9CCC",
-    borderColor: "#4F9CCC",
-  },
-  stepNumber: {
-    fontSize: Layout.fontSize.xs,
-    color: "#6E7D92",
-    fontWeight: Layout.fontWeight.bold,
-  },
-  stepNumberActive: {
-    color: "#FFFFFF",
-  },
-  stepConnector: {
-    width: 54,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#6DA5C8",
-    marginHorizontal: 8,
-  },
   panel: {
+    width: "100%",
+    maxWidth: 1040,
     marginTop: Layout.spacing.lg,
     backgroundColor: "#F7F8FA",
     borderRadius: 22,
@@ -268,9 +352,14 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     marginBottom: Layout.spacing.md,
   },
+  categoryPanelTitle: {
+    marginTop: Layout.spacing.xl,
+  },
   cardsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "stretch",
     gap: Layout.spacing.sm,
   },
   categoryCard: {
@@ -279,9 +368,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E6ECF4",
     backgroundColor: Colors.surface,
+    minHeight: 172,
   },
   categoryCardSelected: {
-    borderColor: Colors.primary,
     borderWidth: 2,
   },
   categoryVisual: {
@@ -304,6 +393,37 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     marginTop: 4,
   },
+  sensoryRow: {
+    marginTop: Layout.spacing.xl,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Layout.spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
+  },
+  sensoryIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F3F5F8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sensoryCopy: {
+    flex: 1,
+  },
+  sensoryTitle: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: Layout.fontWeight.bold,
+    color: Colors.text.primary,
+  },
+  sensorySubtitle: {
+    marginTop: 2,
+    fontSize: Layout.fontSize.xs,
+    color: Colors.text.secondary,
+    lineHeight: 16,
+  },
   panelFooter: {
     marginTop: Layout.spacing.lg,
     borderTopWidth: 1,
@@ -313,6 +433,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: Layout.spacing.md,
+  },
+  panelFooterCompact: {
+    flexDirection: "column",
+    alignItems: "stretch",
   },
   selectionText: {
     flex: 1,
@@ -327,6 +451,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
+  },
+  continueBtnCompact: {
+    justifyContent: "center",
   },
   continueBtnDisabled: {
     backgroundColor: "#AAB8CB",

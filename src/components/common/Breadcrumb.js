@@ -1,5 +1,6 @@
 ﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { ButtonFeedback } from '../components/common/ButtonFeedback';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -27,14 +28,14 @@ export function Breadcrumb({ crumbs = [], title, right }) {
       <View style={styles.trailRow}>
         {/* Back chevron navigates to previous crumb */}
         {crumbs.length > 1 && crumbs[crumbs.length - 2]?.onPress && (
-          <TouchableOpacity
+          <ButtonFeedback
             onPress={crumbs[crumbs.length - 2].onPress}
             style={styles.backBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.7}
           >
             <Ionicons name="chevron-back" size={16} color={K.purple} />
-          </TouchableOpacity>
+          </ButtonFeedback>
         )}
 
         <View style={styles.trail}>
@@ -58,11 +59,11 @@ export function Breadcrumb({ crumbs = [], title, right }) {
                     {crumb.label}
                   </Text>
                 ) : (
-                  <TouchableOpacity onPress={crumb.onPress} activeOpacity={0.7}>
+                  <ButtonFeedback onPress={crumb.onPress} activeOpacity={0.7}>
                     <Text style={[styles.crumbText, styles.crumbTextLink]} numberOfLines={1}>
                       {crumb.label}
                     </Text>
-                  </TouchableOpacity>
+                  </ButtonFeedback>
                 )}
               </View>
             );

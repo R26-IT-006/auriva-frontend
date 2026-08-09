@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { ButtonFeedback } from '../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -164,9 +165,9 @@ export default function LoginScreen({ navigation }) {
 
               {/* Forgot password */}
               {role === 'teacher' && (
-                <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotRow}>
+                <ButtonFeedback onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotRow}>
                   <Text style={styles.forgotText}>Forgot Password?</Text>
-                </Pressable>
+                </ButtonFeedback>
               )}
 
               {/* Login button */}

@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ButtonFeedback } from '../components/common/ButtonFeedback';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 
@@ -62,7 +63,7 @@ function WheelColumn({ items, selectedIndex, onChange, format }) {
         style={{ height: ITEM_H * VISIBLE }}
       >
         {items.map((item, i) => (
-          <TouchableOpacity
+          <ButtonFeedback
             key={i}
             style={col.item}
             activeOpacity={0.7}
@@ -74,7 +75,7 @@ function WheelColumn({ items, selectedIndex, onChange, format }) {
             <Text style={[col.itemText, i === selectedIndex && col.itemTextActive]}>
               {format ? format(item) : String(item).padStart(2, '0')}
             </Text>
-          </TouchableOpacity>
+          </ButtonFeedback>
         ))}
       </ScrollView>
     </View>
@@ -195,7 +196,7 @@ export default function DatePickerField({
     <View style={styles.wrapper}>
       {label && <Text style={styles.label}>{label}</Text>}
 
-      <TouchableOpacity
+      <ButtonFeedback
         style={[styles.field, error && { borderColor: Colors.status.error }]}
         onPress={handleOpen}
         activeOpacity={0.8}
@@ -207,7 +208,7 @@ export default function DatePickerField({
           {formatDisplay(value) || 'Select date of birth'}
         </Text>
         <Ionicons name="chevron-down" size={16} color={Colors.icon.default} />
-      </TouchableOpacity>
+      </ButtonFeedback>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -217,12 +218,12 @@ export default function DatePickerField({
         animationType="slide"
         onRequestClose={() => setShow(false)}
       >
-        <TouchableOpacity
+        <ButtonFeedback
           style={styles.overlay}
           activeOpacity={1}
           onPress={() => setShow(false)}
         >
-          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
+          <ButtonFeedback activeOpacity={1} style={styles.sheet}>
 
             {/* Sheet header */}
             <View style={styles.sheetBanner} />
@@ -264,12 +265,12 @@ export default function DatePickerField({
             </View>
 
             {/* Done */}
-            <TouchableOpacity style={styles.doneBtn} onPress={handleDone} activeOpacity={0.85}>
+            <ButtonFeedback style={styles.doneBtn} onPress={handleDone} activeOpacity={0.85}>
               <Text style={styles.doneBtnText}>Confirm</Text>
-            </TouchableOpacity>
+            </ButtonFeedback>
 
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </ButtonFeedback>
+        </ButtonFeedback>
       </Modal>
     </View>
   );

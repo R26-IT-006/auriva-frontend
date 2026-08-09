@@ -1,0 +1,438 @@
+import { create } from "zustand";
+
+import { WORD_BANK } from "./wordBank";
+
+export const PRONUNCIATION_STEPS = {
+  SETUP: "setup",
+  WORD_SELECTION: "wordSelection",
+  LISTEN: "listen",
+  SPEAK: "speak",
+  RESULT: "result",
+  SUMMARY: "summary",
+};
+
+export const PRONUNCIATION_MODES = {
+  WORD: "word",
+  ALPHABET: "alphabet",
+};
+
+export const ALPHABET_BANK = [
+  {
+    id: "a",
+    letter: "A",
+    word: "a",
+    color: "#F8D7DA",
+    difficulty: 1,
+    supportType: "open mouth sound",
+    sounds: [{ text: "æ", type: "vowel", mouth: "wide open" }],
+  },
+  {
+    id: "b",
+    letter: "B",
+    word: "b",
+    color: "#D7E8FA",
+    difficulty: 1,
+    supportType: "lip closing sound",
+    sounds: [{ text: "b", type: "consonant", mouth: "closed lips" }],
+  },
+  {
+    id: "c",
+    letter: "C",
+    word: "c",
+    color: "#DFF3E2",
+    difficulty: 1,
+    supportType: "back of mouth sound",
+    sounds: [{ text: "k", type: "consonant", mouth: "back tongue" }],
+  },
+  {
+    id: "d",
+    letter: "D",
+    word: "d",
+    color: "#FCEFCF",
+    difficulty: 1,
+    supportType: "tongue tap sound",
+    sounds: [{ text: "d", type: "consonant", mouth: "tongue tap" }],
+  },
+  {
+    id: "e",
+    letter: "E",
+    word: "e",
+    color: "#FDE3DF",
+    difficulty: 1,
+    supportType: "smiling vowel sound",
+    sounds: [{ text: "e", type: "vowel", mouth: "smile" }],
+  },
+  {
+    id: "f",
+    letter: "F",
+    word: "f",
+    color: "#E8E0FA",
+    difficulty: 2,
+    supportType: "teeth lip airflow",
+    sounds: [{ text: "f", type: "consonant", mouth: "teeth lip" }],
+  },
+  {
+    id: "g",
+    letter: "G",
+    word: "g",
+    color: "#E9F2D7",
+    difficulty: 2,
+    supportType: "back of mouth sound",
+    sounds: [{ text: "g", type: "consonant", mouth: "back tongue" }],
+  },
+  {
+    id: "h",
+    letter: "H",
+    word: "h",
+    color: "#F6E0D6",
+    difficulty: 1,
+    supportType: "breathy sound",
+    sounds: [{ text: "h", type: "consonant", mouth: "open airflow" }],
+  },
+  {
+    id: "i",
+    letter: "I",
+    word: "i",
+    color: "#D8EAF7",
+    difficulty: 1,
+    supportType: "short vowel sound",
+    sounds: [{ text: "i", type: "vowel", mouth: "small smile" }],
+  },
+  {
+    id: "j",
+    letter: "J",
+    word: "j",
+    color: "#F4D8E8",
+    difficulty: 2,
+    supportType: "soft tongue sound",
+    sounds: [{ text: "j", type: "consonant", mouth: "soft tongue" }],
+  },
+  {
+    id: "k",
+    letter: "K",
+    word: "k",
+    color: "#D8F0EA",
+    difficulty: 1,
+    supportType: "back of mouth sound",
+    sounds: [{ text: "k", type: "consonant", mouth: "back tongue" }],
+  },
+  {
+    id: "l",
+    letter: "L",
+    word: "l",
+    color: "#F7E8C8",
+    difficulty: 1,
+    supportType: "tongue lift sound",
+    sounds: [{ text: "l", type: "consonant", mouth: "tongue lift" }],
+  },
+  {
+    id: "m",
+    letter: "M",
+    word: "m",
+    color: "#E4F1F7",
+    difficulty: 1,
+    supportType: "humming lip sound",
+    sounds: [{ text: "m", type: "consonant", mouth: "closed lips" }],
+  },
+  {
+    id: "n",
+    letter: "N",
+    word: "n",
+    color: "#E0E9F8",
+    difficulty: 1,
+    supportType: "nose sound",
+    sounds: [{ text: "n", type: "consonant", mouth: "tongue up" }],
+  },
+  {
+    id: "o",
+    letter: "O",
+    word: "o",
+    color: "#F9E2D2",
+    difficulty: 1,
+    supportType: "round vowel sound",
+    sounds: [{ text: "o", type: "vowel", mouth: "round lips" }],
+  },
+  {
+    id: "p",
+    letter: "P",
+    word: "p",
+    color: "#DCEFE0",
+    difficulty: 1,
+    supportType: "lip pop sound",
+    sounds: [{ text: "p", type: "consonant", mouth: "closed lips" }],
+  },
+  {
+    id: "q",
+    letter: "Q",
+    word: "q",
+    color: "#E8DDF4",
+    difficulty: 2,
+    supportType: "back tongue sound",
+    sounds: [{ text: "kw", type: "consonant", mouth: "back tongue" }],
+  },
+  {
+    id: "r",
+    letter: "R",
+    word: "r",
+    color: "#D9EEF7",
+    difficulty: 2,
+    supportType: "curled tongue sound",
+    sounds: [{ text: "r", type: "consonant", mouth: "tongue curl" }],
+  },
+  {
+    id: "s",
+    letter: "S",
+    word: "s",
+    color: "#F7E7C6",
+    difficulty: 2,
+    supportType: "teeth airflow sound",
+    sounds: [{ text: "s", type: "consonant", mouth: "teeth airflow" }],
+  },
+  {
+    id: "t",
+    letter: "T",
+    word: "t",
+    color: "#DDEED7",
+    difficulty: 2,
+    supportType: "tongue tap sound",
+    sounds: [{ text: "t", type: "consonant", mouth: "tongue tap" }],
+  },
+  {
+    id: "u",
+    letter: "U",
+    word: "u",
+    color: "#F3D9D4",
+    difficulty: 1,
+    supportType: "round vowel sound",
+    sounds: [{ text: "u", type: "vowel", mouth: "round lips" }],
+  },
+  {
+    id: "v",
+    letter: "V",
+    word: "v",
+    color: "#D9EBD7",
+    difficulty: 2,
+    supportType: "voice airflow sound",
+    sounds: [{ text: "v", type: "consonant", mouth: "teeth lip" }],
+  },
+  {
+    id: "w",
+    letter: "W",
+    word: "w",
+    color: "#D9EAF8",
+    difficulty: 1,
+    supportType: "rounded lip sound",
+    sounds: [{ text: "w", type: "consonant", mouth: "round lips" }],
+  },
+  {
+    id: "x",
+    letter: "X",
+    word: "x",
+    color: "#F4E0C8",
+    difficulty: 2,
+    supportType: "two-part sound",
+    sounds: [{ text: "ks", type: "consonant", mouth: "back tongue" }],
+  },
+  {
+    id: "y",
+    letter: "Y",
+    word: "y",
+    color: "#E2DDF6",
+    difficulty: 1,
+    supportType: "smiling glide sound",
+    sounds: [{ text: "y", type: "consonant", mouth: "small smile" }],
+  },
+  {
+    id: "z",
+    letter: "Z",
+    word: "z",
+    color: "#D8EFE9",
+    difficulty: 2,
+    supportType: "buzzing airflow sound",
+    sounds: [{ text: "z", type: "consonant", mouth: "teeth airflow" }],
+  },
+];
+
+const initialSessionState = {
+  selectedStudent: null,
+  selectedMode: PRONUNCIATION_MODES.WORD,
+  selectedCategory: null,
+  selectedWord: null,
+  currentActivityStep: PRONUNCIATION_STEPS.SETUP,
+  numberOfAttempts: 0,
+  recordingUri: null,
+  rawAudioBase64: null,
+  rawAudioMimeType: null,
+  rawAudioSize: null,
+  mockWordScore: null,
+  mockPhonemeScores: [],
+  responseDuration: null,
+  hesitationTime: null,
+  confidenceLevel: null,
+  needsTeacherReview: false,
+  scoringMethod: null,
+  recognizedText: null,
+  speechVerification: null,
+  adaptiveRecommendation: null,
+  listenChooseData: null,
+  completedWords: [],
+  difficultPhonemes: {},
+};
+
+function getCategoryWords(categoryId) {
+  const primaryWords = WORD_BANK[categoryId] || [];
+  const extraWords = categoryId === "animals" ? WORD_BANK.moreAnimals || [] : [];
+  return [...primaryWords, ...extraWords];
+}
+
+function getWordLabel(word) {
+  return word?.letter || word?.word || "";
+}
+
+function findWordById({ selectedCategory, selectedMode, wordId }) {
+  const words = selectedMode === PRONUNCIATION_MODES.WORD
+    ? getCategoryWords(selectedCategory)
+    : ALPHABET_BANK;
+
+  return words.find((word) => word.id === wordId) || null;
+}
+
+export const usePronunciationSessionStore = create((set, get) => ({
+  ...initialSessionState,
+
+  resetSession() {
+    set(initialSessionState);
+  },
+
+  startSession({
+    student,
+    mode = PRONUNCIATION_MODES.WORD,
+    category = null,
+    word = null,
+  }) {
+    set({
+      ...initialSessionState,
+      selectedStudent: student || null,
+      selectedMode: mode,
+      selectedCategory: category,
+      selectedWord: word,
+      currentActivityStep: word
+        ? PRONUNCIATION_STEPS.LISTEN
+        : PRONUNCIATION_STEPS.WORD_SELECTION,
+    });
+  },
+
+  setSelectedStudent(student) {
+    set({ selectedStudent: student || null });
+  },
+
+  setSelectedMode(mode) {
+    set({ selectedMode: mode || PRONUNCIATION_MODES.WORD });
+  },
+
+  setSelectedCategory(category) {
+    set({ selectedCategory: category });
+  },
+
+  setSelectedWord(word) {
+    set({
+      selectedWord: word || null,
+      recordingUri: null,
+      rawAudioBase64: null,
+      rawAudioMimeType: null,
+      rawAudioSize: null,
+      mockWordScore: null,
+      mockPhonemeScores: [],
+      responseDuration: null,
+      hesitationTime: null,
+      scoringMethod: null,
+      recognizedText: null,
+      speechVerification: null,
+      confidenceLevel: null,
+      needsTeacherReview: false,
+      adaptiveRecommendation: null,
+      listenChooseData: null,
+      currentActivityStep: PRONUNCIATION_STEPS.LISTEN,
+    });
+  },
+
+  setCurrentActivityStep(step) {
+    set({ currentActivityStep: step });
+  },
+
+  setRecordingUri(recordingUri, responseDuration = null, audioData = {}) {
+    set({
+      recordingUri: recordingUri || null,
+      rawAudioBase64: audioData.rawAudioBase64 || null,
+      rawAudioMimeType: audioData.rawAudioMimeType || null,
+      rawAudioSize: audioData.rawAudioSize || null,
+      responseDuration,
+    });
+  },
+
+  setListenChooseData(data) {
+    set({
+      listenChooseData: data || null,
+    });
+  },
+
+  submitScoredAttempt(scoringResult, { recordingUri, responseDuration } = {}) {
+    const state = get();
+    const score = scoringResult?.overall_score ?? 0;
+    const difficultPhoneme = scoringResult?.weak_phoneme || null;
+    const difficultPhonemes = { ...state.difficultPhonemes };
+    const recommendedWord = findWordById({
+      selectedCategory: state.selectedCategory,
+      selectedMode: state.selectedMode,
+      wordId: scoringResult?.next_word_id,
+    });
+    const completedWord = state.selectedWord
+      ? {
+          id: state.selectedWord.id,
+          label: getWordLabel(state.selectedWord),
+          score,
+        }
+      : null;
+
+    if (difficultPhoneme) {
+      difficultPhonemes[difficultPhoneme] =
+        (difficultPhonemes[difficultPhoneme] || 0) + 1;
+    }
+
+    set({
+      numberOfAttempts: scoringResult?.attempt_number || state.numberOfAttempts + 1,
+      recordingUri: recordingUri || state.recordingUri,
+      mockWordScore: score,
+      mockPhonemeScores: scoringResult?.phoneme_scores || [],
+      responseDuration: scoringResult?.response_duration ?? responseDuration ?? state.responseDuration,
+      hesitationTime: scoringResult?.hesitation_time ?? null,
+      confidenceLevel: scoringResult?.confidence_level ?? null,
+      needsTeacherReview: Boolean(scoringResult?.needs_teacher_review),
+      scoringMethod: scoringResult?.scoring_method || null,
+      recognizedText: scoringResult?.recognized_text || null,
+      speechVerification: scoringResult?.speech_verification || null,
+      adaptiveRecommendation: {
+        type: scoringResult?.recommendation_type || "reinforce",
+        label: scoringResult?.recommendation_type || "Recommendation",
+        message:
+          scoringResult?.recommendation_message ||
+          "Review the target sounds before moving ahead.",
+        word: recommendedWord,
+        scoringMethod: scoringResult?.scoring_method || null,
+        weakPhoneme: difficultPhoneme,
+        weakPosition: scoringResult?.weak_position || null,
+        details: scoringResult?.recommendation_details || null,
+      },
+      completedWords: completedWord
+        ? [
+            ...state.completedWords.filter((entry) => entry.id !== completedWord.id),
+            completedWord,
+          ]
+        : state.completedWords,
+      difficultPhonemes,
+      currentActivityStep: PRONUNCIATION_STEPS.RESULT,
+    });
+
+    return scoringResult;
+  },
+}));

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { ButtonFeedback } from '../../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -45,13 +46,13 @@ const COLS = [
 
 function FilterChip({ label, active, onPress }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       onPress={onPress}
       activeOpacity={0.75}
       style={[styles.chip, active && styles.chipActive]}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -77,13 +78,13 @@ function TableHeader() {
 
 function ActionBtn({ icon, color, bg, onPress }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       onPress={onPress}
       activeOpacity={0.75}
       style={[styles.actionBtn, { backgroundColor: bg }]}
     >
       <Ionicons name={icon} size={14} color={color} />
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -214,14 +215,14 @@ export default function StudentListScreen({ navigation }) {
             <Text style={styles.countText}>{students.length}</Text>
           </View>
         </View>
-        <TouchableOpacity
+        <ButtonFeedback
           style={styles.addBtn}
           onPress={() => navigation.navigate('CreateStudent')}
           activeOpacity={0.85}
         >
           <Ionicons name="add" size={16} color={SURFACE} />
           <Text style={styles.addBtnText}>Add Student</Text>
-        </TouchableOpacity>
+        </ButtonFeedback>
       </View>
 
       {/* ── Filter bar ── */}
@@ -237,9 +238,9 @@ export default function StudentListScreen({ navigation }) {
             autoCapitalize="none"
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
+            <ButtonFeedback onPress={() => setSearch('')} activeOpacity={0.7}>
               <Ionicons name="close-circle" size={15} color={MUTED} />
-            </TouchableOpacity>
+            </ButtonFeedback>
           )}
         </View>
       </View>
@@ -290,14 +291,14 @@ export default function StudentListScreen({ navigation }) {
               {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} students
             </Text>
             <View style={styles.pageControls}>
-              <TouchableOpacity
+              <ButtonFeedback
                 onPress={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 style={[styles.pageArrow, page === 1 && { opacity: 0.35 }]}
                 activeOpacity={0.7}
               >
                 <Ionicons name="chevron-back" size={14} color={TEXT} />
-              </TouchableOpacity>
+              </ButtonFeedback>
 
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
@@ -310,25 +311,25 @@ export default function StudentListScreen({ navigation }) {
                   p === '…' ? (
                     <Text key={`el-${idx}`} style={styles.pageEllipsis}>…</Text>
                   ) : (
-                    <TouchableOpacity
+                    <ButtonFeedback
                       key={p}
                       onPress={() => setPage(p)}
                       style={[styles.pageBtn, page === p && styles.pageBtnActive]}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.pageBtnTxt, page === p && styles.pageBtnTxtActive]}>{p}</Text>
-                    </TouchableOpacity>
+                    </ButtonFeedback>
                   )
                 )}
 
-              <TouchableOpacity
+              <ButtonFeedback
                 onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 style={[styles.pageArrow, page === totalPages && { opacity: 0.35 }]}
                 activeOpacity={0.7}
               >
                 <Ionicons name="chevron-forward" size={14} color={TEXT} />
-              </TouchableOpacity>
+              </ButtonFeedback>
             </View>
           </View>
         )}

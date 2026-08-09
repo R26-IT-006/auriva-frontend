@@ -12,4 +12,11 @@ if (!config.resolver.assetExts.includes('mov')) {
 // Allow Metro to bundle 3D model files
 config.resolver.assetExts = [...config.resolver.assetExts, 'glb', 'gltf', 'bin'];
 
+const escapedRoot = __dirname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+config.resolver.blockList = [
+  new RegExp(`${escapedRoot}/android/.*`),
+  new RegExp(`${escapedRoot}/ios/.*`),
+];
+
 module.exports = config;

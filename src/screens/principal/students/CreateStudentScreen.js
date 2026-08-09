@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ButtonFeedback } from '../../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -217,16 +218,16 @@ export default function CreateStudentScreen({ navigation }) {
   // ── Top bar (shared) ──────────────────────────────────────────────────────
   const topBar = (
     <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-      <TouchableOpacity
+      <ButtonFeedback
         onPress={() => step === 1 ? navigation.goBack() : setStep(1)}
         style={styles.backBtn} activeOpacity={0.7}
       >
         <Ionicons name="arrow-back" size={20} color={TEXT} />
-      </TouchableOpacity>
+      </ButtonFeedback>
       <View style={styles.breadcrumb}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <ButtonFeedback onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Text style={styles.breadcrumbParent}>Students</Text>
-        </TouchableOpacity>
+        </ButtonFeedback>
         <Ionicons name="chevron-forward" size={14} color={MUTED} />
         <Text style={styles.breadcrumbCurrent}>Add Student</Text>
       </View>
@@ -250,7 +251,7 @@ export default function CreateStudentScreen({ navigation }) {
 
               {/* Profile card */}
               <View style={styles.photoStrip}>
-                <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8} style={styles.avatarWrap}>
+                <ButtonFeedback onPress={pickPhoto} activeOpacity={0.8} style={styles.avatarWrap}>
                   {photo ? (
                     <Image source={{ uri: photo.uri }} style={styles.avatarImg} />
                   ) : (
@@ -261,7 +262,7 @@ export default function CreateStudentScreen({ navigation }) {
                   <View style={styles.avatarCamera}>
                     <Ionicons name="camera" size={12} color={SURFACE} />
                   </View>
-                </TouchableOpacity>
+                </ButtonFeedback>
                 <View style={styles.profileInfo}>
                   <Text style={styles.profileName}>{displayName}</Text>
                   <View style={styles.profileTagRow}>
@@ -280,10 +281,10 @@ export default function CreateStudentScreen({ navigation }) {
                     </View>
                   </View>
                 </View>
-                <TouchableOpacity onPress={pickPhoto} style={styles.photoBtn} activeOpacity={0.8}>
+                <ButtonFeedback onPress={pickPhoto} style={styles.photoBtn} activeOpacity={0.8}>
                   <Ionicons name="camera-outline" size={14} color={BLUE} />
                   <Text style={styles.photoBtnText}>{photo ? 'Change' : 'Add Photo'}</Text>
-                </TouchableOpacity>
+                </ButtonFeedback>
               </View>
 
               {/* Required Information */}
@@ -315,7 +316,7 @@ export default function CreateStudentScreen({ navigation }) {
 
                 {/* Disability picker */}
                 <FieldRow label="Disability Type" required error={errors.disability}>
-                  <TouchableOpacity
+                  <ButtonFeedback
                     style={[styles.selectWrap, errors.disability && styles.inputWrapError]}
                     onPress={() => setDisabilityOpen((v) => !v)}
                     activeOpacity={0.8}
@@ -329,18 +330,18 @@ export default function CreateStudentScreen({ navigation }) {
                     <View style={styles.selectChevron}>
                       <Ionicons name={disabilityOpen ? 'chevron-up' : 'chevron-down'} size={16} color={MUTED} />
                     </View>
-                  </TouchableOpacity>
+                  </ButtonFeedback>
                   {disabilityOpen && (
                     <View style={styles.dropdown}>
                       {DISABILITY_OPTIONS.map((opt) => (
-                        <TouchableOpacity
+                        <ButtonFeedback
                           key={opt}
                           style={[styles.dropdownItem, form.disability === opt && styles.dropdownItemActive]}
                           onPress={() => { setField('disability', opt); setDisabilityOpen(false); }}
                         >
                           <Text style={[styles.dropdownText, form.disability === opt && styles.dropdownTextActive]}>{opt}</Text>
                           {form.disability === opt && <Ionicons name="checkmark-circle" size={16} color={PURPLE} />}
-                        </TouchableOpacity>
+                        </ButtonFeedback>
                       ))}
                     </View>
                   )}
@@ -435,10 +436,10 @@ export default function CreateStudentScreen({ navigation }) {
 
               {/* Buttons */}
               <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+                <ButtonFeedback style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
                   <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                </ButtonFeedback>
+                <ButtonFeedback
                   style={[styles.primaryBtn, loadingTeachers && { opacity: 0.7 }]}
                   onPress={handleNext}
                   disabled={loadingTeachers}
@@ -446,7 +447,7 @@ export default function CreateStudentScreen({ navigation }) {
                 >
                   <Text style={styles.primaryBtnText}>{loadingTeachers ? 'Loading…' : 'Next'}</Text>
                   <Ionicons name="arrow-forward-outline" size={16} color={SURFACE} />
-                </TouchableOpacity>
+                </ButtonFeedback>
               </View>
 
             </View>
@@ -497,7 +498,7 @@ export default function CreateStudentScreen({ navigation }) {
                   const initials = t.full_name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
                   const slotColor = count <= 1 ? GREEN : count <= 3 ? BLUE : AMBER;
                   return (
-                    <TouchableOpacity
+                    <ButtonFeedback
                       key={t.tid}
                       style={[styles.teacherCard, selected && styles.teacherCardSelected]}
                       onPress={() => setSelectedTeacherId(selected ? null : t.tid)}
@@ -542,7 +543,7 @@ export default function CreateStudentScreen({ navigation }) {
                       <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
                         {selected && <View style={styles.radioInner} />}
                       </View>
-                    </TouchableOpacity>
+                    </ButtonFeedback>
                   );
                 })}
               </View>
@@ -568,19 +569,19 @@ export default function CreateStudentScreen({ navigation }) {
 
           {/* Buttons */}
           <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep(1)} activeOpacity={0.8}>
+            <ButtonFeedback style={styles.cancelBtn} onPress={() => setStep(1)} activeOpacity={0.8}>
               <Ionicons name="arrow-back-outline" size={15} color={TEXT} />
               <Text style={styles.cancelBtnText}>Back</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </ButtonFeedback>
+            <ButtonFeedback
               style={[styles.skipBtn, loading && { opacity: 0.7 }]}
               onPress={() => handleSave(true)}
               disabled={loading}
               activeOpacity={0.8}
             >
               <Text style={styles.skipBtnText}>{loading ? '…' : 'Skip & Save'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </ButtonFeedback>
+            <ButtonFeedback
               style={[styles.primaryBtn, { flex: 2 }, (loading || (availableTeachers.length > 0 && !selectedTeacherId)) && { opacity: 0.5 }]}
               onPress={() => handleSave(false)}
               disabled={loading || (availableTeachers.length > 0 && !selectedTeacherId)}
@@ -588,7 +589,7 @@ export default function CreateStudentScreen({ navigation }) {
             >
               <Ionicons name="checkmark-outline" size={16} color={SURFACE} />
               <Text style={styles.primaryBtnText}>{loading ? 'Saving…' : 'Save & Assign'}</Text>
-            </TouchableOpacity>
+            </ButtonFeedback>
           </View>
 
         </View>

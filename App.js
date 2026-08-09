@@ -14,6 +14,7 @@ import {
   Nunito_900Black,
 } from '@expo-google-fonts/nunito';
 import AppNavigator from './src/navigation/AppNavigator';
+import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 
 // Apply Nunito globally to every Text in the app
 Text.defaultProps = Text.defaultProps || {};
@@ -51,7 +52,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="auto" />
-        <AppNavigator />
+        <ErrorBoundary>
+          <AppNavigator />
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

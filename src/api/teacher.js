@@ -37,4 +37,41 @@ export const teacherApi = {
     });
     return data;
   },
+
+  async setSensorySettings(studentId, reduceStimulation) {
+    const { data } = await client.put(ENDPOINTS.TEACHER_STUDENT_SENSORY_SETTINGS(studentId), {
+      reduce_stimulation: reduceStimulation,
+    });
+    return data;
+  },
+
+  async scorePronunciationAttempt(studentId, payload) {
+    const { data } = await client.post(
+      ENDPOINTS.TEACHER_PRONUNCIATION_SCORE(studentId),
+      payload
+    );
+    return data;
+  },
+
+  async savePronunciationResult(studentId, payload) {
+    const { data } = await client.post(
+      ENDPOINTS.TEACHER_PRONUNCIATION_RESULTS(studentId),
+      payload
+    );
+    return data;
+  },
+
+  async getPronunciationResults(studentId) {
+    const { data } = await client.get(
+      ENDPOINTS.TEACHER_PRONUNCIATION_RESULTS(studentId)
+    );
+    return data;
+  },
+
+  async getPronunciationResultAudio(resultId) {
+    const { data } = await client.get(
+      ENDPOINTS.TEACHER_PRONUNCIATION_RESULT_AUDIO(resultId)
+    );
+    return data;
+  },
 };

@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
+import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 
 const MOUTH_SHAPES = [
   { id: "k", ipa: "/k/", label: "open", icon: "ellipse-outline" },
@@ -11,36 +14,43 @@ const MOUTH_SHAPES = [
   { id: "t", ipa: "/t/", label: "teeth lip", icon: "ellipse-outline" },
 ];
 
-function MouthShapeIcon({ index }) {
+function MouthShapeIcon({ index, theme }) {
   const variant = index === 2 ? styles.mouthTeeth : styles.mouthOpen;
   return (
     <View style={styles.mouthIconWrap}>
-      <View style={[styles.mouthIconOuter, variant]}>
+      <View style={[styles.mouthIconOuter, { borderColor: theme.cardOutline }, variant]}>
         <View style={styles.mouthIconInner} />
       </View>
     </View>
   );
 }
 
-function MouthCard({ item, selected, onPress }) {
+function MouthCard({ item, selected, onPress, theme }) {
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       activeOpacity={0.86}
       onPress={onPress}
-      style={[styles.card, selected && styles.cardSelected]}
+      style={[
+        styles.card,
+        { backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
+        selected && styles.cardSelected,
+      ]}
     >
-      <MouthShapeIcon index={item.id === "t" ? 2 : item.id === "ae" ? 1 : 0} />
-      <Text style={styles.ipa}>{item.ipa}</Text>
+      <MouthShapeIcon index={item.id === "t" ? 2 : item.id === "ae" ? 1 : 0} theme={theme} />
+      <Text style={[styles.ipa, { color: theme.headingText }]}>{item.ipa}</Text>
       <Text style={styles.label}>{item.label}</Text>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
 export default function PronunciationMouthShapeScreen({ navigation, route }) {
   const student = route.params?.student;
+  const theme = getAvatarTheme(student?.avatar_key);
   const categoryId = route.params?.categoryId;
   const word = route.params?.word;
   const [selectedId, setSelectedId] = useState("ae");
+  const { width } = useWindowDimensions();
+  const isCompact = width < 720;
 
   const selectedItem = useMemo(
     () => MOUTH_SHAPES.find((item) => item.id === selectedId),
@@ -57,18 +67,22 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       <View style={styles.screen}>
-        <TouchableOpacity
+        <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
-          style={styles.backBtn}
+          style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }]}
         >
-          <Ionicons name="arrow-back" size={26} color="#41536D" />
-        </TouchableOpacity>
+          <Ionicons name="arrow-back" size={26} color={theme.headingText} />
+        </ButtonFeedback>
 
-        <View style={styles.centerWrap}>
-          <Text style={styles.title}>Watch the mouth shapes</Text>
+        <View style={[styles.centerWrap, isCompact && styles.centerWrapCompact]}>
+          <Text style={[styles.title, isCompact && styles.titleCompact, { color: theme.headingText }]}>Watch the mouth shapes</Text>
+          <Text style={[styles.titleSinhala, isCompact && styles.titleSinhalaCompact, { color: theme.headingText }]}>
+            මුඛ හැඩ බලන්න
+          </Text>
 
           <View style={styles.cardsRow}>
             {MOUTH_SHAPES.map((item) => (
@@ -77,34 +91,44 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
                 item={item}
                 selected={selectedId === item.id}
                 onPress={() => setSelectedId(item.id)}
+                theme={theme}
               />
             ))}
           </View>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handleReady}
-          style={styles.readyBtn}
+        <View
+          pointerEvents={isCompact ? "auto" : "box-none"}
+          style={isCompact ? styles.actionsRow : styles.actionsOverlay}
         >
-          <Text style={styles.readyText}>I&apos;m Ready!</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+          <ButtonFeedback
+            activeOpacity={0.9}
+            onPress={handleReady}
+            style={[styles.readyBtn, isCompact && styles.readyBtnCompact, { backgroundColor: theme.button }]}
+          >
+            <Text style={styles.readyText}>I&apos;m Ready!</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+          </ButtonFeedback>
+        </View>
       </View>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#DCE9F5",
+  },
+  safeInner: {
+    flex: 1,
   },
   screen: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.lg,
   },
   backBtn: {
     position: "absolute",
@@ -120,10 +144,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.34)",
   },
+  backBtnCompact: {
+    left: Layout.spacing.lg,
+    top: Layout.spacing.lg,
+    marginTop: 0,
+  },
   centerWrap: {
+    width: "100%",
+    maxWidth: 620,
     alignItems: "center",
     justifyContent: "center",
     marginTop: -18,
+  },
+  centerWrapCompact: {
+    marginTop: 0,
   },
   title: {
     fontSize: 26,
@@ -131,10 +165,28 @@ const styles = StyleSheet.create({
     color: "#2C5878",
     fontWeight: "800",
     textAlign: "center",
+    marginBottom: 4,
+  },
+  titleCompact: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  titleSinhala: {
+    fontSize: 23,
+    lineHeight: 30,
+    color: "#2C5878",
+    fontWeight: "800",
+    textAlign: "center",
     marginBottom: 24,
+    opacity: 0.82,
+  },
+  titleSinhalaCompact: {
+    fontSize: 21,
+    lineHeight: 28,
   },
   cardsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "center",
     gap: 14,
@@ -151,7 +203,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   cardSelected: {
-    borderColor: "#2991FF",
     borderWidth: 2,
   },
   mouthIconWrap: {
@@ -213,6 +264,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     ...Layout.shadow.md,
+  },
+  readyBtnCompact: {
+    position: "relative",
+    right: 0,
+    top: 0,
+    marginTop: 0,
+    width: "100%",
+  },
+  actionsOverlay: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  actionsRow: {
+    width: "100%",
+    maxWidth: 360,
+    marginTop: Layout.spacing.lg,
   },
   readyText: {
     color: "#FFFFFF",

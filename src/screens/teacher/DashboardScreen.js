@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -18,6 +19,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
+const BACKGROUND_REFRESH_INTERVAL_MS = 60 * 1000;
 const TEAL      = '#3A9BA8';
 const TEAL_GRAD = ['#4AABB8', '#52C07C'];
 
@@ -142,18 +144,39 @@ export default function TeacherDashboardScreen({ navigation }) {
   const logout = useAuthStore((s) => s.logout);
   const toast  = useToast();
 
-  const load = useCallback(async () => {
+  // Guards against overlapping requests: the focus fetch and the interval tick
+  // can otherwise fire together and race each other into setData.
+  const requestInFlight = useRef(false);
+
+  const load = useCallback(async ({ showError = true } = {}) => {
+    if (requestInFlight.current) return;
+
+    requestInFlight.current = true;
     try {
       const res = await teacherApi.getDashboard();
       setData(res);
     } catch (err) {
-      toast.show(err.message, 'error');
+      // Silent on background ticks — a dropped poll shouldn't toast at a teacher
+      // who is reading the screen.
+      if (showError) toast.show(err.message, 'error');
     } finally {
+      requestInFlight.current = false;
       setRefreshing(false);
     }
-  }, []);
+  }, [toast]);
 
-  useEffect(() => { load(); }, [load]);
+  // Refresh on focus and poll while the screen stays open, so the dashboard
+  // reflects sessions finishing on the tablets without a manual pull.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      const refreshTimer = setInterval(
+        () => load({ showError: false }),
+        BACKGROUND_REFRESH_INTERVAL_MS,
+      );
+      return () => clearInterval(refreshTimer);
+    }, [load])
+  );
 
   const profile            = data?.profile;
   const stats               = data?.stats;

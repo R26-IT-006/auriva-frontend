@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { ButtonFeedback } from '../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -129,7 +130,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
             </View>
             <Text style={styles.toastTitle}>{toast.title}</Text>
             <Text style={styles.toastMessage}>{toast.message}</Text>
-            <TouchableOpacity
+            <ButtonFeedback
               onPress={hideToast}
               activeOpacity={0.85}
               style={styles.toastBtn}
@@ -142,7 +143,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
               >
                 <Text style={styles.toastBtnText}>OK</Text>
               </LinearGradient>
-            </TouchableOpacity>
+            </ButtonFeedback>
           </View>
         </View>
       </Modal>
@@ -157,10 +158,10 @@ export default function OtpVerificationScreen({ navigation, route }) {
             <View style={styles.card}>
 
               {/* Back */}
-              <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.75} style={styles.backBtn}>
+              <ButtonFeedback onPress={() => navigation.goBack()} activeOpacity={0.75} style={styles.backBtn}>
                 <Ionicons name="chevron-back" size={16} color={TEAL} />
                 <Text style={styles.backBtnText}>Back</Text>
-              </TouchableOpacity>
+              </ButtonFeedback>
 
               {/* Heading */}
               <Text style={styles.cardTitle}>Enter verification code</Text>
@@ -189,7 +190,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
               </View>
 
               {/* Verify button */}
-              <TouchableOpacity
+              <ButtonFeedback
                 onPress={handleVerify}
                 disabled={loading}
                 activeOpacity={0.85}
@@ -206,7 +207,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
                     : <Text style={styles.btnText}>Verify OTP</Text>
                   }
                 </LinearGradient>
-              </TouchableOpacity>
+              </ButtonFeedback>
 
               {/* Resend */}
               <View style={styles.resendRow}>
@@ -214,11 +215,11 @@ export default function OtpVerificationScreen({ navigation, route }) {
                 {countdown > 0 ? (
                   <Text style={styles.resendTimer}>{'  '}Resend in {countdown}s</Text>
                 ) : (
-                  <TouchableOpacity onPress={handleResend} disabled={resending}>
+                  <ButtonFeedback onPress={handleResend} disabled={resending}>
                     <Text style={[styles.resendLink, resending && styles.resendLinkDisabled]}>
                       {'  '}{resending ? 'Sending...' : 'Resend OTP'}
                     </Text>
-                  </TouchableOpacity>
+                  </ButtonFeedback>
                 )}
               </View>
 

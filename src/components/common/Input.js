@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ButtonFeedback } from '../components/common/ButtonFeedback';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 
@@ -72,7 +73,7 @@ export function Input({
           ]}
         />
         {isPassword && (
-          <TouchableOpacity
+          <ButtonFeedback
             onPress={() => setShowPassword((p) => !p)}
             style={styles.eyeIcon}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -82,7 +83,7 @@ export function Input({
               size={20}
               color={Colors.icon.default}
             />
-          </TouchableOpacity>
+          </ButtonFeedback>
         )}
       </View>
       {error && <Text style={styles.error}>{error}</Text>}

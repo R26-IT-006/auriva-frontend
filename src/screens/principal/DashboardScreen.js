@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { ButtonFeedback } from '../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -53,7 +54,7 @@ function StatCard({
   const white = '#FFFFFF';
   const dim   = 'rgba(255,255,255,0.70)';
   return (
-    <TouchableOpacity
+    <ButtonFeedback
       style={[styles.statCard, a && { backgroundColor: accent }]}
       onPress={onPress}
       activeOpacity={0.83}
@@ -80,20 +81,20 @@ function StatCard({
         </Text>
       </View>
       <ProgressBar progress={(progressPct ?? '0%').replace('%', '') / 100} color={progressColor} accent={a} />
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
 // ── Action tile ───────────────────────────────────────────────────────────────
 function ActionTile({ icon, iconBg, iconColor, label, sub, onPress }) {
   return (
-    <TouchableOpacity style={styles.actionTile} onPress={onPress} activeOpacity={0.82}>
+    <ButtonFeedback style={styles.actionTile} onPress={onPress} activeOpacity={0.82}>
       <View style={[styles.actionIcon, { backgroundColor: iconBg }]}>
         <Ionicons name={icon} size={20} color={iconColor} />
       </View>
       <Text style={styles.actionLabel}>{label}</Text>
       <Text style={styles.actionSub}>{sub}</Text>
-    </TouchableOpacity>
+    </ButtonFeedback>
   );
 }
 
@@ -165,9 +166,9 @@ export default function PrincipalDashboardScreen({ navigation }) {
             <Text style={styles.greeting}>{greeting}, {firstName}! 👋</Text>
             <Text style={styles.dateText}>{today}</Text>
           </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={() => setLogoutVisible(true)} activeOpacity={0.75}>
+          <ButtonFeedback style={styles.logoutBtn} onPress={() => setLogoutVisible(true)} activeOpacity={0.75}>
             <Ionicons name="log-out-outline" size={18} color={TEXT_MUTED} />
-          </TouchableOpacity>
+          </ButtonFeedback>
         </View>
 
         {/* ── Today's Overview ── */}
@@ -177,9 +178,9 @@ export default function PrincipalDashboardScreen({ navigation }) {
               <View style={styles.sectionBar} />
               <Text style={styles.sectionTitle}>TODAY'S OVERVIEW</Text>
             </View>
-            <TouchableOpacity onPress={nav('Teachers', 'TeacherList')}>
+            <ButtonFeedback onPress={nav('Teachers', 'TeacherList')}>
               <Text style={styles.viewAll}>View All →</Text>
-            </TouchableOpacity>
+            </ButtonFeedback>
           </View>
 
           <View style={styles.cardsRow}>

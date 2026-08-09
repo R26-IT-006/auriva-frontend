@@ -78,6 +78,14 @@ import ConceptColoringScreen              from '../screens/teacher/concept/Conce
 import ConceptActivityScreen              from '../screens/teacher/concept/ConceptActivityScreen';
 import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
 import L2PortraitScreen        from '../screens/teacher/dialogue/level2/L2PortraitScreen';
+import PronunciationSessionSetupScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSessionSetupScreen";
+import PronunciationWordSelectionScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationWordSelectionScreen";
+import PronunciationLearnWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationLearnWordScreen";
+import PronunciationListenChooseScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationListenChooseScreen";
+import PronunciationMouthShapeScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationMouthShapeScreen";
+import PronunciationSpeakWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSpeakWordScreen";
+import PronunciationResultScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultScreen";
+import PronunciationResultsHistoryScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultsHistoryScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -205,6 +213,38 @@ export default function TeacherNavigator() {
       <Stack.Screen name="ConceptActivity"          component={ConceptActivityScreen} />
       <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
       <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
+      <Stack.Screen
+        name="PronunciationSessionSetup"
+        component={PronunciationSessionSetupScreen}
+      />
+      <Stack.Screen
+        name="PronunciationWordSelection"
+        component={PronunciationWordSelectionScreen}
+      />
+      <Stack.Screen
+        name="PronunciationLearnWord"
+        component={PronunciationLearnWordScreen}
+      />
+      <Stack.Screen
+        name="PronunciationListenChoose"
+        component={PronunciationListenChooseScreen}
+      />
+      <Stack.Screen
+        name="PronunciationMouthShape"
+        component={PronunciationMouthShapeScreen}
+      />
+      <Stack.Screen
+        name="PronunciationSpeakWord"
+        component={PronunciationSpeakWordScreen}
+      />
+      <Stack.Screen
+        name="PronunciationResult"
+        component={PronunciationResultScreen}
+      />
+      <Stack.Screen
+        name="PronunciationResultsHistory"
+        component={PronunciationResultsHistoryScreen}
+      />
       <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
       <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
       <Stack.Screen name="AnimatedWord"      component={AnimatedWordScreen} />

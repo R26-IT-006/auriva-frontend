@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ButtonFeedback } from '../../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -117,17 +118,17 @@ export default function EditTeacherScreen({ route, navigation }) {
 
       {/* ── Top bar ── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+        <ButtonFeedback onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={20} color={TEXT} />
-        </TouchableOpacity>
+        </ButtonFeedback>
         <View style={styles.breadcrumb}>
-          <TouchableOpacity onPress={() => navigation.pop(2)} activeOpacity={0.7}>
+          <ButtonFeedback onPress={() => navigation.pop(2)} activeOpacity={0.7}>
             <Text style={styles.breadcrumbParent}>Faculty</Text>
-          </TouchableOpacity>
+          </ButtonFeedback>
           <Ionicons name="chevron-forward" size={14} color={MUTED} />
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <ButtonFeedback onPress={() => navigation.goBack()} activeOpacity={0.7}>
             <Text style={styles.breadcrumbParent}>{teacher.full_name}</Text>
-          </TouchableOpacity>
+          </ButtonFeedback>
           <Ionicons name="chevron-forward" size={14} color={MUTED} />
           <Text style={styles.breadcrumbCurrent}>Edit Profile</Text>
         </View>
@@ -143,7 +144,7 @@ export default function EditTeacherScreen({ route, navigation }) {
 
             {/* ── Photo strip ── */}
             <View style={styles.photoStrip}>
-              <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8} style={styles.photoWrap}>
+              <ButtonFeedback onPress={pickPhoto} activeOpacity={0.8} style={styles.photoWrap}>
                 {photoUri ? (
                   <Image source={{ uri: photoUri }} style={styles.photoImg} />
                 ) : (
@@ -154,7 +155,7 @@ export default function EditTeacherScreen({ route, navigation }) {
                 <View style={styles.photoCameraBtn}>
                   <Ionicons name="camera" size={12} color={SURFACE} />
                 </View>
-              </TouchableOpacity>
+              </ButtonFeedback>
               <View style={styles.photoMeta}>
                 <Text style={styles.photoName}>{fullName || teacher.full_name}</Text>
                 <View style={styles.photoCodePill}>
@@ -170,10 +171,10 @@ export default function EditTeacherScreen({ route, navigation }) {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={pickPhoto} style={styles.changePhotoBtn} activeOpacity={0.8}>
+              <ButtonFeedback onPress={pickPhoto} style={styles.changePhotoBtn} activeOpacity={0.8}>
                 <Ionicons name="image-outline" size={14} color={BLUE} />
                 <Text style={styles.changePhotoBtnText}>Change Photo</Text>
-              </TouchableOpacity>
+              </ButtonFeedback>
             </View>
 
             {/* ── Account Information ── */}
@@ -244,10 +245,10 @@ export default function EditTeacherScreen({ route, navigation }) {
 
             {/* ── Action buttons ── */}
             <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+              <ButtonFeedback style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </ButtonFeedback>
+              <ButtonFeedback
                 style={[styles.saveBtn, loading && { opacity: 0.7 }]}
                 onPress={handleUpdate}
                 disabled={loading}
@@ -255,7 +256,7 @@ export default function EditTeacherScreen({ route, navigation }) {
               >
                 <Ionicons name="checkmark-outline" size={15} color={SURFACE} />
                 <Text style={styles.saveBtnText}>{loading ? 'Saving…' : 'Save Changes'}</Text>
-              </TouchableOpacity>
+              </ButtonFeedback>
             </View>
 
           </View>

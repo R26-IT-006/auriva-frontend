@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ButtonFeedback } from '../../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -161,17 +162,17 @@ export default function EditStudentScreen({ route, navigation }) {
 
       {/* ── Top bar ── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+        <ButtonFeedback onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={20} color={TEXT} />
-        </TouchableOpacity>
+        </ButtonFeedback>
         <View style={styles.breadcrumb}>
-          <TouchableOpacity onPress={() => navigation.pop(2)} activeOpacity={0.7}>
+          <ButtonFeedback onPress={() => navigation.pop(2)} activeOpacity={0.7}>
             <Text style={styles.breadcrumbParent}>Students</Text>
-          </TouchableOpacity>
+          </ButtonFeedback>
           <Ionicons name="chevron-forward" size={14} color={MUTED} />
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <ButtonFeedback onPress={() => navigation.goBack()} activeOpacity={0.7}>
             <Text style={styles.breadcrumbParent}>{student.full_name}</Text>
-          </TouchableOpacity>
+          </ButtonFeedback>
           <Ionicons name="chevron-forward" size={14} color={MUTED} />
           <Text style={styles.breadcrumbCurrent}>Edit Profile</Text>
         </View>
@@ -191,7 +192,7 @@ export default function EditStudentScreen({ route, navigation }) {
               {/* Photo card */}
               <View style={styles.photoCard}>
                 <View style={styles.photoCardTop}>
-                  <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8} style={styles.photoWrap}>
+                  <ButtonFeedback onPress={pickPhoto} activeOpacity={0.8} style={styles.photoWrap}>
                     {photoUri ? (
                       <Image source={{ uri: photoUri }} style={styles.photoImg} />
                     ) : (
@@ -202,17 +203,17 @@ export default function EditStudentScreen({ route, navigation }) {
                     <View style={styles.photoCameraBtn}>
                       <Ionicons name="camera" size={13} color={SURFACE} />
                     </View>
-                  </TouchableOpacity>
+                  </ButtonFeedback>
                 </View>
                 <View style={styles.photoCardBottom}>
                   <Text style={styles.photoName}>{student.full_name}</Text>
                   <View style={styles.photoCodePill}>
                     <Text style={styles.photoCodeText}>{student.student_code}</Text>
                   </View>
-                  <TouchableOpacity onPress={pickPhoto} style={styles.changePhotoBtn} activeOpacity={0.8}>
+                  <ButtonFeedback onPress={pickPhoto} style={styles.changePhotoBtn} activeOpacity={0.8}>
                     <Ionicons name="image-outline" size={14} color={BLUE} />
                     <Text style={styles.changePhotoBtnText}>Change Photo</Text>
-                  </TouchableOpacity>
+                  </ButtonFeedback>
                 </View>
               </View>
 
@@ -225,7 +226,7 @@ export default function EditStudentScreen({ route, navigation }) {
               </View>
 
               {/* Action buttons */}
-              <TouchableOpacity
+              <ButtonFeedback
                 style={[styles.saveBtn, loading && { opacity: 0.7 }]}
                 onPress={handleUpdate}
                 disabled={loading}
@@ -233,10 +234,10 @@ export default function EditStudentScreen({ route, navigation }) {
               >
                 <Ionicons name="checkmark-outline" size={15} color={SURFACE} />
                 <Text style={styles.saveBtnText}>{loading ? 'Saving…' : 'Save Changes'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+              </ButtonFeedback>
+              <ButtonFeedback style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
+              </ButtonFeedback>
 
             </View>
 
@@ -269,7 +270,7 @@ export default function EditStudentScreen({ route, navigation }) {
                 <View style={styles.fieldDivider} />
 
                 <FieldRow label="Disability Type" required error={errors.disability}>
-                  <TouchableOpacity
+                  <ButtonFeedback
                     style={[styles.styledInput, styles.selectRow, errors.disability && styles.styledInputError]}
                     onPress={() => setDisabilityOpen((v) => !v)}
                     activeOpacity={0.8}
@@ -278,13 +279,13 @@ export default function EditStudentScreen({ route, navigation }) {
                       {form.disability || 'Select type…'}
                     </Text>
                     <Ionicons name={disabilityOpen ? 'chevron-up' : 'chevron-down'} size={16} color={MUTED} />
-                  </TouchableOpacity>
+                  </ButtonFeedback>
                   {disabilityOpen && (
                     <View style={styles.dropdown}>
                       {DISABILITY_OPTIONS.map((opt, i) => {
                         const active = form.disability === opt;
                         return (
-                          <TouchableOpacity
+                          <ButtonFeedback
                             key={opt}
                             style={[
                               styles.dropdownItem,
@@ -296,7 +297,7 @@ export default function EditStudentScreen({ route, navigation }) {
                           >
                             <Text style={[styles.dropdownText, active && styles.dropdownTextActive]}>{opt}</Text>
                             {active && <Ionicons name="checkmark-circle" size={16} color={PURPLE} />}
-                          </TouchableOpacity>
+                          </ButtonFeedback>
                         );
                       })}
                     </View>

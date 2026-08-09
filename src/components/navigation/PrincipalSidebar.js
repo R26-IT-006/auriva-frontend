@@ -1,4 +1,5 @@
 import { useContext, useRef, useState } from 'react';
+import { ButtonFeedback } from '../components/common/ButtonFeedback';
 import {
   View,
   Text,
@@ -80,17 +81,17 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
 
       {/* ── Logo ── */}
       <View style={styles.logoRow}>
-        <TouchableOpacity onPress={toggle} activeOpacity={0.75} style={styles.logoBox}>
+        <ButtonFeedback onPress={toggle} activeOpacity={0.75} style={styles.logoBox}>
           <Ionicons name={isOpen ? 'sparkles' : 'chevron-forward'} size={15} color={WHITE} />
-        </TouchableOpacity>
+        </ButtonFeedback>
         <Animated.View style={[styles.logoText, ls]}>
           <Text style={styles.logoTitle} numberOfLines={1}>Auriva</Text>
           <Text style={styles.logoSub} numberOfLines={1}>Principal Portal</Text>
         </Animated.View>
         <Animated.View style={[{ overflow: 'hidden' }, ls]}>
-          <TouchableOpacity onPress={toggle} activeOpacity={0.7} style={styles.toggleBtn}>
+          <ButtonFeedback onPress={toggle} activeOpacity={0.7} style={styles.toggleBtn}>
             <Ionicons name="chevron-back" size={13} color={MID} />
-          </TouchableOpacity>
+          </ButtonFeedback>
         </Animated.View>
       </View>
 
@@ -118,7 +119,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         {NAV_ITEMS.map((item) => {
           const active = activeRoute === item.name;
           return (
-            <Pressable
+            <ButtonFeedback
               key={item.name}
               ref={(node) => { itemRefs.current[item.name] = node; }}
               onPress={() => navRef.current?.navigate(item.name)}
@@ -152,7 +153,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
                   <View style={[styles.activeDotInner, { backgroundColor: item.color }]} />
                 </Animated.View>
               )}
-            </Pressable>
+            </ButtonFeedback>
           );
         })}
       </View>
@@ -160,7 +161,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
       {/* ── Bottom ── */}
       <View style={styles.divider} />
 
-      <Pressable
+      <ButtonFeedback
         ref={(node) => { itemRefs.current.signOut = node; }}
         onPress={() => setSignOutVisible(true)}
         onLongPress={() => showTooltip('signOut', 'Sign Out')}
@@ -176,7 +177,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         <Animated.Text numberOfLines={1} style={[styles.signOutLabel, ls]}>
           Sign Out
         </Animated.Text>
-      </Pressable>
+      </ButtonFeedback>
 
       <ConfirmDialog
         visible={signOutVisible}

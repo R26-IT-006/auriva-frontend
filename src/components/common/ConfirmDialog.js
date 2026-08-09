@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ButtonFeedback } from '../components/common/ButtonFeedback';
 import { Layout } from '../../constants/layout';
 
 const K = {
@@ -75,21 +76,21 @@ export function ConfirmDialog({
 
               {/* Buttons — Cancel left, Confirm right */}
               <View style={styles.btnRow}>
-                <TouchableOpacity
+                <ButtonFeedback
                   style={[styles.btn, styles.btnCancel]}
                   onPress={onCancel}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.btnCancelText}>{cancelLabel}</Text>
-                </TouchableOpacity>
+                </ButtonFeedback>
 
-                <TouchableOpacity
+                <ButtonFeedback
                   style={[styles.btn, styles.btnConfirm, { backgroundColor: accentColor }]}
                   onPress={onConfirm}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.btnConfirmText}>{confirmLabel}</Text>
-                </TouchableOpacity>
+                </ButtonFeedback>
               </View>
 
             </View>
