@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,113 +8,157 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
-  useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../components/common/Avatar';
 import { EmptyState } from '../../../components/common/EmptyState';
-import { Breadcrumb } from '../../../components/common/Breadcrumb';
-import { Colors } from '../../../constants/colors';
-import { Layout } from '../../../constants/layout';
+import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { principalApi } from '../../../api/principal';
 
-const K = {
-  purple:     '#8A80BC',
-  purpleLight:'#EFEDF8',
-  teal:       '#4AADA3',
-  tealLight:  '#E8F6F5',
-  coral:      '#D97B6C',
-  coralLight: '#FAF0EE',
-  amber:      '#C9973A',
-  amberLight: '#FBF4E6',
-  green:      '#5BAF85',
-  greenLight: '#EAF6F1',
-  sky:        '#6AAFD4',
-  skyLight:   '#EAF5FB',
-  bg:         '#F2F1F8',
-};
+// ── palette (matches dashboard + teacher list) ────────────────────────────────
+const DARK      = '#0F2F3E';
+const GREEN     = '#3EBF78';
+const GREEN_L   = '#E0F7EC';
+const PURPLE    = '#7B68C8';
+const PURPLE_L  = '#EEEBF8';
+const AMBER     = '#F0A940';
+const CORAL     = '#D95F50';
+const CORAL_L   = '#FDECEA';
+const BODY_BG   = '#F2F5F8';
+const SURFACE   = '#FFFFFF';
+const TEXT      = '#1A2E3B';
+const MUTED     = '#8A93A8';
+const BORDER    = '#E8EEF4';
+const TABLE_HDR = '#1A3A4A';
 
-const ACCENT_ASSIGNED   = { bg: K.tealLight,  color: K.teal   };
-const ACCENT_UNASSIGNED = { bg: K.coralLight, color: K.coral  };
+const COLS = [
+  { key: 'photo',   label: '',            flex: 0.55 },
+  { key: 'code',    label: 'ID',          flex: 1.1  },
+  { key: 'name',    label: 'Full Name',   flex: 2.0  },
+  { key: 'contact', label: 'Contact',     flex: 1.5  },
+  { key: 'teacher', label: 'Assigned To', flex: 1.8  },
+  { key: 'actions', label: 'Actions',     flex: 1.4  },
+];
 
-const ASSIGN_FILTERS = ['All', 'Assigned', 'Unassigned'];
+// ── Subcomponents ─────────────────────────────────────────────────────────────
 
-function FilterChip({ label, active, color, onPress }) {
+function FilterChip({ label, active, onPress }) {
+  return (
+    <ButtonFeedback
+      onPress={onPress}
+      activeOpacity={0.75}
+      style={[styles.chip, active && styles.chipActive]}
+    >
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </ButtonFeedback>
+  );
+}
+
+function TableHeader() {
+  return (
+    <View style={styles.tableHeader}>
+      {COLS.map((col) => (
+        <Text
+          key={col.key}
+          style={[
+            styles.headerCell,
+            { flex: col.flex },
+            (col.key === 'name' || col.key === 'contact' || col.key === 'dob') && { textAlign: 'left' },
+            col.key === 'actions' && { textAlign: 'center' },
+          ]}
+        >
+          {col.label}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+function ActionBtn({ icon, color, bg, onPress }) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.75}
-      style={[styles.chip, active && { backgroundColor: color, borderColor: color }]}
+      style={[styles.actionBtn, { backgroundColor: bg }]}
     >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      <Ionicons name={icon} size={14} color={color} />
     </TouchableOpacity>
   );
 }
 
-function StudentCard({ student, onPress }) {
-  const isAssigned = !!student.teacher;
-  const accent     = isAssigned ? ACCENT_ASSIGNED : ACCENT_UNASSIGNED;
-
+function TableRow({ student, index, onView, onEdit, onDelete }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={styles.card}>
-      <View style={[styles.cardStrip, { backgroundColor: accent.color }]} />
+    <View style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
+      {/* Avatar */}
+      <View style={[styles.cell, { flex: COLS[0].flex, justifyContent: 'center' }]}>
+        <Avatar name={student.full_name} uri={student.profile_photo_url} size={36} />
+      </View>
 
-      <View style={styles.cardBody}>
-        {/* Avatar + assignment badge */}
-        <View style={styles.cardAvatarRow}>
-          <View style={[styles.cardAvatarWrap, { borderColor: accent.color }]}>
-            <Avatar name={student.full_name} uri={student.profile_photo_url} size={52} />
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: accent.bg }]}>
-            <View style={[styles.statusDot, { backgroundColor: accent.color }]} />
-            <Text style={[styles.statusText, { color: accent.color }]}>
-              {isAssigned ? 'Assigned' : 'Unassigned'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Name & code */}
-        <Text style={styles.cardName} numberOfLines={1}>{student.full_name}</Text>
-        <View style={styles.cardCodeRow}>
-          <View style={[styles.codePill, { backgroundColor: accent.bg }]}>
-            <Text style={[styles.codeText, { color: accent.color }]}>{student.student_code}</Text>
-          </View>
-        </View>
-
-        {/* Disability */}
-        <View style={styles.disabilityRow}>
-          <Ionicons name="medical-outline" size={11} color={Colors.text.muted} />
-          <Text style={styles.disabilityText} numberOfLines={1}>{student.disability || '—'}</Text>
-        </View>
-
-        {/* Assigned teacher */}
-        <View style={styles.teacherRow}>
-          <Ionicons name="person-outline" size={11} color={Colors.text.muted} />
-          <Text style={styles.teacherText} numberOfLines={1}>
-            {student.teacher ? student.teacher.full_name : 'No teacher assigned'}
-          </Text>
+      {/* ID */}
+      <View style={[styles.cell, { flex: COLS[1].flex, justifyContent: 'center' }]}>
+        <View style={styles.codePill}>
+          <Text style={styles.codeText}>{student.student_code}</Text>
         </View>
       </View>
 
-      <View style={[styles.cardFooter, { borderTopColor: Colors.borderLight }]}>
-        <Text style={[styles.cardFooterText, { color: accent.color }]}>View Profile</Text>
-        <Ionicons name="arrow-forward" size={14} color={accent.color} />
+      {/* Name */}
+      <View style={[styles.cell, { flex: COLS[2].flex }]}>
+        <Text style={styles.nameText} numberOfLines={1}>{student.full_name}</Text>
       </View>
-    </TouchableOpacity>
+
+      {/* Contact */}
+      <View style={[styles.cell, { flex: COLS[3].flex }]}>
+        <Text style={styles.mutedText} numberOfLines={1}>
+          {student.mobile_number || '—'}
+        </Text>
+      </View>
+
+      {/* Assigned To */}
+      <View style={[styles.cell, { flex: COLS[4].flex }]}>
+        {student.teacher ? (
+          <Text style={styles.mutedText} numberOfLines={1}>{student.teacher.full_name}</Text>
+        ) : (
+          <Text style={styles.unassignedText}>Unassigned</Text>
+        )}
+      </View>
+
+      {/* Actions */}
+      <View style={[styles.cell, { flex: COLS[5].flex, justifyContent: 'center', gap: 6 }]}>
+        <ActionBtn
+          icon="eye-outline"
+          color={PURPLE}
+          bg={PURPLE_L}
+          onPress={onView}
+        />
+        <ActionBtn
+          icon="create-outline"
+          color="#4A8FD8"
+          bg="#DEEAF8"
+          onPress={onEdit}
+        />
+        <ActionBtn
+          icon="trash-outline"
+          color={CORAL}
+          bg={CORAL_L}
+          onPress={onDelete}
+        />
+      </View>
+    </View>
   );
 }
 
+// ── Screen ────────────────────────────────────────────────────────────────────
 export default function StudentListScreen({ navigation }) {
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
-  const numColumns  = isLandscape ? 3 : 2;
+  const insets = useSafeAreaInsets();
 
-  const [students, setStudents]     = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch]       = useState('');
-  const [assignFilter, setAssignFilter] = useState('All');
+  const [students,      setStudents]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [refreshing,    setRefreshing]    = useState(false);
+  const [search,        setSearch]        = useState('');
+  const [page,          setPage]          = useState(1);
+  const [deleteTarget,  setDeleteTarget]  = useState(null);
+  const PAGE_SIZE = 8;
 
   const load = useCallback(async () => {
     try {
@@ -135,245 +179,367 @@ export default function StudentListScreen({ navigation }) {
   }, [load, navigation]);
 
   const filtered = useMemo(() => {
-    return students.filter((s) => {
-      const q = search.trim().toLowerCase();
-      if (q && ![s.full_name, s.student_code, s.disability].some((v) => v?.toLowerCase().includes(q))) {
-        return false;
-      }
-      if (assignFilter === 'Assigned'   && !s.teacher) return false;
-      if (assignFilter === 'Unassigned' &&  s.teacher) return false;
-      return true;
-    });
-  }, [students, search, assignFilter]);
+    setPage(1);
+    const q = search.trim().toLowerCase();
+    if (!q) return students;
+    return students.filter((s) =>
+      [s.full_name, s.student_code, s.mobile_number].some((v) => v?.toLowerCase().includes(q))
+    );
+  }, [students, search]);
 
-  const ListHeader = (
-    <View style={styles.listHeader}>
-      {/* Search */}
-      <View style={styles.searchBar}>
-        <Ionicons name="search-outline" size={18} color={Colors.icon.default} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name, code or disability…"
-          placeholderTextColor={Colors.text.muted}
-          value={search}
-          onChangeText={setSearch}
-          clearButtonMode="while-editing"
-          autoCapitalize="none"
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
-            <Ionicons name="close-circle" size={17} color={Colors.icon.muted} />
-          </TouchableOpacity>
-        )}
-      </View>
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-      {/* Assignment filters */}
-      <View style={styles.filterRow}>
-        <Ionicons name="person-outline" size={14} color={Colors.text.muted} style={styles.filterIcon} />
-        {ASSIGN_FILTERS.map((f) => (
-          <FilterChip
-            key={f}
-            label={f}
-            active={assignFilter === f}
-            color={f === 'Assigned' ? K.teal : f === 'Unassigned' ? K.coral : K.purple}
-            onPress={() => setAssignFilter(f)}
-          />
-        ))}
-      </View>
-
-      {/* Result count */}
-      {(search || assignFilter !== 'All') && (
-        <Text style={styles.resultCount}>
-          {filtered.length} student{filtered.length !== 1 ? 's' : ''} found
-        </Text>
-      )}
-    </View>
-  );
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await principalApi.deleteStudent(deleteTarget.sid);
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      setDeleteTarget(null);
+      Alert.alert('Error', err.message);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Breadcrumb crumbs={[{ label: 'Students' }]} title="Students" />
-      <FlatList
-        key={numColumns}
-        data={filtered}
-        keyExtractor={(s) => String(s.sid)}
-        numColumns={numColumns}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing || loading}
-            onRefresh={() => { setRefreshing(true); load(); }}
-            tintColor={K.purple}
+
+      {/* ── Top bar ── */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 14 }]}>
+        <View style={styles.titleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.pageTitle}>Students</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{students.length}</Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={() => navigation.navigate('CreateStudent')}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={16} color={SURFACE} />
+          <Text style={styles.addBtnText}>Add Student</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Filter bar ── */}
+      <View style={styles.filterBar}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search-outline" size={15} color={MUTED} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search name, ID or contact…"
+            placeholderTextColor={MUTED}
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
           />
-        }
-        contentContainerStyle={styles.list}
-        columnWrapperStyle={styles.columnWrapper}
-        ListHeaderComponent={ListHeader}
-        renderItem={({ item }) => (
-          <View style={styles.columnItem}>
-            <StudentCard
-              student={item}
-              onPress={() => navigation.navigate('StudentDetail', { student: item })}
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
+              <Ionicons name="close-circle" size={15} color={MUTED} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* ── Table ── */}
+      <View style={styles.tableWrap}>
+        <TableHeader />
+
+        <FlatList
+          data={paginated}
+          keyExtractor={(s) => String(s.sid)}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing || loading}
+              onRefresh={() => { setRefreshing(true); load(); }}
+              tintColor={GREEN}
             />
+          }
+          renderItem={({ item, index }) => (
+            <TableRow
+              student={item}
+              index={index}
+              onView={() => navigation.navigate('StudentDetail', { student: item })}
+              onEdit={() => navigation.navigate('EditStudent', { student: item })}
+              onDelete={() => setDeleteTarget(item)}
+            />
+          )}
+          ListEmptyComponent={
+            !loading ? (
+              <EmptyState
+                icon="school-outline"
+                title="No students found"
+                message={
+                  search
+                    ? 'Try adjusting your search.'
+                    : 'Add your first student to get started.'
+                }
+              />
+            ) : null
+          }
+          showsVerticalScrollIndicator={false}
+        />
+
+        {/* ── Pagination ── */}
+        {filtered.length > 0 && (
+          <View style={styles.pagination}>
+            <Text style={styles.pageInfo}>
+              {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} students
+            </Text>
+            <View style={styles.pageControls}>
+              <TouchableOpacity
+                onPress={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={[styles.pageArrow, page === 1 && { opacity: 0.35 }]}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-back" size={14} color={TEXT} />
+              </TouchableOpacity>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .reduce((acc, p, idx, arr) => {
+                  if (idx > 0 && p - arr[idx - 1] > 1) acc.push('…');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  p === '…' ? (
+                    <Text key={`el-${idx}`} style={styles.pageEllipsis}>…</Text>
+                  ) : (
+                    <TouchableOpacity
+                      key={p}
+                      onPress={() => setPage(p)}
+                      style={[styles.pageBtn, page === p && styles.pageBtnActive]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.pageBtnTxt, page === p && styles.pageBtnTxtActive]}>{p}</Text>
+                    </TouchableOpacity>
+                  )
+                )}
+
+              <TouchableOpacity
+                onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={[styles.pageArrow, page === totalPages && { opacity: 0.35 }]}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-forward" size={14} color={TEXT} />
+              </TouchableOpacity>
+            </View>
           </View>
         )}
-        ListEmptyComponent={
-          !loading ? (
-            <EmptyState
-              icon="school-outline"
-              title="No students found"
-              message={
-                search || assignFilter !== 'All'
-                  ? 'Try adjusting your search or filters.'
-                  : 'Add your first student to get started.'
-              }
-            />
-          ) : null
-        }
+      </View>
+
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        danger
+        icon="trash-outline"
+        title="Delete Student"
+        message={`Remove ${deleteTarget?.full_name} from the system?\nThis action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('CreateStudent')}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={28} color="#FFF" />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: K.bg },
-  list: { padding: Layout.spacing.md, paddingBottom: 90, flexGrow: 1 },
-  columnWrapper: { gap: Layout.spacing.sm, marginBottom: Layout.spacing.sm },
-  columnItem: { flex: 1 },
+  safe: { flex: 1, backgroundColor: BODY_BG },
 
-  // List header
-  listHeader: {
-    gap: Layout.spacing.sm,
-    marginBottom: Layout.spacing.md,
-  },
-
-  // Search bar
-  searchBar: {
+  // ── Top bar ───────────────────────────────────────────────────────────────
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.sm,
-    gap: Layout.spacing.sm,
+    justifyContent: 'space-between',
+    backgroundColor: SURFACE,
+    paddingHorizontal: 24,
+    paddingBottom: 14,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionBar: {
+    width: 3, height: 20, borderRadius: 2,
+    backgroundColor: PURPLE,
+  },
+  pageTitle: {
+    fontSize: 22,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: TEXT,
+  },
+  countBadge: {
+    backgroundColor: PURPLE_L,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  countText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_700Bold',
+    color: PURPLE,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: DARK,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  addBtnText: {
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
+    color: SURFACE,
+  },
+
+  // ── Filter bar ────────────────────────────────────────────────────────────
+  filterBar: {
+    backgroundColor: SURFACE,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BODY_BG,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.sm,
+    borderColor: BORDER,
   },
   searchInput: {
     flex: 1,
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.primary,
-    paddingVertical: 2,
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: TEXT,
+    paddingVertical: 0,
   },
 
-  // Filters
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.xs,
-    flexWrap: 'wrap',
-  },
-  filterIcon: { marginRight: 2 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  chipText: {
-    fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.secondary,
-  },
-  chipTextActive: { color: '#FFFFFF' },
-  resultCount: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
-    marginLeft: 2,
-  },
-
-  // Card
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
+  // ── Table ─────────────────────────────────────────────────────────────────
+  tableWrap: {
+    flex: 1,
+    backgroundColor: SURFACE,
+    margin: 16,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.sm,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardStrip: { height: 6, width: '100%' },
-  cardBody: { padding: Layout.spacing.md, gap: 6 },
-  cardAvatarRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  cardAvatarWrap: { borderRadius: 30, borderWidth: 2.5, padding: 1 },
-  statusBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
-  },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: Layout.fontWeight.bold },
-  cardName: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-  },
-  cardCodeRow: { flexDirection: 'row' },
-  codePill: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
-  codeText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.bold, letterSpacing: 0.4 },
-  disabilityRow: {
+  tableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
+    backgroundColor: TABLE_HDR,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
-  disabilityText: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    flex: 1,
+  headerCell: {
+    fontSize: 10,
+    fontFamily: 'Nunito_700Bold',
+    color: 'rgba(255,255,255,0.70)',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    textAlign: 'center',
   },
-  teacherRow: {
+  tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    backgroundColor: SURFACE,
   },
-  teacherText: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    flex: 1,
-    fontStyle: 'italic',
+  tableRowAlt: { backgroundColor: '#FAFBFC' },
+  cell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 8,
   },
-  cardFooter: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'flex-end', gap: 4,
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.sm,
-    borderTopWidth: 1,
-  },
-  cardFooterText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.semibold },
 
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: Layout.spacing.xl,
-    right: Layout.spacing.lg,
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: K.coral,
-    alignItems: 'center', justifyContent: 'center',
-    ...Layout.shadow.lg,
+  // ── Cell content ──────────────────────────────────────────────────────────
+  codePill: {
+    backgroundColor: PURPLE_L,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
+  codeText: {
+    fontSize: 11,
+    fontFamily: 'Nunito_700Bold',
+    color: PURPLE,
+    letterSpacing: 0.3,
+  },
+  nameText: {
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
+    color: TEXT,
+  },
+  mutedText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: MUTED,
+  },
+
+  // ── Action buttons ────────────────────────────────────────────────────────
+  actionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Pagination ────────────────────────────────────────────────────────────
+  pagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  pageInfo: {
+    fontSize: 11,
+    fontFamily: 'Nunito_600SemiBold',
+    color: MUTED,
+  },
+  pageControls: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pageArrow: {
+    width: 28, height: 28, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: BODY_BG,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  pageBtn: {
+    width: 28, height: 28, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: BODY_BG,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  pageBtnActive:    { backgroundColor: DARK, borderColor: DARK },
+  pageBtnTxt:       { fontSize: 12, fontFamily: 'Nunito_600SemiBold', color: MUTED },
+  pageBtnTxtActive: { color: SURFACE },
+  pageEllipsis:     { fontSize: 12, color: MUTED, paddingHorizontal: 2 },
 });

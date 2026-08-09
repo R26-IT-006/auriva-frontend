@@ -8,95 +8,123 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { principalApi } from '../../api/principal';
+import { useAuthStore } from '../../store/authStore';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
-const K = {
-  purple:     '#8A80BC',
-  purpleLight:'#EFEDF8',
-  teal:       '#4AADA3',
-  tealLight:  '#E8F6F5',
-  coral:      '#D97B6C',
-  coralLight: '#FAF0EE',
-  amber:      '#C9973A',
-  amberLight: '#FBF4E6',
-  green:      '#5BAF85',
-  greenLight: '#EAF6F1',
-  blue:       '#6A96C8',
-  blueLight:  '#EBF2FB',
-  sky:        '#6AAFD4',
-  pink:       '#C47FA0',
-  pinkLight:  '#F8EEF4',
-  bg:         '#F2F1F8',
-};
+// ── palette ─────────────────────────────────────────────────────────────────
+const PULSE_BG   = '#1A3A4A';
+const GREEN      = '#3EBF78';
+const GREEN_L    = '#E0F7EC';
+const BLUE       = '#4A8FD8';
+const BLUE_L     = '#DEEAF8';
+const PURPLE     = '#7B68C8';
+const PURPLE_L   = '#EEEBF8';
+const CORAL      = '#D95F50';
+const CORAL_L    = '#FDECEA';
+const AMBER      = '#F0A940';
+const BODY_BG    = '#F2F5F8';
+const TEXT_DARK  = '#1A2E3B';
+const TEXT_MUTED = '#8A93A8';
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ iconName, iconBg, tag, value, subtitle, subtitleColor, description, dimValue, onPress }) {
+// ── Progress bar ─────────────────────────────────────────────────────────────
+function ProgressBar({ progress, color, accent }) {
+  const pct = `${Math.min(Math.round((progress ?? 0) * 100), 100)}%`;
+  const trackColor = accent ? 'rgba(255,255,255,0.22)' : '#E8EEF2';
+  const fillColor  = accent ? 'rgba(255,255,255,0.85)' : color;
   return (
-    <TouchableOpacity style={[styles.statCard, { borderTopColor: iconBg, borderTopWidth: 4 }]} onPress={onPress} activeOpacity={0.82}>
-      <View style={styles.statCardTop}>
-        <View style={[styles.statIconBox, { backgroundColor: iconBg }]}>
-          <Ionicons name={iconName} size={20} color="#FFFFFF" />
-        </View>
-        <Text style={styles.statTag}>{tag}</Text>
-      </View>
-      <Text style={[styles.statValue, dimValue && { color: '#C4C8D8' }]}>
-        {value ?? '00'}
-      </Text>
-      {subtitle ? (
-        <Text style={[styles.statSubtitle, { color: subtitleColor || Colors.text.muted }]}>
-          {subtitle}
-        </Text>
-      ) : null}
-      {description ? (
-        <Text style={styles.statDescription}>{description}</Text>
-      ) : null}
-    </TouchableOpacity>
-  );
-}
-
-// ─── Action Tile ─────────────────────────────────────────────────────────────
-function ActionTile({ iconName, label, iconBg, iconColor, onPress }) {
-  return (
-    <TouchableOpacity style={styles.actionTile} onPress={onPress} activeOpacity={0.8}>
-      <View style={[styles.actionIconBox, { backgroundColor: iconBg }]}>
-        <Ionicons name={iconName} size={22} color={iconColor} />
-      </View>
-      <Text style={[styles.actionLabel, { color: iconColor }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ─── Ecosystem Metric ─────────────────────────────────────────────────────────
-function EcoMetric({ tag, tagColor, value, valueColor, actionLabel, actionColor, iconName, onPress }) {
-  return (
-    <View style={styles.ecoMetric}>
-      <View style={[styles.ecoIconBadge, { backgroundColor: tagColor + '22' }]}>
-        <Ionicons name={iconName} size={15} color={tagColor} />
-      </View>
-      <Text style={[styles.ecoTag, { color: tagColor }]}>{tag}</Text>
-      <Text style={[styles.ecoValue, { color: valueColor }]}>{value ?? '00'}</Text>
-      {onPress ? (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.75}>
-          <Text style={[styles.ecoAction, { color: actionColor }]}>{actionLabel}</Text>
-        </TouchableOpacity>
-      ) : (
-        <Text style={[styles.ecoAction, { color: actionColor }]}>{actionLabel}</Text>
-      )}
+    <View style={[styles.progressTrack, { backgroundColor: trackColor }]}>
+      <View style={[styles.progressFill, { width: pct, backgroundColor: fillColor }]} />
     </View>
   );
 }
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
-export default function PrincipalDashboardScreen({ navigation }) {
-  const [stats, setStats]           = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+// ── Stat card ────────────────────────────────────────────────────────────────
+function StatCard({
+  icon, iconBg, iconColor,
+  badge, badgeColor, badgeBg,
+  value, label,
+  progressLabel, progressPct, progressColor,
+  accent, onPress,
+}) {
+  const a = !!accent;
+  const white = '#FFFFFF';
+  const dim   = 'rgba(255,255,255,0.70)';
+  return (
+    <TouchableOpacity
+      style={[styles.statCard, a && { backgroundColor: accent }]}
+      onPress={onPress}
+      activeOpacity={0.83}
+    >
+      {/* Icon + badge row */}
+      <View style={styles.statTop}>
+        <View style={[styles.statIcon, { backgroundColor: a ? 'rgba(255,255,255,0.18)' : iconBg }]}>
+          <Ionicons name={icon} size={18} color={a ? white : iconColor} />
+        </View>
+        <View style={[styles.statBadge, { backgroundColor: a ? 'rgba(255,255,255,0.18)' : badgeBg }]}>
+          <Text style={[styles.statBadgeTxt, { color: a ? white : badgeColor }]}>{badge}</Text>
+        </View>
+      </View>
 
-  const fetchStats = useCallback(async () => {
+      {/* Big number */}
+      <Text style={[styles.statValue, a && { color: white }]}>{value ?? '—'}</Text>
+      <Text style={[styles.statLabel, a && { color: dim }]}>{label}</Text>
+
+      {/* Progress */}
+      <View style={styles.progressMeta}>
+        <Text style={[styles.progressLabel, a && { color: dim }]}>{progressLabel}</Text>
+        <Text style={[styles.progressPct, { color: a ? white : progressColor }]}>
+          {progressPct}
+        </Text>
+      </View>
+      <ProgressBar progress={(progressPct ?? '0%').replace('%', '') / 100} color={progressColor} accent={a} />
+    </TouchableOpacity>
+  );
+}
+
+// ── Action tile ───────────────────────────────────────────────────────────────
+function ActionTile({ icon, iconBg, iconColor, label, sub, onPress }) {
+  return (
+    <TouchableOpacity style={styles.actionTile} onPress={onPress} activeOpacity={0.82}>
+      <View style={[styles.actionIcon, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={20} color={iconColor} />
+      </View>
+      <Text style={styles.actionLabel}>{label}</Text>
+      <Text style={styles.actionSub}>{sub}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ── Pulse metric pill ─────────────────────────────────────────────────────────
+function PulsePill({ icon, value, label, highlight }) {
+  return (
+    <View style={styles.pulsePill}>
+      <View style={styles.pillIconBox}>
+        <Ionicons name={icon} size={15} color="rgba(255,255,255,0.65)" />
+      </View>
+      <View>
+        <Text style={[styles.pillValue, highlight && { color: GREEN }]}>{value ?? '—'}</Text>
+        <Text style={styles.pillLabel}>{label}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ── Screen ────────────────────────────────────────────────────────────────────
+export default function PrincipalDashboardScreen({ navigation }) {
+  const [stats,         setStats]         = useState(null);
+  const [refreshing,    setRefreshing]    = useState(false);
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [now,           setNow]           = useState(new Date());
+
+  const insets = useSafeAreaInsets();
+  const logout = useAuthStore((s) => s.logout);
+  const user   = useAuthStore((s) => s.user);
+
+  const load = useCallback(async () => {
     try {
       const data = await principalApi.getDashboard();
       setStats(data);
@@ -107,393 +135,423 @@ export default function PrincipalDashboardScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => { load(); }, [load]);
 
-  const hour     = new Date().getHours();
-  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
-  const today    = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const unassigned =
-    stats?.studentCount != null && stats?.teacherCount != null
-      ? Math.max(0, stats.studentCount - stats.teacherCount * 3)
-      : undefined;
+  const hour      = now.getHours();
+  const greeting  = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const firstName = user?.full_name?.split(' ')[0] ?? 'Principal';
+  const today     = now.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
+
+  const tc          = stats?.teacherCount      ?? 0;
+  const sc          = stats?.studentCount      ?? 0;
+  const ua          = stats?.unassignedStudents ?? 0;
+  const capacity    = tc * 3;
+  const assigned    = sc - ua;
+  const capPct      = capacity > 0 ? Math.round((sc / capacity) * 100) : 0;
+  const assignPct   = sc > 0 ? Math.round((assigned / sc) * 100) : 100;
+  const systemOk    = ua === 0;
+
+  const nav = (tab, screen) => () => navigation.getParent()?.navigate(tab, { screen });
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); fetchStats(); }}
-            tintColor={K.purple}
-          />
-        }
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={GREEN} />
+        }
       >
-        {/* ── Header ──────────────────────────────────────────────── */}
-        <LinearGradient
-          colors={['#1F6B52', '#17573F', '#0F4530', '#0A3324']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerCard}
-        >
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerDate}>{today}</Text>
-            <Text style={styles.greeting}>
-              {greeting},{'\n'}
-              <Text style={styles.greetingAccent}>Principal!</Text>
-            </Text>
-            <View style={styles.headerBadge}>
-              <Ionicons name="star" size={11} color={K.amber} />
-              <Text style={styles.headerBadgeText}>Welcome back</Text>
+
+        {/* ── Top bar ── */}
+        <View style={[styles.topBar, { paddingTop: insets.top + 14 }]}>
+          <View>
+            <View style={styles.welcomeBadge}>
+              <View style={styles.welcomeDot} />
+              <Text style={styles.welcomeText}>Welcome Back</Text>
+            </View>
+            <Text style={styles.greeting}>{greeting}, {firstName}! 👋</Text>
+            <Text style={styles.dateText}>{today}</Text>
+          </View>
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => setLogoutVisible(true)} activeOpacity={0.75}>
+            <Ionicons name="log-out-outline" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── School Pulse ── */}
+        <View style={styles.pulseBar}>
+          <View style={styles.pulseLabel}>
+            <Ionicons name="pulse" size={13} color={AMBER} />
+            <Text style={styles.pulseLabelTxt}>SCHOOL PULSE</Text>
+          </View>
+          <View style={styles.pillsRow}>
+            <PulsePill icon="people-outline"         value={tc}                             label="Faculty Total"   />
+            <View style={styles.pillDivider} />
+            <PulsePill icon="school-outline"         value={sc}                             label="Enrolled"        />
+            <View style={styles.pillDivider} />
+            <PulsePill
+              icon={systemOk ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+              value={systemOk ? 'Healthy' : `${ua} pending`}
+              label="System Status"
+              highlight={systemOk}
+            />
+          </View>
+        </View>
+
+        {/* ── Today's Overview ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionBar} />
+              <Text style={styles.sectionTitle}>TODAY'S OVERVIEW</Text>
+            </View>
+            <TouchableOpacity onPress={nav('Teachers', 'TeacherList')}>
+              <Text style={styles.viewAll}>View All →</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.cardsRow}>
+            <StatCard
+              icon="school-outline" iconBg={BLUE_L}   iconColor={BLUE}
+              badge="Enrolled"      badgeColor={BLUE}  badgeBg={BLUE_L}
+              value={sc > 0 ? sc.toLocaleString() : '—'}
+              label="Total Students"
+              progressLabel="Capacity"
+              progressPct={`${capPct}%`}
+              progressColor={BLUE}
+              onPress={nav('Students', 'StudentList')}
+            />
+            <StatCard
+              icon="people-outline" iconBg={GREEN_L}   iconColor={GREEN}
+              badge="Active"        badgeColor={GREEN}  badgeBg={GREEN_L}
+              value={tc > 0 ? String(tc) : '—'}
+              label="Teaching Staff"
+              progressLabel="Utilization"
+              progressPct={tc > 0 ? `${capPct}%` : '0%'}
+              progressColor={GREEN}
+              onPress={nav('Teachers', 'TeacherList')}
+            />
+            <StatCard
+              icon="checkmark-circle-outline" iconBg={PURPLE_L}   iconColor={PURPLE}
+              badge={systemOk ? 'Healthy' : 'Review'}
+              badgeColor={systemOk ? GREEN : AMBER}
+              badgeBg={systemOk ? GREEN_L : '#FDF0D6'}
+              value={sc > 0 ? `${assigned}/${sc}` : '—'}
+              label="Students Assigned"
+              progressLabel="Assignment Rate"
+              progressPct={`${assignPct}%`}
+              progressColor={PURPLE}
+            />
+            <StatCard
+              icon="alert-circle-outline"
+              value={String(ua)}
+              label="Need Assignment"
+              badge={ua === 0 ? '✓ Good' : '! Urgent'}
+              badgeColor={ua === 0 ? GREEN : '#fff'}
+              badgeBg={ua === 0 ? GREEN_L : 'rgba(255,255,255,0.18)'}
+              progressLabel="Resolved"
+              progressPct={`${assignPct}%`}
+              progressColor={CORAL}
+              accent={ua > 0 ? CORAL : undefined}
+              iconBg={ua === 0 ? CORAL_L : undefined}
+              iconColor={ua === 0 ? CORAL : undefined}
+            />
+          </View>
+        </View>
+
+        {/* ── Quick Actions ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionBar} />
+              <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
             </View>
           </View>
-        </LinearGradient>
-
-        {/* ── Stat Cards ──────────────────────────────────────────── */}
-        <View style={styles.statsRow}>
-          <StatCard
-            iconName="people"
-            iconBg={K.purple}
-            tag="TEACHERS"
-            value={String(stats?.teacherCount ?? '0').padStart(2, '0')}
-            subtitle="Active"
-            subtitleColor={K.purple}
-            description="Teaching staff"
-            onPress={() => navigation.navigate('Teachers', { screen: 'TeacherList' })}
-          />
-          <StatCard
-            iconName="school"
-            iconBg={K.teal}
-            tag="STUDENTS"
-            value={String(stats?.studentCount ?? '0').padStart(2, '0')}
-            subtitle="Enrolled"
-            subtitleColor={K.teal}
-            description="Learners enrolled"
-            onPress={() => navigation.navigate('Students', { screen: 'StudentList' })}
-          />
-          <StatCard
-            iconName="radio-button-on"
-            iconBg={K.sky}
-            tag="SESSIONS"
-            value={String(stats?.activeSessionCount ?? '0').padStart(2, '0')}
-            subtitle="Live now"
-            subtitleColor={K.sky}
-            dimValue={!stats?.activeSessionCount}
-          />
-        </View>
-
-        {/* ── Quick Actions ──────────────────────────────────────── */}
-        <View>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <Text style={styles.sectionEmoji}>⚡</Text>
-          </View>
-          <View style={styles.actionsGrid}>
+          <View style={styles.cardsRow}>
             <ActionTile
-              iconName="person-add"
-              label="Add Teacher"
-              iconBg={K.purpleLight}
-              iconColor={K.purple}
-              onPress={() => navigation.navigate('Teachers', { screen: 'CreateTeacher' })}
+              icon="person-add-outline" iconBg={BLUE_L}   iconColor={BLUE}
+              label="Add Teacher" sub="Onboard new faculty"
+              onPress={nav('Teachers', 'CreateTeacher')}
             />
             <ActionTile
-              iconName="add-circle"
-              label="Add Student"
-              iconBg={K.coralLight}
-              iconColor={K.coral}
-              onPress={() => navigation.navigate('Students', { screen: 'CreateStudent' })}
+              icon="add-circle-outline" iconBg={GREEN_L}   iconColor={GREEN}
+              label="Add Student" sub="Enroll & assign"
+              onPress={nav('Students', 'CreateStudent')}
             />
             <ActionTile
-              iconName="people"
-              label="View Teachers"
-              iconBg={K.tealLight}
-              iconColor={K.teal}
-              onPress={() => navigation.navigate('Teachers', { screen: 'TeacherList' })}
+              icon="people-outline" iconBg="#FDF0D6" iconColor={AMBER}
+              label="View Teachers" sub="Manage faculty"
+              onPress={nav('Teachers', 'TeacherList')}
             />
             <ActionTile
-              iconName="school"
-              label="View Students"
-              iconBg={K.amberLight}
-              iconColor={K.amber}
-              onPress={() => navigation.navigate('Students', { screen: 'StudentList' })}
+              icon="school-outline" iconBg={PURPLE_L} iconColor={PURPLE}
+              label="View Students" sub="Student registry"
+              onPress={nav('Students', 'StudentList')}
             />
           </View>
         </View>
 
-        {/* ── School Overview ──────────────────────────────────────── */}
-        <View>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>School Overview</Text>
-            <Text style={styles.sectionEmoji}>🌟</Text>
-          </View>
-          <View style={styles.ecoCard}>
-            <View style={styles.ecoMetricsRow}>
-              <EcoMetric
-                tag="Faculty"
-                tagColor={K.purple}
-                iconName="people"
-                value={String(stats?.teacherCount ?? '0').padStart(2, '0')}
-                valueColor={K.purple}
-                actionLabel="Manage →"
-                actionColor={K.purple}
-                onPress={() => navigation.navigate('Teachers', { screen: 'TeacherList' })}
-              />
-              <View style={styles.ecoDiv} />
-              <EcoMetric
-                tag="Enrolled"
-                tagColor={K.teal}
-                iconName="school"
-                value={String(stats?.studentCount ?? '0').padStart(2, '0')}
-                valueColor={K.teal}
-                actionLabel="Registry →"
-                actionColor={K.teal}
-                onPress={() => navigation.navigate('Students', { screen: 'StudentList' })}
-              />
-              <View style={styles.ecoDiv} />
-              <EcoMetric
-                tag="Live Now"
-                tagColor={K.sky}
-                iconName="radio-button-on"
-                value={String(stats?.activeSessionCount ?? '0').padStart(2, '0')}
-                valueColor={K.sky}
-                actionLabel="Sessions"
-                actionColor={Colors.text.muted}
-              />
-              <View style={styles.ecoDiv} />
-              <EcoMetric
-                tag="Attention"
-                tagColor={unassigned === 0 ? K.green : K.coral}
-                iconName="notifications"
-                value={String(unassigned ?? '0').padStart(2, '0')}
-                valueColor={unassigned === 0 ? K.green : K.coral}
-                actionLabel={unassigned === 0 ? '✓ Healthy' : `${unassigned} pending`}
-                actionColor={unassigned === 0 ? K.green : K.coral}
-              />
-            </View>
-          </View>
-        </View>
       </ScrollView>
+
+      <ConfirmDialog
+        visible={logoutVisible}
+        title="Sign Out"
+        message="Are you sure you want to sign out?"
+        confirmLabel="Sign Out"
+        cancelLabel="Cancel"
+        icon="log-out-outline"
+        onConfirm={logout}
+        onCancel={() => setLogoutVisible(false)}
+      />
     </SafeAreaView>
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: K.bg,
-  },
-  scroll: {
-    padding: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xxl,
-    gap: Layout.spacing.lg,
-  },
+  safe:          { flex: 1, backgroundColor: BODY_BG },
+  scroll:        { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: 28 },
 
-  // Header card
-  headerCard: {
-    borderRadius: 24,
-    padding: Layout.spacing.lg,
+  // ── Top bar ────────────────────────────────────────────────────────────────
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  welcomeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-  },
-  headerLeft: {
-    flex: 1,
     gap: 6,
+    marginBottom: 6,
   },
-  headerDate: {
-    fontSize: Layout.fontSize.xs,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: Layout.fontWeight.semibold,
-    letterSpacing: 0.3,
+  welcomeDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: GREEN,
+  },
+  welcomeText: {
+    fontSize: 11,
+    fontFamily: 'Nunito_600SemiBold',
+    color: GREEN,
   },
   greeting: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.bold,
-    color: '#FFFFFF',
+    fontSize: 22,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: TEXT_DARK,
     lineHeight: 28,
   },
-  greetingAccent: {
-    fontSize: Layout.fontSize.xxl,
-    fontWeight: Layout.fontWeight.extrabold,
-    color: '#FFFFFF',
-  },
-  headerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  headerBadgeText: {
-    fontSize: Layout.fontSize.xs,
-    color: '#FFFFFF',
-    fontWeight: Layout.fontWeight.semibold,
-  },
-  headerIllustration: {
-    marginLeft: Layout.spacing.md,
-    alignItems: 'center',
-  },
-  headerEmojiTop: {
-    fontSize: 44,
-    lineHeight: 50,
-  },
-  headerEmojiBottom: {
-    fontSize: 20,
-    textAlign: 'center',
-    marginTop: -4,
-  },
-
-  // Stat cards
-  statsRow: {
-    flexDirection: 'row',
-    gap: Layout.spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    padding: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.sm,
-    gap: 4,
-  },
-  statCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Layout.spacing.xs,
-  },
-  statIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statTag: {
-    fontSize: 9,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.muted,
-    letterSpacing: 0.6,
-    textAlign: 'right',
-    flexShrink: 1,
-    maxWidth: '55%',
-  },
-  statValue: {
-    fontSize: Layout.fontSize.xxxl,
-    fontWeight: Layout.fontWeight.extrabold,
-    color: Colors.text.primary,
-    lineHeight: 36,
-  },
-  statSubtitle: {
-    fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
-  },
-  statDescription: {
-    fontSize: 10,
-    color: Colors.text.muted,
-    lineHeight: 14,
+  dateText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: TEXT_MUTED,
     marginTop: 2,
   },
+  logoutBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#F2F5F8',
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 4,
+  },
 
-  // Section header
+  // ── School Pulse ──────────────────────────────────────────────────────────
+  pulseBar: {
+    backgroundColor: PULSE_BG,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  pulseLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  pulseLabelTxt: {
+    fontSize: 9,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: AMBER,
+    letterSpacing: 1.2,
+  },
+  pillsRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 0,
+  },
+  pulsePill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pillIconBox: {
+    width: 30, height: 30, borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pillValue: {
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
+    color: '#FFFFFF',
+  },
+  pillLabel: {
+    fontSize: 10,
+    fontFamily: 'Nunito_400Regular',
+    color: 'rgba(255,255,255,0.45)',
+    marginTop: 1,
+  },
+  pillDivider: {
+    width: 1, height: 28,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 12,
+  },
+
+  // ── Section ───────────────────────────────────────────────────────────────
+  section: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 12,
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Layout.spacing.xs,
-    marginBottom: Layout.spacing.sm,
+    justifyContent: 'space-between',
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionBar: {
+    width: 3, height: 16, borderRadius: 2,
+    backgroundColor: GREEN,
   },
   sectionTitle: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.extrabold,
-    color: Colors.text.primary,
+    fontSize: 11,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: TEXT_MUTED,
+    letterSpacing: 1.2,
   },
-  sectionEmoji: {
-    fontSize: 16,
-  },
-
-  // Action tiles — 2×2 grid
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Layout.spacing.sm,
-  },
-  actionTile: {
-    width: '47.5%',
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    paddingVertical: Layout.spacing.md,
-    paddingHorizontal: Layout.spacing.sm,
-    alignItems: 'center',
-    gap: Layout.spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.sm,
-  },
-  actionIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionLabel: {
-    fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
-    textAlign: 'center',
+  viewAll: {
+    fontSize: 12,
+    fontFamily: 'Nunito_600SemiBold',
+    color: BLUE,
   },
 
-  // Ecosystem card
-  ecoCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    padding: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.sm,
-  },
-  ecoMetricsRow: {
+  // ── Cards row (shared) ────────────────────────────────────────────────────
+  cardsRow: {
     flexDirection: 'row',
+    gap: 12,
     alignItems: 'stretch',
   },
-  ecoMetric: {
+
+  // ── Stat card ─────────────────────────────────────────────────────────────
+  statCard: {
     flex: 1,
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: Layout.spacing.xs,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#1A2E3B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  ecoIconBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+  statTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
   },
-  ecoTag: {
+  statIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  statBadge: {
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  statBadgeTxt: {
     fontSize: 10,
-    fontWeight: Layout.fontWeight.bold,
-    letterSpacing: 0.3,
+    fontFamily: 'Nunito_700Bold',
   },
-  ecoValue: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.extrabold,
+  statValue: {
+    fontSize: 24,
+    fontFamily: 'Nunito_900Black',
+    color: TEXT_DARK,
+    lineHeight: 28,
   },
-  ecoAction: {
-    fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+  statLabel: {
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+    color: TEXT_MUTED,
+    marginTop: 2,
   },
-  ecoDiv: {
-    width: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: 6,
+  progressMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 5,
+  },
+  progressLabel: {
+    fontSize: 10,
+    fontFamily: 'Nunito_400Regular',
+    color: TEXT_MUTED,
+  },
+  progressPct: {
+    fontSize: 10,
+    fontFamily: 'Nunito_700Bold',
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 4,
+    borderRadius: 2,
+  },
+
+  // ── Action tile ───────────────────────────────────────────────────────────
+  actionTile: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    gap: 6,
+    shadowColor: '#1A2E3B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  actionIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  actionLabel: {
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
+    color: TEXT_DARK,
+  },
+  actionSub: {
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+    color: TEXT_MUTED,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import {
   View,
   Text,
@@ -9,133 +9,158 @@ import {
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
 import { SidebarContext } from '../../context/SidebarContext';
 import { SIDEBAR_WIDTH, MINI_WIDTH } from '../../navigation/PrincipalNavigator';
 
-// All rows share the same icon size and alignment.
-// Icon center = MINI_WIDTH / 2 = 32px from sidebar edge.
-// Rows have marginHorizontal: ROW_MX, so:
-//   paddingLeft = (MINI_WIDTH / 2) - ROW_MX - (ICON_SIZE / 2)
-const ICON_SIZE = 20;
-const ROW_MX    = 8;
-const ROW_PAD_L = MINI_WIDTH / 2 - ROW_MX - ICON_SIZE / 2; // = 14
-
-// Logo icon box is 36px — needs its own left padding (no row margin)
-const LOGO_ICON_SIZE = 36;
-const LOGO_PAD_L     = MINI_WIDTH / 2 - LOGO_ICON_SIZE / 2; // = 14
+const CX      = MINI_WIDTH / 2;   // 32 — x-centre of icon column
+const ICON_SZ = 20;
 
 const NAV_ITEMS = [
-  { name: 'Dashboard', label: 'Dashboard', icon: 'home',   iconOutline: 'home-outline'   },
-  { name: 'Teachers',  label: 'Teachers',  icon: 'people', iconOutline: 'people-outline' },
-  { name: 'Students',  label: 'Students',  icon: 'person', iconOutline: 'person-outline' },
+  { name: 'Dashboard', label: 'Dashboard', icon: 'home',          outline: 'home-outline',          color: '#4ACA8C' },
+  { name: 'Teachers',  label: 'Faculty',   icon: 'people',        outline: 'people-outline',        color: '#6AB4E8' },
+  { name: 'Students',  label: 'Students',  icon: 'school',        outline: 'school-outline',        color: '#A68FE8' },
 ];
 
-// Shared colours
-const WHITE       = '#FFFFFF';
-const WHITE_MID   = 'rgba(255,255,255,0.55)';
-const WHITE_DIM   = 'rgba(255,255,255,0.35)';
-const DIVIDER_CLR = 'rgba(255,255,255,0.08)';
+// ── palette ───────────────────────────────────────────────────────────────────
+const BG    = '#0D2535';
+const BG2   = '#0A1E2B';
+const WHITE = '#FFFFFF';
+const MID   = 'rgba(255,255,255,0.45)';
+const DIM   = 'rgba(255,255,255,0.18)';
+const DIV   = 'rgba(255,255,255,0.06)';
+const AMBER = '#F0A940';
+const GREEN = '#4ACA8C';
 
 export default function PrincipalSidebar({ navRef, activeRoute }) {
   const insets = useSafeAreaInsets();
-  const logout  = useAuthStore((s) => s.logout);
+  const logout = useAuthStore((s) => s.logout);
+  const user   = useAuthStore((s) => s.user);
   const { isOpen, toggle, sidebarAnim } = useContext(SidebarContext);
   const [signOutVisible, setSignOutVisible] = useState(false);
 
+  // Animated values for label fade/slide
   const labelOpacity = sidebarAnim.interpolate({
-    inputRange:  [MINI_WIDTH, SIDEBAR_WIDTH],
+    inputRange: [MINI_WIDTH, SIDEBAR_WIDTH],
     outputRange: [0, 1],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
-  const labelTranslate = sidebarAnim.interpolate({
-    inputRange:  [MINI_WIDTH, SIDEBAR_WIDTH],
+  const labelX = sidebarAnim.interpolate({
+    inputRange: [MINI_WIDTH, SIDEBAR_WIDTH],
     outputRange: [6, 0],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
-  const labelStyle = { opacity: labelOpacity, transform: [{ translateX: labelTranslate }] };
+  const ls = { opacity: labelOpacity, transform: [{ translateX: labelX }] };
+
+  // User initials
+  const fullName = user?.full_name ?? 'Principal';
+  const initials = fullName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <LinearGradient
-      colors={['#1A1A2E', '#16213E']}
-      style={[styles.sidebar, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}
-    >
+    <View style={[styles.sidebar, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 12 }]}>
 
-      {/* ── Top: logo + toggle ───────────────────────────────────────────── */}
-      <View style={styles.top}>
-        <View style={styles.logoRow}>
-          <View style={styles.logoIconBox}>
-            <Ionicons name="sparkles" size={16} color={WHITE} />
-          </View>
-          <Animated.View style={[styles.logoTextWrap, labelStyle]}>
-            <Text style={styles.logoTitle} numberOfLines={1}>Auriva</Text>
-            <Text style={styles.logoSub}   numberOfLines={1}>Principal Portal</Text>
-          </Animated.View>
-        </View>
-
-        <TouchableOpacity onPress={toggle} activeOpacity={0.7} style={styles.toggleBtn}>
-          <Ionicons
-            name={isOpen ? 'chevron-back' : 'chevron-forward'}
-            size={14}
-            color={WHITE_DIM}
-          />
+      {/* ── Logo ── */}
+      <View style={styles.logoRow}>
+        <TouchableOpacity onPress={toggle} activeOpacity={0.75} style={styles.logoBox}>
+          <Ionicons name={isOpen ? 'sparkles' : 'chevron-forward'} size={15} color={WHITE} />
         </TouchableOpacity>
+        <Animated.View style={[styles.logoText, ls]}>
+          <Text style={styles.logoTitle} numberOfLines={1}>Auriva</Text>
+          <Text style={styles.logoSub} numberOfLines={1}>Principal Portal</Text>
+        </Animated.View>
+        <Animated.View style={[{ overflow: 'hidden' }, ls]}>
+          <TouchableOpacity onPress={toggle} activeOpacity={0.7} style={styles.toggleBtn}>
+            <Ionicons name="chevron-back" size={13} color={MID} />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+
+      {/* ── User profile ── */}
+      <View style={styles.profileRow}>
+        <View style={styles.avatarCircle}>
+          <Text style={styles.avatarInitials}>{initials}</Text>
+        </View>
+        <Animated.View style={[styles.profileInfo, ls]}>
+          <Text style={styles.profileName} numberOfLines={1}>{fullName}</Text>
+          <View style={styles.roleBadge}>
+            <View style={styles.roleDot} />
+            <Text style={styles.roleText}>Administrator</Text>
+          </View>
+        </Animated.View>
       </View>
 
       <View style={styles.divider} />
 
-      {/* ── Main: nav items ──────────────────────────────────────────────── */}
-      <View style={styles.navSection}>
+      {/* ── Category label ── */}
+      <Animated.Text style={[styles.catLabel, ls]}>NAVIGATION</Animated.Text>
+
+      {/* ── Nav items ── */}
+      <View style={styles.nav}>
         {NAV_ITEMS.map((item) => {
-          const isActive = activeRoute === item.name;
+          const active = activeRoute === item.name;
           return (
-            <TouchableOpacity
+            <ButtonFeedback
               key={item.name}
               onPress={() => navRef.current?.navigate(item.name)}
-              activeOpacity={0.7}
-              style={[styles.row, isActive && styles.rowActive]}
+              activeOpacity={0.75}
+              style={[styles.row, active && styles.rowActive]}
             >
-              <Ionicons
-                name={isActive ? item.icon : item.iconOutline}
-                size={ICON_SIZE}
-                color={isActive ? WHITE : WHITE_MID}
-              />
+              {/* Left accent bar */}
+              <View style={[styles.accentBar, active && { backgroundColor: item.color }]} />
+
+              <View style={[styles.iconSlot, active && { backgroundColor: item.color + '18' }]}>
+                <Ionicons
+                  name={active ? item.icon : item.outline}
+                  size={ICON_SZ}
+                  color={active ? item.color : MID}
+                />
+              </View>
+
               <Animated.Text
                 numberOfLines={1}
-                style={[styles.rowLabel, isActive && styles.rowLabelActive, labelStyle]}
+                style={[styles.rowLabel, active && { color: WHITE, fontFamily: 'Nunito_700Bold' }, ls]}
               >
                 {item.label}
               </Animated.Text>
+
+              {active && (
+                <Animated.View style={[styles.activeDot, ls]}>
+                  <View style={[styles.activeDotInner, { backgroundColor: item.color }]} />
+                </Animated.View>
+              )}
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* ── Bottom: sign-out ─────────────────────────────────────────────── */}
+      {/* ── Bottom ── */}
       <View style={styles.divider} />
+
       <TouchableOpacity
         onPress={() => setSignOutVisible(true)}
-        activeOpacity={0.7}
-        style={styles.row}
+        activeOpacity={0.75}
+        style={styles.signOutRow}
       >
-        <Ionicons name="log-out-outline" size={ICON_SIZE} color="rgba(255,110,100,0.8)" />
-        <Animated.Text numberOfLines={1} style={[styles.rowLabel, styles.signOutLabel, labelStyle]}>
+        <View style={styles.iconSlot}>
+          <Ionicons name="log-out-outline" size={ICON_SZ} color="#F26B6B" />
+        </View>
+        <Animated.Text numberOfLines={1} style={[styles.signOutLabel, ls]}>
           Sign Out
         </Animated.Text>
-      </TouchableOpacity>
+      </ButtonFeedback>
 
       <ConfirmDialog
         visible={signOutVisible}
         title="Sign Out"
-        message="Are you sure you want to end your session?"
+        message="Are you sure you want to sign out?"
         confirmLabel="Sign Out"
         cancelLabel="Cancel"
         icon="log-out-outline"
+        danger
         onConfirm={logout}
         onCancel={() => setSignOutVisible(false)}
       />
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -143,94 +168,129 @@ const styles = StyleSheet.create({
   sidebar: {
     width: SIDEBAR_WIDTH,
     flex: 1,
+    backgroundColor: BG,
+    borderRightWidth: 1,
+    borderRightColor: DIV,
   },
 
-  // ── Top ──────────────────────────────────────────────────────────────────
-  top: {
-    gap: 10,
-  },
+  // ── Logo ─────────────────────────────────────────────────────────────────
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: LOGO_PAD_L,
+    paddingLeft: CX - 18,   // centres 36px box at CX=32
     paddingRight: 12,
     gap: 10,
+    marginBottom: 4,
   },
-  logoIconBox: {
-    width: LOGO_ICON_SIZE,
-    height: LOGO_ICON_SIZE,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoBox: {
+    width: 36, height: 36, borderRadius: 11,
+    backgroundColor: '#1E9D7A',
+    alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  logoTextWrap: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  logoTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: WHITE,
-    letterSpacing: 0.2,
-  },
-  logoSub: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: WHITE_DIM,
-    marginTop: 1,
+  logoText: { flex: 1, overflow: 'hidden' },
+  logoTitle: { fontSize: 15, fontFamily: 'Nunito_900Black', color: WHITE, letterSpacing: 0.3 },
+  logoSub:   { fontSize: 9,  fontFamily: 'Nunito_600SemiBold', color: DIM, letterSpacing: 0.5, marginTop: 1 },
+  toggleBtn: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
 
-  toggleBtn: {
-    alignSelf: 'flex-start',
-    marginLeft: MINI_WIDTH / 2 - 14,  // centres the 28px button under the logo icon
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+  // ── User profile ─────────────────────────────────────────────────────────
+  profileRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingLeft: CX - 18,
+    paddingRight: 12,
+    gap: 10,
+    marginTop: 14,
+    marginBottom: 4,
   },
+  avatarCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#1A4A5E',
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  avatarInitials: { fontSize: 13, fontFamily: 'Nunito_700Bold', color: WHITE },
+  profileInfo: { flex: 1, overflow: 'hidden', gap: 3 },
+  profileName: { fontSize: 13, fontFamily: 'Nunito_700Bold', color: WHITE },
+  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  roleDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: GREEN },
+  roleText: { fontSize: 10, fontFamily: 'Nunito_600SemiBold', color: MID },
 
   // ── Divider ───────────────────────────────────────────────────────────────
   divider: {
     height: 1,
-    backgroundColor: DIVIDER_CLR,
-    marginHorizontal: ROW_MX,
-    marginVertical: 10,
+    backgroundColor: DIV,
+    marginHorizontal: 14,
+    marginVertical: 14,
   },
 
-  // ── Shared row (nav items + sign-out) ─────────────────────────────────────
-  navSection: {
-    flex: 1,
-    gap: 2,
+  // ── Category label ────────────────────────────────────────────────────────
+  catLabel: {
+    fontSize: 9,
+    fontFamily: 'Nunito_700Bold',
+    color: AMBER,
+    letterSpacing: 1.3,
+    paddingLeft: CX - 18 + 4,   // slight indent past icon left edge
+    marginBottom: 6,
+    overflow: 'hidden',
   },
+
+  // ── Nav items ─────────────────────────────────────────────────────────────
+  nav: { flex: 1, gap: 2 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingLeft: ROW_PAD_L,
-    paddingRight: 14,
-    marginHorizontal: ROW_MX,
+    marginHorizontal: 10,
     borderRadius: 12,
-    gap: 12,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  rowActive: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+  rowActive: { backgroundColor: 'rgba(255,255,255,0.06)' },
+  accentBar: {
+    position: 'absolute',
+    left: 0, top: 8, bottom: 8,
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+  },
+  iconSlot: {
+    width: MINI_WIDTH - 20,   // 44px
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    flexShrink: 0,
   },
   rowLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: WHITE_MID,
+    fontFamily: 'Nunito_600SemiBold',
+    color: MID,
+    flex: 1,
     flexShrink: 1,
   },
-  rowLabelActive: {
-    color: WHITE,
-  },
+  activeDot: { paddingRight: 14, overflow: 'hidden' },
+  activeDotInner: { width: 6, height: 6, borderRadius: 3 },
 
-  // ── Sign-out label tint ───────────────────────────────────────────────────
+  // ── Sign out ──────────────────────────────────────────────────────────────
+  signOutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(220,60,60,0.12)',
+  },
   signOutLabel: {
-    color: 'rgba(255,110,100,0.8)',
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
+    color: '#F26B6B',
+    flexShrink: 1,
   },
 });
