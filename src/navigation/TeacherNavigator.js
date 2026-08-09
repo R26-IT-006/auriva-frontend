@@ -7,6 +7,7 @@ import { Layout } from '../constants/layout';
 import TeacherDashboardScreen    from '../screens/teacher/DashboardScreen';
 import TeacherStudentListScreen  from '../screens/teacher/students/StudentListScreen';
 import TeacherStudentDetailScreen from '../screens/teacher/students/StudentDetailScreen';
+import ConceptReportScreen        from '../screens/teacher/students/ConceptReportScreen';
 import WorkspaceSelectScreen      from '../screens/teacher/WorkspaceSelectScreen';
 import StudentPickerScreen        from '../screens/teacher/students/StudentPickerScreen';
 import StudentDashboardScreen     from '../screens/teacher/students/StudentDashboardScreen';
@@ -19,6 +20,7 @@ import ConceptMatchScreen            from '../screens/teacher/concept/ConceptMat
 import ConceptCongratulationsScreen  from '../screens/teacher/concept/ConceptCongratulationsScreen';
 import ConceptAdaptiveQuizScreen     from '../screens/teacher/concept/ConceptAdaptiveQuizScreen';
 import Tier2ImageScreen              from '../screens/teacher/concept/Tier2ImageScreen';
+import Tier2DemoScreen               from '../screens/teacher/concept/Tier2DemoScreen';
 import Tier2ActivityScreen           from '../screens/teacher/concept/Tier2ActivityScreen';
 import Tier2DragDropScreen           from '../screens/teacher/concept/Tier2DragDropScreen';
 import Tier3VideoScreen              from '../screens/teacher/concept/Tier3VideoScreen';
@@ -55,6 +57,9 @@ function StudentsStack() {
     <Stack.Navigator screenOptions={stackOptions}>
       <Stack.Screen name="TeacherStudentList"   component={TeacherStudentListScreen}  options={{ title: 'My Students' }} />
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
+      {/* Inside StudentsStack, not the root stack, so the report keeps the teacher
+          tab bar and Colors theming rather than the student-workspace chrome. */}
+      <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
     </Stack.Navigator>
   );
 }
@@ -111,6 +116,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
       <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
       <Stack.Screen name="Tier2Image"          component={Tier2ImageScreen} />
+      <Stack.Screen name="Tier2Demo"           component={Tier2DemoScreen} />
       <Stack.Screen name="Tier2Activity"       component={Tier2ActivityScreen} />
       <Stack.Screen name="Tier2DragDrop"       component={Tier2DragDropScreen} />
       <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />

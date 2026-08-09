@@ -879,6 +879,11 @@ export function getConceptQuestionSi(concept) {
   return `ඔයාට ${concept.labelSi} හොයාගන්න පුළුවන්ද?`;
 }
 
+// Tier 2 asks the child to name the item rather than find it, so getConceptQuestionSi
+// ("can you find …") doesn't fit. Concept-independent, hence a plain constant.
+export const NAMING_QUESTION_EN = 'What is this called?';
+export const NAMING_QUESTION_SI = 'මේකට කියන්නේ මොකක්ද?';
+
 export function getConceptItem(categoryKey, conceptKey) {
   const cat = CONCEPT_CATEGORIES[categoryKey];
   if (!cat) return null;

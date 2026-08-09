@@ -69,12 +69,32 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
     setEntered((prev) => prev.slice(0, -1));
   }
 
+  // Optional-call so a caller that omits onCancel can't crash the gate.
+  function handleClose() {
+    setEntered([]);
+    onCancel?.();
+  }
+
   const KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'];
 
   return (
-    <Modal visible={visible} animationType="none" transparent onRequestClose={onCancel}>
+    <Modal visible={visible} animationType="none" transparent onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <Animated.View style={[styles.sheet, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
+
+          {/* Close. Until now the only way out was entering the code correctly:
+              onRequestClose fires solely for Android's hardware back button, which
+              a tablet in gesture or kiosk mode may never deliver. */}
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={handleClose}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <Ionicons name="close" size={22} color="#8A959C" />
+          </TouchableOpacity>
 
           {/* Prompt */}
           <Text style={styles.prompt}>To continue, please enter the numbers</Text>
@@ -140,7 +160,8 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     paddingBottom: 24,
     paddingHorizontal: 28,
-    paddingTop: 20,
+    // Clears the close button so it never crowds the centred prompt.
+    paddingTop: 52,
     width: '100%',
     maxWidth: 400,
     shadowColor: '#000',
@@ -148,6 +169,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 28,
     elevation: 16,
+  },
+
+  closeBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F2F5F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
   },
 
   prompt: {

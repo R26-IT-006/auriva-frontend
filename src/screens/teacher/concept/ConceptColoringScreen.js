@@ -45,6 +45,7 @@ export default function ConceptColoringScreen({ route, navigation }) {
 
   const [activeColor, setActiveColor] = useState('#E53935');
   const [strokes,     setStrokes]     = useState([]);
+  const [current,     setCurrent]     = useState(null);
 
   const activeColorRef = useRef('#E53935');
   const currentDRef    = useRef('');
@@ -52,9 +53,11 @@ export default function ConceptColoringScreen({ route, navigation }) {
   const colorScales    = useRef(COLORS.map(() => new Animated.Value(1))).current;
 
   useEffect(() => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       Speech.speak(`Let's colour the ${concept?.label?.toLowerCase()}!`, { language: 'en-US', rate: 0.8 });
     }, 400);
+    // Without this the prompt keeps talking after the child leaves the screen.
+    return () => { clearTimeout(timer); Speech.stop(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function selectColor(hex, index) {
@@ -66,29 +69,44 @@ export default function ConceptColoringScreen({ route, navigation }) {
     ]).start();
   }
 
+  // Move the finished stroke into the committed list. Only this runs per stroke,
+  // so the committed paths re-render once instead of on every touch sample.
+  function commitStroke() {
+    const d = currentDRef.current;
+    currentDRef.current = '';
+    setCurrent(null);
+    if (d) setStrokes(prev => [...prev, { d, color: activeColorRef.current }]);
+  }
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  () => true,
+      // Don't let a parent view steal the gesture halfway through a stroke.
+      onPanResponderTerminationRequest: () => false,
 
       onPanResponderGrant: (evt) => {
         const { locationX: x, locationY: y } = evt.nativeEvent;
-        currentDRef.current = `M${x.toFixed(1)} ${y.toFixed(1)}`;
-        setStrokes(prev => [...prev, { d: currentDRef.current, color: activeColorRef.current }]);
+        // Zero-length line + round linecap = a visible dot, so a plain tap marks
+        // the page instead of doing nothing.
+        currentDRef.current = `M${x.toFixed(1)} ${y.toFixed(1)} L${x.toFixed(1)} ${y.toFixed(1)}`;
+        setCurrent({ d: currentDRef.current, color: activeColorRef.current });
       },
 
       onPanResponderMove: (evt) => {
+        if (!currentDRef.current) return;
         const { locationX: x, locationY: y } = evt.nativeEvent;
         currentDRef.current += ` L${x.toFixed(1)} ${y.toFixed(1)}`;
-        setStrokes(prev => [...prev.slice(0, -1), { d: currentDRef.current, color: activeColorRef.current }]);
+        setCurrent({ d: currentDRef.current, color: activeColorRef.current });
       },
 
-      onPanResponderRelease: () => { currentDRef.current = ''; },
+      onPanResponderRelease:   commitStroke,
+      onPanResponderTerminate: commitStroke,
     })
   ).current;
 
   function handleUndo()  { setStrokes(prev => prev.slice(0, -1)); }
-  function handleReset() { setStrokes([]); }
+  function handleReset() { currentDRef.current = ''; setCurrent(null); setStrokes([]); }
 
   function handleContinue() {
     Speech.stop();
@@ -163,7 +181,7 @@ export default function ConceptColoringScreen({ route, navigation }) {
               style={StyleSheet.absoluteFill}
               width={CANVAS_SIZE}
               height={CANVAS_SIZE}
-              {...panResponder.panHandlers}
+              pointerEvents="none"
             >
               {strokes.map((s, i) => (
                 <Path
@@ -176,7 +194,23 @@ export default function ConceptColoringScreen({ route, navigation }) {
                   fill="none"
                 />
               ))}
+              {current && (
+                <Path
+                  d={current.d}
+                  stroke={current.color}
+                  strokeWidth={STROKE_WIDTH}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+              )}
             </Svg>
+
+            {/* Touch layer on top of the artwork. The gesture must land on a plain
+                View: on an <Svg> the touch resolves to whichever child element is
+                under the finger, so locationX/locationY become relative to that
+                element and strokes jump once the page has ink on it. */}
+            <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
           </View>
 
         </View>
