@@ -561,6 +561,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     color: Colors.text.link,
     fontFamily: 'Nunito_700Bold',
+  },
   reportCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.surface,
