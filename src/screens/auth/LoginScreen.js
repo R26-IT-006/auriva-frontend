@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ButtonFeedback } from '../components/common/ButtonFeedback';
+import { ButtonFeedback } from '../../components/common/ButtonFeedback';
 import {
   View,
   Text,

@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ButtonFeedback } from '../../components/common/ButtonFeedback';
+import { ButtonFeedback } from '../../../components/common/ButtonFeedback';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../components/common/Avatar';
 import { Badge } from '../../../components/common/Badge';

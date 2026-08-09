@@ -8,7 +8,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ButtonFeedback } from '../components/common/ButtonFeedback';
+import { ButtonFeedback } from './ButtonFeedback';
 import { Layout } from '../../constants/layout';
 
 const K = {

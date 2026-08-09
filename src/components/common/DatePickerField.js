@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ButtonFeedback } from '../components/common/ButtonFeedback';
+import { ButtonFeedback } from './ButtonFeedback';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 

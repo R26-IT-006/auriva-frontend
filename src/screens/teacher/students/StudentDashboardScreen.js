@@ -64,6 +64,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
     if (key === 'concept') navigation.navigate('ConceptCategories', { student });
     else if (key === 'writing') navigation.navigate('HandwritingModule', { student });
     else if (key === 'dialogue') navigation.navigate('DialogueLanding', { student });
+    else if (key === 'pronunciation') navigation.navigate('PronunciationSessionSetup', { student });
     else toast.show('Coming soon!', 'info');
   }
 

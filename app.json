@@ -39,7 +39,6 @@
       "expo-asset",
       "expo-font",
       "expo-secure-store",
-      "@react-native-community/datetimepicker",
       "expo-audio",
       "expo-video"
     ],
