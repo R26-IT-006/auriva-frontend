@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import ProbeBanner from '../../../../components/common/ProbeBanner';
+import { dialogueApi } from '../../../../api/dialogue';
 
 const WORD_LABELS = {
   thank_you:        'THANK YOU',
@@ -52,6 +54,29 @@ export default function MagicWordLandingScreen({ route, navigation }) {
   const [showSettings, setShowSettings] = useState(false);
   const [gatePurpose, setGatePurpose]   = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
+
+  // Rule 5 — periodic production probe (TASK-39). Purely additive: failure
+  // or "nothing due" both just mean no banner, never an error state — this
+  // never touches the screen's existing word/video/next-button behaviour.
+  const [probeCandidate, setProbeCandidate] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!student?.sid) return undefined;
+    dialogueApi.getProbeCandidate(student.sid, 'magic_words')
+      .then((res) => { if (!cancelled && res?.word_id) setProbeCandidate(res); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [student?.sid]);
+
+  function goToProbe() {
+    navigation.navigate('ProbeProduction', {
+      student,
+      category: 'magic_words',
+      wordId:   probeCandidate.word_id,
+      word:     probeCandidate.word,
+      assetKey: probeCandidate.asset_key,
+    });
+  }
 
   function goBackSmart() {
     if (navigation.canGoBack()) {
@@ -136,6 +161,16 @@ export default function MagicWordLandingScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+
+      {/* ── Probe banner (Rule 5 check-in, TASK-39) ─────────── */}
+      {probeCandidate && (
+        <ProbeBanner
+          wordLabel={WORD_LABELS[probeCandidate.asset_key] ?? probeCandidate.word}
+          theme={theme}
+          onPress={goToProbe}
+          onDismiss={() => setProbeCandidate(null)}
+        />
+      )}
 
       {/* ── Body ──────────────────────────────────────────── */}
       <View style={[styles.gradient, { backgroundColor: theme.background }]}>

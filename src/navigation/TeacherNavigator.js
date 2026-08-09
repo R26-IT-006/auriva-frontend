@@ -16,6 +16,8 @@ import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCate
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
 import AnimatedWordScreen         from '../screens/teacher/dialogue/AnimatedWordScreen';
 import BoldWordScreen             from '../screens/teacher/dialogue/BoldWordScreen';
+import ProbeProductionScreen      from '../screens/teacher/dialogue/ProbeProductionScreen';
+import ProbeRetentionCheckScreen  from '../screens/teacher/dialogue/ProbeRetentionCheckScreen';
 import MagicWordLandingScreen     from '../screens/teacher/dialogue/magic-words/MagicWordLandingScreen';
 import Phase1VideoScreen          from '../screens/teacher/dialogue/magic-words/Phase1VideoScreen';
 import DragToLineScreen           from '../screens/teacher/dialogue/magic-words/DragToLineScreen';
@@ -51,6 +53,7 @@ import L2TopicSelectionScreen  from '../screens/teacher/dialogue/level2/L2TopicS
 import L2QuestionnaireScreen   from '../screens/teacher/dialogue/level2/L2QuestionnaireScreen';
 import L2LoadingScreen         from '../screens/teacher/dialogue/level2/L2LoadingScreen';
 import L2ContrastiveScreen     from '../screens/teacher/dialogue/level2/L2ContrastiveScreen';
+import L2SentencePathScreen    from '../screens/teacher/dialogue/level2/L2SentencePathScreen';
 import L2SentenceTeachScreen   from '../screens/teacher/dialogue/level2/L2SentenceTeachScreen';
 import L2ListenTogetherScreen  from '../screens/teacher/dialogue/level2/L2ListenTogetherScreen';
 import L2ProductionScreen      from '../screens/teacher/dialogue/level2/L2ProductionScreen';
@@ -140,6 +143,11 @@ export default function TeacherNavigator() {
       <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
       <Stack.Screen name="AnimatedWord"      component={AnimatedWordScreen} />
       <Stack.Screen name="BoldWord"          component={BoldWordScreen} />
+
+      {/* Rule 5 — periodic production probe (TASK-39), shared across all 3 categories */}
+      <Stack.Screen name="ProbeProduction"     component={ProbeProductionScreen} />
+      <Stack.Screen name="ProbeRetentionCheck" component={ProbeRetentionCheckScreen} />
+
       <Stack.Screen name="MagicWordLanding"  component={MagicWordLandingScreen} />
       <Stack.Screen name="Phase1Video"       component={Phase1VideoScreen} />
       <Stack.Screen name="DragToLine"        component={DragToLineScreen} />
@@ -177,6 +185,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="L2Questionnaire"   component={L2QuestionnaireScreen} />
       <Stack.Screen name="L2Loading"         component={L2LoadingScreen} />
       <Stack.Screen name="L2Contrastive"     component={L2ContrastiveScreen} />
+      <Stack.Screen name="L2SentencePath"    component={L2SentencePathScreen} />
       <Stack.Screen name="L2SentenceTeach"   component={L2SentenceTeachScreen} />
       <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />
       <Stack.Screen name="L2Production"      component={L2ProductionScreen} />

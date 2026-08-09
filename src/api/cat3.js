@@ -26,10 +26,13 @@ export const cat3Api = {
       recording_start_ts:  recordingStartTs ?? undefined,
     }).then(r => r.data),
 
-  recordPhase2NonVerbal: (studentId, wordId, tapCorrect, sessionId) =>
+  recordPhase2NonVerbal: (studentId, wordId, tapCorrect, sessionId, isProbe = false) =>
     client.post(`${base(studentId)}/word/${wordId}/phase2-nonverbal`, {
       tap_correct: tapCorrect,
       session_id:  sessionId ?? undefined,
+      // omitted (not `false`) when not a probe, so every existing non-probe
+      // caller's request body is byte-identical to before this was added
+      is_probe:    isProbe || undefined,
     }).then(r => r.data),
 
   recordPhase3Check: (studentId, wordId, {
@@ -59,5 +62,15 @@ export const cat3Api = {
     client.post(`${base(studentId)}/word/${wordId}/complete`, {
       phase3_passed: phase3Passed,
       session_id:    sessionId ?? undefined,
+    }).then(r => r.data),
+
+  // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend).
+  // No getProbeCandidate here — dialogueApi.getProbeCandidate already covers
+  // abilities words (see STATE.md TASK-37 entry's alias-verification finding).
+  recordProbeResult: (studentId, wordId, audioBase64, mimeType, sessionId) =>
+    client.post(`${base(studentId)}/word/${wordId}/probe-result`, {
+      audio_base64: audioBase64,
+      mime_type:    mimeType,
+      session_id:   sessionId ?? undefined,
     }).then(r => r.data),
 };

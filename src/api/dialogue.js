@@ -37,12 +37,15 @@ export const dialogueApi = {
     return data;
   },
 
-  async recordPhase2Nonverbal(studentId, wordId, { imageSelectedCorrect, sessionId }) {
+  async recordPhase2Nonverbal(studentId, wordId, { imageSelectedCorrect, sessionId, isProbe = false }) {
     const { data } = await client.post(
       ENDPOINTS.DIALOGUE_LEVEL1_PHASE2_NONVERBAL(studentId, wordId),
       {
         image_selected_correct: imageSelectedCorrect,
         session_id:             sessionId ?? undefined,
+        // omitted (not `false`) when not a probe, so every existing non-probe
+        // caller's request body is byte-identical to before this was added
+        is_probe:                isProbe || undefined,
       }
     );
     return data;
@@ -96,6 +99,26 @@ export const dialogueApi = {
 
   async getTrajectory(studentId, wordId) {
     const { data } = await client.get(ENDPOINTS.DIALOGUE_TRAJECTORY(studentId, wordId));
+    return data;
+  },
+
+  // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend)
+  async getProbeCandidate(studentId, category) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_PROBE_CANDIDATE(studentId), {
+      params: category != null ? { category } : undefined,
+    });
+    return data;
+  },
+
+  async recordProbeResult(studentId, wordId, { audioBase64, mimeType, sessionId }) {
+    const { data } = await client.post(
+      ENDPOINTS.DIALOGUE_PROBE_RESULT(studentId, wordId),
+      {
+        audio_base64: audioBase64,
+        mime_type:    mimeType,
+        session_id:   sessionId ?? undefined,
+      }
+    );
     return data;
   },
 };

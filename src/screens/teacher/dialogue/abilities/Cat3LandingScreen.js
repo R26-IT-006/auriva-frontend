@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import ProbeBanner from '../../../../components/common/ProbeBanner';
+import { dialogueApi } from '../../../../api/dialogue';
 
 const AVATAR_DANCING_VIDEOS = {
   lily:     require('../../../../../assets/avatar-videos/LilyDancing.mp4'),
@@ -42,6 +44,31 @@ export default function Cat3LandingScreen({ route, navigation }) {
   const [showSettings, setShowSettings] = useState(false);
   const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
+
+  // Rule 5 — periodic production probe (TASK-39). Purely additive: failure
+  // or "nothing due" both just mean no banner, never an error state — this
+  // never touches the screen's existing word/video/next-button behaviour.
+  // dialogueApi.getProbeCandidate (not cat3Api) — TASK-37 confirmed it
+  // already covers abilities words, no category3-specific version exists.
+  const [probeCandidate, setProbeCandidate] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!student?.sid) return undefined;
+    dialogueApi.getProbeCandidate(student.sid, 'abilities')
+      .then((res) => { if (!cancelled && res?.word_id) setProbeCandidate(res); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [student?.sid]);
+
+  function goToProbe() {
+    navigation.navigate('ProbeProduction', {
+      student,
+      category: 'abilities',
+      wordId:   probeCandidate.word_id,
+      word:     probeCandidate.word,
+      assetKey: probeCandidate.asset_key,
+    });
+  }
 
   function goBackSmart() {
     if (navigation.canGoBack()) {
@@ -113,6 +140,16 @@ export default function Cat3LandingScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+
+      {/* ── Probe banner (Rule 5 check-in, TASK-39) ─────────── */}
+      {probeCandidate && (
+        <ProbeBanner
+          wordLabel={probeCandidate.word}
+          theme={theme}
+          onPress={goToProbe}
+          onDismiss={() => setProbeCandidate(null)}
+        />
+      )}
 
       <View style={[styles.body, { backgroundColor: theme.background }]}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>

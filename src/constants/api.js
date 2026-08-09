@@ -39,6 +39,10 @@ export const ENDPOINTS = {
   DIALOGUE_LEVEL1_PHASE3_COMPLETE:  (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/phase3-complete`,
   DIALOGUE_TRAJECTORY:              (sid, wid) => `/teacher/student/${sid}/word/${wid}/trajectory`,
 
+  // Dialogue – Rule 5 periodic production probe (TASK-37/TASK-39)
+  DIALOGUE_PROBE_CANDIDATE: (sid) => `/teacher/student/${sid}/level1/probe-candidate`,
+  DIALOGUE_PROBE_RESULT:    (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/probe-result`,
+
   // Dialogue – Level 1 Evaluations (TASK-15)
   DIALOGUE_EVALUATIONS_STATUS: (sid) => `/teacher/dialogue/evaluations/${sid}`,
   DIALOGUE_EVALUATIONS_BUILD:  (sid, category) => `/teacher/dialogue/evaluations/${sid}/${category}`,
