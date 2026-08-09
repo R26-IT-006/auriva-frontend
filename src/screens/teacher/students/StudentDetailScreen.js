@@ -12,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../../../components/common/Avatar';
 import { Badge } from '../../../components/common/Badge';
 import { Card } from '../../../components/common/Card';
@@ -84,6 +83,8 @@ function ageFrom(dateStr) {
   const m = now.getMonth() - dob.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) years -= 1;
   return years >= 0 && years < 130 ? years : null;
+}
+
 const GLOBAL_DEFAULT = 55;
 
 function ThresholdCard({ thresholds = {} }) {
