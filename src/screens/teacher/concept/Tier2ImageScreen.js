@@ -140,7 +140,8 @@ export default function Tier2ImageScreen({ route, navigation }) {
     }).catch(() => {});
     Speech.stop();
     stopConceptAudio();
-    navigation.navigate('Tier2Activity', { student, category, conceptKey, sessionId: sessionId || null });
+    // Demo first, mirroring tier 1's ConceptImage → ConceptDemo → ConceptMatch flow.
+    navigation.navigate('Tier2Demo', { student, category, conceptKey, sessionId: sessionId || null });
   }
 
   if (!concept) return null;
@@ -181,6 +182,13 @@ export default function Tier2ImageScreen({ route, navigation }) {
             <LetterBubble key={i} char={char} index={i} color={theme.button} />
           ))}
         </View>
+
+        {/* Sinhala label — the screen already speaks labelSi, but never showed it */}
+        {concept.labelSi && (
+          <Text style={[styles.labelSi, { color: theme.headingText }]}>
+            {concept.labelSi}
+          </Text>
+        )}
 
         {/* Main image — tappable */}
         <View style={[styles.imageContainer, { width: imgSize, height: imgSize }]}>
@@ -253,11 +261,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  labelSi: {
+    fontSize: 22,
+    fontFamily: 'Nunito_700Bold',
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 22,
+  },
   letterRow: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 8,
-    marginBottom: 30,
+    // Was 30 — the Sinhala label now carries the gap down to the image.
+    marginBottom: 10,
     flexWrap: 'wrap',
     justifyContent: 'center',
     paddingHorizontal: 16,

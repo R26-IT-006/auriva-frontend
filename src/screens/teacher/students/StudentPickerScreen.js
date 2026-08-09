@@ -22,11 +22,19 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 const COLS     = 3;
 const H_PAD    = 40;
 const CARD_GAP = 24;
+// Upper bound so a one- or two-student roster doesn't stretch cards across the tablet.
+const MAX_CARD = 260;
 
 function StudentCard({ student, cardSize, onPress }) {
   const theme      = getAvatarTheme(student.avatar_key);
   const initial    = (student.full_name || '?')[0].toUpperCase();
   const circleSize = cardSize * 0.54;
+  const nameSize   = cardSize * 0.1;
+  const ring       = Math.round(circleSize * 0.05);   // white ring around the avatar
+  const innerSize  = circleSize - ring * 2;           // photo sits inside the ring
+  // Cards show only the first two names; longer full names wrap past two lines
+  // and ellipsize mid-word.
+  const displayName = (student.full_name || '').trim().split(/\s+/).slice(0, 2).join(' ');
   const scale      = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
@@ -43,35 +51,52 @@ function StudentCard({ student, cardSize, onPress }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
-        style={[styles.card, { width: cardSize, height: cardSize * 1.1 }]}
+        style={[styles.card, {
+          width: cardSize,
+          height: cardSize * 1.1,
+          borderColor: theme.cardOutline + '33',
+        }]}
       >
-        {/* Colored top accent strip */}
-        <View style={[styles.cardAccent, { backgroundColor: theme.cardOutline + '22' }]} />
+        {/* Themed gradient header. The flat 13%-alpha wash this replaces read as
+            unfinished; a soft gradient gives each child a colour identity they can
+            recognise at a glance. */}
+        <LinearGradient
+          colors={theme.backgroundGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardAccent}
+        />
 
-        {/* Avatar */}
+        {/* Avatar — the white ring lifts it off the gradient it sits against */}
         <View style={[styles.circle, {
           width: circleSize,
           height: circleSize,
           borderRadius: circleSize / 2,
-          borderColor: theme.cardOutline,
-          backgroundColor: theme.cardOutline + '33',
+          borderWidth: ring,
+          borderColor: '#FFFFFF',
+          backgroundColor: theme.cardOutline + '26',
         }]}>
           {student.profile_photo_url ? (
             <Image
               source={{ uri: student.profile_photo_url }}
-              style={{ width: circleSize, height: circleSize, borderRadius: circleSize / 2 }}
+              // Inset by the ring, so the photo fills the opening instead of being
+              // clipped by the border box.
+              style={{ width: innerSize, height: innerSize, borderRadius: innerSize / 2 }}
               resizeMode="cover"
             />
           ) : (
-            <Text style={[styles.initial, { fontSize: circleSize * 0.42, color: theme.cardOutline }]}>
+            <Text style={[styles.initial, { fontSize: circleSize * 0.4, color: theme.button }]}>
               {initial}
             </Text>
           )}
         </View>
 
         {/* Name */}
-        <Text style={[styles.name, { fontSize: cardSize * 0.1 }]} numberOfLines={2}>
-          {student.full_name}
+        <Text
+          style={[styles.name, { fontSize: nameSize, lineHeight: nameSize * 1.3 }]}
+          numberOfLines={2}
+        >
+          {displayName}
         </Text>
       </TouchableOpacity>
     </Animated.View>
@@ -84,7 +109,12 @@ export default function StudentPickerScreen({ navigation }) {
   const [students, setStudents] = useState([]);
   const [loading,  setLoading]  = useState(true);
 
-  const cardSize = ((width - H_PAD * 2 - CARD_GAP * (COLS - 1)) / COLS) * 0.72;
+  // A teacher carries at most a handful of students, so match the column count to
+  // the roster rather than always laying out three — one or two students otherwise
+  // sit off-centre in a 3-wide grid. Cards fill their column (no arbitrary shrink)
+  // up to MAX_CARD, which also keeps the tap targets generous.
+  const cols     = Math.min(Math.max(students.length, 1), COLS);
+  const cardSize = Math.min((width - H_PAD * 2 - CARD_GAP * (cols - 1)) / cols, MAX_CARD);
 
   const load = useCallback(async () => {
     try {
@@ -139,9 +169,10 @@ export default function StudentPickerScreen({ navigation }) {
           <FlatList
             data={students}
             keyExtractor={(s) => String(s.sid)}
-            numColumns={COLS}
-            key={COLS}
-            columnWrapperStyle={{ gap: CARD_GAP, justifyContent: 'center' }}
+            numColumns={cols}
+            key={cols}
+            // React Native throws if columnWrapperStyle is set while numColumns is 1.
+            columnWrapperStyle={cols > 1 ? { gap: CARD_GAP, justifyContent: 'center' } : undefined}
             contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD, flexGrow: 1, justifyContent: 'center' }]}
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={{ height: CARD_GAP }} />}
@@ -217,16 +248,18 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    borderWidth: 0,
+    // Hairline in the student's own colour: enough definition to separate the card
+    // from the gradient background without competing with the avatar.
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 14,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
+    elevation: 5,
   },
   cardAccent: {
     position: 'absolute',
@@ -234,21 +267,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '45%',
-    borderTopLeftRadius: 21,
-    borderTopRightRadius: 21,
+    // Was 21 against a 24 card radius, which left a visible seam at the top
+    // corners. overflow:'hidden' on the card clips the rest.
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   circle: {
-    borderWidth: 3,
+    // borderWidth/borderColor are set at render time — the ring scales with the card.
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 4,
   },
   initial: {
     fontFamily: 'Nunito_900Black',
@@ -260,7 +295,8 @@ const styles = StyleSheet.create({
     color: '#1A2E26',
     textAlign: 'center',
     paddingHorizontal: 10,
-    lineHeight: 20,
+    // lineHeight is set alongside fontSize at render time — both scale with the
+    // card, and a fixed value here clipped the glyphs once the card grew.
     marginTop: 10,
   },
 
