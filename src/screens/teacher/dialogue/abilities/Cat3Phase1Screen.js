@@ -16,6 +16,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
+import { dialogueApi } from '../../../../api/dialogue';
 
 const PROGRESS_FRACTION = 0.10;
 
@@ -40,6 +41,35 @@ const WORD_LABELS = {
   sing:     'Sing',
 };
 
+// Scene images for the AnimatedWord/BoldWord familiarisation screens — same
+// per-word images Cat3DragToLineScreen.js uses (abilities has no entries in
+// constants/dialogueAssets.js by design; the scene/context concept there
+// doesn't apply to this category — confirmed 2026-07-28).
+const CAT3_WORD_IMAGE = {
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
+  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
+  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+};
+
+// Word audio for the familiarisation screens — mirrors Cat3Phase2Screen.js's
+// WORD_AUDIO. cat3_yes/cat3_no have no audio asset yet (same gap as Phase2);
+// the familiarisation screens already guard playback on wordAudio presence.
+const CAT3_WORD_AUDIO = {
+  clap:  require('../../../../../assets/dialogue-audios/abilities/clap.mp3'),
+  run:   require('../../../../../assets/dialogue-audios/abilities/run.mp3'),
+  walk:  require('../../../../../assets/dialogue-audios/abilities/walk.mp3'),
+  jump:  require('../../../../../assets/dialogue-audios/abilities/jump.mp3'),
+  dance: require('../../../../../assets/dialogue-audios/abilities/dance.mp3'),
+  sing:  require('../../../../../assets/dialogue-audios/abilities/sing.mp3'),
+  talk:  require('../../../../../assets/dialogue-audios/abilities/talk.mp3'),
+};
+
 // ── Jump animation ────────────────────────────────────────────────────────────
 
 function JumpAvatar({ source }) {
@@ -49,7 +79,7 @@ function JumpAvatar({ source }) {
   function doJump() {
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(jumpY,  { toValue: -110, duration: 220, useNativeDriver: true }),
+        Animated.timing(jumpY,  { toValue: -160, duration: 220, useNativeDriver: true }),
         Animated.timing(scaleY, { toValue: 1.08,  duration: 220, useNativeDriver: true }),
       ]),
       Animated.parallel([
@@ -83,19 +113,19 @@ function RunAvatar({ source }) {
   function doRun() {
     if (isRunning.current) return;
     isRunning.current = true;
-    translateX.setValue(-160);
+    translateX.setValue(-220);
     translateY.setValue(0);
 
     const bounce = Animated.loop(
       Animated.sequence([
-        Animated.timing(translateY, { toValue: -10, duration: 120, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: -14, duration: 120, useNativeDriver: true }),
         Animated.timing(translateY, { toValue: 0,   duration: 120, useNativeDriver: true }),
       ]),
       { iterations: 20 },
     );
     bounce.start();
 
-    Animated.timing(translateX, { toValue: 160, duration: 1400, useNativeDriver: true }).start(() => {
+    Animated.timing(translateX, { toValue: 220, duration: 1400, useNativeDriver: true }).start(() => {
       bounce.stop();
       setTimeout(() => {
         translateX.setValue(0);
@@ -119,29 +149,38 @@ function RunAvatar({ source }) {
 // ── Walk animation ────────────────────────────────────────────────────────────
 
 function WalkAvatar({ source }) {
-  const bobY = useRef(new Animated.Value(0)).current;
-  const isWalking = useRef(false);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const isWalking  = useRef(false);
 
   function doWalk() {
     if (isWalking.current) return;
     isWalking.current = true;
-    Animated.loop(
+    translateX.setValue(-130);
+    translateY.setValue(0);
+
+    const bob = Animated.loop(
       Animated.sequence([
-        Animated.timing(bobY, { toValue: -8, duration: 200, useNativeDriver: true }),
-        Animated.timing(bobY, { toValue: 0,  duration: 200, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: -10, duration: 250, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0,   duration: 250, useNativeDriver: true }),
       ]),
       { iterations: 8 },
-    ).start(() => {
-      bobY.setValue(0);
+    );
+    bob.start();
+
+    Animated.timing(translateX, { toValue: 130, duration: 4000, useNativeDriver: true }).start(() => {
+      bob.stop();
+      translateX.setValue(0);
+      translateY.setValue(0);
       isWalking.current = false;
     });
   }
 
   return (
-    <TouchableOpacity onPress={doWalk} activeOpacity={0.9} style={styles.avatarTouchable}>
+    <TouchableOpacity onPress={doWalk} activeOpacity={0.9} style={[styles.avatarTouchable, { overflow: 'hidden', width: '100%' }]}>
       <Animated.Image
         source={source}
-        style={[styles.avatarImg, { transform: [{ translateY: bobY }] }]}
+        style={[styles.avatarImg, { transform: [{ translateX }, { translateY }] }]}
         resizeMode="contain"
       />
     </TouchableOpacity>
@@ -212,11 +251,18 @@ export default function Cat3Phase1Screen({ route, navigation }) {
   const [showSettings, setShowSettings] = useState(false);
   const [gatePurpose,  setGatePurpose]  = useState('settings');
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => { activeRef.current = false; sub.remove(); };
@@ -229,8 +275,26 @@ export default function Cat3Phase1Screen({ route, navigation }) {
     }
   }
 
-  function goNext() {
-    navigation.navigate('Cat3DragToLine', { student, wordId, wordKey, wordLabel, sessionId });
+  async function goNext() {
+    // Trajectory fetch is an enhancement, not a requirement — never block
+    // navigation on it failing.
+    let adaptiveDwell = 'typical';
+    try {
+      const { trajectory } = await dialogueApi.getTrajectory(student?.sid, wordId);
+      if (trajectory) adaptiveDwell = trajectory;
+    } catch { /* ignore — fall back to 'typical' */ }
+
+    navigation.navigate('AnimatedWord', {
+      student,
+      wordText: wordLabel,
+      wordImage: CAT3_WORD_IMAGE[wordKey],
+      wordAudio: CAT3_WORD_AUDIO[wordKey],
+      wordId,
+      trackExposure: false, // abilities uses cat3Api.recordPhase1Tap (tap-gated), not dialogueApi.recordPhase1Exposure — see STATE.md
+      nextScreen: 'Cat3DragToLine',
+      nextParams: { student, wordId, wordKey, wordLabel, sessionId },
+      adaptiveDwell,
+    });
   }
 
   function openSettings() { setGatePurpose('settings'); setShowGate(true); }
@@ -281,7 +345,7 @@ export default function Cat3Phase1Screen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
@@ -407,8 +471,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarImg: {
-    width:  220,
-    height: 320,
+    width:  Math.min(Layout.window.width * 0.38, 420),
+    height: Math.min(Layout.window.height * 0.58, 520),
   },
 
   wordCard: {

@@ -21,49 +21,49 @@ import { cat3Api } from '../../../../api/cat3';
 // Context images for Phase 2 NonVerbal (abilities assets confirmed on disk)
 const CAT3_NV = {
   cat3_yes: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   cat3_no: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   clap: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/clap/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/clap/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   run: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/run/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/run/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/run/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/run/Non_verbal.jpeg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/walk/Phase3.jpeg'),
   },
   walk: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/walk/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/walk/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   jump: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/jump/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/jump/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   talk: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/talk/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/talk/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/talk/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   dance: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/dance/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/dance/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/dance/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
   sing: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/sing/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/sing/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/sing/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
   },
 };
 
@@ -86,7 +86,7 @@ const NV_CAPTIONS = {
   cat3_yes: ['Saying yes!',        'Playing alone',   'Looking away'],
   cat3_no:  ['Saying no!',         'Clapping hands',  'Running around'],
   clap:     ['Clapping hands',     'Running outside', 'Jumping up'],
-  run:      ['Running fast',       'Standing still',  'Clapping hands'],
+  run:      ['Running fast',       'Clapping',  'Walking to School'],
   walk:     ['Walking along',      'Jumping high',    'Dancing around'],
   jump:     ['Jumping up high',    'Walking slowly',  'Talking quietly'],
   talk:     ['Talking to someone', 'Clapping hands',  'Running outside'],
@@ -136,11 +136,18 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
   const settingsFade = useRef(new Animated.Value(0)).current;
   const [gatePurpose, setGatePurpose] = useState('settings');
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => {
@@ -245,7 +252,7 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
@@ -364,30 +371,29 @@ const styles = StyleSheet.create({
   title:    { fontSize: Layout.fontSize.xl, fontWeight: '700', textAlign: 'center', marginBottom: Layout.spacing.xs },
   subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
-  cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.sm },
+  cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.md },
 
   imageCard: {
     flex:         1,
-    maxWidth:     160,
-    borderRadius: Layout.radius.lg,
+    borderRadius: Layout.radius.xl,
     overflow:     'hidden',
     borderWidth:  2,
     borderColor:  'transparent',
-    ...Layout.shadow.sm,
+    ...Layout.shadow.md,
   },
   cardCorrect: { borderColor: '#22C55E', borderWidth: 3 },
   cardWrong:   { borderColor: '#FF4D6D', borderWidth: 2, opacity: 0.65 },
 
-  imageWrap: { position: 'relative', width: '100%', aspectRatio: 1 },
+  imageWrap: { position: 'relative', width: '100%', aspectRatio: 4 / 3 },
   cardImage: { width: '100%', height: '100%' },
-  correctBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#FFF', borderRadius: 12 },
+  correctBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#FFF', borderRadius: 14 },
 
   cardCaption: {
-    fontSize:    Layout.fontSize.xs,
-    fontWeight:  '600',
+    fontSize:    Layout.fontSize.md,
+    fontWeight:  '700',
     textAlign:   'center',
-    paddingHorizontal: Layout.spacing.xs,
-    paddingVertical:   Layout.spacing.sm,
+    paddingHorizontal: Layout.spacing.sm,
+    paddingVertical:   Layout.spacing.md,
   },
 
   avatarRow:  { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: Layout.spacing.md },

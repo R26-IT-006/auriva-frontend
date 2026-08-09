@@ -18,17 +18,17 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 
-// Scene images for the DragToLine screen (abilities assets confirmed on disk)
+// Scene images for the DragToLine screen — use Drag_Act where available
 const CAT3_SCENE = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/scene.png'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/scene.png'),
-  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/scene.png'),
-  run:      require('../../../../../assets/dialogue-images/words/abilities/run/scene.png'),
-  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/scene.png'),
-  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/scene.png'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/talk/scene.png'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/dance/scene.png'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/sing/scene.png'),
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
+  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
+  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
 };
 
 const PROGRESS_FRACTION = 0.40;
@@ -161,11 +161,18 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
   const feedbackOp    = useRef(new Animated.Value(0)).current;
   const dropGlow      = useRef(new Animated.Value(0)).current;
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => { activeRef.current = false; sub.remove(); };
@@ -183,7 +190,7 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
     cat3Api.recordDragToLine(student?.sid, wordId, result, sessionId).catch(() => {});
     setTimeout(() => {
       if (activeRef.current) {
-        navigation.navigate('Cat3Phase2', { student, wordId, wordKey, wordLabel, sessionId });
+        navigation.navigate('Cat3Phase2', { student, wordId, wordKey, wordLabel, sessionId, cueGrapheme: route.params?.cueGrapheme ?? null });
       }
     }, 1600);
   }
@@ -264,7 +271,7 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>

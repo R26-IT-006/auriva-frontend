@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Animated,
   BackHandler,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,18 +18,20 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 
-// Context-correct images for Phase 3 (shows what the action looks like)
+// Scene images for Phase 3 — use Phase3 where available
 const CAT3_CONTEXT_CORRECT = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/yes_i_can/context_correct.png'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/no_i_cant/context_correct.png'),
-  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/context_correct.png'),
-  run:      require('../../../../../assets/dialogue-images/words/abilities/run/context_correct.png'),
-  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/context_correct.png'),
-  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/context_correct.png'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/talk/context_correct.png'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/dance/context_correct.png'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/sing/context_correct.png'),
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Phase3.jpeg'),
+  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Phase3.jpeg'),
+  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Phase3.jpeg'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
 };
+
+const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abilities/Phase3_prompt_generic.mp3');
 
 const PROGRESS_FRACTION = 0.90;
 
@@ -88,11 +91,53 @@ export default function Cat3Phase3Screen({ route, navigation }) {
   const [showSettings, setShowSettings] = useState(false);
   const [gatePurpose,  setGatePurpose]  = useState('settings');
 
-  const activeRef    = useRef(true);
-  const submittedRef = useRef(false);
-  const settingsFade = useRef(new Animated.Value(0)).current;
-  const feedbackOp   = useRef(new Animated.Value(0)).current;
+  const activeRef     = useRef(true);
+  const submittedRef  = useRef(false);
+  const settingsFade  = useRef(new Animated.Value(0)).current;
+  const feedbackOp    = useRef(new Animated.Value(0)).current;
   const correctIdxRef = useRef(null);
+
+  // ── NEW — audio playback (this screen had none before) ─────────────
+  const soundRef = useRef(null);
+
+  // ── RC2 feature capture refs ──────────────────────────────────────────
+  const attemptRenderRef                = useRef(Date.now());
+  const attempt1LatencyRef              = useRef(null);
+  const attempt2LatencyRef              = useRef(null);
+  const firstTapCorrectAttempt1Ref      = useRef(null);
+  const firstTapCorrectAttempt2Ref      = useRef(null);
+  const selectionChangeCountAttempt1Ref = useRef(0);
+  const selectionChangeCountAttempt2Ref = useRef(0);
+  const promptCountAttempt1Ref          = useRef(1);
+  const promptCountAttempt2Ref          = useRef(1);
+
+  useEffect(() => {
+    attemptRenderRef.current = Date.now();
+    if (attempt === 1) promptCountAttempt1Ref.current = 1;
+    else               promptCountAttempt2Ref.current = 1;
+    playSound(PHASE3_PROMPT_AUDIO).catch(() => {});
+  }, [attempt]);
+
+  async function playSound(source) {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.stopAsync().catch(() => {});
+        await soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(source);
+      soundRef.current = sound;
+      await sound.playAsync();
+      await new Promise(resolve => {
+        sound.setOnPlaybackStatusUpdate(status => {
+          if (status.didJustFinish) {
+            sound.setOnPlaybackStatusUpdate(null);
+            resolve();
+          }
+        });
+      });
+    } catch { /* ignore */ }
+  }
 
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
@@ -101,7 +146,12 @@ export default function Cat3Phase3Screen({ route, navigation }) {
       setShowGate(true);
       return true;
     });
-    return () => { activeRef.current = false; sub.remove(); };
+    return () => {
+      activeRef.current = false;
+      sub.remove();
+      soundRef.current?.stopAsync().catch(() => {});
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
   }, []));
 
   function showToast(msg, color) {
@@ -117,9 +167,22 @@ export default function Cat3Phase3Screen({ route, navigation }) {
     if (submittedRef.current) return;
     submittedRef.current = true;
 
-    cat3Api.recordPhase3Check(
-      student?.sid, wordId, correctOnFirst, secondAttemptCorrect, sessionId,
-    ).catch(() => {});
+    const hadSecondAttempt = secondAttemptCorrect !== undefined;
+
+    cat3Api.recordPhase3Check(student?.sid, wordId, {
+      correctOnFirst,
+      secondAttemptCorrect,
+      sessionId,
+      attempt1LatencyMs:           attempt1LatencyRef.current,
+      attempt2LatencyMs:           hadSecondAttempt ? attempt2LatencyRef.current : undefined,
+      attempt1FirstTapCorrect:     firstTapCorrectAttempt1Ref.current,
+      attempt2FirstTapCorrect:     hadSecondAttempt ? firstTapCorrectAttempt2Ref.current : undefined,
+      attempt1SelectionChangeCount: Math.min(selectionChangeCountAttempt1Ref.current, 2),
+      attempt2SelectionChangeCount: hadSecondAttempt
+        ? Math.min(selectionChangeCountAttempt2Ref.current, 2) : undefined,
+      attempt1PromptCount:         promptCountAttempt1Ref.current,
+      attempt2PromptCount:         hadSecondAttempt ? promptCountAttempt2Ref.current : undefined,
+    }).catch(() => {});
 
     setTimeout(() => {
       if (activeRef.current) {
@@ -132,30 +195,50 @@ export default function Cat3Phase3Screen({ route, navigation }) {
 
   function handleTileTap(tile, idx) {
     if (settled) return;
+
+    if (selectedId === null) {
+      const latency = Date.now() - attemptRenderRef.current;
+      if (attempt === 1) {
+        attempt1LatencyRef.current         = latency;
+        firstTapCorrectAttempt1Ref.current = tile.isCorrect;
+      } else {
+        attempt2LatencyRef.current         = latency;
+        firstTapCorrectAttempt2Ref.current = tile.isCorrect;
+      }
+    } else if (selectedId !== idx) {
+      if (attempt === 1) selectionChangeCountAttempt1Ref.current += 1;
+      else               selectionChangeCountAttempt2Ref.current += 1;
+    }
+
     setSelectedId(idx);
+  }
+
+  function handleConfirmTile() {
+    if (settled || selectedId === null) return;
+    const tile = tiles[selectedId];
 
     if (tile.isCorrect) {
       setSettled(true);
-      if (attempt === 1) {
-        advance(true, true, undefined);
-      } else {
-        advance(true, false, true);
-      }
+      if (attempt === 1) { advance(true, true, undefined); }
+      else               { advance(true, false, true); }
     } else {
       if (attempt === 1) {
         setAttempt(2);
         showToast('Try again! 😊');
-        setTimeout(() => {
-          if (activeRef.current) setSelectedId(null);
-        }, 1100);
+        setTimeout(() => { if (activeRef.current) setSelectedId(null); }, 1100);
       } else {
-        // Second wrong → auto-advance, phase3 failed
         setSettled(true);
-        // reveal correct
         correctIdxRef.current = tiles.findIndex(t => t.isCorrect);
         advance(false, false, false);
       }
     }
+  }
+
+  function handleHearAgain() {
+    if (settled) return;
+    if (attempt === 1) promptCountAttempt1Ref.current += 1;
+    else               promptCountAttempt2Ref.current += 1;
+    playSound(PHASE3_PROMPT_AUDIO).catch(() => {});
   }
 
   function openSettings() { setGatePurpose('settings'); setShowGate(true); }
@@ -163,7 +246,11 @@ export default function Cat3Phase3Screen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('DialogueCategory', { student });
+      }
       return;
     }
     setShowSettings(true);
@@ -226,10 +313,11 @@ export default function Cat3Phase3Screen({ route, navigation }) {
             {/* Word tiles */}
             <View style={styles.tilesWrap}>
               {tiles.map((tile, idx) => {
-                const isSelected        = selectedId === idx;
-                const revealedCorrect   = settled && tile.isCorrect && correctIdxRef.current !== null;
-                const showGreen         = (isSelected && tile.isCorrect) || revealedCorrect;
-                const showRed           = isSelected && !tile.isCorrect && !settled;
+                const isSelected      = selectedId === idx;
+                const showProvisional = isSelected && !settled;
+                const revealedCorrect = settled && tile.isCorrect && correctIdxRef.current !== null;
+                const showGreen       = (isSelected && settled && tile.isCorrect) || revealedCorrect;
+                const showRed         = isSelected && settled && !tile.isCorrect;
 
                 return (
                   <TouchableOpacity
@@ -239,6 +327,7 @@ export default function Cat3Phase3Screen({ route, navigation }) {
                     style={[
                       styles.tile,
                       { backgroundColor: theme.cardSurface },
+                      showProvisional && { borderColor: theme.button, borderWidth: 2.5 },
                       showGreen && styles.tileCorrect,
                       showRed   && styles.tileWrong,
                     ]}
@@ -251,6 +340,26 @@ export default function Cat3Phase3Screen({ route, navigation }) {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                onPress={handleHearAgain}
+                disabled={settled}
+                style={[styles.hearAgainButton, { borderColor: theme.button }]}
+              >
+                <Ionicons name="volume-high-outline" size={16} color={theme.button} />
+                <Text style={[styles.hearAgainText, { color: theme.button }]}>Hear it again</Text>
+              </TouchableOpacity>
+              {selectedId !== null && !settled && (
+                <TouchableOpacity
+                  onPress={handleConfirmTile}
+                  style={[styles.confirmButton, { backgroundColor: theme.button }]}
+                >
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
           </View>
@@ -357,4 +466,31 @@ const styles = StyleSheet.create({
   settingsTitle:   { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
+
+  actionRow: {
+    flexDirection:  'row',
+    justifyContent: 'center',
+    alignItems:     'center',
+    gap:            Layout.spacing.md,
+    marginTop:      Layout.spacing.md,
+  },
+  hearAgainButton: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical:   8,
+    borderRadius:      Layout.radius.full,
+    borderWidth:       1.5,
+  },
+  hearAgainText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.bold },
+  confirmButton: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical:   8,
+    borderRadius:      Layout.radius.full,
+  },
+  confirmButtonText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#FFFFFF' },
 });

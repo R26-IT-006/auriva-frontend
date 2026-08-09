@@ -17,6 +17,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 
 // Progress: Phase 2 sits at ~85% through Level 1
 const PROGRESS_FRACTION = 0.85;
@@ -71,29 +72,6 @@ const WORD_AUDIO = {
   },
 };
 
-const REC_OPTIONS = {
-  android: {
-    extension: '.m4a',
-    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 128000,
-  },
-  ios: {
-    extension: '.m4a',
-    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-    audioQuality: Audio.IOSAudioQuality.HIGH,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 128000,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: { mimeType: 'audio/webm', bitsPerSecond: 128000 },
-};
-
 const P = {
   INTRO:       'intro',
   LISTENING:   'listening',
@@ -111,6 +89,22 @@ const P = {
 
 function delay(ms) {
   return new Promise(r => setTimeout(r, ms));
+}
+
+/**
+ * RC-PROMPT: Split a word label into [prefix, cue, suffix] for grapheme highlight.
+ * cueGrapheme is case-insensitive. Returns ['', '', wordLabel] if no match found.
+ * Example: splitWordByCue('Thank you', 'TH') → ['', 'Th', 'ank you']
+ */
+function splitWordByCue(wordLabel, cueGrapheme) {
+  if (!cueGrapheme) return ['', '', wordLabel];
+  const idx = wordLabel.toUpperCase().indexOf(cueGrapheme.toUpperCase());
+  if (idx === -1) return ['', '', wordLabel];
+  return [
+    wordLabel.slice(0, idx),
+    wordLabel.slice(idx, idx + cueGrapheme.length),
+    wordLabel.slice(idx + cueGrapheme.length),
+  ];
 }
 
 async function uriToBase64(uri) {
@@ -138,6 +132,8 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   const [cloudText, setCloudText]  = useState(wordLabel);
   const [tileGlow, setTileGlow]    = useState(false);
   const [btnGlow, setBtnGlow]      = useState(false);
+  const [showCue, setShowCue]      = useState(false);   // RC-PROMPT: grapheme highlight active
+  const [cueGrapheme, setCueGrapheme] = useState(null);  // RC-PROMPT: fetched by wordId at mount (TASK-06 A1) — not relied on via route.params
   const [showGate, setShowGate]    = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [gatePurpose, setGatePurpose]   = useState('settings');
@@ -146,12 +142,15 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   const phaseRef      = useRef(P.INTRO);
   const activeRef     = useRef(true);
   const soundRef      = useRef(null);
-  const recordingRef  = useRef(null);
+  const slowSoundRef  = useRef(null);  // RC-PROMPT: separate ref for slowed playback
   const timerRef      = useRef(null);
   const tileTapTimer  = useRef(null);
   const attemptRef    = useRef(0);   // # of recording submissions
   const tileTapRef    = useRef(0);   // # of word-tile taps without recording
   const sessionIdRef  = useRef(null); // session_id returned by first Phase 2 assess call
+  const avatarAudioEndRef = useRef(null); // RC3 — when the last avatar prompt finished
+  const recordingStartRef = useRef(null); // RC3 — when the current recording started
+  const micDelayRef       = useRef(0);    // RC3 — delay (ms) to apply before the next recording
   const settingsFade  = useRef(new Animated.Value(0)).current;
 
   function setPhase(p) {
@@ -166,6 +165,18 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   function clearTimer() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   }
+
+  const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
+    rc3Refs: { recordingStartRef, micDelayRef },
+    onGetReady: () => say('Get ready...'),
+    onStart: async () => {
+      setPhase(P.RECORDING);
+      await delay(300); // let mic warm up before cueing the child — avoids clipping short-word onsets
+      say('Listening...');
+    },
+    onStop: uri => submitRecording(uri),
+    onError: () => startListening(),
+  });
 
   // ── Audio ─────────────────────────────────────────────────────────────────
 
@@ -189,6 +200,46 @@ export default function Phase2ProductionScreen({ route, navigation }) {
       });
     } catch { /* ignore */ }
   }
+
+  /**
+   * RC-PROMPT Tier 2: play the word audio at 60% speed with pitch correction.
+   * Uses a separate soundRef so it never cancels the main playSound() chain.
+   */
+  async function playSlowWord() {
+    try {
+      if (slowSoundRef.current) {
+        await slowSoundRef.current.stopAsync().catch(() => {});
+        await slowSoundRef.current.unloadAsync().catch(() => {});
+        slowSoundRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(wordAudio.word);
+      slowSoundRef.current = sound;
+      // 0.6 = 60% speed; true = correct pitch so it doesn't sound distorted
+      await sound.setRateAsync(0.6, true);
+      await sound.playAsync();
+      await new Promise(resolve => {
+        sound.setOnPlaybackStatusUpdate(status => {
+          if (status.didJustFinish) {
+            sound.setOnPlaybackStatusUpdate(null);
+            resolve();
+          }
+        });
+      });
+    } catch { /* ignore */ }
+  }
+
+  // ── RC-PROMPT: fetch cue_grapheme by wordId (TASK-06 A1) ────────────────────
+  // Degrades gracefully — a failed fetch or a word with no cue_grapheme just
+  // leaves cueGrapheme null, so splitWordByCue() never highlights anything.
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!wordId) return undefined;
+    dialogueApi.getWordById(wordId)
+      .then(word => { if (!cancelled) setCueGrapheme(word?.cue_grapheme ?? null); })
+      .catch(() => { if (!cancelled) setCueGrapheme(null); });
+    return () => { cancelled = true; };
+  }, [wordId]);
 
   // ── Intro sequence ────────────────────────────────────────────────────────
 
@@ -215,6 +266,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
       // "Can you say [word]?" — bubble updates, then mic auto-starts
       say(`Can you say "${wordLabel}"?`);
       await playSound(wordAudio.canYouSay);
+      avatarAudioEndRef.current = Date.now(); // RC3
       if (cancelled) return;
 
       startListening();
@@ -239,7 +291,9 @@ export default function Phase2ProductionScreen({ route, navigation }) {
       if (tileTapTimer.current) clearTimeout(tileTapTimer.current);
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
-      recordingRef.current?.stopAndUnloadAsync().catch(() => {});
+      slowSoundRef.current?.stopAsync().catch(() => {});
+      slowSoundRef.current?.unloadAsync().catch(() => {});
+      resetRecorder();
     };
   }, []));
 
@@ -263,6 +317,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setBtnGlow(false);
     clearTimer();
     await playSound(AUDIO.tapToListen);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     // 10-second window to tap the word tile before progressing
     timerRef.current = setTimeout(enterReprompt1, 10_000);
@@ -276,6 +331,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setBtnGlow(true);
     clearTimer();
     await playSound(AUDIO.tapRecordBtn);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     timerRef.current = setTimeout(enterReprompt1, 10_000);
   }
@@ -288,6 +344,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setBtnGlow(false);
     clearTimer();
     await playSound(wordAudio.canYouSay);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     timerRef.current = setTimeout(enterReprompt2, 20_000);
   }
@@ -300,6 +357,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
     setBtnGlow(false);
     clearTimer();
     await playSound(AUDIO.youCanDoIt);
+    avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
     timerRef.current = setTimeout(enterNonverbal, 20_000);
   }
@@ -351,56 +409,34 @@ export default function Phase2ProductionScreen({ route, navigation }) {
 
   // ── Recording ─────────────────────────────────────────────────────────────
 
-  async function handleRecordBtn() {
-    if (phaseRef.current === P.RECORDING) {
-      await submitRecording();
-      return;
+  function handleRecordBtn() {
+    if (recorderState === 'idle') {
+      const recordable = [P.LISTENING, P.NO_RESPONSE, P.REC_HINT, P.REPROMPT_1, P.REPROMPT_2, P.PARTIAL_1, P.PARTIAL_2];
+      if (!recordable.includes(phaseRef.current)) return;
+
+      clearTimer();
+      if (tileTapTimer.current) { clearTimeout(tileTapTimer.current); tileTapTimer.current = null; }
+      setTileGlow(false);
+      setBtnGlow(false);
+      tileTapRef.current = 0;
     }
-
-    const recordable = [P.LISTENING, P.NO_RESPONSE, P.REC_HINT, P.REPROMPT_1, P.REPROMPT_2, P.PARTIAL_1, P.PARTIAL_2];
-    if (!recordable.includes(phaseRef.current)) return;
-
-    clearTimer();
-    if (tileTapTimer.current) { clearTimeout(tileTapTimer.current); tileTapTimer.current = null; }
-    setTileGlow(false);
-    setBtnGlow(false);
-    tileTapRef.current = 0;
-
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') { startListening(); return; }
-
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(REC_OPTIONS);
-      await recording.startAsync();
-      recordingRef.current = recording;
-
-      setPhase(P.RECORDING);
-      say('Listening...');
-    } catch {
-      startListening();
-    }
+    toggleRecording();
   }
 
-  async function submitRecording() {
-    if (!recordingRef.current) return;
+  async function submitRecording(uri) {
     setPhase(P.PROCESSING);
     say('...');
 
     try {
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
-
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
-
       const b64 = await uriToBase64(uri);
       attemptRef.current += 1;
 
       const res = await dialogueApi.assessPhase2Speech(
         student?.sid, wordId,
-        { audioBase64: b64, mimeType: 'audio/m4a', sessionId: sessionIdRef.current }
+        {
+          audioBase64: b64, mimeType: 'audio/m4a', sessionId: sessionIdRef.current,
+          avatarAudioEndTs: avatarAudioEndRef.current, recordingStartTs: recordingStartRef.current,
+        }
       );
 
       // Capture session_id from the first response for continuity
@@ -408,9 +444,12 @@ export default function Phase2ProductionScreen({ route, navigation }) {
         sessionIdRef.current = res.session_id;
       }
 
+      micDelayRef.current = res.mic_delay_ms ?? 0; // RC3
+
       if (!activeRef.current) return;
 
       if (res.advance_to_phase3) {
+        setShowCue(false);
         setPhase(P.DONE);
         say('Great job!');
         await delay(1500);
@@ -443,19 +482,26 @@ export default function Phase2ProductionScreen({ route, navigation }) {
             });
           }
         } else if (n === 2) {
+          // ── RC-PROMPT Tier 3: simultaneous production ───────────────────
           setPhase(P.PARTIAL_2);
-          say(`Repeat after me, ${wordLabel}`);
+          setShowCue(true);
+          say(`Say it with me! ${wordLabel}`);
           await playSound(AUDIO.repeatAfterMe);
-          await delay(2000);
+          await delay(500);
           if (!activeRef.current) return;
           await playSound(wordAudio.word);
+          avatarAudioEndRef.current = Date.now(); // RC3
         } else {
+          // ── RC-PROMPT Tier 2: grapheme highlight + slow audio ───────────
           setPhase(P.PARTIAL_1);
-          say(`Can you say "${wordLabel}"?`);
-          await playSound(wordAudio.canYouSay);
+          setShowCue(true);
+          say(`Listen carefully... "${wordLabel}"`);
+          await playSlowWord();
+          avatarAudioEndRef.current = Date.now(); // RC3
         }
       } else {
         // score = 0: no recognisable speech — re-prompt
+        setShowCue(false);
         await enterReprompt1();
       }
     } catch {
@@ -472,7 +518,11 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('DialogueCategory', { student });
+      }
       return;
     }
     if (gatePurpose === 'next') {
@@ -500,8 +550,9 @@ export default function Phase2ProductionScreen({ route, navigation }) {
   // ── Derived render state ──────────────────────────────────────────────────
 
   const WORD_UPPER   = wordLabel.toUpperCase();
-  const isRecording  = phase === P.RECORDING;
-  const isDimmed     = [P.INTRO, P.PROCESSING, P.DONE, P.NONVERBAL].includes(phase);
+  const isRecording  = recorderState === 'recording';
+  const isDimmed     = [P.INTRO, P.PROCESSING, P.DONE, P.NONVERBAL].includes(phase)
+    || recorderState === 'starting' || recorderState === 'stopping';
   const showProdVideo = phase === P.INTRO && prodVideo !== null;
 
   return (
@@ -536,6 +587,9 @@ export default function Phase2ProductionScreen({ route, navigation }) {
               </Text>
               {'?'}
             </Text>
+            <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
+              {`"${wordLabel}" කිව හැකිද?`}
+            </Text>
 
             {/* Word tile — tap to hear audio */}
             <TouchableOpacity
@@ -550,16 +604,27 @@ export default function Phase2ProductionScreen({ route, navigation }) {
               <View style={[styles.speakerCircle, { backgroundColor: theme.button + '22' }]}>
                 <Ionicons name="volume-high" size={36} color={theme.button} />
               </View>
-              <Text style={[styles.wordText, { color: theme.button }]}>
-                {wordLabel.replace(' ', '\n')}
-              </Text>
+              {showCue ? (() => {
+                const [pre, cue, suf] = splitWordByCue(wordLabel, cueGrapheme);
+                return (
+                  <Text style={[styles.wordText, { color: theme.button }]}>
+                    {pre}
+                    <Text style={styles.wordTextCue}>{cue}</Text>
+                    {suf.replace(' ', '\n')}
+                  </Text>
+                );
+              })() : (
+                <Text style={[styles.wordText, { color: theme.button }]}>
+                  {wordLabel.replace(' ', '\n')}
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* Hint */}
             <View style={styles.hintRow}>
               <Ionicons name="hand-left-outline" size={15} color={theme.headingText} style={{ opacity: 0.45 }} />
               <Text style={[styles.hintText, { color: theme.headingText }]}>
-                Click on the card to hear the audio
+                Click on the card to hear the audio  ·  ශ්‍රව්‍ය ඇසීමට කාඩ්පත ස්පර්ශ කරන්න
               </Text>
             </View>
 
@@ -588,7 +653,7 @@ export default function Phase2ProductionScreen({ route, navigation }) {
                     {isRecording ? 'Stop Recording' : 'Record Audio'}
                   </Text>
                 </TouchableOpacity>
-                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK</Text>
+                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK  ·  ස්පර්ශ කර කතා කරන්න</Text>
               </View>
 
               {/* Avatar + speech bubble */}
@@ -703,16 +768,23 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xl,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: Layout.spacing.lg,
+    marginBottom: 4,
   },
   titleEmphasis: {
     fontSize: Layout.fontSize.xl,
     fontWeight: '900',
   },
+  titleSinhala: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.65,
+    marginBottom: Layout.spacing.lg,
+  },
 
   /* Word tile */
   wordTile: {
-    width: 160,
+    minWidth: 240,
     borderRadius: Layout.radius.xl,
     padding: Layout.spacing.xl,
     alignItems: 'center',
@@ -737,6 +809,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
     lineHeight: 28,
+  },
+  wordTextCue: {
+    fontWeight: '900',
+    textDecorationLine: 'underline',
+    color: '#E05C2A',   // warm orange — contrasts with theme.button on all avatar themes
   },
 
   /* Hint */

@@ -8,14 +8,9 @@ import * as FileSystem from 'expo-file-system';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
+import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 
-const REC_OPTIONS = {
-  android: { extension: '.m4a', outputFormat: Audio.AndroidOutputFormat.MPEG_4, audioEncoder: Audio.AndroidAudioEncoder.AAC, sampleRate: 16000, numberOfChannels: 1, bitRate: 128000 },
-  ios:     { extension: '.m4a', outputFormat: Audio.IOSOutputFormat.MPEG4AAC, audioQuality: Audio.IOSAudioQuality.HIGH, sampleRate: 16000, numberOfChannels: 1, bitRate: 128000, linearPCMBitDepth: 16, linearPCMIsBigEndian: false, linearPCMIsFloat: false },
-  web:     { mimeType: 'audio/webm', bitsPerSecond: 128000 },
-};
-
-const P = { IDLE: 'idle', PLAYING: 'playing', RECORDING: 'recording', PROCESSING: 'processing', DONE: 'done' };
+const P = { IDLE: 'idle', PLAYING: 'playing', PROCESSING: 'processing', DONE: 'done' };
 
 async function playBase64Audio(base64, soundRef) {
   if (!base64) return;
@@ -70,11 +65,16 @@ export default function L2ProductionScreen({ route, navigation }) {
   const [feedback, setFeedback] = useState('');
 
   const soundRef  = useRef(null);
-  const recRef    = useRef(null);
 
   const currentAudio = section === 'full'
     ? sessionData?.full_paragraph?.audio_base64 ?? null
     : sentences[sxsIdx]?.audio_base64 ?? null;
+
+  const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
+    onStart: () => setFeedback(''),
+    onStop: uri => submitRecording(uri),
+    onError: () => setRecPhase(P.IDLE),
+  });
 
   // Reset recorder state when moving to next sentence / section
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function L2ProductionScreen({ route, navigation }) {
     return () => {
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
-      recRef.current?.stopAndUnloadAsync().catch(() => {});
+      resetRecorder();
     };
   }, [section, sxsIdx]);
 
@@ -96,30 +96,14 @@ export default function L2ProductionScreen({ route, navigation }) {
     setRecPhase(P.IDLE);
   }
 
-  async function handleRecordBtn() {
-    if (recPhase === P.RECORDING) { await submitRecording(); return; }
-    if (recPhase !== P.IDLE) return;
-    setFeedback('');
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') return;
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(REC_OPTIONS);
-      await rec.startAsync();
-      recRef.current = rec;
-      setRecPhase(P.RECORDING);
-    } catch { setRecPhase(P.IDLE); }
+  function handleRecordBtn() {
+    if (recorderState === 'idle' && recPhase !== P.IDLE) return;
+    toggleRecording();
   }
 
-  async function submitRecording() {
-    if (!recRef.current) return;
+  async function submitRecording(uri) {
     setRecPhase(P.PROCESSING);
     try {
-      await recRef.current.stopAndUnloadAsync();
-      const uri = recRef.current.getURI();
-      recRef.current = null;
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
       const b64 = await uriToBase64(uri);
       if (student?.sid && sessionId) {
         if (section === 'full') {
@@ -142,8 +126,8 @@ export default function L2ProductionScreen({ route, navigation }) {
   }
 
   const progress = section === 'full' ? 0.1 : 0.1 + (sxsIdx + 1) / sentences.length * 0.9;
-  const isRecording  = recPhase === P.RECORDING;
-  const isProcessing = recPhase === P.PROCESSING;
+  const isRecording  = recorderState === 'recording';
+  const isProcessing = recPhase === P.PROCESSING || recorderState === 'starting' || recorderState === 'stopping';
   const isPlaying    = recPhase === P.PLAYING;
 
   return (
@@ -152,6 +136,9 @@ export default function L2ProductionScreen({ route, navigation }) {
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>
             {section === 'full' ? 'Say the Whole Paragraph! 🌟' : `Sentence ${sxsIdx + 1} of ${sentences.length}`}
+          </Text>
+          <Text style={[styles.headerSinhala, { color: theme.headingText }]}>
+            {section === 'full' ? 'සම්පූර්ණ ඡේදය කියන්න! 🌟' : `වාක්‍යය ${sxsIdx + 1} / ${sentences.length}`}
           </Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.button }]} />
@@ -163,6 +150,9 @@ export default function L2ProductionScreen({ route, navigation }) {
             <View style={[styles.bubble, { backgroundColor: theme.cardSurface }]}>
               <Text style={[styles.bubbleText, { color: theme.headingText }]}>
                 {section === 'full' ? 'Can you say the whole paragraph?' : 'Now say this sentence!'}
+              </Text>
+              <Text style={[styles.bubbleSinhala, { color: theme.headingText }]}>
+                {section === 'full' ? 'සම්පූර්ණ ඡේදය කිව හැකිද?' : 'දැන් මෙම වාක්‍යය කියන්න!'}
               </Text>
               <View style={[styles.bubbleTail, { borderLeftColor: theme.cardSurface }]} />
             </View>
@@ -232,12 +222,14 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center' },
+  headerSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginTop: 2 },
   progressTrack: { width: '100%', height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
   scroll: { paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.md, gap: Layout.spacing.md },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   bubble: { flex: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
   bubbleText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, marginTop: 2 },
   bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
   avatar: { width: 90, height: 110 },
   textCard: { borderRadius: Layout.radius.xl, borderWidth: 2, padding: Layout.spacing.lg, gap: 8, ...Layout.shadow.sm },

@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,13 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
+
+const PHASE3_PROMPT_AUDIO = {
+  thank_you:     require('../../../../../assets/dialogue-audios/magic_words/Phase3_prompt_Thankyou.mp3'),
+  im_sorry:      require('../../../../../assets/dialogue-audios/magic_words/Phase3_prompt_Imsorry.mp3'),
+  youre_welcome: require('../../../../../assets/dialogue-audios/magic_words/Phase3_prompt_Yourewelcome.mp3'),
+  excuse_me:     require('../../../../../assets/dialogue-audios/magic_words/Phase3_prompt_Excuseme.mp3'),
+};
 
 const WORD_DISPLAY = {
   thank_you:        'Thank You',
@@ -54,7 +61,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong3.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong4.png'),
       },
-      captions: { correct: 'Anjalie says\nThank you', wrong1: 'They are playing\ntogether', wrong2: 'Anjalie is reading\na book' },
+      captions: { correct: 'Anjalie helps to pick up\nyour crayons', wrong1: 'They are playing\ntogether', wrong2: 'Anjalie and Saman are\nsinging' },
     },
     C: {
       images: {
@@ -77,33 +84,33 @@ const PHASE3_SCENARIOS = {
   im_sorry: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
       captions: { correct: 'Saman bumps into\nAnjalie', wrong1: 'They are laughing\ntogether', wrong2: 'Anjalie is reading\na book' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
       captions: { correct: 'Anjalie knocks over\nSaman\'s cup', wrong1: 'Saman is eating\nlunch', wrong2: 'They are playing\noutside' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
       captions: { correct: 'Saman breaks\nAnjalie\'s toy', wrong1: 'They are singing\ntogether', wrong2: 'Anjalie is drawing' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
       captions: { correct: 'Someone steps on\nanother\'s foot', wrong1: 'They are playing\na game', wrong2: 'Saman is reading\na book' },
     },
@@ -148,33 +155,33 @@ const PHASE3_SCENARIOS = {
   excuse_me: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
       captions: { correct: 'Saman needs to\npass by Anjalie', wrong1: 'They are laughing\ntogether', wrong2: 'Saman is eating\nlunch' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
       captions: { correct: 'Anjalie walks through\na crowd', wrong1: 'Saman is reading\na book', wrong2: 'They are drawing\ntogether' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
       captions: { correct: 'Saman needs to reach\nsomething behind Anjalie', wrong1: 'They are laughing\ntogether', wrong2: 'They are drawing\ntogether' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
       captions: { correct: 'Someone politely\npasses through a group', wrong1: 'Saman is eating\nlunch', wrong2: 'Saman is reading\na book' },
     },
@@ -228,6 +235,22 @@ export default function Phase3ContextualScreen({ route, navigation }) {
   const activeRef    = useRef(true);
   const settingsFade = useRef(new Animated.Value(0)).current;
   const [gatePurpose, setGatePurpose] = useState('settings');
+
+  // ── RC2 feature capture refs ──────────────────────────────────────────
+  const renderTimestampRef      = useRef(Date.now());
+  const responseLatencyRef      = useRef(null);
+  const firstTapCorrectRef      = useRef(null);
+  const selectionChangeCountRef = useRef(0);
+  const promptCountRef          = useRef(1);
+
+  useEffect(() => {
+    renderTimestampRef.current      = Date.now();
+    responseLatencyRef.current      = null;
+    firstTapCorrectRef.current      = null;
+    selectionChangeCountRef.current = 0;
+    promptCountRef.current          = 1;
+    playSound(PHASE3_PROMPT_AUDIO[wordKey]).catch(() => {});
+  }, [scenario]);
 
   // Rebuild image list whenever the scenario changes
   const imageItems = useMemo(
@@ -305,14 +328,22 @@ export default function Phase3ContextualScreen({ route, navigation }) {
     }
   }
 
-  function advanceFromScenario(label, wasCorrect) {
+  function advanceFromScenario(
+    label, wasCorrect, responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect,
+  ) {
     resultsRef.current[label] = wasCorrect;
 
-    // Record this scenario in the backend (fire-and-forget)
     dialogueApi.submitPhase3Scenario(
       student?.sid, wordId,
-      { scenarioLabel: label, selectedCorrect: wasCorrect, sessionId }
-    ).catch(() => {});
+      { scenarioLabel: label, selectedCorrect: wasCorrect, sessionId,
+        responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect }
+    ).catch((err) => {
+      // Was previously a silent no-op — this call's real-world failure rate turned out
+      // to be ~100% (zero scenario rows ever landed for real pilot data), with no way
+      // to tell why. Logging here so the next round of real usage actually surfaces
+      // the cause instead of staying a black box.
+      console.warn('[Phase3Scenario] submitPhase3Scenario failed:', label, err?.response?.status, err?.response?.data ?? err?.message);
+    });
 
     // Determine next step
     if (label === 'A') {
@@ -359,19 +390,43 @@ export default function Phase3ContextualScreen({ route, navigation }) {
 
   // ── Image tap handler ─────────────────────────────────────────────────────
 
-  async function handleImageTap(item) {
+  function handleImageTap(item) {
     if (settled) return;
+
+    if (selectedId === null) {
+      responseLatencyRef.current = Date.now() - renderTimestampRef.current;
+      firstTapCorrectRef.current = item.isCorrect;
+    } else if (selectedId !== item.id) {
+      selectionChangeCountRef.current += 1;
+    }
+
     setSelectedId(item.id);
+  }
+
+  async function handleConfirmSelection() {
+    if (settled || selectedId === null) return;
     setSettled(true);
 
-    if (item.isCorrect) {
+    const chosen = imageItems.find(i => i.id === selectedId);
+    if (chosen?.isCorrect) {
       setCloudText('Great job!');
       await playSound(AUDIO_GOOD_JOB).catch(() => {});
     } else {
       setCloudText("Let's try the next one!");
     }
 
-    advanceFromScenario(scenario, item.isCorrect);
+    const selectionChangeCount = Math.min(selectionChangeCountRef.current, 2);
+    advanceFromScenario(
+      scenario, !!chosen?.isCorrect,
+      responseLatencyRef.current, selectionChangeCount,
+      promptCountRef.current, firstTapCorrectRef.current,
+    );
+  }
+
+  function handleHearAgain() {
+    if (settled) return;
+    promptCountRef.current += 1;
+    playSound(PHASE3_PROMPT_AUDIO[wordKey]).catch(() => {});
   }
 
   // ── Settings ──────────────────────────────────────────────────────────────
@@ -381,7 +436,11 @@ export default function Phase3ContextualScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('DialogueCategory', { student });
+      }
       return;
     }
     setShowSettings(true);
@@ -451,6 +510,9 @@ export default function Phase3ContextualScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               {`Select the image where we can use the word '${wordLabel}'`}
             </Text>
+            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
+              {`'${wordLabel}' වචනය භාවිතා කළ හැකි රූපය තෝරන්න`}
+            </Text>
 
             {/* ── Image cards ── */}
             {isVerticalLayout ? (
@@ -461,8 +523,9 @@ export default function Phase3ContextualScreen({ route, navigation }) {
               >
                 {imageItems.map(item => {
                   const isSelected      = selectedId === item.id;
-                  const showGreenBorder = isSelected && item.isCorrect;
-                  const showRedDim      = isSelected && !item.isCorrect;
+                  const showProvisional = isSelected && !settled;
+                  const showGreenBorder = isSelected && settled && item.isCorrect;
+                  const showRedDim      = isSelected && settled && !item.isCorrect;
                   return (
                     <TouchableOpacity
                       key={item.id}
@@ -471,6 +534,7 @@ export default function Phase3ContextualScreen({ route, navigation }) {
                       style={[
                         styles.imageCard,
                         { width: cardW, backgroundColor: theme.cardSurface },
+                        showProvisional && { borderColor: theme.button, borderWidth: 3 },
                         showGreenBorder && styles.cardCorrect,
                         showRedDim      && styles.cardWrong,
                       ]}
@@ -494,8 +558,9 @@ export default function Phase3ContextualScreen({ route, navigation }) {
               <View style={styles.cardsRow}>
                 {imageItems.map(item => {
                   const isSelected      = selectedId === item.id;
-                  const showGreenBorder = isSelected && item.isCorrect;
-                  const showRedDim      = isSelected && !item.isCorrect;
+                  const showProvisional = isSelected && !settled;
+                  const showGreenBorder = isSelected && settled && item.isCorrect;
+                  const showRedDim      = isSelected && settled && !item.isCorrect;
                   return (
                     <TouchableOpacity
                       key={item.id}
@@ -504,6 +569,7 @@ export default function Phase3ContextualScreen({ route, navigation }) {
                       style={[
                         styles.imageCard,
                         { width: cardW, backgroundColor: theme.cardSurface },
+                        showProvisional && { borderColor: theme.button, borderWidth: 3 },
                         showGreenBorder && styles.cardCorrect,
                         showRedDim      && styles.cardWrong,
                       ]}
@@ -524,6 +590,26 @@ export default function Phase3ContextualScreen({ route, navigation }) {
                 })}
               </View>
             )}
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                onPress={handleHearAgain}
+                disabled={settled}
+                style={[styles.hearAgainButton, { borderColor: theme.button }]}
+              >
+                <Ionicons name="volume-high-outline" size={16} color={theme.button} />
+                <Text style={[styles.hearAgainText, { color: theme.button }]}>Hear it again</Text>
+              </TouchableOpacity>
+              {selectedId !== null && !settled && (
+                <TouchableOpacity
+                  onPress={handleConfirmSelection}
+                  style={[styles.confirmButton, { backgroundColor: theme.button }]}
+                >
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             {!isVerticalLayout && <View style={{ flex: 1 }} />}
 
@@ -633,6 +719,12 @@ const styles = StyleSheet.create({
     marginBottom: Layout.spacing.xs,
   },
   subtitle: {
+    fontSize:     Layout.fontSize.sm,
+    textAlign:    'center',
+    opacity:      0.65,
+    marginBottom: Layout.spacing.xs,
+  },
+  subtitleSinhala: {
     fontSize:     Layout.fontSize.sm,
     textAlign:    'center',
     opacity:      0.65,
@@ -782,4 +874,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEE',
     marginVertical:  4,
   },
+
+  actionRow: {
+    flexDirection:  'row',
+    justifyContent: 'center',
+    alignItems:     'center',
+    gap:            Layout.spacing.md,
+    marginTop:      Layout.spacing.md,
+  },
+  hearAgainButton: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical:   8,
+    borderRadius:      Layout.radius.full,
+    borderWidth:       1.5,
+  },
+  hearAgainText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.bold },
+  confirmButton: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical:   8,
+    borderRadius:      Layout.radius.full,
+  },
+  confirmButtonText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#FFFFFF' },
 });

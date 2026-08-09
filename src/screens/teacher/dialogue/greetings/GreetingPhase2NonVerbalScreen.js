@@ -61,39 +61,39 @@ const NV_IMAGES = {
     wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/context_wrong2.png'),
   },
   good_afternoon: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
   },
   good_night: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/good_night/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
   },
   happy_birthday: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
   },
   how_are_you: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
   },
   im_fine: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
   },
   happy_new_year: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
   },
 };
 
 const NV_CAPTIONS = {
-  hello:          ['Friends greeting\neach other',        'A child studying\nalone',            'A child eating\nlunch'],
+  hello:          ['Friends greeting\neach other',        'A child saying\nGoodbye',            'A child eating\nlunch'],
   goodbye:        ['Waving goodbye\nat the door',         'Playing at\nthe park',               'Eating dinner\ntogether'],
   good_morning:   ['Morning greeting\nat school',         'Playing in\nthe evening',            'Reading a book\nat night'],
   good_afternoon: ['Afternoon greeting\nafter school',    'Having breakfast\nin the morning',   'Playing outside\nat night'],
@@ -146,11 +146,18 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
   const apiCalledRef  = useRef(false);
   const settingsFade  = useRef(new Animated.Value(0)).current;
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => {
@@ -259,7 +266,7 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
     <View style={styles.root}>
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
@@ -286,6 +293,9 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
 
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Look at the pictures and tap the correct scene
+            </Text>
+            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
+              රූප බලා නිවැරදි දර්ශනය ස්පර්ශ කරන්න
             </Text>
 
             <View style={styles.cardsRow}>
@@ -399,7 +409,8 @@ const styles = StyleSheet.create({
   },
 
   title: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, textAlign: 'center', marginBottom: Layout.spacing.xs },
-  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
+  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xs },
+  subtitleSinhala: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
   cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.sm },
   imageCard: {

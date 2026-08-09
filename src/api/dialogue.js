@@ -17,6 +17,11 @@ export const dialogueApi = {
     return data;
   },
 
+  async getWordById(wordId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_WORD_BY_ID(wordId));
+    return data;
+  },
+
   async recordPhase1Exposure(studentId, wordId) {
     const { data } = await client.post(
       ENDPOINTS.DIALOGUE_LEVEL1_PHASE1_EXPOSURE(studentId, wordId)
@@ -32,36 +37,50 @@ export const dialogueApi = {
     return data;
   },
 
-  async recordPhase2Nonverbal(studentId, wordId, { imageSelectedCorrect, sessionId }) {
+  async recordPhase2Nonverbal(studentId, wordId, { imageSelectedCorrect, sessionId, isProbe = false }) {
     const { data } = await client.post(
       ENDPOINTS.DIALOGUE_LEVEL1_PHASE2_NONVERBAL(studentId, wordId),
       {
         image_selected_correct: imageSelectedCorrect,
         session_id:             sessionId ?? undefined,
+        // omitted (not `false`) when not a probe, so every existing non-probe
+        // caller's request body is byte-identical to before this was added
+        is_probe:                isProbe || undefined,
       }
     );
     return data;
   },
 
-  async assessPhase2Speech(studentId, wordId, { audioBase64, mimeType, sessionId }) {
+  async assessPhase2Speech(studentId, wordId, {
+    audioBase64, mimeType, sessionId, avatarAudioEndTs, recordingStartTs,
+  }) {
     const { data } = await client.post(
       ENDPOINTS.DIALOGUE_LEVEL1_PHASE2_ASSESS(studentId, wordId),
       {
-        audio_base64: audioBase64,
-        mime_type:    mimeType,
-        session_id:   sessionId ?? undefined,
+        audio_base64:        audioBase64,
+        mime_type:           mimeType,
+        session_id:          sessionId ?? undefined,
+        avatar_audio_end_ts: avatarAudioEndTs ?? undefined,
+        recording_start_ts:  recordingStartTs ?? undefined,
       }
     );
     return data;
   },
 
-  async submitPhase3Scenario(studentId, wordId, { scenarioLabel, selectedCorrect, sessionId }) {
+  async submitPhase3Scenario(studentId, wordId, {
+    scenarioLabel, selectedCorrect, sessionId,
+    responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect,
+  }) {
     const { data } = await client.post(
       ENDPOINTS.DIALOGUE_LEVEL1_PHASE3_SCENARIO(studentId, wordId),
       {
-        scenario_label:   scenarioLabel,
-        selected_correct: selectedCorrect,
-        session_id:       sessionId ?? undefined,
+        scenario_label:         scenarioLabel,
+        selected_correct:       selectedCorrect,
+        session_id:             sessionId ?? undefined,
+        response_latency_ms:    responseLatencyMs ?? undefined,
+        selection_change_count: selectionChangeCount ?? 0,
+        prompt_count:           promptCount ?? 1,
+        first_tap_correct:      firstTapCorrect ?? undefined,
       }
     );
     return data;
@@ -73,6 +92,31 @@ export const dialogueApi = {
       {
         phase3_passed: phase3Passed,
         session_id:    sessionId ?? undefined,
+      }
+    );
+    return data;
+  },
+
+  async getTrajectory(studentId, wordId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_TRAJECTORY(studentId, wordId));
+    return data;
+  },
+
+  // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend)
+  async getProbeCandidate(studentId, category) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_PROBE_CANDIDATE(studentId), {
+      params: category != null ? { category } : undefined,
+    });
+    return data;
+  },
+
+  async recordProbeResult(studentId, wordId, { audioBase64, mimeType, sessionId }) {
+    const { data } = await client.post(
+      ENDPOINTS.DIALOGUE_PROBE_RESULT(studentId, wordId),
+      {
+        audio_base64: audioBase64,
+        mime_type:    mimeType,
+        session_id:   sessionId ?? undefined,
       }
     );
     return data;

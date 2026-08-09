@@ -18,6 +18,21 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { DIALOGUE_WORD_ASSETS } from '../../../../constants/dialogueAssets';
+
+const WORD_LABELS = {
+  thank_you:     'Thank You',
+  im_sorry:      "I'm Sorry",
+  youre_welcome: "You're Welcome",
+  excuse_me:     'Excuse Me',
+};
+
+const WORD_AUDIO = {
+  thank_you:     require('../../../../../assets/dialogue-audios/magic_words/Thankyou.mp3'),
+  im_sorry:      require('../../../../../assets/dialogue-audios/magic_words/Im_sorry.mp3'),
+  youre_welcome: require('../../../../../assets/dialogue-audios/magic_words/you_re_welcome.mp3'),
+  excuse_me:     require('../../../../../assets/dialogue-audios/magic_words/Excuse_me.mp3'),
+};
 
 const THANK_YOU_VIDEOS = [
   {
@@ -112,8 +127,7 @@ export default function Phase1VideoScreen({ route, navigation }) {
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBack();
       return true;
     });
     return () => sub.remove();
@@ -150,12 +164,19 @@ export default function Phase1VideoScreen({ route, navigation }) {
     }
   }
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   function goBack() {
     if (videoIndex > startIndex) {
       setVideoIndex(videoIndex - 1);
     } else {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
     }
   }
 
@@ -163,7 +184,16 @@ export default function Phase1VideoScreen({ route, navigation }) {
     if (videoIndex < videos.length - 1) {
       setVideoIndex(videoIndex + 1);
     } else {
-      navigation.navigate('DragToLine', { student, wordKey, wordId, attempt: 1 });
+      navigation.navigate('AnimatedWord', {
+        student,
+        wordText: WORD_LABELS[wordKey] ?? wordKey.replace(/_/g, ' '),
+        wordImage: DIALOGUE_WORD_ASSETS[wordKey]?.scene,
+        wordAudio: WORD_AUDIO[wordKey],
+        wordId,
+        trackExposure: true,
+        nextScreen: 'DragToLine',
+        nextParams: { student, wordKey, wordId, attempt: 1 },
+      });
     }
   }
 
@@ -289,7 +319,7 @@ export default function Phase1VideoScreen({ route, navigation }) {
             <View style={styles.btnRow}>
               {!hasFinished && (
                 <Text style={[styles.watchHint, { color: theme.headingText }]}>
-                  Watch the video to continue
+                  Watch the video to continue  ·  ඉදිරියට යාමට වීඩියෝව නරඹන්න
                 </Text>
               )}
               <TouchableOpacity

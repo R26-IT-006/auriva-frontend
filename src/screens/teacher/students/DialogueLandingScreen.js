@@ -17,7 +17,6 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 const LEVELS = [
   { key: 'level1', label: 'Level 1 - Dialogue word Learning' },
   { key: 'level2', label: 'Level 2 - Sentence Construction' },
-  { key: 'level3', label: 'Level 3 - Conversation Builder' },
 ];
 
 export default function DialogueLandingScreen({ route, navigation }) {

@@ -38,11 +38,14 @@ const CATEGORIES = [
     gradient: ['#7DD3FC', '#38BDF8'],
   },
   {
-    key: 'days_of_week',
-    label: 'Days of the Week',
-    subtitle: 'A journey through time!',
+    key: 'evaluations',
+    label: 'Evaluations',
+    subtitle: 'Show what you\'ve learned!',
+    // No bespoke Evaluations icon exists yet (later asset task); reusing
+    // days_of_the_week.png as the most neutral unused asset in dialogue-icons/
+    // (magic words / greetings / activities are all already claimed above).
     icon: require('../../../../assets/dialogue-icons/days_of_the_week.png'),
-    gradient: ['#FCD34D', '#FB923C'],
+    gradient: ['#FDE68A', '#F59E0B'],
   },
 ];
 
@@ -121,8 +124,8 @@ export default function DialogueCategoryScreen({ route, navigation }) {
                       activeOpacity={0.85}
                       style={[styles.card, ci === 1 && { marginLeft: GAP }]}
                       onPress={() =>
-                        cat.key === 'days_of_week'
-                          ? navigation.navigate('DaysMenuScreen', { student })
+                        cat.key === 'evaluations'
+                          ? navigation.navigate('EvaluationMenu', { student })
                           : navigation.navigate('Level1Overview', { student, categoryKey: cat.key })
                       }
                     >

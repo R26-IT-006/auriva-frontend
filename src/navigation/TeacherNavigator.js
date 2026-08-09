@@ -17,6 +17,10 @@ import TeacherReportScreen from "../screens/handwriting/reports/TeacherReportScr
 import DialogueLandingScreen      from '../screens/teacher/students/DialogueLandingScreen';
 import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
+import AnimatedWordScreen         from '../screens/teacher/dialogue/AnimatedWordScreen';
+import BoldWordScreen             from '../screens/teacher/dialogue/BoldWordScreen';
+import ProbeProductionScreen      from '../screens/teacher/dialogue/ProbeProductionScreen';
+import ProbeRetentionCheckScreen  from '../screens/teacher/dialogue/ProbeRetentionCheckScreen';
 import MagicWordLandingScreen     from '../screens/teacher/dialogue/magic-words/MagicWordLandingScreen';
 import Phase1VideoScreen          from '../screens/teacher/dialogue/magic-words/Phase1VideoScreen';
 import DragToLineScreen           from '../screens/teacher/dialogue/magic-words/DragToLineScreen';
@@ -35,14 +39,6 @@ import Cat3Phase2Screen               from '../screens/teacher/dialogue/abilitie
 import Cat3Phase2NonVerbalScreen      from '../screens/teacher/dialogue/abilities/Cat3Phase2NonVerbalScreen';
 import Cat3Phase3Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase3Screen';
 import Cat3WordCompleteScreen         from '../screens/teacher/dialogue/abilities/Cat3WordCompleteScreen';
-import DaysLandingScreen          from '../screens/teacher/dialogue/days-of-week/DaysLandingScreen';
-import DaysPhase1CalendarScreen   from '../screens/teacher/dialogue/days-of-week/DaysPhase1CalendarScreen';
-import DaysDragToLineScreen       from '../screens/teacher/dialogue/days-of-week/DaysDragToLineScreen';
-import DaysPhase2ProductionScreen from '../screens/teacher/dialogue/days-of-week/DaysPhase2ProductionScreen';
-import DaysPhase2NonVerbalScreen  from '../screens/teacher/dialogue/days-of-week/DaysPhase2NonVerbalScreen';
-import DaysPhase3SequenceScreen   from '../screens/teacher/dialogue/days-of-week/DaysPhase3SequenceScreen';
-import DaysSpinningWheelScreen    from '../screens/teacher/dialogue/days-of-week/DaysSpinningWheelScreen';
-import DaysMenuScreen             from '../screens/teacher/dialogue/days-of-week/DaysMenuScreen';
 import GreetingLandingScreen      from '../screens/teacher/dialogue/greetings/GreetingLandingScreen';
 import GreetingPhase1VideoScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase1VideoScreen';
 import GreetingDragToLineScreen   from '../screens/teacher/dialogue/greetings/GreetingDragToLineScreen';
@@ -51,11 +47,16 @@ import GreetingPhase2ProductionScreen from '../screens/teacher/dialogue/greeting
 import GreetingPhase2NonVerbalScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase2NonVerbalScreen';
 import GreetingPhase3ContextualScreen from '../screens/teacher/dialogue/greetings/GreetingPhase3ContextualScreen';
 
+// Evaluations (TASK-15)
+import EvaluationMenuScreen  from '../screens/teacher/dialogue/evaluations/EvaluationMenuScreen';
+import EvaluationMatchScreen from '../screens/teacher/dialogue/evaluations/EvaluationMatchScreen';
+
 // Level 2 – Sentence Construction
 import L2TopicSelectionScreen  from '../screens/teacher/dialogue/level2/L2TopicSelectionScreen';
 import L2QuestionnaireScreen   from '../screens/teacher/dialogue/level2/L2QuestionnaireScreen';
 import L2LoadingScreen         from '../screens/teacher/dialogue/level2/L2LoadingScreen';
 import L2ContrastiveScreen     from '../screens/teacher/dialogue/level2/L2ContrastiveScreen';
+import L2SentencePathScreen    from '../screens/teacher/dialogue/level2/L2SentencePathScreen';
 import L2SentenceTeachScreen   from '../screens/teacher/dialogue/level2/L2SentenceTeachScreen';
 import L2ListenTogetherScreen  from '../screens/teacher/dialogue/level2/L2ListenTogetherScreen';
 import L2ProductionScreen      from '../screens/teacher/dialogue/level2/L2ProductionScreen';
@@ -74,6 +75,7 @@ import Tier3VideoScreen              from '../screens/teacher/concept/Tier3Video
 import ConceptColoringScreen              from '../screens/teacher/concept/ConceptColoringScreen';
 import ConceptActivityScreen              from '../screens/teacher/concept/ConceptActivityScreen';
 import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
+import L2PortraitScreen        from '../screens/teacher/dialogue/level2/L2PortraitScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -201,6 +203,13 @@ export default function TeacherNavigator() {
       <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
       <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
       <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
+      <Stack.Screen name="AnimatedWord"      component={AnimatedWordScreen} />
+      <Stack.Screen name="BoldWord"          component={BoldWordScreen} />
+
+      {/* Rule 5 — periodic production probe (TASK-39), shared across all 3 categories */}
+      <Stack.Screen name="ProbeProduction"     component={ProbeProductionScreen} />
+      <Stack.Screen name="ProbeRetentionCheck" component={ProbeRetentionCheckScreen} />
+
       <Stack.Screen name="MagicWordLanding"  component={MagicWordLandingScreen} />
       <Stack.Screen name="Phase1Video"       component={Phase1VideoScreen} />
       <Stack.Screen name="DragToLine"        component={DragToLineScreen} />
@@ -229,25 +238,22 @@ export default function TeacherNavigator() {
       <Stack.Screen name="GreetingPhase2NonVerbal"    component={GreetingPhase2NonVerbalScreen} />
       <Stack.Screen name="GreetingPhase3Contextual"   component={GreetingPhase3ContextualScreen} />
 
-      {/* Days of the Week */}
-      <Stack.Screen name="DaysMenuScreen"        component={DaysMenuScreen} />
-      <Stack.Screen name="DaysLanding"          component={DaysLandingScreen} />
-      <Stack.Screen name="DaysPhase1Calendar"   component={DaysPhase1CalendarScreen} />
-      <Stack.Screen name="DaysDragToLine"       component={DaysDragToLineScreen} />
-      <Stack.Screen name="DaysPhase2Production" component={DaysPhase2ProductionScreen} />
-      <Stack.Screen name="DaysPhase2NonVerbal"  component={DaysPhase2NonVerbalScreen} />
-      <Stack.Screen name="DaysPhase3Sequence"   component={DaysPhase3SequenceScreen} />
-      <Stack.Screen name="DaysSpinningWheel"    component={DaysSpinningWheelScreen} />
+      {/* Evaluations */}
+      <Stack.Screen name="EvaluationMenu"   component={EvaluationMenuScreen} />
+      <Stack.Screen name="EvaluationMatch"  component={EvaluationMatchScreen} />
 
       {/* Level 2 – Sentence Construction */}
       <Stack.Screen name="L2TopicSelection"  component={L2TopicSelectionScreen} />
       <Stack.Screen name="L2Questionnaire"   component={L2QuestionnaireScreen} />
       <Stack.Screen name="L2Loading"         component={L2LoadingScreen} />
       <Stack.Screen name="L2Contrastive"     component={L2ContrastiveScreen} />
+      <Stack.Screen name="L2SentencePath"    component={L2SentencePathScreen} />
       <Stack.Screen name="L2SentenceTeach"   component={L2SentenceTeachScreen} />
       <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />
       <Stack.Screen name="L2Production"      component={L2ProductionScreen} />
       <Stack.Screen name="L2SessionComplete" component={L2SessionCompleteScreen} />
+      <Stack.Screen name="L2Portrait"        component={L2PortraitScreen} />
+
     </Stack.Navigator>
   );
 }

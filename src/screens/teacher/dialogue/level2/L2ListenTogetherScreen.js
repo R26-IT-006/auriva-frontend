@@ -77,7 +77,7 @@ export default function L2ListenTogetherScreen({ route, navigation }) {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>Listen Together 🎧</Text>
-          <Text style={[styles.headerSub, { color: theme.headingText }]}>Section 7 · Hear the full paragraph</Text>
+          <Text style={[styles.headerSub, { color: theme.headingText }]}>Section 7 · Hear the full paragraph  ·  කොටස 7 · සම්පූර්ණ ඡේදය අසන්න</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -86,6 +86,7 @@ export default function L2ListenTogetherScreen({ route, navigation }) {
           <View style={styles.avatarRow}>
             <View style={[styles.bubble, { backgroundColor: theme.cardSurface }]}>
               <Text style={[styles.bubbleText, { color: theme.headingText }]}>Let's listen together!</Text>
+              <Text style={[styles.bubbleSinhala, { color: theme.headingText }]}>එකට සවන් දෙමු!</Text>
               <View style={[styles.bubbleTail, { borderLeftColor: theme.cardSurface }]} />
             </View>
             <Animated.Image source={avatarImg} style={[styles.avatar, { transform: [{ scale: pulse }] }]} resizeMode="contain" />
@@ -135,7 +136,7 @@ export default function L2ListenTogetherScreen({ route, navigation }) {
 
           {/* CTA */}
           <TouchableOpacity style={[styles.nextBtn, { backgroundColor: theme.button }]} onPress={goToProduction} activeOpacity={0.85}>
-            <Text style={[styles.nextText, { color: theme.buttonText }]}>Now it's your turn!</Text>
+            <Text style={[styles.nextText, { color: theme.buttonText }]}>Now it's your turn!  ·  දැන් ඔබේ වාරයයි!</Text>
             <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
           </TouchableOpacity>
 
@@ -156,6 +157,7 @@ const styles = StyleSheet.create({
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end', gap: 8 },
   bubble: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative', flex: 1 },
   bubbleText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, marginTop: 2 },
   bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
   avatar: { width: 90, height: 110 },
   audioBox: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, borderRadius: Layout.radius.xl, borderWidth: 2, borderStyle: 'dashed', padding: Layout.spacing.md },

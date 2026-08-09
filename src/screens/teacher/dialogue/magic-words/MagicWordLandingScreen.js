@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Modal,
   Animated,
   BackHandler,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +17,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import ProbeBanner from '../../../../components/common/ProbeBanner';
+import { dialogueApi } from '../../../../api/dialogue';
 
 const WORD_LABELS = {
   thank_you:        'THANK YOU',
@@ -41,6 +44,10 @@ export default function MagicWordLandingScreen({ route, navigation }) {
   const avatarKey = student?.avatar_key ?? 'lily';
   const videoSource = AVATAR_DANCING_VIDEOS[avatarKey] ?? AVATAR_DANCING_VIDEOS.lily;
 
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const videoWidth  = Math.min(screenWidth * 0.6, screenHeight * 0.45 * (3 / 4));
+  const videoHeight = videoWidth * (4 / 3);
+
   const videoRef = useRef(null);
 
   const [showGate, setShowGate]         = useState(false);
@@ -48,12 +55,42 @@ export default function MagicWordLandingScreen({ route, navigation }) {
   const [gatePurpose, setGatePurpose]   = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
 
+  // Rule 5 — periodic production probe (TASK-39). Purely additive: failure
+  // or "nothing due" both just mean no banner, never an error state — this
+  // never touches the screen's existing word/video/next-button behaviour.
+  const [probeCandidate, setProbeCandidate] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!student?.sid) return undefined;
+    dialogueApi.getProbeCandidate(student.sid, 'magic_words')
+      .then((res) => { if (!cancelled && res?.word_id) setProbeCandidate(res); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [student?.sid]);
+
+  function goToProbe() {
+    navigation.navigate('ProbeProduction', {
+      student,
+      category: 'magic_words',
+      wordId:   probeCandidate.word_id,
+      word:     probeCandidate.word,
+      assetKey: probeCandidate.asset_key,
+    });
+  }
+
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   // Stop audio when navigating away; also intercept Android hardware back
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        setGatePurpose('back');
-        setShowGate(true);
+        goBackSmart();
         return true;
       });
       return () => {
@@ -103,7 +140,7 @@ export default function MagicWordLandingScreen({ route, navigation }) {
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <TouchableOpacity
-            onPress={() => { setGatePurpose('back'); setShowGate(true); }}
+            onPress={goBackSmart}
             activeOpacity={0.7}
             style={styles.headerSide}
           >
@@ -125,6 +162,16 @@ export default function MagicWordLandingScreen({ route, navigation }) {
         </View>
       </SafeAreaView>
 
+      {/* ── Probe banner (Rule 5 check-in, TASK-39) ─────────── */}
+      {probeCandidate && (
+        <ProbeBanner
+          wordLabel={WORD_LABELS[probeCandidate.asset_key] ?? probeCandidate.word}
+          theme={theme}
+          onPress={goToProbe}
+          onDismiss={() => setProbeCandidate(null)}
+        />
+      )}
+
       {/* ── Body ──────────────────────────────────────────── */}
       <View style={[styles.gradient, { backgroundColor: theme.background }]}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -133,17 +180,20 @@ export default function MagicWordLandingScreen({ route, navigation }) {
             <Text style={[styles.title, { color: theme.headingText }]}>
               {"Let's learn the word"}
             </Text>
+            <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
+              වචනය ඉගෙනගනිමු!
+            </Text>
             <Text style={[styles.wordHighlight, { color: theme.button }]}>
               "{wordLabel}"
             </Text>
 
             {/* Avatar dancing video */}
-            <View style={styles.videoWrapper}>
+            <View style={[styles.videoWrapper, { width: videoWidth, height: videoHeight }]}>
               <Video
                 ref={videoRef}
                 source={videoSource}
                 style={styles.video}
-                resizeMode={ResizeMode.CONTAIN}
+                resizeMode={ResizeMode.COVER}
                 shouldPlay
                 isLooping
                 isMuted={false}
@@ -244,6 +294,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.75,
   },
+  titleSinhala: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.65,
+  },
   wordHighlight: {
     fontSize: 28,
     fontWeight: '900',
@@ -253,12 +309,9 @@ const styles = StyleSheet.create({
   },
 
   videoWrapper: {
-    width: '100%',
-    maxWidth: 320,
-    height: 280,
     borderRadius: Layout.radius.xl,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'transparent',
     marginBottom: Layout.spacing.xl,
     ...Layout.shadow.sm,
   },

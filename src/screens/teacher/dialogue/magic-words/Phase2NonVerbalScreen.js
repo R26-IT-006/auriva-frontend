@@ -44,9 +44,9 @@ const NV_IMAGES = {
     wrong2:  require('../../../../../assets/dialogue-images/Non-verbal/thankyou_NV_wrong2.png'),
   },
   im_sorry: {
-    correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
   },
   // youre_welcome uses comic-strip images stacked vertically
   youre_welcome: {
@@ -55,15 +55,15 @@ const NV_IMAGES = {
     wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong2.png'),
   },
   excuse_me: {
-    correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_wrong_2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
   },
 };
 
 // Image captions per word — update once artwork filenames are confirmed
 const NV_CAPTIONS = {
-  thank_you:        ['Anjalie receives\na present',  'Saman is eating\nbreakfast',  'Saman is crying\nafter he fell'],
+  thank_you:        ['Anjalie receives\na present',  'Saman is reading\na book',  'Anjalie and Saman are\nplaying'],
   im_sorry:         ['Saman bumps into\nAnjalie',    'They are drawing\ntogether',  'Anjalie is eating\nher lunch'],
   youre_welcome:    ["Anjalie says\n'Thank you'",    'Anjalie is sleeping',         'They are running\noutside'],
   excuse_me:        ['Saman needs to\npass by',     'Anjalie is drawing',          'Saman is playing\nwith toys'],
@@ -117,11 +117,18 @@ export default function Phase2NonVerbalScreen({ route, navigation }) {
   const settingsFade  = useRef(new Animated.Value(0)).current;
   const [gatePurpose, setGatePurpose] = useState('settings');
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     activeRef.current = true;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => {
@@ -241,7 +248,7 @@ export default function Phase2NonVerbalScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
@@ -269,6 +276,9 @@ export default function Phase2NonVerbalScreen({ route, navigation }) {
 
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Look at the pictures and tap the correct scene
+            </Text>
+            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
+              රූප බලා නිවැරදි දර්ශනය ස්පර්ශ කරන්න
             </Text>
 
             {/* ── 3 image cards ── */}
@@ -444,6 +454,12 @@ const styles = StyleSheet.create({
     fontSize:    Layout.fontSize.sm,
     textAlign:   'center',
     opacity:     0.65,
+    marginBottom: Layout.spacing.xs,
+  },
+  subtitleSinhala: {
+    fontSize:     Layout.fontSize.sm,
+    textAlign:    'center',
+    opacity:      0.65,
     marginBottom: Layout.spacing.xl,
   },
 

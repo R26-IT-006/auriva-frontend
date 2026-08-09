@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,18 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
+
+const PHASE3_PROMPT_AUDIO = {
+  hello:          require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Hello.mp3'),
+  goodbye:        require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodbye.mp3'),
+  good_morning:   require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodmorning.mp3'),
+  good_afternoon: require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodafternoon.mp3'),
+  good_night:     require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodnight.mp3'),
+  happy_birthday: require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Happybirthday.mp3'),
+  how_are_you:    require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Howareyou.mp3'),
+  im_fine:        require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Imfine.mp3'),
+  happy_new_year: require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Happynewyear.mp3'),
+};
 
 const WORD_DISPLAY = {
   hello:          'Hello',
@@ -48,7 +60,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
-      captions: { correct: 'Friends greeting\neach other', wrong1: 'A child eating\nlunch alone', wrong2: 'A child studying\nat home' },
+      captions: { correct: 'Friends greeting\neach other', wrong1: 'A child saying\nGoodbye', wrong2: 'A child eating\nlunch' },
     },
     B: {
       images: {
@@ -56,7 +68,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong3.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong4.png'),
       },
-      captions: { correct: 'Meeting a teacher\nat school', wrong1: 'Playing alone\nin the garden', wrong2: 'Reading a book\nin the library' },
+      captions: { correct: 'Meeting a teacher\nat school', wrong1: 'Playing \nin the garden', wrong2: 'Singing with your\nfriend' },
     },
     C: {
       images: {
@@ -64,7 +76,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong3.png'),
       },
-      captions: { correct: 'Waving hello\nto a neighbour', wrong1: 'A child eating\nlunch alone', wrong2: 'Playing alone\nin the garden' },
+      captions: { correct: 'Waving hello\nto a neighbour', wrong1: 'A child waving\nGoodbye', wrong2: 'Playing \nin the garden' },
     },
     checkpoint: {
       images: {
@@ -149,33 +161,33 @@ const PHASE3_SCENARIOS = {
   good_afternoon: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Afternoon greeting\nafter school', wrong1: 'Having breakfast\nwith family', wrong2: 'Playing outside\nat night' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Meeting teacher\nafter lunch', wrong1: 'Playing outside\nat night', wrong2: 'Having breakfast\nwith family' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Greeting a neighbour\nin the afternoon', wrong1: 'Having breakfast\nwith family', wrong2: 'Playing outside\nat night' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Someone returns\nhome in the afternoon', wrong1: 'Playing outside\nat night', wrong2: 'Having breakfast\nwith family' },
     },
@@ -184,33 +196,33 @@ const PHASE3_SCENARIOS = {
   good_night: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/good_night/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Going to bed\nat night', wrong1: 'Playing outside\nin the morning', wrong2: 'Having lunch\ntogether' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/good_night/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Saying goodnight\nto parents', wrong1: 'Having lunch\ntogether', wrong2: 'Playing outside\nin the morning' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/good_night/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Turning off the light\nbefore sleeping', wrong1: 'Playing outside\nin the morning', wrong2: 'Having lunch\ntogether' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/good_night/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_night/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Hugging parents\nbefore bed', wrong1: 'Having lunch\ntogether', wrong2: 'Playing outside\nin the morning' },
     },
@@ -219,33 +231,33 @@ const PHASE3_SCENARIOS = {
   happy_birthday: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Birthday party\nwith friends', wrong1: 'Eating lunch\ntogether', wrong2: 'Playing football\noutside' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Giving a birthday\ncard to a friend', wrong1: 'Playing football\noutside', wrong2: 'Eating lunch\ntogether' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Everyone singing\nfor the birthday person', wrong1: 'Eating lunch\ntogether', wrong2: 'Playing football\noutside' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Blowing out\nbirthday candles', wrong1: 'Playing football\noutside', wrong2: 'Eating lunch\ntogether' },
     },
@@ -254,33 +266,33 @@ const PHASE3_SCENARIOS = {
   how_are_you: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Asking a friend\nhow they are feeling', wrong1: 'Playing alone\noutside', wrong2: 'Eating dinner\nquietly' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Teacher asking\nthe class "How are you?"', wrong1: 'Eating dinner\nquietly', wrong2: 'Playing alone\noutside' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Calling a friend\non the phone', wrong1: 'Playing alone\noutside', wrong2: 'Eating dinner\nquietly' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Greeting someone\nyou haven\'t seen in a while', wrong1: 'Eating dinner\nquietly', wrong2: 'Playing alone\noutside' },
     },
@@ -289,33 +301,33 @@ const PHASE3_SCENARIOS = {
   im_fine: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Answering happily\nwhen asked "How are you?"', wrong1: 'Running outside\nalone', wrong2: 'Reading a\nstorybook quietly' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Telling teacher\nyou\'re feeling well', wrong1: 'Reading a\nstorybook quietly', wrong2: 'Running outside\nalone' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Smiling and saying\n"I\'m Fine" to a friend', wrong1: 'Running outside\nalone', wrong2: 'Reading a\nstorybook quietly' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Responding to\n"How are you?" politely', wrong1: 'Reading a\nstorybook quietly', wrong2: 'Running outside\nalone' },
     },
@@ -324,33 +336,33 @@ const PHASE3_SCENARIOS = {
   happy_new_year: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'New Year\ncelebration with family', wrong1: 'Playing in\nthe garden', wrong2: 'Eating breakfast\nalone' },
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Fireworks on\nNew Year\'s Eve', wrong1: 'Eating breakfast\nalone', wrong2: 'Playing in\nthe garden' },
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong_2.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
       },
       captions: { correct: 'Sending New Year\nwishes to friends', wrong1: 'Playing in\nthe garden', wrong2: 'Eating breakfast\nalone' },
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_correct.png'),
-        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong_2.png'),
-        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/context_wrong.png'),
+        correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+        wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+        wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
       },
       captions: { correct: 'Everyone celebrating\nthe new year together', wrong1: 'Eating breakfast\nalone', wrong2: 'Playing in\nthe garden' },
     },
@@ -401,6 +413,22 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
   const soundRef     = useRef(null);
   const activeRef    = useRef(true);
   const settingsFade = useRef(new Animated.Value(0)).current;
+
+  // ── RC2 feature capture refs ──────────────────────────────────────────
+  const renderTimestampRef      = useRef(Date.now());
+  const responseLatencyRef      = useRef(null);
+  const firstTapCorrectRef      = useRef(null);
+  const selectionChangeCountRef = useRef(0);
+  const promptCountRef          = useRef(1);
+
+  useEffect(() => {
+    renderTimestampRef.current      = Date.now();
+    responseLatencyRef.current      = null;
+    firstTapCorrectRef.current      = null;
+    selectionChangeCountRef.current = 0;
+    promptCountRef.current          = 1;
+    playSound(PHASE3_PROMPT_AUDIO[wordKey]).catch(() => {});
+  }, [scenario]);
 
   const imageItems = useMemo(
     () => buildScenarioImages(scenario, wordKey),
@@ -475,13 +503,22 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
     }
   }
 
-  function advanceFromScenario(label, wasCorrect) {
+  function advanceFromScenario(
+    label, wasCorrect, responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect,
+  ) {
     resultsRef.current[label] = wasCorrect;
 
     dialogueApi.submitPhase3Scenario(
       student?.sid, wordId,
-      { scenarioLabel: label, selectedCorrect: wasCorrect, sessionId }
-    ).catch(() => {});
+      { scenarioLabel: label, selectedCorrect: wasCorrect, sessionId,
+        responseLatencyMs, selectionChangeCount, promptCount, firstTapCorrect }
+    ).catch((err) => {
+      // Was previously a silent no-op — this call's real-world failure rate turned out
+      // to be ~100% (zero scenario rows ever landed for real pilot data), with no way
+      // to tell why. Logging here so the next round of real usage actually surfaces
+      // the cause instead of staying a black box.
+      console.warn('[Phase3Scenario] submitPhase3Scenario failed:', label, err?.response?.status, err?.response?.data ?? err?.message);
+    });
 
     if (label === 'A') {
       moveToScenario('B');
@@ -523,19 +560,43 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
     }, 1600);
   }
 
-  async function handleImageTap(item) {
+  function handleImageTap(item) {
     if (settled) return;
+
+    if (selectedId === null) {
+      responseLatencyRef.current = Date.now() - renderTimestampRef.current;
+      firstTapCorrectRef.current = item.isCorrect;
+    } else if (selectedId !== item.id) {
+      selectionChangeCountRef.current += 1;
+    }
+
     setSelectedId(item.id);
+  }
+
+  async function handleConfirmSelection() {
+    if (settled || selectedId === null) return;
     setSettled(true);
 
-    if (item.isCorrect) {
+    const chosen = imageItems.find(i => i.id === selectedId);
+    if (chosen?.isCorrect) {
       setCloudText('Great job!');
       await playSound(AUDIO_GOOD_JOB).catch(() => {});
     } else {
       setCloudText("Let's try the next one!");
     }
 
-    advanceFromScenario(scenario, item.isCorrect);
+    const selectionChangeCount = Math.min(selectionChangeCountRef.current, 2);
+    advanceFromScenario(
+      scenario, !!chosen?.isCorrect,
+      responseLatencyRef.current, selectionChangeCount,
+      promptCountRef.current, firstTapCorrectRef.current,
+    );
+  }
+
+  function handleHearAgain() {
+    if (settled) return;
+    promptCountRef.current += 1;
+    playSound(PHASE3_PROMPT_AUDIO[wordKey]).catch(() => {});
   }
 
   function openSettings() { setGatePurpose('settings'); setShowGate(true); }
@@ -543,7 +604,11 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
   function onGateSuccess() {
     setShowGate(false);
     if (gatePurpose === 'back') {
-      navigation.navigate('DialogueCategory', { student });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('DialogueCategory', { student });
+      }
       return;
     }
     setShowSettings(true);
@@ -605,12 +670,16 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               {`Select the image where we can use the word '${wordLabel}'`}
             </Text>
+            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
+              {`'${wordLabel}' වචනය භාවිතා කළ හැකි රූපය තෝරන්න`}
+            </Text>
 
             <View style={styles.cardsRow}>
               {imageItems.map(item => {
                 const isSelected      = selectedId === item.id;
-                const showGreenBorder = isSelected && item.isCorrect;
-                const showRedDim      = isSelected && !item.isCorrect;
+                const showProvisional = isSelected && !settled;
+                const showGreenBorder = isSelected && settled && item.isCorrect;
+                const showRedDim      = isSelected && settled && !item.isCorrect;
                 return (
                   <TouchableOpacity
                     key={item.id}
@@ -619,6 +688,7 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
                     style={[
                       styles.imageCard,
                       { width: cardW, backgroundColor: theme.cardSurface },
+                      showProvisional && { borderColor: theme.button, borderWidth: 3 },
                       showGreenBorder && styles.cardCorrect,
                       showRedDim      && styles.cardWrong,
                     ]}
@@ -637,6 +707,26 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                onPress={handleHearAgain}
+                disabled={settled}
+                style={[styles.hearAgainButton, { borderColor: theme.button }]}
+              >
+                <Ionicons name="volume-high-outline" size={16} color={theme.button} />
+                <Text style={[styles.hearAgainText, { color: theme.button }]}>Hear it again</Text>
+              </TouchableOpacity>
+              {selectedId !== null && !settled && (
+                <TouchableOpacity
+                  onPress={handleConfirmSelection}
+                  style={[styles.confirmButton, { backgroundColor: theme.button }]}
+                >
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={{ flex: 1 }} />
@@ -729,7 +819,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   title: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, textAlign: 'center', marginBottom: Layout.spacing.xs },
-  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
+  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xs },
+  subtitleSinhala: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
   cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.sm },
   imageCard: {
@@ -806,4 +897,31 @@ const styles = StyleSheet.create({
   settingsOption: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
   settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: 4 },
+
+  actionRow: {
+    flexDirection:  'row',
+    justifyContent: 'center',
+    alignItems:     'center',
+    gap:            Layout.spacing.md,
+    marginTop:      Layout.spacing.md,
+  },
+  hearAgainButton: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical:   8,
+    borderRadius:      Layout.radius.full,
+    borderWidth:       1.5,
+  },
+  hearAgainText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.bold },
+  confirmButton: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical:   8,
+    borderRadius:      Layout.radius.full,
+  },
+  confirmButtonText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#FFFFFF' },
 });

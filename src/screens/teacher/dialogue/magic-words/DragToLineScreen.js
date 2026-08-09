@@ -46,7 +46,7 @@ const ACTIVITIES = {
     {
       id: 3,
       image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context2.png'),
-      prompt: 'Anjalie helps you carry your bag.\nYou should say...',
+      prompt: 'Anjalie helps you to pick up your crayons.\nYou should say...',
       cards:  [
         { label: 'Thank You',  correct: true  },
         { label: "I'm Sorry",  correct: false },
@@ -57,13 +57,13 @@ const ACTIVITIES = {
   im_sorry: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/scene.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
       prompt: 'Saman bumps into Anjalie.\nHe should say...',
       cards:  [{ label: "I'm Sorry", correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/scene.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
       prompt: 'Saman bumps into Anjalie.\nHe should say...',
       cards:  [
         { label: "I'm Sorry", correct: true  },
@@ -72,7 +72,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/context_correct.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
       prompt: 'Anjalie spills Saman\'s juice.\nShe should say...',
       cards:  [
         { label: "I'm Sorry", correct: true  },
@@ -111,13 +111,13 @@ const ACTIVITIES = {
   excuse_me: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/scene.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
       prompt: 'Saman needs to pass by Anjalie.\nHe should say...',
       cards:  [{ label: 'Excuse Me', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/scene.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
       prompt: 'Saman needs to pass by Anjalie.\nHe should say...',
       cards:  [
         { label: 'Excuse Me',  correct: true  },
@@ -126,7 +126,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/context_correct.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
       prompt: 'Anjalie needs to walk through\na crowd. She should say...',
       cards:  [
         { label: 'Excuse Me',  correct: true  },
@@ -247,10 +247,17 @@ export default function DragToLineScreen({ route, navigation }) {
   const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
 
+  function goBackSmart() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('DialogueCategory', { student });
+    }
+  }
+
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setGatePurpose('back');
-      setShowGate(true);
+      goBackSmart();
       return true;
     });
     return () => sub.remove();
@@ -387,7 +394,7 @@ export default function DragToLineScreen({ route, navigation }) {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
             <Ionicons name="arrow-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
@@ -430,7 +437,7 @@ export default function DragToLineScreen({ route, navigation }) {
                     {current.cards.find(c => c.correct)?.label} ✓
                   </Text>
                 ) : (
-                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here</Text>
+                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here  ·  නිවැරදි වාක්‍ය ඛණ්ඩය මෙහි දමන්න</Text>
                 )}
               </Animated.View>
 
@@ -438,7 +445,7 @@ export default function DragToLineScreen({ route, navigation }) {
               <View style={styles.cardsRow}>
                 <View style={styles.dragHint}>
                   <Ionicons name="hand-left-outline" size={16} color={theme.headingText} style={{ opacity: 0.5 }} />
-                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card</Text>
+                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card  ·  කාඩ්ය ඇදගෙන යන්න</Text>
                 </View>
                 <View style={styles.cardsArea}>
                   {current.cards.map((card) => (

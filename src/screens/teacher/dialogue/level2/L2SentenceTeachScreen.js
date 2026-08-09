@@ -1,8 +1,11 @@
 /**
  * L2SentenceTeachScreen
- * Manages the full per-sentence teaching flow for all 5 sentences.
+ * Teaches ONE sentence, picked from L2SentencePath (route.params.sentenceIndex).
  * Steps: activityPre (sentence 5 only) → step1 → step2 → step3 → step4
- * After sentence 5 step4 → navigate to L2ListenTogether
+ * After step4 → navigate back to L2SentencePath, flagged as completed.
+ * (Previously this screen looped through all 5 sentences internally and
+ * ended at L2ListenTogether — that loop now lives one level up, as the
+ * path screen's 6 separate stops.)
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Image, BackHandler, ScrollView } from 'react-native';
@@ -15,14 +18,9 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 
 // ── Shared audio helpers ──────────────────────────────────────────────────────
-const REC_OPTIONS = {
-  android: { extension: '.m4a', outputFormat: Audio.AndroidOutputFormat.MPEG_4, audioEncoder: Audio.AndroidAudioEncoder.AAC, sampleRate: 16000, numberOfChannels: 1, bitRate: 128000 },
-  ios:     { extension: '.m4a', outputFormat: Audio.IOSOutputFormat.MPEG4AAC, audioQuality: Audio.IOSAudioQuality.HIGH, sampleRate: 16000, numberOfChannels: 1, bitRate: 128000, linearPCMBitDepth: 16, linearPCMIsBigEndian: false, linearPCMIsFloat: false },
-  web:     { mimeType: 'audio/webm', bitsPerSecond: 128000 },
-};
-
 async function playBase64Audio(base64, soundRef) {
   if (!base64) return;
   try {
@@ -69,13 +67,12 @@ const ALL_ACTIVITIES = ['Singing', 'Dancing', 'Art', 'Cricket', 'Games', 'Readin
 const ACT_ICONS = { Singing: 'musical-notes-outline', Dancing: 'body-outline', Art: 'color-palette-outline', Cricket: 'baseball-outline', Games: 'game-controller-outline', Reading: 'book-outline' };
 
 export default function L2SentenceTeachScreen({ route, navigation }) {
-  const { student, sessionData, sentenceIndex: initIdx = 1 } = route.params ?? {};
+  const { student, sessionData, sentenceIndex = 1, returnTo = 'L2SentencePath' } = route.params ?? {};
   const theme     = getAvatarTheme(student?.avatar_key);
   const avatarImg = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
-  const [sentenceIndex, setSentenceIndex] = useState(initIdx);
-  const [step,          setStep]          = useState(initIdx === 5 ? 'activityPre' : 'step1');
-  const [showGate,      setShowGate]      = useState(false);
+  const [step,     setStep]     = useState(sentenceIndex === 5 ? 'activityPre' : 'step1');
+  const [showGate, setShowGate] = useState(false);
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { setShowGate(true); return true; });
@@ -85,21 +82,18 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
   const sentence = sessionData?.sentences?.find(s => s.index === sentenceIndex);
   const sessionId = sessionData?.session_id;
 
-  const progress = ((sentenceIndex - 1) * 4 + (['step1', 'step2', 'step3', 'step4'].indexOf(step) + 1)) / 20;
+  // Steps for this one sentence only: activityPre (sentence 5) is step 0 of 5;
+  // everyone else is 4 steps (step1–step4).
+  const STEP_ORDER = sentenceIndex === 5 ? ['activityPre', 'step1', 'step2', 'step3', 'step4'] : ['step1', 'step2', 'step3', 'step4'];
+  const progress = (STEP_ORDER.indexOf(step) + 1) / STEP_ORDER.length;
 
   function advanceStep() {
     const steps = ['step1', 'step2', 'step3', 'step4'];
     const curIdx = steps.indexOf(step);
     if (step === 'activityPre') { setStep('step1'); return; }
     if (curIdx < steps.length - 1) { setStep(steps[curIdx + 1]); return; }
-    // End of step4 for this sentence
-    if (sentenceIndex < 5) {
-      const nextIdx = sentenceIndex + 1;
-      setSentenceIndex(nextIdx);
-      setStep(nextIdx === 5 ? 'activityPre' : 'step1');
-    } else {
-      navigation.replace('L2ListenTogether', { student, sessionData });
-    }
+    // Done with this sentence — back to the path, flagged as completed.
+    navigation.navigate(returnTo, { student, sessionData, justCompleted: sentenceIndex });
   }
 
   function handleStep3Result(result) {
@@ -139,7 +133,7 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.button }]} />
           </View>
           <View style={[styles.headerSide, styles.sentBadge]}>
-            <Text style={[styles.sentBadgeText, { color: theme.headingText }]}>{sentenceIndex}/5</Text>
+            <Text style={[styles.sentBadgeText, { color: theme.headingText }]}>Lesson {sentenceIndex}</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -170,7 +164,7 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
 
       <ParentGateModal
         visible={showGate}
-        onSuccess={() => { setShowGate(false); navigation.navigate('L2TopicSelection', { student }); }}
+        onSuccess={() => { setShowGate(false); navigation.navigate(returnTo, { student, sessionData }); }}
         onCancel={() => setShowGate(false)}
       />
     </View>
@@ -209,6 +203,7 @@ function Step1Listen({ sentence, theme, avatarImg, onNext }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 1 · Listen</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 1 · සවන් දෙන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>
@@ -245,13 +240,14 @@ const styles = StyleSheet.create({
   headerWrap: {},
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
   headerSide: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  sentBadge: {},
+  sentBadge: { width: 74 },
   sentBadgeText: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
   progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
   body: { flex: 1 },
   stepBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, gap: Layout.spacing.md },
   stepTitle: { fontSize: Layout.fontSize.xs, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
+  stepTitleSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', opacity: 0.6, marginTop: -6, textAlign: 'center' },
   prompt: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', lineHeight: 30 },
   sentenceCard: { width: '100%', borderRadius: Layout.radius.xl, borderWidth: 2, paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', ...Layout.shadow.sm },
   sentenceText: { fontSize: Layout.fontSize.xl, fontWeight: '700', textAlign: 'center' },
@@ -268,6 +264,7 @@ const styles = StyleSheet.create({
   dropSlotPlaceholder: { fontSize: Layout.fontSize.xl, color: 'rgba(0,0,0,0.3)', fontWeight: '700' },
   dropSlotFilled: { fontSize: Layout.fontSize.xl, fontWeight: '900', color: '#22C55E' },
   dragHint: { fontSize: Layout.fontSize.sm, opacity: 0.5, fontWeight: '600' },
+  dragHintSinhala: { fontSize: Layout.fontSize.xs, opacity: 0.45, fontWeight: '500', textAlign: 'center', marginTop: -6 },
   tile: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', paddingVertical: 14, paddingHorizontal: Layout.spacing.xl, borderRadius: Layout.radius.xl, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)', ...Layout.shadow.md },
   tileText: { fontSize: Layout.fontSize.lg, fontWeight: '800', color: '#1A1A2E' },
   tilesRow: { flexDirection: 'row', gap: Layout.spacing.md, flexWrap: 'wrap', justifyContent: 'center' },
@@ -275,13 +272,15 @@ const styles = StyleSheet.create({
   wrongMsg: { fontSize: Layout.fontSize.sm, color: '#FF4D6D', fontWeight: '700' },
   genderBody: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.lg, paddingHorizontal: Layout.spacing.lg },
   genderPrompt: { fontSize: Layout.fontSize.xxl, fontWeight: '900', textAlign: 'center' },
+  genderPromptSinhala: { fontSize: Layout.fontSize.md, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginTop: -6 },
   genderRow: { flexDirection: 'row', gap: Layout.spacing.xl },
   genderCard: { alignItems: 'center', gap: Layout.spacing.sm, borderRadius: Layout.radius.xl, borderWidth: 3, padding: Layout.spacing.md, flex: 1, ...Layout.shadow.md, backgroundColor: '#FFF' },
   genderAvatar: { width: 110, height: 150 },
   genderLabel: { fontSize: Layout.fontSize.lg, fontWeight: '800' },
   actPreBody: { flex: 1, paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md },
   actPreTitle: { fontSize: Layout.fontSize.xs, fontWeight: '600', opacity: 0.55, textTransform: 'uppercase', textAlign: 'center', marginBottom: Layout.spacing.sm },
-  actPrePrompt: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', marginBottom: Layout.spacing.lg },
+  actPrePrompt: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', marginBottom: Layout.spacing.sm },
+  actPreSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.md },
   actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.md, justifyContent: 'center', flex: 1 },
   actCard: { alignItems: 'center', gap: 8, borderRadius: Layout.radius.xl, borderWidth: 2.5, paddingVertical: Layout.spacing.lg, paddingHorizontal: Layout.spacing.lg, width: 100, backgroundColor: '#FFF', ...Layout.shadow.sm },
   actCardSel: {},
@@ -294,6 +293,7 @@ const styles = StyleSheet.create({
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   bubble: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
   bubbleText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, marginTop: 2 },
   bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
 });
 
@@ -329,6 +329,7 @@ function Step2DragOne({ sentence, theme, onComplete }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 2 · Drag & Drop</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 2 · ඇදගෙන නවත්වන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>
@@ -342,6 +343,9 @@ function Step2DragOne({ sentence, theme, onComplete }) {
       </View>
       <Text style={[styles.dragHint, { color: theme.headingText }]}>
         <Ionicons name="hand-left-outline" size={14} /> Drag the card below into the blank
+      </Text>
+      <Text style={[styles.dragHintSinhala, { color: theme.headingText }]}>
+        පහළ ඇති කාඩ්ය හිස් ස්ථානයට ඇදගෙන යන්න
       </Text>
       {!placed && (
         <Animated.View style={[styles.tile, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] }]} {...panResponder.panHandlers}>
@@ -414,6 +418,7 @@ function Step3DragTwo({ sentence, theme, onResult }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 3 · Pick the Right One</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 3 · නිවැරදි එක තෝරන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>{before}</Text>
@@ -439,8 +444,12 @@ function Step3Gender({ theme, gender, onSelect }) {
   return (
     <View style={styles.genderBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 3 · Tap the Picture</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 3 · රූපය තෝරන්න </Text>
       <Text style={[styles.genderPrompt, { color: theme.headingText }]}>
         Tap the picture that looks like you!
+      </Text>
+      <Text style={[styles.genderPromptSinhala, { color: theme.headingText }]}>
+        ඔබට සමාන රූපය තෝරන්න!
       </Text>
       <View style={styles.genderRow}>
         {[{ g: 'boy', img: SAMAN_IMG, label: 'Boy' }, { g: 'girl', img: ANJALI_IMG, label: 'Girl' }].map(({ g, img, label }) => (
@@ -459,8 +468,9 @@ function ActivityPreScreen({ sessionData, theme, onSelect }) {
   const [selected, setSelected] = useState(null);
   return (
     <View style={styles.actPreBody}>
-      <Text style={[styles.actPreTitle, { color: theme.headingText }]}>Getting Ready · Sentence 5</Text>
+      <Text style={[styles.actPreTitle, { color: theme.headingText }]}>Getting Ready · Sentence 5  ·  සූදානම් වෙමු · වාක්‍යය 5</Text>
       <Text style={[styles.actPrePrompt, { color: theme.headingText }]}>What do you like doing?</Text>
+      <Text style={[styles.actPreSinhala, { color: theme.headingText }]}>ඔබ කිරීමට කැමති දෙය කුමක්ද?</Text>
       <View style={styles.actGrid}>
         {ALL_ACTIVITIES.map(act => {
           const sel = selected === act;
@@ -480,21 +490,26 @@ function ActivityPreScreen({ sessionData, theme, onSelect }) {
 }
 
 // ── Step 4: Speak ─────────────────────────────────────────────────────────────
-const S4 = { IDLE: 'idle', PLAYING: 'playing', LISTENING: 'listening', RECORDING: 'recording', PROCESSING: 'processing', DONE: 'done' };
+const S4 = { IDLE: 'idle', PLAYING: 'playing', PROCESSING: 'processing', DONE: 'done' };
 
 function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentenceIndex, onNext }) {
   const [phase,   setPhase]   = useState(S4.IDLE);
   const [feedbk,  setFeedbk]  = useState('');
   const soundRef    = useRef(null);
-  const recordRef   = useRef(null);
   const hasAudio    = !!sentence.audio_base64;
+
+  const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
+    onStart: () => setFeedbk(''),
+    onStop: uri => submitRecording(uri),
+    onError: () => setPhase(S4.IDLE),
+  });
 
   useEffect(() => {
     if (hasAudio) { handlePlay(); }
     return () => {
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
-      recordRef.current?.stopAndUnloadAsync().catch(() => {});
+      resetRecorder();
     };
   }, []);
 
@@ -504,32 +519,14 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
     setPhase(S4.IDLE);
   }
 
-  async function handleRecordBtn() {
-    if (phase === S4.RECORDING) { await submitRecording(); return; }
-    if (![S4.IDLE, S4.LISTENING].includes(phase)) return;
-
-    setPhase(S4.LISTENING);
-    setFeedbk('');
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') { setPhase(S4.IDLE); return; }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(REC_OPTIONS);
-      await rec.startAsync();
-      recordRef.current = rec;
-      setPhase(S4.RECORDING);
-    } catch { setPhase(S4.IDLE); }
+  function handleRecordBtn() {
+    if (recorderState === 'idle' && phase !== S4.IDLE) return;
+    toggleRecording();
   }
 
-  async function submitRecording() {
-    if (!recordRef.current) return;
+  async function submitRecording(uri) {
     setPhase(S4.PROCESSING);
     try {
-      await recordRef.current.stopAndUnloadAsync();
-      const uri = recordRef.current.getURI();
-      recordRef.current = null;
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
       const b64 = await uriToBase64(uri);
       if (studentId && sessionId) {
         const res = await level2Api.assessStep4(studentId, sessionId, sentenceIndex, b64, 'audio/m4a');
@@ -542,16 +539,18 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
     } catch { setPhase(S4.IDLE); }
   }
 
-  const isRecording  = phase === S4.RECORDING;
-  const isProcessing = phase === S4.PROCESSING;
+  const isRecording  = recorderState === 'recording';
+  const isProcessing = phase === S4.PROCESSING || recorderState === 'starting' || recorderState === 'stopping';
   const micColor     = isRecording ? '#FF4D6D' : theme.button;
 
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 4 · Say It!</Text>
+      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 4 · කියන්න!</Text>
       <View style={styles.bubbleRow}>
         <View style={[styles.bubble, { backgroundColor: theme.cardSurface }]}>
           <Text style={[styles.bubbleText, { color: theme.headingText }]}>Repeat after me!</Text>
+          <Text style={[styles.bubbleSinhala, { color: theme.headingText }]}>මා සමඟ නැවත කියන්න!</Text>
           <View style={[styles.bubbleTail, { borderLeftColor: theme.cardSurface }]} />
         </View>
         <Image source={avatarImg} style={styles.avatarMd} resizeMode="contain" />
