@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../constants/colors";
 import { Layout } from "../constants/layout";
 
+import ConceptReportScreen        from '../screens/teacher/students/ConceptReportScreen';
 import TeacherDashboardScreen from "../screens/teacher/DashboardScreen";
 import TeacherStudentListScreen from "../screens/teacher/students/StudentListScreen";
 import TeacherStudentDetailScreen from "../screens/teacher/students/StudentDetailScreen";
@@ -69,6 +70,7 @@ import ConceptMatchScreen            from '../screens/teacher/concept/ConceptMat
 import ConceptCongratulationsScreen  from '../screens/teacher/concept/ConceptCongratulationsScreen';
 import ConceptAdaptiveQuizScreen     from '../screens/teacher/concept/ConceptAdaptiveQuizScreen';
 import Tier2ImageScreen              from '../screens/teacher/concept/Tier2ImageScreen';
+import Tier2DemoScreen               from '../screens/teacher/concept/Tier2DemoScreen';
 import Tier2ActivityScreen           from '../screens/teacher/concept/Tier2ActivityScreen';
 import Tier2DragDropScreen           from '../screens/teacher/concept/Tier2DragDropScreen';
 import Tier3VideoScreen              from '../screens/teacher/concept/Tier3VideoScreen';
@@ -108,6 +110,7 @@ function DashboardStack() {
 function StudentsStack() {
   return (
     <Stack.Navigator screenOptions={stackOptions}>
+      <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
       <Stack.Screen
         name="TeacherStudentList"
         component={TeacherStudentListScreen}
@@ -194,6 +197,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
       <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
       <Stack.Screen name="Tier2Image"          component={Tier2ImageScreen} />
+      <Stack.Screen name="Tier2Demo"           component={Tier2DemoScreen} />
       <Stack.Screen name="Tier2Activity"       component={Tier2ActivityScreen} />
       <Stack.Screen name="Tier2DragDrop"       component={Tier2DragDropScreen} />
       <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />

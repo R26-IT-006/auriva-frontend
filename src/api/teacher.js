@@ -23,4 +23,18 @@ export const teacherApi = {
     });
     return data;
   },
+
+  // Cheap — progress table only. Safe to call on the student profile.
+  async getConceptSummary(studentId) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_CONCEPT_SUMMARY(studentId));
+    return data;
+  },
+
+  // Expensive — aggregates the interaction log. Lazy-load from the report screen.
+  async getConceptReport(studentId, days = 90) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_CONCEPT_REPORT(studentId), {
+      params: { days },
+    });
+    return data;
+  },
 };

@@ -17,7 +17,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import { stopConceptAudio } from '../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptItemsForCategory } from '../../../constants/conceptData';
+import {
+  getConceptItem,
+  getConceptItemsForCategory,
+  NAMING_QUESTION_EN,
+  NAMING_QUESTION_SI,
+} from '../../../constants/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
@@ -115,8 +120,14 @@ export default function Tier2ActivityScreen({ route, navigation }) {
 
   const speakQuestion = useCallback(() => {
     Speech.stop();
-    Speech.speak('What is this called?', { language: 'en-US', rate: 0.8 });
-  }, []);
+    Speech.speak(NAMING_QUESTION_EN, { language: 'en-US', rate: 0.8 });
+    // Follow with Sinhala, same delay/rate pattern as Tier2ImageScreen's playAudio.
+    if (concept?.labelSi) {
+      setTimeout(() => {
+        Speech.speak(NAMING_QUESTION_SI, { language: 'si-LK', rate: 0.7 });
+      }, 1400);
+    }
+  }, [concept]);
 
   // Load adaptive distractors from GKB; fall back to sequential neighbours
   useEffect(() => {
@@ -255,10 +266,15 @@ export default function Tier2ActivityScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Question prompt */}
+        {/* Question prompt — bilingual, same pattern as ConceptMatchScreen */}
         <Text style={[styles.question, { color: theme.headingText }]}>
-          What is this called?
+          {NAMING_QUESTION_EN}
         </Text>
+        {concept.labelSi && (
+          <Text style={[styles.questionSi, { color: theme.headingText }]}>
+            {NAMING_QUESTION_SI}
+          </Text>
+        )}
 
         {/* Attempt dots */}
         <View style={styles.attemptRow}>
@@ -360,6 +376,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  questionSi: {
+    fontSize: 18,
+    fontFamily: 'Nunito_700Bold',
+    opacity: 0.65,
+    textAlign: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 24,
+  },
   question: {
     fontSize: 24,
     fontFamily: 'Nunito_900Black',
