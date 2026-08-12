@@ -19,6 +19,10 @@ import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { computeDTW } from '../../utils/dtw';
 import { normalizeStrokesForDTW, normalizePointsForDTW } from '../../utils/dtwNormalization';
+import {
+  calculatePauseMetrics,
+  calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
+} from '../../utils/trajectoryFeatures';
 import { buildDtwDebugExport } from '../../utils/dtwDebugExport';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import {
@@ -187,10 +191,19 @@ function computePathPoints(shapeId) {
 
 // ─── Feature calculation ───────────────────────────────────────────────────────
 
+// Duration-correction pass: attempt_duration_ms/attempt_avg_speed/
+// attempt_pause_frequency/attempt_pause_duration_ratio below are ADDITIVE
+// new fields, derived from tAbs via utils/trajectoryFeatures.js — see that
+// module's doc comment for why the legacy duration_ms above (still
+// returned completely unchanged) can undercount a multi-stroke attempt.
+// Every field already returned above this comment is untouched.
 function calculateFeatures(paths, shapeId) {
   const allPoints = paths.flat();
   if (allPoints.length < 2) {
-    return { duration_ms: 0, total_distance: 0, avg_speed: 0, smoothness: 0, pause_count: 0, accuracy: null, dtw_distance: null };
+    return {
+      duration_ms: 0, total_distance: 0, avg_speed: 0, smoothness: 0, pause_count: 0, accuracy: null, dtw_distance: null,
+      attempt_duration_ms: null, attempt_avg_speed: null, attempt_pause_frequency: null, attempt_pause_duration_ratio: null,
+    };
   }
 
   const duration_ms = allPoints[allPoints.length - 1].t;
@@ -262,7 +275,22 @@ function calculateFeatures(paths, shapeId) {
     dtw_distance = result.normalizedDistance;
   }
 
-  return { duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy, dtw_distance };
+  // ML-safe duration pass — reuses the canonical pause metrics purely to get
+  // total_pause_duration_ms (this shape function's own `pause_count` above,
+  // computed inline, is left completely untouched and is what's returned).
+  const attemptDurationMs = calculateAttemptDurationFromAbsoluteTime(paths);
+  const { pause_count: canonicalPauseCount, total_pause_duration_ms } = calculatePauseMetrics(paths);
+  const attemptAvgSpeed = calculateAttemptAverageSpeed(total_distance, attemptDurationMs);
+  const { attempt_pause_frequency, attempt_pause_duration_ratio } =
+    calculateAttemptPauseMetrics(canonicalPauseCount, total_pause_duration_ms, attemptDurationMs);
+
+  return {
+    duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy, dtw_distance,
+    attempt_duration_ms: attemptDurationMs,
+    attempt_avg_speed: attemptAvgSpeed,
+    attempt_pause_frequency,
+    attempt_pause_duration_ratio,
+  };
 }
 
 // ─── Guide shape SVG ──────────────────────────────────────────────────────────

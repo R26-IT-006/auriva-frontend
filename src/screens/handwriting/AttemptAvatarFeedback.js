@@ -9,26 +9,84 @@ const AVATAR_MAP = {
   megatron: require('../../../assets/avatar-images/Megatron.png'),
 };
 
-const PASS_MESSAGES = {
+// Feature 3 Step 6 audit finding: these messages were keyed by raw attempt
+// number, but their WORDING describes the support PRESENTATION just shown
+// ("tracing" = the high-support animated tracer, "guide work"/"follow the
+// guide" = medium's static guide, "wrote it yourself" = low/independent) —
+// not merely the child's progression position. Once a session can start at
+// medium/low (adaptive recommendation, Step 6), attempt=1 no longer
+// guarantees high support in LetterWritingScreen.js/UppercaseWritingScreen.js,
+// so keying by attempt there would make these factually wrong (e.g. "Great
+// tracing!" after an attempt that showed no tracer at all).
+//
+// PreWritingActivityScreen.js also renders this component, for its own
+// unrelated warm-up-activity attempt counter that has no support-level
+// concept at all and never passes `supportLevel` — its behavior must stay
+// completely untouched by this step. So BOTH keyings are kept: `supportLevel`
+// (when provided — the letter-writing screens, post-Step-6) takes priority;
+// `attempt` (legacy — PreWritingActivityScreen, unchanged) is the fallback
+// only when `supportLevel` is absent. Wording is identical either way —
+// only the selection key differs (see the Step 6 report's
+// AttemptAvatarFeedback section for the full audit decision).
+//
+// Feature 3 Step 7 re-audit: RETRY_MESSAGES_BY_SUPPORT.low originally read
+// "Keep going. Try with the guide." — Step 6 flagged this as a nuance but
+// left it unchanged. Step 7 traced every adaptive sequence a LOW-support
+// failure can occur in (getAdaptiveSupportSequence) and found the promise
+// is no longer reliably true:
+//   - high-started  [high, medium, low]:   a low (attempt 3) failure resets
+//     the letter to attempt 1 = high, which DOES show a guide. Correct.
+//   - medium-started [medium, low, low]:   a low (attempt 2) failure just
+//     advances to attempt 3, which is ALSO low — no guide. Wrong.
+//   - low-started    [low, low, low]:      any low failure resets to
+//     attempt 1 = low again (same-letter retries keep the same sequence,
+//     Step 7 spec §15) — no guide, ever. Wrong.
+// Since this component only receives the support level for the attempt
+// that JUST happened (not which sequence is active or what comes next), it
+// cannot know which of these three cases applies — corrected to neutral
+// wording that makes no claim about the next attempt's presentation,
+// matching Step 7 spec §26's own suggested phrasing. Old/new text recorded
+// here for the record:
+//   old: 'Keep going. Try with the guide.'
+//   new: 'Keep going. Try again carefully.'
+const PASS_MESSAGES_BY_SUPPORT = {
+  high:   'Great tracing!',
+  medium: 'Nice guide work!',
+  low:    'You wrote it yourself!',
+};
+
+const RETRY_MESSAGES_BY_SUPPORT = {
+  high:   'Good start. Watch once more.',
+  medium: 'Good try. Follow the guide.',
+  low:    'Keep going. Try again carefully.',
+};
+
+// Legacy keying — byte-identical to this file's pre-Step-6 PASS_MESSAGES/
+// RETRY_MESSAGES — preserved ONLY for callers that don't pass supportLevel
+// (PreWritingActivityScreen.js today).
+const PASS_MESSAGES_BY_ATTEMPT = {
   1: 'Great tracing!',
   2: 'Nice guide work!',
   3: 'You wrote it yourself!',
 };
 
-const RETRY_MESSAGES = {
+const RETRY_MESSAGES_BY_ATTEMPT = {
   1: 'Good start. Watch once more.',
   2: 'Good try. Follow the guide.',
   3: 'Keep going. Try with the guide.',
 };
 
-export default function AttemptAvatarFeedback({ avatarKey, passed, attempt, theme }) {
+export default function AttemptAvatarFeedback({ avatarKey, passed, attempt, supportLevel, theme }) {
   const key = String(avatarKey ?? '').toLowerCase();
   const avatar = AVATAR_MAP[key] ?? AVATAR_MAP.megatron;
   const color = passed ? '#2E7D32' : '#8A5A00';
   const backgroundColor = passed ? '#E8F5E9' : '#FFF8E1';
+  const passMessages  = supportLevel != null ? PASS_MESSAGES_BY_SUPPORT  : PASS_MESSAGES_BY_ATTEMPT;
+  const retryMessages = supportLevel != null ? RETRY_MESSAGES_BY_SUPPORT : RETRY_MESSAGES_BY_ATTEMPT;
+  const lookupKey = supportLevel != null ? supportLevel : attempt;
   const message = passed
-    ? PASS_MESSAGES[attempt] ?? 'Nice work!'
-    : RETRY_MESSAGES[attempt] ?? 'Good try. Try again.';
+    ? passMessages[lookupKey] ?? 'Nice work!'
+    : retryMessages[lookupKey] ?? 'Good try. Try again.';
 
   return (
     <View

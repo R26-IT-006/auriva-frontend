@@ -16,6 +16,9 @@ import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { LETTER_CATEGORIES } from '../../constants/letterCategories';
 import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../constants/preWritingActivities';
+import {
+  createPreWritingInteractionId, markWarmupHandled, buildPreWritingNavigationParams, PRE_WRITING_REASON,
+} from '../../utils/preWritingSessionGuard';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -45,6 +48,12 @@ export default function LetterPracticeScreen({ route, navigation }) {
   const goToLetterScreen = (caseType, params, seq) => {
     const screen = caseType === 'lowercase' ? 'LetterWriting' : 'UppercaseWriting';
 
+    // Feature 4 Step 3: a fresh interaction id per "start writing" action —
+    // never per letter, never per render. Folded into `params` so it
+    // reaches the letter screen whether or not a warm-up detour happens.
+    const interactionId = createPreWritingInteractionId();
+    const paramsWithInteraction = { ...params, interactionId };
+
     const firstLetter = seq?.[0]?.letter
       ?? LETTER_CATEGORIES[caseType]?.[params.motorProfile?.categoryOrder?.[0] ?? 'straight']?.[0]?.letter
       ?? null;
@@ -52,11 +61,20 @@ export default function LetterPracticeScreen({ route, navigation }) {
     const activities = group ? selectPreWritingActivities(group) : [];
 
     if (activities.length > 0) {
-      navigation.navigate('PreWritingActivity', {
-        student, theme, activities, nextRoute: screen, nextParams: params,
+      // Mark BEFORE navigating (not on completion/skip/save-success) — see
+      // preWritingSessionGuard.js's markWarmupHandled doc comment for why.
+      markWarmupHandled({
+        studentId: student?.sid, caseType, letter: firstLetter, interactionId,
+        reason: PRE_WRITING_REASON.SESSION_START,
       });
+      navigation.navigate('PreWritingActivity', buildPreWritingNavigationParams({
+        student, theme, activities,
+        targetLetter: firstLetter, targetCaseType: caseType, interactionId,
+        reason: PRE_WRITING_REASON.SESSION_START,
+        nextRoute: screen, nextParams: paramsWithInteraction,
+      }));
     } else {
-      navigation.navigate(screen, params);
+      navigation.navigate(screen, paramsWithInteraction);
     }
   };
 

@@ -27,7 +27,22 @@ import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../utils/collectionSession';
-import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../constants/preWritingActivities';
+import { getLetterPrimitiveGroup, selectPreWritingActivities, getPreWritingActivityById } from '../../constants/preWritingActivities';
+import {
+  createPreWritingInteractionId, markWarmupHandled, buildPreWritingNavigationParams, PRE_WRITING_REASON,
+  hasWarmupHandled, resolveAdaptivePreWritingDetour,
+} from '../../utils/preWritingSessionGuard';
+import { SUPPORT_LEVELS, getSupportPresentation, resolveSessionSupportLevel } from '../../constants/handwritingSupportLevels';
+import { buildSessionAttemptRecord } from '../../utils/handwritingAttemptPayload';
+import { fetchRecommendedStartSupport, shouldApplyRecommendation, resolveRecommendedStartSupport } from '../../utils/supportRecommendation';
+import { fetchPreWritingRecommendation } from '../../utils/preWritingRecommendation';
+import { fetchRepetitionRecommendation } from '../../utils/repetitionRecommendation';
+import { getAdaptiveRepetitionsUsed, incrementAdaptiveRepetitionsUsed } from '../../utils/repetitionSessionGuard';
+import { insertSpacedRepetition } from '../../utils/controlledRepetition';
+import {
+  calculateTotalDistance, calculateAverageSpeed, calculateSpeedStats, calculatePauseMetrics,
+  calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
+} from '../../utils/trajectoryFeatures';
 
 // Shapes occupy task_order 0-5 in the collection protocol; lowercase
 // letters continue from 6, matching DATA_COLLECTION_PROTOCOL's fixed order.
@@ -55,24 +70,40 @@ const LINE_2 = Math.round(CANVAS_H * 0.36);  // x-height     — blue solid
 const LINE_3 = Math.round(CANVAS_H * 0.64);  // baseline     — red dashed
 const LINE_4 = Math.round(CANVAS_H * 0.92);  // descender    — blue solid
 
-// â”€â”€â”€ Attempt badge colours (small indicator only — theme bg is never changed) â”€
+// â”€â”€â”€ Support badge colours (small indicator only — theme bg is never changed) â”€
+// Feature 3 Step 2: keyed by SUPPORT_LEVELS (high/medium/low) instead of raw
+// attempt number — the badge describes the guidance being shown right now,
+// which is a support-level concept, not a session-position one. Values are
+// byte-identical to the pre-refactor ATTEMPT_BADGE/ATTEMPT_TITLES/
+// ATTEMPT_HINTS — only the lookup key changed (attempt → supportLevel).
 
-const ATTEMPT_BADGE = {
-  1: { bg: '#FFCBA8', border: '#FF8C42', text: '#7A2D00' },  // warm orange
-  2: { bg: '#FFE97A', border: '#F0C000', text: '#5A4000' },  // golden yellow
-  3: { bg: '#A8E6A8', border: '#4CAF50', text: '#1B5E20' },  // fresh green
+const SUPPORT_BADGE = {
+  [SUPPORT_LEVELS.HIGH]:   { bg: '#FFCBA8', border: '#FF8C42', text: '#7A2D00' },  // warm orange
+  [SUPPORT_LEVELS.MEDIUM]: { bg: '#FFE97A', border: '#F0C000', text: '#5A4000' },  // golden yellow
+  [SUPPORT_LEVELS.LOW]:    { bg: '#A8E6A8', border: '#4CAF50', text: '#1B5E20' },  // fresh green
 };
 
-const ATTEMPT_TITLES = {
-  1: 'Attempt 1 · Watch & Trace',
-  2: 'Attempt 2 · Follow the Guide',
-  3: 'Attempt 3 · Write Freely',
+// Feature 3 Step 6: this used to be a single string per level hardcoding
+// BOTH the attempt number and the support phrase together (e.g. 'Attempt 3
+// · Write Freely'), which was only ever safe while attempt and supportLevel
+// were guaranteed to move in lockstep (Step 2). Now that a session may
+// start at medium/low (adaptive recommendation), that hardcoded "Attempt N"
+// prefix would go factually wrong — e.g. supportLevel='low' at attempt=1
+// would still say "Attempt 3 · Write Freely". Split in two: this map holds
+// ONLY the support-specific phrase (wording unchanged from before — still
+// exactly 'Watch & Trace' / 'Follow the Guide' / 'Write Freely'); the
+// attempt number is read live from the real `attempt` state at the JSX call
+// site below, so the two can never drift apart again.
+const SUPPORT_INSTRUCTIONS = {
+  [SUPPORT_LEVELS.HIGH]:   'Watch & Trace',
+  [SUPPORT_LEVELS.MEDIUM]: 'Follow the Guide',
+  [SUPPORT_LEVELS.LOW]:    'Write Freely',
 };
 
-const ATTEMPT_HINTS = {
-  1: 'Watch the dot — then draw it yourself!',
-  2: 'Start at the number, then follow the arrow.',
-  3: 'Write from memory — no guide this time!',
+const SUPPORT_HINTS = {
+  [SUPPORT_LEVELS.HIGH]:   'Watch the dot — then draw it yourself!',
+  [SUPPORT_LEVELS.MEDIUM]: 'Start at the number, then follow the arrow.',
+  [SUPPORT_LEVELS.LOW]:    'Write from memory — no guide this time!',
 };
 
 // â”€â”€â”€ Per-letter start positions (fraction of canvas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -206,10 +237,36 @@ const ANGULAR_LETTERS = new Set([
 
 // â”€â”€â”€ Feature calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+// ML: total_distance/avg_speed/speed_std/speed_cv/pause-extras below are
+// ADDITIVE new fields computed via the shared, stroke-aware
+// utils/trajectoryFeatures.js (see Part 1-3 of the collection-mode
+// ML-readiness pass). Every field already returned above this comment
+// (smoothness, pauseCount, completionTime, strokeCount) is completely
+// unchanged — same formulas, same variable names, same early-return shape
+// — nothing below alters existing child-facing scoring/pass-fail logic.
 function calculateDrawingFeatures(paths) {
   const allPoints = paths.flat();
+  const totalDistance = calculateTotalDistance(paths);
+  const pauseMetrics = calculatePauseMetrics(paths);
+  // ML-safe duration pass: derived from tAbs (absolute, never resets between
+  // strokes) rather than the legacy stroke-local `t` clock — see
+  // utils/trajectoryFeatures.js's module doc comment. `duration_ms`/
+  // `avg_speed`/`pauseCount`/`pause_frequency`/`pause_duration_ratio` above
+  // and below are completely untouched; attempt_* are new, additive fields
+  // only, never used for existing scoring/pass-fail (Part 6-9 of the
+  // duration-correction pass).
+  const attemptDurationMs = calculateAttemptDurationFromAbsoluteTime(paths);
+  const mlFeatures = {
+    total_distance: totalDistance,
+    avg_speed:      calculateAverageSpeed(paths),
+    ...calculateSpeedStats(paths),
+    ...pauseMetrics,
+    attempt_duration_ms: attemptDurationMs,
+    attempt_avg_speed:   calculateAttemptAverageSpeed(totalDistance, attemptDurationMs),
+    ...calculateAttemptPauseMetrics(pauseMetrics.pause_count, pauseMetrics.total_pause_duration_ms, attemptDurationMs),
+  };
   if (allPoints.length < 2) {
-    return { smoothness: 0, pauseCount: 0, completionTime: 0, strokeCount: paths.length };
+    return { smoothness: 0, pauseCount: 0, completionTime: 0, strokeCount: paths.length, ...mlFeatures };
   }
   const completionTime = allPoints[allPoints.length - 1].t;
   let pauseCount = 0;
@@ -229,7 +286,7 @@ function calculateDrawingFeatures(paths) {
     }
     if (changes.length > 0) smoothness = changes.reduce((a, b) => a + b, 0) / changes.length;
   }
-  return { smoothness, pauseCount, completionTime, strokeCount: paths.length };
+  return { smoothness, pauseCount, completionTime, strokeCount: paths.length, ...mlFeatures };
 }
 
 // Returns total drawn length + bounding-box dimensions in one pass.
@@ -446,12 +503,32 @@ export default function LetterWritingScreen({ route, navigation }) {
     letterSequence  = [],
     collectionMode  = false,
     collectionSessionId = null,
+    interactionId: interactionIdParam = null,
   } = route.params;
 
-  const sequence = useMemo(() => {
+  // Feature 4 Step 3: normally seeded by LetterPracticeScreen and carried
+  // through route params. A couple of entry points (AssessmentCompleteScreen,
+  // ShapeAssessmentScreen) navigate straight into 'LetterWriting', bypassing
+  // LetterPracticeScreen entirely — for those, fall back to a fresh id
+  // generated once for the life of this mount (lazy initializer, never
+  // regenerated on re-render) so this screen's own category-boundary guard
+  // marking still has a stable interaction identity to use.
+  const [interactionId] = useState(() => interactionIdParam ?? createPreWritingInteractionId());
+
+  const baseSequence = useMemo(() => {
     const filtered = letterSequence.filter(l => l.caseType === caseType);
     return filtered.length > 0 ? filtered : getAllLetters(caseType);
   }, [letterSequence, caseType]);
+
+  // Feature 5 Step 3 — `sequence` is the base (initial-ordering, Feature-4-
+  // unrelated) sequence UNLESS a spaced adaptive repetition has been
+  // inserted this mount, in which case `runtimeSequence` (the immutable
+  // result of insertSpacedRepetition()) takes over. Starts `null` — the
+  // vast majority of mounts never insert anything, so `sequence` is
+  // byte-identical to the pre-Feature-5 `baseSequence` unless/until an
+  // insertion actually happens (see handleNext's failure branch below).
+  const [runtimeSequence, setRuntimeSequence] = useState(null);
+  const sequence = runtimeSequence ?? baseSequence;
 
   const { show } = useToast();
 
@@ -465,12 +542,40 @@ export default function LetterWritingScreen({ route, navigation }) {
   const [celebration,  setCelebration]  = useState(null);
   const [reduceMotion,  setReduceMotion] = useState(false);
 
+  // Feature 3 Step 6 — the adaptive support recommendation, tagged with the
+  // exact letter it was resolved for. Reading it back below via
+  // `recommendation.letter === letter` (rather than trusting effect-cleanup
+  // timing alone) guarantees a stale previous letter's recommendation can
+  // never leak into a newly-started letter, even for the render tick before
+  // the fetch effect itself would otherwise reset it.
+  const [recommendation, setRecommendation] = useState({ letter: null, startSupport: null });
+
   // â”€â”€ Refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const startTimeRef       = useRef(null);
   const allPathsRef        = useRef([]);
   const attemptScoresRef   = useRef([]);   // accumulates featuresToScore result for each attempt
   const sessionAttemptsRef = useRef([]);   // ML: accumulates {attempt_number, features, strokes} per letter
   const strokeIdCounter    = useRef(0);    // ML: counts strokes within the current attempt
+  // Feature 3 Step 6 — mirrors of attempt/hasDrawn state, read inside the
+  // recommendation fetch's async callback (which cannot safely read fresh
+  // React state directly) to decide whether it's still safe to apply an
+  // arriving recommendation: never retroactively change support once the
+  // child has already started drawing this letter's first attempt.
+  const attemptRef  = useRef(1);
+  const hasDrawnRef = useRef(false);
+  // Feature 5 Step 3 — incremented at the top of every handleNext() call
+  // (both success and failure). The repetition-recommendation fetch started
+  // inside a failed cycle captures the token AT THAT MOMENT; when the fetch
+  // resolves, it compares against the CURRENT value here. If a newer cycle
+  // has since started — whether a fresh failure/retry OR the letter finally
+  // SUCCEEDING and advancing — the token will have moved on, and the stale
+  // response is discarded rather than inserting a repetition for a letter
+  // the child has already left (spec §30/§32/§33/§34 — this single counter
+  // covers both the staleness and the concurrent-request-protection
+  // requirements at once).
+  const cycleTokenRef = useRef(0);
+  attemptRef.current  = attempt;
+  hasDrawnRef.current = hasDrawn;
 
   // â”€â”€ Tracer dot animation (Attempt 1 "Watch & Trace") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tracerProgress    = useRef(new Animated.Value(0)).current;
@@ -486,6 +591,28 @@ export default function LetterWritingScreen({ route, navigation }) {
   const letter        = letterObj?.letter ?? 'a';
   const isLastLetter  = letterIdx >= sequence.length - 1;
   const isLastAttempt = attempt === 3;
+
+  // Feature 3 Step 2 — formal support-level model. `attempt` remains the
+  // single source of truth for session position (progression, dots, score
+  // indexing — all untouched below); `supportLevel`/`supportPresentation`
+  // are pure, derived-every-render values (same pattern as guideOpacity/
+  // badge already used) that now own every "how much guidance is shown"
+  // decision.
+  //
+  // Feature 3 Step 6 — normal mode now derives supportLevel from the
+  // adaptive sequence (starting point = the backend's read-only
+  // recommendation for THIS letter, or the legacy default when none has
+  // (yet) resolved). Collection mode is completely untouched: it still
+  // resolves via the fixed Step 2 identity mapping, never consulting the
+  // adaptive recommendation at all (spec §17). Feature 3 Step 7 extracted
+  // this whole branch into resolveSessionSupportLevel() (see
+  // constants/handwritingSupportLevels.js) so the collection-mode
+  // guarantee is directly unit-testable without RN component rendering —
+  // same behavior as before, just named and independently provable now.
+  const recommendedStartSupport = resolveRecommendedStartSupport({ recommendation, currentLetter: letter });
+  const supportLevel = resolveSessionSupportLevel({ attempt, collectionMode, recommendedStartSupport });
+  const supportPresentation = getSupportPresentation({ supportLevel, attempt, collectionMode });
+
   const templateStrokes = useMemo(
     () => normalizeStrokes(LETTER_PATHS[letter] ?? []),
     [letter]
@@ -499,9 +626,12 @@ export default function LetterWritingScreen({ route, navigation }) {
     ANGULAR_LETTERS.has(letter)
   );
 
-  const guideOpacity  = (attempt === 3 && !collectionMode) ? 0 : attempt === 1 ? 0.14 : 0.26;
+  // Same values as the pre-refactor inline ternary (attempt 1→0.14,
+  // attempt 2→0.26, normal-mode attempt 3→0, collection-mode attempt 3→0.26)
+  // — now resolved by getSupportPresentation() instead of an inline ternary.
+  const guideOpacity  = supportPresentation?.guideOpacity ?? 0;
   const phonetic      = PHONETICS[letter.toLowerCase()] ?? '';
-  const badge         = ATTEMPT_BADGE[attempt];
+  const badge         = SUPPORT_BADGE[supportLevel];
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
@@ -546,10 +676,98 @@ export default function LetterWritingScreen({ route, navigation }) {
     return () => Speech.stop();
   }, [letter]);
 
-  // â”€â”€ Tracer dot animation for Attempt 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Feature 3 Step 6 — adaptive support recommendation fetch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Once per letter (never per render, never per stroke, never polled —
+  // spec §18). Skipped entirely in collection mode (spec §17) — the fixed
+  // research protocol must never even attempt this network call. Renders
+  // the legacy default sequence (getAdaptiveSupportSequence's own fallback)
+  // for the entire time this is pending or fails — no loading UI, no
+  // blocked interaction (spec §19/§20).
+  useEffect(() => {
+    if (collectionMode) return;
+    let cancelled = false;
+
+    fetchRecommendedStartSupport({ studentId: student.sid, letter, caseType }).then((startSupport) => {
+      if (cancelled) return;
+      // Only apply if the child hasn't already started drawing this
+      // letter's first attempt — never retroactively change support
+      // mid-attempt (spec §19). If they've already started, this letter
+      // simply keeps the legacy sequence it already began rendering with.
+      if (shouldApplyRecommendation({ currentAttempt: attemptRef.current, hasDrawnCurrentAttempt: hasDrawnRef.current })) {
+        setRecommendation({ letter, startSupport });
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [letter, caseType, collectionMode, student.sid]);
+
+  // ── Feature 4 Step 5 — adaptive pre-writing recommendation fetch + detour ──
+  // Once per letter (never per render, never per stroke) — completely
+  // independent of the Feature 3 fetch effect just above (spec §26: the two
+  // adaptive fetches must never be coupled; they may resolve in any order).
+  // Skipped entirely in collection mode (spec §9/§25). Unlike Feature 3's
+  // recommendation, this one never needs to live in React state — it only
+  // ever drives a one-time navigation side effect, never a render decision.
+  useEffect(() => {
+    if (collectionMode) return;
+    let cancelled = false;
+
+    fetchPreWritingRecommendation({ studentId: student.sid, letter, caseType }).then((recommendation) => {
+      if (cancelled) return;
+
+      const activity = recommendation.activityId
+        ? getPreWritingActivityById(recommendation.activityId)
+        : null;
+
+      // The Step 3 guard — true if the fixed session-start/category-boundary
+      // trigger (or an earlier adaptive detour) already warmed up THIS
+      // exact letter for THIS exact interaction (spec §19/§20/§25).
+      const alreadyHandled = hasWarmupHandled({
+        studentId: student.sid, caseType, letter, interactionId, collectionMode,
+      });
+
+      const decision = resolveAdaptivePreWritingDetour({
+        recommendation: { ...recommendation, interactionId },
+        activity,
+        alreadyHandled,
+        collectionMode,
+        currentLetter: letter,
+        currentCaseType: caseType,
+        currentInteractionId: interactionId,
+        currentAttempt: attemptRef.current,
+        hasDrawn: hasDrawnRef.current,
+      });
+
+      if (!decision.shouldNavigate) return;
+
+      // Mark BEFORE navigating — same "mark on open" discipline the two
+      // fixed triggers already use (Step 3/Step 5 spec §11/§12): teacher
+      // skip and a failed POST /pre-writing-activity save must still count
+      // as handled, and this call never depends on either succeeding.
+      markWarmupHandled({
+        studentId: student.sid, caseType, letter, interactionId,
+        reason: PRE_WRITING_REASON.ADAPTIVE_DIFFICULTY,
+      });
+
+      navigation.navigate('PreWritingActivity', buildPreWritingNavigationParams({
+        student, theme, activities: [activity], // exactly one activity (spec §17) — never the group's full pool
+        targetLetter: letter, targetCaseType: caseType, interactionId,
+        reason: PRE_WRITING_REASON.ADAPTIVE_DIFFICULTY,
+        nextRoute: 'LetterWriting',
+        // sequence.slice(letterIdx) — NOT letterIdx + 1 — so the SAME target
+        // letter is still active[0] on return, unlike the category-boundary
+        // detour's slice(letterIdx + 1) (spec §13/§14).
+        nextParams: { student, theme, caseType, letterSequence: sequence.slice(letterIdx) },
+      }));
+    });
+
+    return () => { cancelled = true; };
+  }, [letter, caseType, collectionMode, student.sid, interactionId, letterIdx, sequence, navigation, student, theme]);
+
+  // â”€â”€ Tracer dot animation for HIGH support (originally "Attempt 1") â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const rawPath = LETTER_PATHS[letter];
-    if (reduceMotion || attempt !== 1 || hasDrawn || !rawPath || rawPath.length < 1) {
+    if (reduceMotion || !supportPresentation?.showAnimatedTracer || hasDrawn || !rawPath || rawPath.length < 1) {
       setTracerVisible(false);
       return;
     }
@@ -614,7 +832,12 @@ export default function LetterWritingScreen({ route, navigation }) {
       setTracerVisible(false);
       anim.stop();
     };
-  }, [attempt, hasDrawn, letter, reduceMotion, tracerProgress]);
+    // supportPresentation.showAnimatedTracer is derived from attempt +
+    // collectionMode (+ recommendedStartSupport in normal mode, Feature 3
+    // Step 6) — depending on those primitives instead of the whole
+    // (non-memoized, new-every-render) supportPresentation object keeps
+    // this effect's re-run triggers correct without an infinite loop.
+  }, [attempt, collectionMode, hasDrawn, letter, reduceMotion, recommendedStartSupport, tracerProgress]);
 
   // â”€â”€ Show feedback badge after first stroke â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // â”€â”€ PanResponder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -705,6 +928,67 @@ export default function LetterWritingScreen({ route, navigation }) {
 
   // â”€â”€ Next attempt / next letter logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleNext = useCallback(async () => {
+    // Feature 5 Step 3 — a fresh token for THIS cycle (success or failure),
+    // incremented before anything else in handleNext runs. Captured by
+    // scheduleAdaptiveRepetitionIfEligible() below so its async response
+    // can tell whether a NEWER cycle (another failure/retry, or this
+    // letter finally succeeding) has since started — see cycleTokenRef's
+    // own declaration for the full rationale.
+    cycleTokenRef.current += 1;
+    const myCycleToken = cycleTokenRef.current;
+
+    // Feature 5 Step 3 — evaluates whether the cycle that is ABOUT TO FAIL
+    // should schedule ONE spaced repetition later in `sequence`. Fire-and-
+    // forget: never awaited by either failure branch below — the existing
+    // immediate retry (setAttempt(1)/resetCanvas(), unchanged) must never
+    // be delayed or blocked by this network call (spec §2/§12/§31).
+    // Collection mode never calls this at all (spec §42). Captures every
+    // piece of "this failed cycle's" identity (letter/caseType/letterObj/
+    // letterIdx/sequence) from the current closure, which is guaranteed
+    // fresh for THIS invocation of handleNext.
+    const scheduleAdaptiveRepetitionIfEligible = () => {
+      if (collectionMode) return;
+
+      const failedLetter    = letter;
+      const failedCaseType  = caseType;
+      const failedLetterObj = letterObj;
+      const failedLetterIdx = letterIdx;
+      const failedSequence  = sequence;
+
+      const alreadyUsed = getAdaptiveRepetitionsUsed({
+        studentId: student.sid, caseType: failedCaseType, letter: failedLetter, interactionId,
+      });
+
+      fetchRepetitionRecommendation({
+        studentId: student.sid, letter: failedLetter, caseType: failedCaseType,
+        adaptiveRepetitionsUsed: alreadyUsed,
+      }).then((recommendation) => {
+        // Stale-response / concurrent-request safety (spec §32/§33/§34):
+        // if a newer cycle has since started — another failure/retry, OR
+        // this letter finally succeeding and letterIdx advancing — discard
+        // rather than inserting into a sequence position the child has
+        // already moved past. Letter/case are also checked defensively,
+        // matching Feature 4's own "two independent layers" discipline,
+        // even though within one screen mount they cannot actually differ
+        // from what was requested.
+        if (myCycleToken !== cycleTokenRef.current) return;
+        if (recommendation.letter !== failedLetter || recommendation.caseType !== failedCaseType) return;
+        if (!recommendation.shouldRepeat) return;
+
+        const { sequence: nextSequence, inserted } = insertSpacedRepetition({
+          sequence: failedSequence, currentIndex: failedLetterIdx, targetLetterEntry: failedLetterObj, interactionId,
+        });
+        if (!inserted) return; // e.g. a repetition for this exact target is already pending
+
+        // Increment ONLY after a real insertion actually happens (spec §10)
+        // — never merely because the backend said shouldRepeat=true.
+        setRuntimeSequence(nextSequence);
+        incrementAdaptiveRepetitionsUsed({
+          studentId: student.sid, caseType: failedCaseType, letter: failedLetter, interactionId,
+        });
+      });
+    };
+
     const features = calculateDrawingFeatures(allPathsRef.current);
 
     // DTW trajectory accuracy — uses the same 60-point bezier sample the ghost/tracer use.
@@ -717,30 +1001,27 @@ export default function LetterWritingScreen({ route, navigation }) {
     features.dtw_distance = dtwResult.normalizedDistance;
     features.stroke_order_meta = dtwResult.strokeOrderMeta;
 
-    // ML: snapshot before resetCanvas() wipes allPathsRef
+    // ML: snapshot before resetCanvas() wipes allPathsRef.
+    // Feature 3 Step 3: support_level is the exact value this render used
+    // for THIS attempt (supportLevel, derived above via
+    // resolveSessionSupportLevel — never recomputed differently here).
     sessionAttemptsRef.current = [
       ...sessionAttemptsRef.current,
-      {
-        attempt_number: attempt,
-        features: {
-          smoothness:       features.smoothness,
-          pauseCount:       features.pauseCount,
-          completionTime:   features.completionTime,
-          strokeCount:      features.strokeCount,
-          dtw_distance:     features.dtw_distance,
-          stroke_order_meta: features.stroke_order_meta,
-        },
+      buildSessionAttemptRecord({
+        attemptNumber: attempt,
+        supportLevel,
+        features,
         strokes: allPathsRef.current.map((pts, i) => ({
           stroke_id: i + 1,
           points:    pts,   // each point: {x, y, t, tAbs, stroke_id}
         })),
-      },
+      }),
     ];
 
     const attemptScore = Math.round(featuresToScore({ smoothness: features.smoothness, dtw_distance: features.dtw_distance }));
     attemptScoresRef.current = [...attemptScoresRef.current, attemptScore];
     const attemptPassed = didPassAttempt(features, allPathsRef.current);
-    setAttemptFeedback({ passed: attemptPassed, attempt });
+    setAttemptFeedback({ passed: attemptPassed, attempt, supportLevel });
 
     try {
       await Promise.all([
@@ -803,6 +1084,11 @@ export default function LetterWritingScreen({ route, navigation }) {
           if (response.data.completed === false) {
             show('Keep practising — try again!', 'info');
           }
+          // Feature 5 Step 3 — a full 3-attempt cycle has now definitively
+          // failed (backend-confirmed). Schedule (never await) the spaced-
+          // repetition evaluation before the existing immediate retry
+          // proceeds exactly as it always has.
+          scheduleAdaptiveRepetitionIfEligible();
           attemptScoresRef.current   = [];
           sessionAttemptsRef.current = [];
           setAttempt(1);
@@ -812,6 +1098,11 @@ export default function LetterWritingScreen({ route, navigation }) {
       } catch {
         // network failure — gate only in normal mode
         if (!collectionMode && !wroteCorrectly) {
+          // Feature 5 Step 3 — same activation point as the backend-
+          // confirmed failure above: a network error still means this
+          // cycle failed locally and will immediately retry exactly as
+          // before.
+          scheduleAdaptiveRepetitionIfEligible();
           attemptScoresRef.current   = [];
           sessionAttemptsRef.current = [];
           setAttempt(1);
@@ -850,8 +1141,12 @@ export default function LetterWritingScreen({ route, navigation }) {
       setAttempt(1);
       resetCanvas();
     }
+    // supportLevel is a pure derivation of attempt + collectionMode (already
+    // both listed below) — included explicitly since handleNext's body now
+    // references it directly (Feature 3 Step 3). letterObj/interactionId
+    // added for scheduleAdaptiveRepetitionIfEligible() (Feature 5 Step 3).
   }, [attempt, caseType, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
-      resetCanvas, sequence, showCelebrationFor, student.sid]);
+      letterObj, interactionId, resetCanvas, sequence, showCelebrationFor, student.sid, supportLevel]);
 
   const handleDismissCelebration = useCallback(() => {
     const isAllDone = celebration?.isAllDone;
@@ -885,17 +1180,27 @@ export default function LetterWritingScreen({ route, navigation }) {
       const activities = group ? selectPreWritingActivities(group) : [];
 
       if (activities.length > 0) {
-        navigation.navigate('PreWritingActivity', {
+        // Feature 4 Step 3: mark BEFORE navigating (see
+        // preWritingSessionGuard.js) and thread interactionId through so a
+        // later PreWritingActivity detour later in this same sequence can
+        // still tell this letter was already warmed up this interaction.
+        markWarmupHandled({
+          studentId: student?.sid, caseType, letter: nextLetterObj.letter, interactionId,
+          reason: PRE_WRITING_REASON.CATEGORY_TRANSITION,
+        });
+        navigation.navigate('PreWritingActivity', buildPreWritingNavigationParams({
           student, theme, activities,
+          targetLetter: nextLetterObj.letter, targetCaseType: caseType, interactionId,
+          reason: PRE_WRITING_REASON.CATEGORY_TRANSITION,
           nextRoute:  'LetterWriting',
           nextParams: { student, theme, caseType, letterSequence: sequence.slice(letterIdx + 1) },
-        });
+        }));
       } else {
         setLetterIdx(i => i + 1);
         setAttempt(1);
       }
     }
-  }, [celebration, collectionMode, collectionSessionId, caseType, navigation, student, theme, sequence, letterIdx]);
+  }, [celebration, collectionMode, collectionSessionId, caseType, navigation, student, theme, sequence, letterIdx, interactionId]);
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Render
@@ -980,10 +1285,10 @@ export default function LetterWritingScreen({ route, navigation }) {
             {/* Attempt badge */}
             <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
               <Text style={[styles.attemptTitle, { color: badge.text }]}>
-                {ATTEMPT_TITLES[attempt]}
+                {`Attempt ${attempt} · ${SUPPORT_INSTRUCTIONS[supportLevel]}`}
               </Text>
               <Text style={[styles.attemptHint, { color: badge.text }]}>
-                {ATTEMPT_HINTS[attempt]}
+                {SUPPORT_HINTS[supportLevel]}
               </Text>
             </View>
 
@@ -1026,8 +1331,12 @@ export default function LetterWritingScreen({ route, navigation }) {
                       ))}
                     </>
                   )}
-                  {/* Attempt 2: stroke-order start dot */}
-                  {attempt === 2
+                  {/* MEDIUM support: numbered stroke-order start dot.
+                      Originally gated on `attempt === 2` — now on
+                      supportPresentation.showStartMarker, which is true for
+                      the exact same cases (medium, in both normal and
+                      collection mode; see handwritingSupportLevels.js). */}
+                  {supportPresentation?.showStartMarker
                     && activeGuideStart
                     && (
                     <>
@@ -1055,36 +1364,45 @@ export default function LetterWritingScreen({ route, navigation }) {
                       >
                         {activeGuideStroke + 1}
                       </SvgText>
-                      {activeDirectionHint && (
-                        <>
-                          {activeDirectionHint.endGuides.map((guide, index) => (
-                            <Circle
-                              key={`stroke-end-${index}`}
-                              cx={guide.x}
-                              cy={guide.y}
-                              r={index === activeDirectionHint.endGuides.length - 1 ? 7 : 5}
-                              fill="none"
-                              stroke={theme.button}
-                              strokeWidth={2.5}
-                              opacity={0.72}
-                            />
-                          ))}
-                          {activeDirectionHint.arrows.map((arrow, index) => (
-                            <React.Fragment key={`stroke-arrow-${index}`}>
-                              <Line
-                                x1={arrow.shaftStart.x}
-                                y1={arrow.shaftStart.y}
-                                x2={arrow.tip.x}
-                                y2={arrow.tip.y}
-                                stroke={theme.button}
-                                strokeWidth={4}
-                                strokeLinecap="round"
-                              />
-                              <Polygon points={arrow.arrowHead} fill={theme.button} />
-                            </React.Fragment>
-                          ))}
-                        </>
-                      )}
+                    </>
+                  )}
+                  {/* MEDIUM support: stroke-direction arrows + end markers.
+                      Originally nested inside the same `attempt === 2` block
+                      above, gated a second time on `activeDirectionHint`
+                      truthiness — now on supportPresentation.showDirectionHint
+                      (same true/false cases as showStartMarker today), still
+                      independently null-guarded by activeDirectionHint. */}
+                  {supportPresentation?.showDirectionHint
+                    && activeGuideStart
+                    && activeDirectionHint
+                    && (
+                    <>
+                      {activeDirectionHint.endGuides.map((guide, index) => (
+                        <Circle
+                          key={`stroke-end-${index}`}
+                          cx={guide.x}
+                          cy={guide.y}
+                          r={index === activeDirectionHint.endGuides.length - 1 ? 7 : 5}
+                          fill="none"
+                          stroke={theme.button}
+                          strokeWidth={2.5}
+                          opacity={0.72}
+                        />
+                      ))}
+                      {activeDirectionHint.arrows.map((arrow, index) => (
+                        <React.Fragment key={`stroke-arrow-${index}`}>
+                          <Line
+                            x1={arrow.shaftStart.x}
+                            y1={arrow.shaftStart.y}
+                            x2={arrow.tip.x}
+                            y2={arrow.tip.y}
+                            stroke={theme.button}
+                            strokeWidth={4}
+                            strokeLinecap="round"
+                          />
+                          <Polygon points={arrow.arrowHead} fill={theme.button} />
+                        </React.Fragment>
+                      ))}
                     </>
                   )}
 
@@ -1121,7 +1439,7 @@ export default function LetterWritingScreen({ route, navigation }) {
                   tracerXInterp/tracerYInterp are Animated.interpolation nodes
                   derived from tracerProgress — they follow the exact bezier curve
                   that the ghost Path renders, not the raw waypoint chords. */}
-              {attempt === 1 && !hasDrawn && tracerVisible && tracerXInterp && (
+              {supportPresentation?.showAnimatedTracer && !hasDrawn && tracerVisible && tracerXInterp && (
                 <View style={StyleSheet.absoluteFill} pointerEvents="none">
                   <Animated.View
                     style={[
@@ -1195,6 +1513,7 @@ export default function LetterWritingScreen({ route, navigation }) {
             avatarKey={student?.avatar_key}
             passed={attemptFeedback.passed}
             attempt={attemptFeedback.attempt}
+            supportLevel={attemptFeedback.supportLevel}
             theme={theme}
           />
         )}

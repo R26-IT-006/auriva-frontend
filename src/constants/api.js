@@ -35,6 +35,17 @@ export const ENDPOINTS = {
   LETTER_COMPLETE:            '/handwriting/letter-complete',
   LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
   LETTER_PROGRESS_REPORT:     (studentId) => `/handwriting/letter-progress-report/${studentId}`,
+  // Feature 3 Step 6 — read-only adaptive support recommendation, scoped to
+  // one (student, letter, caseType) since support is family-specific.
+  SUPPORT_RECOMMENDATION:     (studentId, letter, caseType) => `/handwriting/support-recommendation/${studentId}/${letter}/${caseType}`,
+  // Feature 4 Step 5 — read-only adaptive pre-writing recommendation, same
+  // (student, letter, caseType) scope as SUPPORT_RECOMMENDATION above.
+  PRE_WRITING_RECOMMENDATION: (studentId, letter, caseType) => `/handwriting/pre-writing-recommendation/${studentId}/${letter}/${caseType}`,
+  // Feature 5 Step 3 — read-only adaptive repetition recommendation, same
+  // (student, letter, caseType) scope, plus the caller-supplied
+  // interaction-scoped adaptiveRepetitionsUsed count as a query param.
+  REPETITION_RECOMMENDATION: (studentId, letter, caseType, adaptiveRepetitionsUsed) =>
+    `/handwriting/repetition-recommendation/${studentId}/${letter}/${caseType}?adaptiveRepetitionsUsed=${adaptiveRepetitionsUsed}`,
 
   // Data Collection Mode
   COLLECTION_SESSION_START:    '/handwriting/collection-session/start',
