@@ -92,14 +92,48 @@ describe('Frontend Test 4 — collection attempt 3 still sends low', () => {
   });
 });
 
+// ─── Feature 6 Step 5 — demo_speed_level validation contract ──────────────
+
+describe('demo_speed_level — valid values pass through unchanged', () => {
+  it.each(['standard', 'slow'])('demoSpeedLevel=%p is persisted verbatim', (level) => {
+    const record = buildSessionAttemptRecord({
+      attemptNumber: 1, supportLevel: 'high', demoSpeedLevel: level, features: makeFeatures(), strokes: makeStrokes(),
+    });
+    expect(record.demo_speed_level).toBe(level);
+  });
+});
+
+describe('demo_speed_level — invalid/missing values persist as null, never guessed', () => {
+  it.each(['fast', 'medium', 'FAST', '', 0.21, true, {}])('demoSpeedLevel=%p is rejected to null', (bad) => {
+    const record = buildSessionAttemptRecord({
+      attemptNumber: 1, supportLevel: 'high', demoSpeedLevel: bad, features: makeFeatures(), strokes: makeStrokes(),
+    });
+    expect(record.demo_speed_level).toBeNull();
+  });
+
+  it('a missing demoSpeedLevel (undefined) persists as null — the expected shape for MEDIUM/LOW support, reduce-motion, and collection mode, where no tracer was actually shown', () => {
+    const record = buildSessionAttemptRecord({
+      attemptNumber: 2, supportLevel: 'medium', features: makeFeatures(), strokes: makeStrokes(),
+    });
+    expect(record.demo_speed_level).toBeNull();
+  });
+
+  it('an explicit null demoSpeedLevel persists as null', () => {
+    const record = buildSessionAttemptRecord({
+      attemptNumber: 2, supportLevel: 'medium', demoSpeedLevel: null, features: makeFeatures(), strokes: makeStrokes(),
+    });
+    expect(record.demo_speed_level).toBeNull();
+  });
+});
+
 // ─── Frontend Test 5 — no existing payload fields removed ─────────────────
 
 describe('Frontend Test 5 — no existing attempt payload fields removed', () => {
-  it('retains attempt_number, features (every original sub-field, plus the ML-readiness additions), and strokes exactly as before, plus the new support_level field only', () => {
+  it('retains attempt_number, features (every original sub-field, plus the ML-readiness additions), and strokes exactly as before, plus support_level (Feature 3 Step 3) and demo_speed_level (Feature 6 Step 5) additively', () => {
     const supportLevel = getSupportLevelForAttempt({ attempt: 2, collectionMode: false });
     const features = makeFeatures();
     const strokes = makeStrokes();
-    const record = buildSessionAttemptRecord({ attemptNumber: 2, supportLevel, features, strokes });
+    const record = buildSessionAttemptRecord({ attemptNumber: 2, supportLevel, demoSpeedLevel: 'slow', features, strokes });
 
     expect(record.attempt_number).toBe(2);
     expect(record.features).toEqual({
@@ -126,7 +160,7 @@ describe('Frontend Test 5 — no existing attempt payload fields removed', () =>
     });
     expect(record.strokes).toBe(strokes); // same array reference — never copied/mutated
     expect(Object.keys(record).sort()).toEqual(
-      ['attempt_number', 'features', 'strokes', 'support_level'].sort()
+      ['attempt_number', 'demo_speed_level', 'features', 'strokes', 'support_level'].sort()
     );
   });
 });

@@ -37,6 +37,11 @@ import { buildSessionAttemptRecord } from '../../../utils/handwritingAttemptPayl
 import { fetchRecommendedStartSupport, shouldApplyRecommendation, resolveRecommendedStartSupport } from '../../../utils/supportRecommendation';
 import { fetchPreWritingRecommendation } from '../../../utils/preWritingRecommendation';
 import { fetchRepetitionRecommendation } from '../../../utils/repetitionRecommendation';
+import { DEMO_SPEED_LEVELS, getStrokeDurationForLevel } from '../../../constants/demoSpeedLevels';
+import {
+  fetchDemoSpeedRecommendation, shouldApplyDemoSpeedRecommendation, resolveRecommendedDemoSpeedLevel,
+} from '../../../utils/demoSpeedRecommendation';
+import { resolveActualDemoSpeedLevel } from '../../../utils/demoSpeedPersistence';
 import { getAdaptiveRepetitionsUsed, incrementAdaptiveRepetitionsUsed } from '../../../utils/repetitionSessionGuard';
 import { insertSpacedRepetition } from '../../../utils/controlledRepetition';
 import {
@@ -333,7 +338,14 @@ function getStrokeDirectionHint(stroke, showEverySegment = false) {
   };
 }
 
-const TRACER_PX_PER_MS = 0.28;
+// Feature 6 Step 4 — TRACER_PX_PER_MS removed: its one and only usage (the
+// tracer-stroke duration formula below) now goes through
+// getStrokeDurationForLevel()/constants/demoSpeedLevels.js instead, which is
+// byte-identical to the old `Math.max(600, Math.round(len / 0.28))` formula
+// at 'standard' speed (spec §26). Unlike LetterWritingScreen.js, this file
+// has no other (dead-code or otherwise) reference to the constant, so
+// removing it is directly redundant because of this step's own activation,
+// not unrelated cleanup (spec §23).
 const ATTEMPT_FEEDBACK_MS = 2200;
 
 // Returns total drawn length + bounding-box dimensions in one pass.
@@ -495,6 +507,12 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   // full rationale.
   const [recommendation, setRecommendation] = useState({ letter: null, startSupport: null });
 
+  // Feature 6 Step 4 — see LetterWritingScreen.js's identical block for the
+  // full rationale (double-layer staleness guarantee, default 'standard').
+  const [demoSpeedRecommendation, setDemoSpeedRecommendation] = useState({
+    letter: null, caseType: null, speedLevel: DEMO_SPEED_LEVELS.STANDARD,
+  });
+
   const startTimeRef       = useRef(null);
   const allPathsRef        = useRef([]);
   const attemptScoresRef   = useRef([]);   // accumulates featuresToScore result for each attempt
@@ -535,6 +553,20 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   const recommendedStartSupport = resolveRecommendedStartSupport({ recommendation, currentLetter: letter });
   const supportLevel = resolveSessionSupportLevel({ attempt, collectionMode, recommendedStartSupport });
   const supportPresentation = getSupportPresentation({ supportLevel, attempt, collectionMode });
+
+  // Feature 6 Step 4 — see LetterWritingScreen.js's identical block for the
+  // full rationale (recommended vs. actual-rendered vs. effective speed).
+  const recommendedDemoSpeedLevel = resolveRecommendedDemoSpeedLevel({
+    recommendation: demoSpeedRecommendation, currentLetter: letter, currentCaseType: caseType,
+  });
+  const actualDemoSpeedLevel = resolveActualDemoSpeedLevel({
+    recommendedSpeedLevel: recommendedDemoSpeedLevel,
+    supportLevel,
+    showAnimatedTracer: supportPresentation?.showAnimatedTracer ?? false,
+    reduceMotion,
+    collectionMode,
+  });
+  const effectiveDemoSpeedLevel = actualDemoSpeedLevel ?? DEMO_SPEED_LEVELS.STANDARD;
 
   const templateStrokes = useMemo(
     () => normalizeStrokes(LETTER_PATHS[letter] ?? []),
@@ -604,6 +636,28 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       if (cancelled) return;
       if (shouldApplyRecommendation({ currentAttempt: attemptRef.current, hasDrawnCurrentAttempt: hasDrawnRef.current })) {
         setRecommendation({ letter, startSupport });
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [letter, caseType, collectionMode, student.sid]);
+
+  // Feature 6 Step 4 — adaptive demo-speed recommendation fetch. See
+  // LetterWritingScreen.js's identical block for the full rationale: once
+  // per letter, completely independent of the Feature 3 fetch effect just
+  // above, skipped entirely in collection mode (spec §13, HARD REQUIREMENT).
+  useEffect(() => {
+    if (collectionMode) return;
+    let cancelled = false;
+
+    fetchDemoSpeedRecommendation({ studentId: student.sid, letter, caseType }).then((response) => {
+      if (shouldApplyDemoSpeedRecommendation({
+        responseLetter: response.letter, responseCaseType: response.caseType,
+        currentLetter: letter, currentCaseType: caseType,
+        currentAttempt: attemptRef.current, hasDrawn: hasDrawnRef.current,
+        collectionMode, cancelled,
+      })) {
+        setDemoSpeedRecommendation({ letter: response.letter, caseType: response.caseType, speedLevel: response.recommendedSpeedLevel });
       }
     });
 
@@ -723,9 +777,11 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           useNativeDriver: true,
         }));
       }
+      // Feature 6 Step 4 — was `Math.max(600, Math.round(len / TRACER_PX_PER_MS))`.
+      // See LetterWritingScreen.js's identical block for the full rationale.
       strokeAnimations.push(Animated.timing(tracerProgress, {
         toValue: strokeBounds[index].end,
-        duration: Math.max(600, Math.round(sampledStrokes[index].totalLength / TRACER_PX_PER_MS)),
+        duration: getStrokeDurationForLevel(sampledStrokes[index].totalLength, effectiveDemoSpeedLevel),
         useNativeDriver: true,
       }));
     }
@@ -742,7 +798,9 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     // Feature 3 Step 6) — depending on those primitives instead of the
     // whole (non-memoized) supportPresentation object keeps this effect's
     // re-run triggers correct without an infinite loop.
-  }, [attempt, collectionMode, hasDrawn, letter, reduceMotion, recommendedStartSupport, tracerProgress]);
+    // effectiveDemoSpeedLevel (Feature 6 Step 4) — see LetterWritingScreen.js's
+    // identical block for the full rationale.
+  }, [attempt, collectionMode, effectiveDemoSpeedLevel, hasDrawn, letter, reduceMotion, recommendedStartSupport, tracerProgress]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -882,11 +940,14 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     // Feature 3 Step 3: support_level is the exact value this render used
     // for THIS attempt (supportLevel, derived above via
     // resolveSessionSupportLevel — never recomputed differently here).
+    // Feature 6 Step 5: demo_speed_level is `actualDemoSpeedLevel` — see
+    // LetterWritingScreen.js's identical block for the full rationale.
     sessionAttemptsRef.current = [
       ...sessionAttemptsRef.current,
       buildSessionAttemptRecord({
         attemptNumber: attempt,
         supportLevel,
+        demoSpeedLevel: actualDemoSpeedLevel,
         features,
         strokes: allPathsRef.current.map((pts, i) => ({
           stroke_id: i + 1,
@@ -1019,7 +1080,9 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     // both listed below) — included explicitly since handleNext's body now
     // references it directly (Feature 3 Step 3). letterObj/interactionId
     // added for scheduleAdaptiveRepetitionIfEligible() (Feature 5 Step 3).
-  }, [attempt, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
+    // actualDemoSpeedLevel added for the same reason (Feature 6 Step 5) —
+    // handleNext's body now reads it directly to build the attempt record.
+  }, [attempt, actualDemoSpeedLevel, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
       letterObj, interactionId, resetCanvas, sequence, show, showCelebrationFor, student.sid, supportLevel]);
 
   const handleDismissCelebration = useCallback(() => {

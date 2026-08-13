@@ -37,6 +37,11 @@ import { buildSessionAttemptRecord } from '../../utils/handwritingAttemptPayload
 import { fetchRecommendedStartSupport, shouldApplyRecommendation, resolveRecommendedStartSupport } from '../../utils/supportRecommendation';
 import { fetchPreWritingRecommendation } from '../../utils/preWritingRecommendation';
 import { fetchRepetitionRecommendation } from '../../utils/repetitionRecommendation';
+import { DEMO_SPEED_LEVELS, getStrokeDurationForLevel } from '../../constants/demoSpeedLevels';
+import {
+  fetchDemoSpeedRecommendation, shouldApplyDemoSpeedRecommendation, resolveRecommendedDemoSpeedLevel,
+} from '../../utils/demoSpeedRecommendation';
+import { resolveActualDemoSpeedLevel } from '../../utils/demoSpeedPersistence';
 import { getAdaptiveRepetitionsUsed, incrementAdaptiveRepetitionsUsed } from '../../utils/repetitionSessionGuard';
 import { insertSpacedRepetition } from '../../utils/controlledRepetition';
 import {
@@ -455,6 +460,13 @@ function getStrokeDirectionHint(stroke, showEverySegment = false) {
 }
 
 // Constant-speed tracer: duration proportional to segment pixel distance.
+// Feature 6 Step 4 — this constant is NO LONGER the runtime source of truth
+// for the tracer animation below (that now goes through
+// getStrokeDurationForLevel()/constants/demoSpeedLevels.js, byte-identical
+// to this value at 'standard' speed). It is kept only because the
+// already-dead getSegmentDuration() (Step 1 audit finding — never called
+// anywhere in this file) still references it; removing either is out of
+// scope for this step (spec §23 — no unrelated cleanup).
 const TRACER_PX_PER_MS = 0.28; // ~280 px/s — slow enough for children to follow
 const ATTEMPT_FEEDBACK_MS = 2200;
 function getSegmentDuration(p1, p2) {
@@ -550,6 +562,17 @@ export default function LetterWritingScreen({ route, navigation }) {
   // the fetch effect itself would otherwise reset it.
   const [recommendation, setRecommendation] = useState({ letter: null, startSupport: null });
 
+  // Feature 6 Step 4 — the adaptive demo-speed recommendation, tagged with
+  // the exact (letter, caseType) it was resolved for — same double-layer
+  // staleness guarantee as `recommendation` above (see
+  // utils/demoSpeedRecommendation.js's resolveRecommendedDemoSpeedLevel).
+  // Default is `standard`, so the very first render — and any render before
+  // this letter's own fetch resolves — reproduces today's exact, unmodified
+  // tracer speed (spec §15/§16).
+  const [demoSpeedRecommendation, setDemoSpeedRecommendation] = useState({
+    letter: null, caseType: null, speedLevel: DEMO_SPEED_LEVELS.STANDARD,
+  });
+
   // â”€â”€ Refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const startTimeRef       = useRef(null);
   const allPathsRef        = useRef([]);
@@ -612,6 +635,29 @@ export default function LetterWritingScreen({ route, navigation }) {
   const recommendedStartSupport = resolveRecommendedStartSupport({ recommendation, currentLetter: letter });
   const supportLevel = resolveSessionSupportLevel({ attempt, collectionMode, recommendedStartSupport });
   const supportPresentation = getSupportPresentation({ supportLevel, attempt, collectionMode });
+
+  // Feature 6 Step 4 — demo-speed resolution. `recommendedDemoSpeedLevel` is
+  // ONLY the backend's software recommendation (what Feature 2/3 signals
+  // suggest); it says nothing about whether a tracer is actually on screen.
+  // `actualDemoSpeedLevel` (utils/demoSpeedPersistence.js's
+  // resolveActualDemoSpeedLevel, unmodified since Step 3) is the
+  // persistence-semantics-correct value — `null` unless the tracer is truly
+  // being rendered right now (HIGH support, tracer actually shown, no
+  // reduce-motion, not collection mode). `effectiveDemoSpeedLevel` is what
+  // the animation itself uses: `actualDemoSpeedLevel ?? standard`, so a
+  // `null` (no tracer showing) never reaches the duration calculation as
+  // anything other than the safe default (spec §31).
+  const recommendedDemoSpeedLevel = resolveRecommendedDemoSpeedLevel({
+    recommendation: demoSpeedRecommendation, currentLetter: letter, currentCaseType: caseType,
+  });
+  const actualDemoSpeedLevel = resolveActualDemoSpeedLevel({
+    recommendedSpeedLevel: recommendedDemoSpeedLevel,
+    supportLevel,
+    showAnimatedTracer: supportPresentation?.showAnimatedTracer ?? false,
+    reduceMotion,
+    collectionMode,
+  });
+  const effectiveDemoSpeedLevel = actualDemoSpeedLevel ?? DEMO_SPEED_LEVELS.STANDARD;
 
   const templateStrokes = useMemo(
     () => normalizeStrokes(LETTER_PATHS[letter] ?? []),
@@ -695,6 +741,32 @@ export default function LetterWritingScreen({ route, navigation }) {
       // simply keeps the legacy sequence it already began rendering with.
       if (shouldApplyRecommendation({ currentAttempt: attemptRef.current, hasDrawnCurrentAttempt: hasDrawnRef.current })) {
         setRecommendation({ letter, startSupport });
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [letter, caseType, collectionMode, student.sid]);
+
+  // ── Feature 6 Step 4 — adaptive demo-speed recommendation fetch ───────────
+  // Once per letter (never per render, never per stroke, never polled —
+  // mirrors the Feature 3 fetch effect immediately above; completely
+  // independent of it, spec §43/§44). Skipped entirely in collection mode
+  // (spec §13, HARD REQUIREMENT) — collection must never even attempt this
+  // network call. Renders `standard` (this screen's own already-shipped
+  // speed) for the entire time this is pending or fails — no loading UI, no
+  // blocked interaction (spec §5/§40).
+  useEffect(() => {
+    if (collectionMode) return;
+    let cancelled = false;
+
+    fetchDemoSpeedRecommendation({ studentId: student.sid, letter, caseType }).then((response) => {
+      if (shouldApplyDemoSpeedRecommendation({
+        responseLetter: response.letter, responseCaseType: response.caseType,
+        currentLetter: letter, currentCaseType: caseType,
+        currentAttempt: attemptRef.current, hasDrawn: hasDrawnRef.current,
+        collectionMode, cancelled,
+      })) {
+        setDemoSpeedRecommendation({ letter: response.letter, caseType: response.caseType, speedLevel: response.recommendedSpeedLevel });
       }
     });
 
@@ -816,7 +888,13 @@ export default function LetterWritingScreen({ route, navigation }) {
         }));
       }
       const len = perStroke[s].totalLength;
-      const dur = Math.max(600, Math.round(len / TRACER_PX_PER_MS));
+      // Feature 6 Step 4 — was `Math.max(600, Math.round(len / TRACER_PX_PER_MS))`.
+      // getStrokeDurationForLevel() (constants/demoSpeedLevels.js) reproduces
+      // that exact formula byte-for-byte whenever effectiveDemoSpeedLevel is
+      // 'standard' (spec §26 backward-compatibility) — the 600ms floor and
+      // 0.28 px/ms baseline both live in that one shared helper now, so this
+      // screen no longer duplicates them (spec §21/§23).
+      const dur = getStrokeDurationForLevel(len, effectiveDemoSpeedLevel);
       strokeAnims.push(Animated.timing(tracerProgress, {
         toValue: strokeBounds[s].end, duration: dur, useNativeDriver: true,
       }));
@@ -837,7 +915,12 @@ export default function LetterWritingScreen({ route, navigation }) {
     // Step 6) — depending on those primitives instead of the whole
     // (non-memoized, new-every-render) supportPresentation object keeps
     // this effect's re-run triggers correct without an infinite loop.
-  }, [attempt, collectionMode, hasDrawn, letter, reduceMotion, recommendedStartSupport, tracerProgress]);
+    // effectiveDemoSpeedLevel (Feature 6 Step 4) is added for the same
+    // reason: a demo-speed recommendation arriving while the tracer is
+    // already looping (but before the child has drawn anything) must
+    // restart the loop at the correct speed, exactly like
+    // recommendedStartSupport already does for support-level changes.
+  }, [attempt, collectionMode, effectiveDemoSpeedLevel, hasDrawn, letter, reduceMotion, recommendedStartSupport, tracerProgress]);
 
   // â”€â”€ Show feedback badge after first stroke â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // â”€â”€ PanResponder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1005,11 +1088,16 @@ export default function LetterWritingScreen({ route, navigation }) {
     // Feature 3 Step 3: support_level is the exact value this render used
     // for THIS attempt (supportLevel, derived above via
     // resolveSessionSupportLevel — never recomputed differently here).
+    // Feature 6 Step 5: demo_speed_level is `actualDemoSpeedLevel` — the
+    // ACTUAL value resolveActualDemoSpeedLevel() resolved for THIS attempt
+    // (null unless a tracer genuinely rendered), never the raw backend
+    // recommendation (spec §35/§39).
     sessionAttemptsRef.current = [
       ...sessionAttemptsRef.current,
       buildSessionAttemptRecord({
         attemptNumber: attempt,
         supportLevel,
+        demoSpeedLevel: actualDemoSpeedLevel,
         features,
         strokes: allPathsRef.current.map((pts, i) => ({
           stroke_id: i + 1,
@@ -1145,7 +1233,9 @@ export default function LetterWritingScreen({ route, navigation }) {
     // both listed below) — included explicitly since handleNext's body now
     // references it directly (Feature 3 Step 3). letterObj/interactionId
     // added for scheduleAdaptiveRepetitionIfEligible() (Feature 5 Step 3).
-  }, [attempt, caseType, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
+    // actualDemoSpeedLevel added for the same reason (Feature 6 Step 5) —
+    // handleNext's body now reads it directly to build the attempt record.
+  }, [attempt, actualDemoSpeedLevel, caseType, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
       letterObj, interactionId, resetCanvas, sequence, showCelebrationFor, student.sid, supportLevel]);
 
   const handleDismissCelebration = useCallback(() => {

@@ -24,8 +24,10 @@
 'use strict';
 
 import { SUPPORT_LEVELS } from '../constants/handwritingSupportLevels';
+import { DEMO_SPEED_LEVELS } from '../constants/demoSpeedLevels';
 
 const VALID_SUPPORT_LEVELS = new Set(Object.values(SUPPORT_LEVELS));
+const VALID_DEMO_SPEED_LEVELS = new Set(Object.values(DEMO_SPEED_LEVELS));
 
 /**
  * Builds one element of `sessionAttemptsRef.current` (later sent verbatim as
@@ -63,9 +65,22 @@ const VALID_SUPPORT_LEVELS = new Set(Object.values(SUPPORT_LEVELS));
  * calculateAttemptDurationFromAbsoluteTime()). The legacy fields are
  * completely unchanged; these are new keys only.
  *
+ * Feature 6 Step 5 — adds `demo_speed_level`, following the exact same
+ * pattern as `support_level` above: `demoSpeedLevel` must be the ACTUAL
+ * value the screen resolved via resolveActualDemoSpeedLevel() for THIS
+ * attempt (i.e. `actualDemoSpeedLevel`, never the raw backend
+ * `recommendedDemoSpeedLevel` — spec §35, mandatory) — `null` whenever no
+ * animated tracer was actually rendered for this attempt (MEDIUM/LOW
+ * support, reduce-motion, or collection mode), `'standard'`/`'slow'`
+ * whenever one genuinely was. Defensively re-validated here against the
+ * shared vocabulary before being persisted, exactly like `support_level`
+ * (belt-and-suspenders — resolveActualDemoSpeedLevel() already guarantees a
+ * safe value, but this boundary never trusts a caller blindly).
+ *
  * @param {{
  *   attemptNumber: number,
  *   supportLevel: 'high'|'medium'|'low'|null|undefined,
+ *   demoSpeedLevel: 'standard'|'slow'|null|undefined,
  *   features: {
  *     smoothness: number, pauseCount: number, completionTime: number,
  *     strokeCount: number, dtw_distance: number|null, stroke_order_meta: any,
@@ -82,14 +97,16 @@ const VALID_SUPPORT_LEVELS = new Set(Object.values(SUPPORT_LEVELS));
  * @returns {{
  *   attempt_number: number,
  *   support_level: 'high'|'medium'|'low'|null,
+ *   demo_speed_level: 'standard'|'slow'|null,
  *   features: Object,
  *   strokes: Array<Object>,
  * }}
  */
-export function buildSessionAttemptRecord({ attemptNumber, supportLevel, features, strokes }) {
+export function buildSessionAttemptRecord({ attemptNumber, supportLevel, demoSpeedLevel, features, strokes }) {
   return {
     attempt_number: attemptNumber,
     support_level: VALID_SUPPORT_LEVELS.has(supportLevel) ? supportLevel : null,
+    demo_speed_level: VALID_DEMO_SPEED_LEVELS.has(demoSpeedLevel) ? demoSpeedLevel : null,
     features: {
       smoothness:        features.smoothness,
       pauseCount:        features.pauseCount,

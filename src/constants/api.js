@@ -46,6 +46,9 @@ export const ENDPOINTS = {
   // interaction-scoped adaptiveRepetitionsUsed count as a query param.
   REPETITION_RECOMMENDATION: (studentId, letter, caseType, adaptiveRepetitionsUsed) =>
     `/handwriting/repetition-recommendation/${studentId}/${letter}/${caseType}?adaptiveRepetitionsUsed=${adaptiveRepetitionsUsed}`,
+  // Feature 6 Step 3/4 — read-only adaptive demo-speed recommendation, same
+  // (student, letter, caseType) scope as the recommendation endpoints above.
+  DEMO_SPEED_RECOMMENDATION: (studentId, letter, caseType) => `/handwriting/demo-speed-recommendation/${studentId}/${letter}/${caseType}`,
 
   // Data Collection Mode
   COLLECTION_SESSION_START:    '/handwriting/collection-session/start',
