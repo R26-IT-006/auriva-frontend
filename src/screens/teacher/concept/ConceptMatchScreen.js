@@ -230,7 +230,7 @@ export default function ConceptMatchScreen({ route, navigation }) {
             conceptKey,
             passed,
             score,
-            attemptCount: 3,
+            attemptCount: updatedAttempts.length,
             confusedWith,
           });
         } catch { /* progress saved locally */ }

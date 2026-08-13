@@ -15,26 +15,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
+import { getOrderedCategories } from '../../../constants/conceptData';
 import { Layout } from '../../../constants/layout';
 
-const CATEGORIES = [
-  { key: 'colors',        label: 'Colours',              image: require('../../../../assets/concepts/category-images/Colors.png') },
-  { key: 'shapes',        label: 'Shapes',               image: require('../../../../assets/concepts/category-images/Shapes.png') },
-  { key: 'numbers',       label: 'Numbers',              image: require('../../../../assets/concepts/category-images/Numbers.png') },
-  { key: 'classroom',     label: 'Classroom Objects',    image: require('../../../../assets/concepts/category-images/Classroom Objects.png') },
-  { key: 'household',     label: 'Household Items',      image: require('../../../../assets/concepts/category-images/Household Items.png') },
-  { key: 'house',         label: 'House Parts',          image: require('../../../../assets/concepts/category-images/House.png') },
-  { key: 'nature',        label: 'Natural Environment',  image: require('../../../../assets/concepts/category-images/Nature.png') },
-  { key: 'family',        label: 'Family Members',       image: require('../../../../assets/concepts/category-images/Family.png') },
-  { key: 'professionals', label: 'Professionals',        image: require('../../../../assets/concepts/category-images/Professionals.png') },
-  { key: 'animals',       label: 'Animals',              image: require('../../../../assets/concepts/category-images/Animals.png') },
-  { key: 'fruits',        label: 'Fruits',               image: require('../../../../assets/concepts/category-images/Fruits.png') },
-];
+// Derived from the catalogue rather than listed here, so the grid can never offer a
+// category that has no concepts behind it.
+const CATEGORIES = getOrderedCategories();
 
 function CategoryCard({ item, cardW, cardH, theme, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
+  const isComingSoon = Boolean(item.comingSoon);
 
   function pressIn() {
+    if (isComingSoon) return;
     Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
   }
   function pressOut() {
@@ -44,18 +37,42 @@ function CategoryCard({ item, cardW, cardH, theme, onPress }) {
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable
+        disabled={isComingSoon}
         onPress={onPress}
         onPressIn={pressIn}
         onPressOut={pressOut}
         style={[
           styles.card,
-          { width: cardW, height: cardH, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+          {
+            width: cardW,
+            height: cardH,
+            backgroundColor: isComingSoon ? '#F0F0F0' : theme.cardSurface,
+            borderColor:     isComingSoon ? '#D0D0D0' : theme.cardOutline,
+          },
         ]}
       >
-        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
-        <Text style={styles.cardLabel} numberOfLines={2}>
+        <Image
+          source={item.image}
+          style={[styles.cardImage, isComingSoon && styles.cardImageDisabled]}
+          resizeMode="contain"
+        />
+        <Text
+          style={[styles.cardLabel, isComingSoon && styles.cardLabelDisabled]}
+          numberOfLines={2}
+        >
           {item.label}
         </Text>
+
+        {/* Same greyed-out + lock treatment as a locked concept card, so "not yet"
+            reads the same way everywhere in the module. */}
+        {isComingSoon && (
+          <View style={styles.comingSoonOverlay}>
+            <View style={styles.comingSoonPill}>
+              <Ionicons name="lock-closed" size={11} color="#8A8A8A" />
+              <Text style={styles.comingSoonText}>Coming soon</Text>
+            </View>
+          </View>
+        )}
       </Pressable>
     </Animated.View>
   );
@@ -81,7 +98,12 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
         cardW={cardW}
         cardH={cardH}
         theme={theme}
-        onPress={() => navigation.navigate('ConceptItems', { student, category: item })}
+        // Only key and label travel — the catalogue entry also holds every concept
+        // and its asset refs, which has no business sitting in navigation state.
+        onPress={() => navigation.navigate('ConceptItems', {
+          student,
+          category: { key: item.key, label: item.label },
+        })}
       />
     );
   }
@@ -244,5 +266,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     color: '#1A1A1A',
+  },
+
+  // ── Coming soon (category with artwork but no concepts yet) ────────────────
+  cardImageDisabled: {
+    opacity: 0.25,
+  },
+  cardLabelDisabled: {
+    color: '#AAAAAA',
+  },
+  comingSoonOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 10,
+    backgroundColor: 'rgba(240,240,240,0.45)',
+  },
+  comingSoonPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  comingSoonText: {
+    fontSize: 10,
+    fontFamily: 'Nunito_700Bold',
+    color: '#8A8A8A',
   },
 });

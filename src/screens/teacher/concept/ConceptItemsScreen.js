@@ -332,7 +332,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
         </View>
 
         <Text style={[styles.subtitle, { color: theme.headingText }]}>
-          Tap a fruit to start learning
+          Tap a picture to start learning
         </Text>
 
         {loading ? (

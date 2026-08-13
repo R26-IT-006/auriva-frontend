@@ -1,8 +1,17 @@
-// Static concept catalogue — mirrors backend CATEGORY_SEQUENCES order
+// Static concept catalogue — mirrors backend CATEGORY_SEQUENCES order.
+//
+// This is the single source of truth for the category grid: ConceptCategoriesScreen
+// renders whatever is listed here, so a category can never appear on screen without
+// data behind it. `order` drives display position (easiest concepts first) and is
+// kept explicit rather than relying on the order keys happen to be written in.
+// `comingSoon: true` marks a category whose artwork exists but whose concepts have
+// not been authored yet — those render as disabled cards.
 export const CONCEPT_CATEGORIES = {
   fruits: {
     key:   'fruits',
     label: 'Fruits',
+    order: 11,
+    image: require('../../assets/concepts/category-images/Fruits.png'),
     items: [
       {
         key:         'apple',
@@ -137,6 +146,8 @@ export const CONCEPT_CATEGORIES = {
   professionals: {
     key:   'professionals',
     label: 'Professionals',
+    order: 9,
+    image: require('../../assets/concepts/category-images/Professionals.png'),
     items: [
       {
         key:      'baker',
@@ -207,6 +218,8 @@ export const CONCEPT_CATEGORIES = {
   animals: {
     key:   'animals',
     label: 'Animals',
+    order: 10,
+    image: require('../../assets/concepts/category-images/Animals.png'),
     items: [
       {
         key:        'ant',
@@ -400,6 +413,8 @@ export const CONCEPT_CATEGORIES = {
   house: {
     key:   'house',
     label: 'House Parts',
+    order: 6,
+    image: require('../../assets/concepts/category-images/House.png'),
     items: [
       {
         key:     'door',
@@ -435,6 +450,8 @@ export const CONCEPT_CATEGORIES = {
   numbers: {
     key:   'numbers',
     label: 'Numbers',
+    order: 3,
+    image: require('../../assets/concepts/category-images/Numbers.png'),
     items: [
       {
         key:     'one',
@@ -511,6 +528,8 @@ export const CONCEPT_CATEGORIES = {
   shapes: {
     key:   'shapes',
     label: 'Shapes',
+    order: 2,
+    image: require('../../assets/concepts/category-images/Shapes.png'),
     items: [
       {
         key:     'circle',
@@ -545,6 +564,8 @@ export const CONCEPT_CATEGORIES = {
   colors: {
     key:   'colors',
     label: 'Colours',
+    order: 1,
+    image: require('../../assets/concepts/category-images/Colors.png'),
     items: [
       {
         key:   'red',
@@ -621,6 +642,8 @@ export const CONCEPT_CATEGORIES = {
   household: {
     key:   'household',
     label: 'Household Items',
+    order: 5,
+    image: require('../../assets/concepts/category-images/Household Items.png'),
     items: [
       {
         key:      'bed',
@@ -740,6 +763,8 @@ export const CONCEPT_CATEGORIES = {
   classroom: {
     key:   'classroom',
     label: 'Classroom Objects',
+    order: 4,
+    image: require('../../assets/concepts/category-images/Classroom Objects.png'),
     items: [
       {
         key:      'bag',
@@ -853,7 +878,38 @@ export const CONCEPT_CATEGORIES = {
       },
     ],
   },
+
+  // ── Not yet authored ───────────────────────────────────────────────────────
+  // Tile artwork exists, but there are no per-concept assets under
+  // assets/concepts/categories/ and no sequence in the backend catalogue. Listed
+  // here so the grid can show them as visibly-planned rather than silently
+  // dropping them — they render disabled and cannot be opened.
+  nature: {
+    key:        'nature',
+    label:      'Natural Environment',
+    order:      7,
+    comingSoon: true,
+    image:      require('../../assets/concepts/category-images/Nature.png'),
+    items:      [],
+  },
+  family: {
+    key:        'family',
+    label:      'Family Members',
+    order:      8,
+    comingSoon: true,
+    image:      require('../../assets/concepts/category-images/Family.png'),
+    items:      [],
+  },
 };
+
+/**
+ * Categories in display order (easiest first), for the category grid.
+ * Deriving this from the catalogue is what stops the grid drifting out of sync
+ * with the data behind it.
+ */
+export function getOrderedCategories() {
+  return Object.values(CONCEPT_CATEGORIES).sort((a, b) => a.order - b.order);
+}
 
 const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
 

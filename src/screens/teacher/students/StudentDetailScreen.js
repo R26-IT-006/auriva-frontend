@@ -62,15 +62,14 @@ function SectionHeader({ icon, title, action, onAction }) {
   );
 }
 
-function StatTile({ icon, value, label, tint }) {
-  return (
-    <View style={styles.statTile}>
-      <Ionicons name={icon} size={16} color={tint || Colors.text.link} />
-      <Text style={[styles.statTileValue, tint ? { color: tint } : null]}>{value}</Text>
-      <Text style={styles.statTileLabel} numberOfLines={1}>{label}</Text>
-    </View>
-  );
-}
+// Only Concept Learning reports progress today; the rest render an unavailable
+// panel until those modules ship, so the selector stays honest about coverage.
+const MODULES = [
+  { key: 'concept',       tab: 'Concepts',      title: 'Concept Learning',     icon: 'school-outline' },
+  { key: 'writing',       tab: 'Writing',       title: 'Writing Module',       icon: 'create-outline' },
+  { key: 'pronunciation', tab: 'Pronunciation', title: 'Pronunciation Module', icon: 'mic-outline' },
+  { key: 'dialogue',      tab: 'Dialogue',      title: 'Dialogue Module',      icon: 'chatbubbles-outline' },
+];
 
 /** Whole years between a date of birth and today; null when unparseable. */
 function ageFrom(dateStr) {
@@ -90,6 +89,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
+  const [activeModule, setActiveModule] = useState('concept');
 
   const fetch = useCallback(async () => {
     if (!initialStudent?.sid) { setRefreshing(false); return; }
@@ -127,6 +127,8 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const needsAttention = (concepts?.categories || [])
     .reduce((n, c) => n + c.needs_attention.length, 0);
   const age = ageFrom(student.date_of_birth);
+  const activeMeta = MODULES.find((m) => m.key === activeModule) ?? MODULES[0];
+  const firstName  = student.full_name.split(' ')[0];
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -155,6 +157,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                   <Text style={styles.heroChipText}>{student.student_code}</Text>
                 </View>
               ) : null}
+              {age != null ? (
+                <View style={styles.heroChip}>
+                  <Ionicons name="balloon-outline" size={11} color="#FFFFFF" />
+                  <Text style={styles.heroChipText}>{age} years old</Text>
+                </View>
+              ) : null}
               {student.disability ? (
                 <View style={styles.heroChip}>
                   <Text style={styles.heroChipText} numberOfLines={1}>{student.disability}</Text>
@@ -163,29 +171,6 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
             </View>
           </View>
         </LinearGradient>
-
-        {/* Quick stats — lifted onto the hero so the two read as one unit */}
-        <View style={styles.statStrip}>
-          <StatTile
-            icon="balloon-outline"
-            value={age != null ? age : '—'}
-            label={age != null ? 'years old' : 'age unknown'}
-          />
-          <View style={styles.statDivider} />
-          <StatTile
-            icon="ribbon-outline"
-            value={concepts ? concepts.totals.mastered : '—'}
-            label="mastered"
-            tint={Colors.status.success}
-          />
-          <View style={styles.statDivider} />
-          <StatTile
-            icon="alert-circle-outline"
-            value={concepts ? needsAttention : '—'}
-            label="needs work"
-            tint={needsAttention > 0 ? Colors.status.warning : undefined}
-          />
-        </View>
 
         {/* Personal Info */}
         <SectionHeader icon="person-outline" title="Student Information" />
@@ -213,15 +198,53 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
           </>
         )}
 
-        {/* Concept Learning */}
+        {/* Module progress */}
         <SectionHeader
-          icon="school-outline"
-          title="Concept Learning"
-          action={concepts && concepts.totals.started > 0 ? 'Report' : null}
+          icon="stats-chart-outline"
+          title="Module Progress"
+          action={activeModule === 'concept' && concepts && concepts.totals.started > 0 ? 'Report' : null}
           onAction={() => navigation.navigate('ConceptReport', { student })}
         />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.moduleTabs}
+        >
+          {MODULES.map((m) => {
+            const active = m.key === activeModule;
+            return (
+              <TouchableOpacity
+                key={m.key}
+                onPress={() => setActiveModule(m.key)}
+                activeOpacity={0.8}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                style={[styles.moduleTab, active && styles.moduleTabActive]}
+              >
+                <Ionicons
+                  name={m.icon}
+                  size={15}
+                  color={active ? '#FFFFFF' : Colors.text.muted}
+                />
+                <Text style={[styles.moduleTabText, active && styles.moduleTabTextActive]}>
+                  {m.tab}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
         <Card style={styles.infoCard} padding="none">
-          {conceptsLoading ? (
+          {activeModule !== 'concept' ? (
+            <View style={styles.conceptEmpty}>
+              <Ionicons name={activeMeta.icon} size={22} color={Colors.text.muted} />
+              <Text style={styles.conceptEmptyText}>
+                {activeMeta.title} isn't available yet. {firstName}'s progress will
+                appear here once the module is released.
+              </Text>
+            </View>
+          ) : conceptsLoading ? (
             <View style={styles.conceptLoading}>
               <ActivityIndicator color={Colors.icon.active} />
             </View>
@@ -297,9 +320,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Layout.radius.xl,
     padding: Layout.spacing.lg,
-    // Extra bottom padding so the stat strip can sit over the gradient without
-    // covering the name.
-    paddingBottom: Layout.spacing.xl + Layout.spacing.md,
+    marginBottom: Layout.spacing.lg,
     ...Layout.shadow.md,
   },
   avatarRing: {
@@ -333,30 +354,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_700Bold',
     maxWidth: 150,
   },
-
-  // ── Quick stats ───────────────────────────────────────────────────────────
-  statStrip: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    marginHorizontal: Layout.spacing.md,
-    // Pull up over the gradient so hero + stats read as a single unit.
-    marginTop: -Layout.spacing.xl,
-    marginBottom: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.md,
-    ...Layout.shadow.md,
-  },
-  statTile:      { flex: 1, alignItems: 'center', gap: 3 },
-  statTileValue: {
-    fontSize: Layout.fontSize.lg,
-    fontFamily: 'Nunito_800ExtraBold',
-    color: Colors.text.primary,
-  },
-  statTileLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted },
-  statDivider:   { width: 1, backgroundColor: Colors.divider, marginVertical: 4 },
 
   // ── Section headers ───────────────────────────────────────────────────────
   sectionHeader: {
@@ -392,6 +389,34 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
   infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
   divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 58 },
+
+  // ── Module selector ───────────────────────────────────────────────────────
+  moduleTabs: {
+    gap: Layout.spacing.sm,
+    paddingBottom: Layout.spacing.sm,
+    paddingRight: Layout.spacing.md,
+  },
+  moduleTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
+    borderRadius: Layout.radius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  moduleTabActive: {
+    backgroundColor: Colors.text.link,
+    borderColor: Colors.text.link,
+  },
+  moduleTabText: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.text.secondary,
+  },
+  moduleTabTextActive: { color: '#FFFFFF' },
 
   // ── Concept Learning ──────────────────────────────────────────────────────
   conceptLoading: { paddingVertical: Layout.spacing.xl, alignItems: 'center' },

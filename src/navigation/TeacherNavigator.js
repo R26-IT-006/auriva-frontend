@@ -1,6 +1,4 @@
-﻿import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+﻿import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Colors } from '../constants/colors';
 import { Layout } from '../constants/layout';
 
@@ -28,7 +26,6 @@ import ConceptColoringScreen              from '../screens/teacher/concept/Conce
 import ConceptActivityScreen              from '../screens/teacher/concept/ConceptActivityScreen';
 import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
 
-const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const stackOptions = {
@@ -44,58 +41,18 @@ const stackOptions = {
   headerBackTitle: '',
 };
 
-function DashboardStack() {
+// The teacher workspace — reached via "Teacher Workspace". A single stack: the
+// dashboard is the entry point and navigates onward to the student screens.
+function TeacherWorkspace() {
   return (
     <Stack.Navigator screenOptions={stackOptions}>
-      <Stack.Screen name="TeacherHome" component={TeacherDashboardScreen} options={{ headerShown: false }} />
-    </Stack.Navigator>
-  );
-}
-
-function StudentsStack() {
-  return (
-    <Stack.Navigator screenOptions={stackOptions}>
+      <Stack.Screen name="TeacherHome"          component={TeacherDashboardScreen}   options={{ headerShown: false }} />
       <Stack.Screen name="TeacherStudentList"   component={TeacherStudentListScreen}  options={{ title: 'My Students' }} />
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
-      {/* Inside StudentsStack, not the root stack, so the report keeps the teacher
-          tab bar and Colors theming rather than the student-workspace chrome. */}
+      {/* Kept in this stack, not the root one, so the report keeps Colors theming
+          rather than the student-workspace chrome. */}
       <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
     </Stack.Navigator>
-  );
-}
-
-// The full teacher tab UI — reached via "Teacher Workspace"
-function TeacherTabs() {
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor:   Colors.primary,
-        tabBarInactiveTintColor: Colors.icon.default,
-        tabBarStyle: {
-          backgroundColor: Colors.surface,
-          borderTopColor:  Colors.borderLight,
-          borderTopWidth:  1,
-          height:          Layout.tabBarHeight,
-          paddingBottom:   8,
-          paddingTop:      6,
-        },
-        tabBarLabelStyle: {
-          fontSize:   Layout.fontSize.xs,
-          fontFamily: 'Nunito_600SemiBold',
-        },
-        tabBarIcon: ({ color, size, focused }) => {
-          const icons = {
-            Dashboard: focused ? 'home'   : 'home-outline',
-            Students:  focused ? 'people' : 'people-outline',
-          };
-          return <Ionicons name={icons[route.name]} size={size} color={color} />;
-        },
-      })}
-    >
-      <Tab.Screen name="Dashboard" component={DashboardStack} options={{ title: 'Home' }} />
-      <Tab.Screen name="Students"  component={StudentsStack}  options={{ title: 'My Students' }} />
-    </Tab.Navigator>
   );
 }
 
@@ -104,7 +61,7 @@ export default function TeacherNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WorkspaceSelect" component={WorkspaceSelectScreen} />
-      <Stack.Screen name="TeacherMain"     component={TeacherTabs} />
+      <Stack.Screen name="TeacherMain"     component={TeacherWorkspace} />
       <Stack.Screen name="StudentPicker"    component={StudentPickerScreen} />
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
       <Stack.Screen name="AvatarSelection"    component={AvatarSelectionScreen} />

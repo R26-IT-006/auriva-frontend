@@ -229,7 +229,7 @@ export default function Tier2DragDropScreen({ route, navigation }) {
               conceptKey,
               passed,
               score,
-              attemptCount: 3,
+              attemptCount: updatedAttempts.length,
               confusedWith,
             });
           } catch { /* continue */ }

@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  View, Text, Image, TouchableOpacity, StyleSheet,
+  View, Text, Image, TouchableOpacity, Pressable, StyleSheet, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Line } from 'react-native-svg';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
 import { useAuthStore } from '../../../store/authStore';
@@ -29,12 +30,179 @@ const MODULE_ICONS = {
   dialogue:      require('../../../../assets/modules/Icons/Dialogue Module Icon.png'),
 };
 
+// All four cards take their accent from the child's avatar theme rather than
+// owning a colour each, so the screen stays a single calm colour world. The
+// module icons already carry the distinction between them.
 const MODULES = [
-  { key: 'concept',       label: 'Concept Learning',    image: MODULE_ICONS.concept },
-  { key: 'writing',       label: 'Writing Module',       image: MODULE_ICONS.writing },
-  { key: 'pronunciation', label: 'Pronunciation Module', image: MODULE_ICONS.pronunciation },
-  { key: 'dialogue',      label: 'Dialogue Module',      image: MODULE_ICONS.dialogue },
+  { key: 'concept',       label: 'Concept Learning',     image: MODULE_ICONS.concept,       corner: 'tl' },
+  { key: 'writing',       label: 'Writing Module',       image: MODULE_ICONS.writing,       corner: 'tr' },
+  { key: 'pronunciation', label: 'Pronunciation Module', image: MODULE_ICONS.pronunciation, corner: 'bl' },
+  { key: 'dialogue',      label: 'Dialogue Module',      image: MODULE_ICONS.dialogue,      corner: 'br' },
 ];
+
+// ── Geometry ──────────────────────────────────────────────────────────────────
+/** Avatar at the centre, one module parked in each corner — no implied order. */
+function buildHub(width, height) {
+  const cx  = width / 2;
+  const cy  = height / 2;
+  const hubR   = Math.max(70, Math.min(115, Math.min(width, height) * 0.19));
+  const cardW  = Math.max(130, Math.min(225, width * 0.23));
+  const cardH  = Math.max(110, Math.min(170, cardW * 0.74));
+  const dx     = Math.max(cardW / 2 + hubR * 0.55, width * 0.27);
+  const dy     = Math.max(cardH / 2 + 6, height * 0.27);
+
+  const offsets = { tl: [-1, -1], tr: [1, -1], bl: [-1, 1], br: [1, 1] };
+  const cards = MODULES.map((m) => {
+    const [sx, sy] = offsets[m.corner];
+    return { ...m, x: cx + sx * dx, y: cy + sy * dy };
+  });
+
+  return { cx, cy, hubR, cardW, cardH, cards };
+}
+
+// ── A module card ─────────────────────────────────────────────────────────────
+function ModuleCard({ item, index, w, h, theme, onPress }) {
+  const enter = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(enter, {
+      toValue: 1, delay: index * 90, friction: 6, tension: 70, useNativeDriver: true,
+    }).start();
+  }, [enter, index]);
+
+  function pressIn() {
+    Animated.spring(press, { toValue: 0.92, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+  }
+  function pressOut() {
+    Animated.spring(press, { toValue: 1, speed: 20, bounciness: 12, useNativeDriver: true }).start();
+  }
+
+  const scale = Animated.multiply(
+    enter.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }),
+    press,
+  );
+
+  return (
+    <Animated.View
+      style={[
+        styles.cardWrap,
+        { left: item.x - w / 2, top: item.y - h / 2, width: w, height: h },
+        { opacity: enter, transform: [{ scale }] },
+      ]}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={[styles.card, { borderColor: theme.cardOutline }]}
+      >
+        <Image source={item.image} style={styles.cardIcon} resizeMode="contain" />
+        <Text style={styles.cardLabel} numberOfLines={2}>{item.label}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// ── Hub + spokes ──────────────────────────────────────────────────────────────
+function ModuleHub({ student, theme, onModulePress }) {
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  // The greeting loops by default to hold the child's attention on the screen,
+  // but a looping video overwhelms some children and there is no way to know
+  // which from here — so the adult in the room gets a stop. Also satisfies
+  // WCAG 2.2 SC 2.2.2, which requires motion over 5s to be pausable.
+  const [playing, setPlaying] = useState(true);
+  const hubIn = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(hubIn, { toValue: 1, friction: 6, tension: 60, useNativeDriver: true }).start();
+  }, [hubIn]);
+
+  function handleLayout(e) {
+    const { width, height } = e.nativeEvent.layout;
+    setBox({ width, height });
+  }
+
+  const ready = box.width > 0 && box.height > 0;
+  const hub   = ready ? buildHub(box.width, box.height) : null;
+
+  return (
+    <View style={styles.hubArea} onLayout={handleLayout}>
+      {ready && (
+        <>
+          {/* spokes — every module hangs off the centre equally */}
+          <Svg width={box.width} height={box.height} style={StyleSheet.absoluteFill}>
+            {hub.cards.map((c) => (
+              <Line
+                key={c.key}
+                x1={hub.cx} y1={hub.cy} x2={c.x} y2={c.y}
+                stroke={theme.cardOutline} strokeOpacity={0.3}
+                strokeWidth={3} strokeDasharray="7 9" strokeLinecap="round"
+              />
+            ))}
+          </Svg>
+
+          {/* the child at the centre */}
+          <Animated.View
+            style={[
+              styles.hub,
+              {
+                left: hub.cx - hub.hubR, top: hub.cy - hub.hubR,
+                width: hub.hubR * 2, height: hub.hubR * 2, borderRadius: hub.hubR,
+                borderColor: theme.cardOutline,
+                opacity: hubIn,
+                transform: [{ scale: hubIn.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }],
+              },
+            ]}
+          >
+            {student.avatar_key && AVATAR_VIDEOS[student.avatar_key] && (
+              <Pressable
+                onPress={() => setPlaying((p) => !p)}
+                accessibilityRole="button"
+                accessibilityLabel={playing ? 'Pause the greeting' : 'Play the greeting'}
+                style={styles.hubPress}
+              >
+                <Video
+                  source={AVATAR_VIDEOS[student.avatar_key]}
+                  style={{ width: hub.hubR * 1.9, height: hub.hubR * 1.9 }}
+                  resizeMode={ResizeMode.CONTAIN}
+                  shouldPlay={playing}
+                  isLooping
+                  isMuted
+                />
+              </Pressable>
+            )}
+          </Animated.View>
+
+          {/* Play state indicator — visual only, the whole hub is the target. */}
+          {student.avatar_key && AVATAR_VIDEOS[student.avatar_key] && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.playBadge,
+                { left: hub.cx - 17, top: hub.cy + hub.hubR - 17, backgroundColor: theme.button },
+              ]}
+            >
+              <Ionicons name={playing ? 'pause' : 'play'} size={16} color="#FFFFFF" />
+            </View>
+          )}
+
+          {hub.cards.map((c, i) => (
+            <ModuleCard
+              key={c.key}
+              item={c}
+              index={i}
+              w={hub.cardW}
+              h={hub.cardH}
+              theme={theme}
+              onPress={() => onModulePress(c.key)}
+            />
+          ))}
+        </>
+      )}
+    </View>
+  );
+}
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function StudentDashboardScreen({ route, navigation }) {
@@ -59,6 +227,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
   const theme      = getAvatarTheme(student.avatar_key);
   const avatarName = AVATAR_NAMES[student.avatar_key] ?? '';
+  const firstName  = student.full_name?.trim().split(/\s+/)[0] ?? '';
 
   function handleModulePress(key) {
     if (key === 'concept') navigation.navigate('ConceptCategories', { student });
@@ -78,6 +247,17 @@ export default function StudentDashboardScreen({ route, navigation }) {
           <Ionicons name="arrow-back" size={20} color="#1A2E3B" />
         </TouchableOpacity>
 
+        <View style={styles.greeting}>
+          <Text style={styles.greetingText}>Hi, {firstName}! 👋</Text>
+          {avatarName ? (
+            <View style={[styles.avatarPill, { borderColor: theme.cardOutline }]}>
+              <Text style={[styles.avatarPillText, { color: theme.button }]}>
+                with {avatarName}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => setLogoutVisible(true)}
@@ -87,50 +267,9 @@ export default function StudentDashboardScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* ── Content ── */}
-      <View style={styles.content}>
+      <Text style={styles.prompt}>What shall we play today?</Text>
 
-        {/* Hero card */}
-        <View style={styles.heroCard}>
-          <View style={styles.heroInfo}>
-            <Text style={styles.heroHello}>Hello there 👋</Text>
-            <Text style={styles.heroName}>
-              Welcome Back,{'\n'}{student.full_name}!
-            </Text>
-            {avatarName ? (
-              <View style={[styles.avatarPill, { borderColor: theme.cardOutline }]}>
-                <Text style={[styles.avatarPillText, { color: theme.button }]}>{avatarName}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          <View style={styles.heroAvatarWrap}>
-            {student.avatar_key && AVATAR_VIDEOS[student.avatar_key] && (
-              <Video
-                source={AVATAR_VIDEOS[student.avatar_key]}
-                style={styles.heroVideo}
-                resizeMode={ResizeMode.CONTAIN}
-                shouldPlay isLooping isMuted
-              />
-            )}
-          </View>
-        </View>
-
-        {/* Module cards */}
-        <View style={styles.modulesRow}>
-          {MODULES.map((m) => (
-            <TouchableOpacity
-              key={m.key}
-              style={[styles.moduleCard, { borderColor: theme.cardOutline }]}
-              onPress={() => handleModulePress(m.key)}
-              activeOpacity={0.8}
-            >
-              <Image source={m.image} style={styles.moduleIcon} resizeMode="contain" />
-              <Text style={styles.moduleLabel}>{m.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+      <ModuleHub student={student} theme={theme} onModulePress={handleModulePress} />
 
       <ParentGateModal
         visible={gateVisible}
@@ -159,7 +298,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   iconBtn: {
     width: 42, height: 42, borderRadius: 21,
@@ -168,63 +307,59 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
   },
-
-  // ── Content ───────────────────────────────────────────────────────────────
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 16,
-  },
-
-  // ── Hero card ─────────────────────────────────────────────────────────────
-  heroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 30,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
-  },
-  heroInfo: { flex: 1, paddingVertical: 28, gap: 6 },
-  heroHello: {
-    fontSize: 14, fontFamily: 'Nunito_400Regular',
-    color: '#7A8A9A',
-  },
-  heroName: {
-    fontSize: 30, fontFamily: 'Nunito_900Black',
-    color: '#1A2E3B', lineHeight: 38,
+  greeting: { alignItems: 'center', gap: 4 },
+  greetingText: {
+    fontSize: 22, fontFamily: 'Nunito_900Black', color: '#1A2E3B',
   },
   avatarPill: {
-    alignSelf: 'flex-start',
     borderWidth: 1.5, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 4,
-    marginTop: 4,
+    paddingHorizontal: 12, paddingVertical: 2,
   },
-  avatarPillText: { fontSize: 13, fontFamily: 'Nunito_600SemiBold' },
+  avatarPillText: { fontSize: 12, fontFamily: 'Nunito_600SemiBold' },
 
-  heroAvatarWrap: { width: 210, height: 210 },
-  heroVideo:      { width: 210, height: 210 },
+  prompt: {
+    fontSize: 14, fontFamily: 'Nunito_600SemiBold',
+    color: '#7A8A9A', textAlign: 'center', marginTop: 2,
+  },
+
+  // ── Hub ───────────────────────────────────────────────────────────────────
+  hubArea: { flex: 1, marginHorizontal: 16, marginBottom: 12 },
+
+  hubPress: { alignItems: 'center', justifyContent: 'center' },
+  playBadge: {
+    position: 'absolute',
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: '#FFFFFF',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12, shadowRadius: 5, elevation: 4,
+  },
+  hub: {
+    position: 'absolute',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12, shadowRadius: 14, elevation: 6,
+  },
 
   // ── Module cards ──────────────────────────────────────────────────────────
-  modulesRow: { flex: 1, flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
-  moduleCard: {
+  cardWrap: { position: 'absolute' },
+  card: {
     flex: 1,
-    height: 190,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-    paddingVertical: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    borderRadius: 22,
+    borderWidth: 2.5,
+    alignItems: 'center', justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 10, paddingVertical: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
   },
-  moduleIcon:  { width: 100, height: 100 },
-  moduleLabel: {
-    fontSize: 15, fontFamily: 'Nunito_600SemiBold',
-    color: '#1A2E3B', textAlign: 'center', paddingHorizontal: 10,
+  cardIcon: { width: 66, height: 66 },
+  cardLabel: {
+    fontSize: 13, fontFamily: 'Nunito_800ExtraBold',
+    color: '#1A2E3B', textAlign: 'center', lineHeight: 17,
   },
 });

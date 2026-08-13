@@ -218,7 +218,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
               conceptKey,
               passed,
               score,
-              attemptCount: 3,
+              attemptCount: updatedAttempts.length,
               confusedWith,
             });
           } catch { /* continue */ }
