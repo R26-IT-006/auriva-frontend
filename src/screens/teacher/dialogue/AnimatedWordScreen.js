@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, BackHandler, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -29,6 +29,8 @@ export default function AnimatedWordScreen({ route, navigation }) {
     trackExposure = false, nextScreen, nextParams, adaptiveDwell,
   } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const imageSize = Math.min(screenWidth * 0.42, screenHeight * 0.42, 380);
 
   const [showGate, setShowGate] = useState(false);
   const soundRef = useRef(null);
@@ -129,13 +131,13 @@ export default function AnimatedWordScreen({ route, navigation }) {
           <View style={styles.body}>
 
             {wordImage && (
-              <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
+              <View style={[styles.imageWrap, { width: imageSize, height: imageSize, backgroundColor: theme.cardSurface }]}>
                 <Image source={wordImage} style={styles.image} resizeMode="cover" />
               </View>
             )}
 
             <View style={styles.wordArea}>
-              <AnimatedWord word={wordText ?? ''} fontSize={48} />
+              <AnimatedWord word={wordText ?? ''} fontSize={85} />
             </View>
 
             <TouchableOpacity
@@ -207,8 +209,6 @@ const styles = StyleSheet.create({
   },
 
   imageWrap: {
-    width: '100%',
-    height: '32%',
     borderRadius: Layout.radius.lg,
     overflow: 'hidden',
     ...Layout.shadow.md,
