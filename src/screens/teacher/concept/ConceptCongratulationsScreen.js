@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem } from '../../../constants/conceptData';
+import { getConceptItem } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 

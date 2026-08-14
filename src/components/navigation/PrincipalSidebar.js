@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { SidebarContext } from '../../context/SidebarContext';
-import { SIDEBAR_WIDTH, MINI_WIDTH } from '../../navigation/PrincipalNavigator';
+import { SIDEBAR_WIDTH, MINI_WIDTH } from '../../constants/layout';
 
 const CX      = MINI_WIDTH / 2;   // 32 — x-centre of icon column
 const ICON_SZ = 20;

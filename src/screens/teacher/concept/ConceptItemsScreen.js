@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItemsForCategory } from '../../../constants/conceptData';
+import { getConceptItemsForCategory } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 

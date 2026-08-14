@@ -8,7 +8,7 @@ import {
   Animated,
   useWindowDimensions,
 } from 'react-native';
-import { Layout } from '../../../../constants/layout';
+import { Layout } from '../../constants/layout';
 
 /**
  * "What is this called?" — picture on the left, name buttons on the right.

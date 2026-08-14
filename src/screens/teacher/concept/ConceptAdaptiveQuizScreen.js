@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import { playConceptAudio, stopConceptAudio } from '../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptQuestion, getConceptQuestionSi } from '../../../constants/conceptData';
+import { getConceptItem, getConceptQuestion, getConceptQuestionSi } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 

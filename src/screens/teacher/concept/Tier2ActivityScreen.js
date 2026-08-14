@@ -22,7 +22,7 @@ import {
   getConceptItemsForCategory,
   NAMING_QUESTION_EN,
   NAMING_QUESTION_SI,
-} from '../../../constants/conceptData';
+} from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';

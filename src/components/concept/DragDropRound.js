@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Layout } from '../../../../constants/layout';
+import { Layout } from '../../constants/layout';
 
 /**
  * "Drag the <concept> into the box." The Tier 2 drag-drop format.

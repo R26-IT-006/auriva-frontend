@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
-import { getOrderedCategories } from '../../../constants/conceptData';
+import { getOrderedCategories } from '../../../data/conceptData';
 import { Layout } from '../../../constants/layout';
 
 // Derived from the catalogue rather than listed here, so the grid can never offer a

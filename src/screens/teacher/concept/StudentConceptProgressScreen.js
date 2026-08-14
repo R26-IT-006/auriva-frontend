@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { Layout } from '../../../constants/layout';
-import { getConceptItemsForCategory } from '../../../constants/conceptData';
+import { getConceptItemsForCategory } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 
 const S_COLOR = {

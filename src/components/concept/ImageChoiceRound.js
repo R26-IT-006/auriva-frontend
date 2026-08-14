@@ -8,8 +8,8 @@ import {
   Animated,
   useWindowDimensions,
 } from 'react-native';
-import { getConceptQuestion, getConceptQuestionSi } from '../../../../constants/conceptData';
-import { Layout } from '../../../../constants/layout';
+import { getConceptQuestion, getConceptQuestionSi } from '../../data/conceptData';
+import { Layout } from '../../constants/layout';
 
 /**
  * "Can you find a <concept>?" — tap the matching picture.

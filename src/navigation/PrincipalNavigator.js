@@ -17,9 +17,7 @@ import EditStudentScreen from '../screens/principal/students/EditStudentScreen';
 
 import PrincipalSidebar from '../components/navigation/PrincipalSidebar';
 import { SidebarContext } from '../context/SidebarContext';
-
-export const SIDEBAR_WIDTH = 230;
-export const MINI_WIDTH    = 64;
+import { SIDEBAR_WIDTH, MINI_WIDTH } from '../constants/layout';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();

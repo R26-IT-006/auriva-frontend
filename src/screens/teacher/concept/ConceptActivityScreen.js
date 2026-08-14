@@ -15,14 +15,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import { playConceptAudio, stopConceptAudio } from '../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptQuestion } from '../../../constants/conceptData';
+import { getConceptItem, getConceptQuestion } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { Layout } from '../../../constants/layout';
 
-import ImageChoiceRound from './activity/ImageChoiceRound';
-import NameChoiceRound  from './activity/NameChoiceRound';
-import DragDropRound    from './activity/DragDropRound';
+import ImageChoiceRound from '../../../components/concept/ImageChoiceRound';
+import NameChoiceRound  from '../../../components/concept/NameChoiceRound';
+import DragDropRound    from '../../../components/concept/DragDropRound';
 
 const CORRECT_GIF = require('../../../../assets/feedback/correct.gif');
 const WRONG_GIF   = require('../../../../assets/feedback/wrong.gif');

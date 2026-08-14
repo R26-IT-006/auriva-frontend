@@ -17,7 +17,7 @@ import {
   getConceptItemsForCategory,
   NAMING_QUESTION_EN,
   NAMING_QUESTION_SI,
-} from '../../../constants/conceptData';
+} from '../../../data/conceptData';
 import { Layout } from '../../../constants/layout';
 
 // Mirrors ConceptDemoScreen (tier 1), but demonstrates the tier 2 task: the child
