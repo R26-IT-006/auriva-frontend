@@ -1,6 +1,6 @@
 import Constants from "expo-constants";
 
-const DEFAULT_API_BASE_URL = "http://172.28.8.70:3000/api";
+const DEFAULT_API_BASE_URL = "http://192.168.1.180:3000/api";
 
 function normalizeApiBaseUrl(value) {
   if (!value) return DEFAULT_API_BASE_URL;
