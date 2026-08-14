@@ -11,12 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
-import { playConceptAudio, stopConceptAudio } from '../../../utils/audioUtils';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptPhrase } from '../../../data/conceptData';
-import { conceptApi } from '../../../api/concept';
-import { ParentGateModal } from '../../../components/common/ParentGateModal';
-import { Layout } from '../../../constants/layout';
+import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { getConceptItem, getConceptPhrase } from '../../../../data/conceptData';
+import { conceptApi } from '../../../../api/concept';
+import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import { Layout } from '../../../../constants/layout';
 
 export default function ConceptImageScreen({ route, navigation }) {
   const { student, category, conceptKey, sessionId, isRelearn, confusedKeys } = route.params;

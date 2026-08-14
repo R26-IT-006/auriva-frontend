@@ -11,93 +11,96 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptItemsForCategory, getConceptQuestion, getConceptQuestionSi } from '../../../data/conceptData';
-import { Layout } from '../../../constants/layout';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import {
+  getConceptItem,
+  getConceptItemsForCategory,
+  NAMING_QUESTION_EN,
+  NAMING_QUESTION_SI,
+} from '../../../../data/conceptData';
+import { Layout } from '../../../../constants/layout';
 
-export default function ConceptDemoScreen({ route, navigation }) {
+// Mirrors ConceptDemoScreen (tier 1), but demonstrates the tier 2 task: the child
+// picks the correct *name* for the picture rather than the correct picture.
+export default function Tier2DemoScreen({ route, navigation }) {
   const { student, category, conceptKey, sessionId } = route.params;
 
   const concept  = getConceptItem(category.key, conceptKey);
   const allItems = getConceptItemsForCategory(category.key);
   const theme    = getAvatarTheme(student?.avatar_key);
-  const { width } = useWindowDimensions();
+
+  const { width, height } = useWindowDimensions();
+  const imgSize = Math.min(width, height) * 0.42;
 
   const [showGreen, setShowGreen] = useState(false);
 
-  const CARD_GAP = 12;
-  const H_PAD    = Layout.spacing.md;
-  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
-  const CARD_H   = CARD_W;
-  const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
-
-  // Correct answer always in center for demo — [distractor, correct, distractor]
+  // Correct answer sits in the middle so the hand always travels to centre.
+  // Filtering by key first avoids the duplicate-key crash when a category has
+  // fewer than three items.
   const demoOptions = (() => {
-    const idx = allItems.findIndex((it) => it.key === conceptKey);
-    const d1  = allItems[(idx + 1) % allItems.length];
-    const d2  = allItems[(idx + 2) % allItems.length];
-    return [d1, concept, d2];
+    const others = allItems.filter((it) => it.key !== conceptKey);
+    return [others[0], concept, others[1]].filter(Boolean);
   })();
 
-  const handY        = useRef(new Animated.Value(0)).current;
-  const handOpacity  = useRef(new Animated.Value(0)).current;
-  const handScale    = useRef(new Animated.Value(1)).current;
-  const rippleScale  = useRef(new Animated.Value(0.3)).current;
+  const handY         = useRef(new Animated.Value(150)).current;
+  const handOpacity   = useRef(new Animated.Value(0)).current;
+  const handScale     = useRef(new Animated.Value(1)).current;
+  const rippleScale   = useRef(new Animated.Value(0.3)).current;
   const rippleOpacity = useRef(new Animated.Value(0)).current;
-  const cardScale    = useRef(new Animated.Value(1)).current;
-  const thumbsAnim   = useRef(new Animated.Value(0)).current;
-  const thumbsOffset = useRef(new Animated.Value(60)).current;
+  const pillScale     = useRef(new Animated.Value(1)).current;
+  const thumbsAnim    = useRef(new Animated.Value(0)).current;
+  const thumbsOffset  = useRef(new Animated.Value(60)).current;
 
   useEffect(() => {
-    const handYTarget = -(CARD_H * 0.5 + 80);
+    // Every timer is tracked so leaving mid-demo can't fire an animation or a
+    // navigation on an unmounted screen.
+    const timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
 
-    // Hand fades in
-    setTimeout(() => {
+    at(1300, () => {
       Animated.timing(handOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
-    }, 1300);
+    });
 
-    // Hand rises up to center card
-    setTimeout(() => {
-      Animated.timing(handY, { toValue: handYTarget, duration: 650, useNativeDriver: true }).start();
-    }, 1700);
+    at(1700, () => {
+      Animated.timing(handY, { toValue: 0, duration: 650, useNativeDriver: true }).start();
+    });
 
-    // Hand presses + card squishes + ripple fires
-    setTimeout(() => {
+    at(2550, () => {
       Animated.parallel([
         Animated.sequence([
           Animated.timing(handScale, { toValue: 0.70, duration: 140, useNativeDriver: true }),
           Animated.timing(handScale, { toValue: 1,    duration: 200, useNativeDriver: true }),
         ]),
         Animated.sequence([
-          Animated.timing(cardScale, { toValue: 0.88, duration: 140, useNativeDriver: true }),
-          Animated.spring(cardScale, { toValue: 1, useNativeDriver: true, bounciness: 16, speed: 22 }),
+          Animated.timing(pillScale, { toValue: 0.90, duration: 140, useNativeDriver: true }),
+          Animated.spring(pillScale, { toValue: 1, useNativeDriver: true, bounciness: 16, speed: 22 }),
         ]),
         Animated.sequence([
-          Animated.timing(rippleOpacity, { toValue: 0.6, duration: 60,  useNativeDriver: true }),
+          Animated.timing(rippleOpacity, { toValue: 0.6, duration: 60, useNativeDriver: true }),
           Animated.parallel([
             Animated.timing(rippleScale,   { toValue: 1.8, duration: 480, useNativeDriver: true }),
             Animated.timing(rippleOpacity, { toValue: 0,   duration: 480, useNativeDriver: true }),
           ]),
         ]),
       ]).start();
-    }, 2550);
+    });
 
-    // Card turns green, hand fades out, thumbs up appears
-    setTimeout(() => {
+    at(2950, () => {
       setShowGreen(true);
       Animated.timing(handOpacity, { toValue: 0, duration: 250, useNativeDriver: true }).start();
       Animated.parallel([
         Animated.spring(thumbsAnim,   { toValue: 1, useNativeDriver: true, bounciness: 12, speed: 8 }),
         Animated.spring(thumbsOffset, { toValue: 0, useNativeDriver: true, bounciness: 8,  speed: 10 }),
       ]).start();
-    }, 2950);
+    });
 
-    const t = setTimeout(() => goToMatch(), 5200);
-    return () => clearTimeout(t);
+    at(5200, goToActivity);
+
+    return () => timers.forEach(clearTimeout);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function goToMatch() {
-    navigation.replace('ConceptMatch', { student, category, conceptKey, sessionId });
+  function goToActivity() {
+    navigation.replace('Tier2Activity', { student, category, conceptKey, sessionId });
   }
 
   if (!concept) return null;
@@ -122,66 +125,69 @@ export default function ConceptDemoScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={[styles.skipBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={goToMatch}
+            onPress={goToActivity}
             activeOpacity={0.7}
           >
             <Text style={[styles.skipText, { color: theme.headingText }]}>Skip</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Body — flex:1 so it fills remaining space and centres content */}
-        <View style={styles.body}>
-
-          <View style={styles.questionBlock}>
-            <Text style={[styles.questionEn, { color: theme.headingText }]}>
-              {getConceptQuestion(concept)}
+        {/* Bilingual question — same wording the real activity asks */}
+        <View style={styles.questionBlock}>
+          <Text style={[styles.questionEn, { color: theme.headingText }]}>
+            {NAMING_QUESTION_EN}
+          </Text>
+          {concept.labelSi && (
+            <Text style={[styles.questionSi, { color: theme.headingText }]}>
+              {NAMING_QUESTION_SI}
             </Text>
-            {concept.labelSi && (
-              <Text style={[styles.questionSi, { color: theme.headingText }]}>
-                {getConceptQuestionSi(concept)}
-              </Text>
-            )}
+          )}
+        </View>
+
+        {/* Image left, name options right — matches Tier2ActivityScreen's layout */}
+        <View style={styles.contentRow}>
+
+          <View style={styles.imageContainer}>
+            <Image source={concept.real} style={{ width: imgSize, height: imgSize }} resizeMode="contain" />
           </View>
 
-          {/* Cards + animated hand */}
-          <View style={styles.cardsArea}>
-            <View style={[styles.optionsRow, { paddingHorizontal: H_PAD, gap: CARD_GAP }]}>
-              {demoOptions.map((option) => {
-                const isCorrect = option.key === conceptKey;
-                return (
-                  <Animated.View
-                    key={option.key}
+          <View style={styles.labelsContainer}>
+            {demoOptions.map((option) => {
+              const isCorrect = option.key === conceptKey;
+              return (
+                <Animated.View
+                  key={option.key}
+                  style={[
+                    styles.labelPill,
+                    {
+                      backgroundColor: isCorrect && showGreen ? '#C8F0CC' : '#FFFFFF',
+                      borderColor:     isCorrect && showGreen ? '#4CAF50' : theme.cardOutline,
+                      transform:       isCorrect ? [{ scale: pillScale }] : [{ scale: 1 }],
+                    },
+                  ]}
+                >
+                  {isCorrect && (
+                    <Animated.View
+                      style={[
+                        styles.ripple,
+                        { borderColor: theme.button, transform: [{ scale: rippleScale }], opacity: rippleOpacity },
+                      ]}
+                      pointerEvents="none"
+                    />
+                  )}
+                  <Text
                     style={[
-                      styles.optionCard,
-                      {
-                        width:           CARD_W,
-                        height:          CARD_H,
-                        backgroundColor: isCorrect && showGreen ? '#C8F0CC' : theme.cardSurface,
-                        borderColor:     isCorrect && showGreen ? '#4CAF50' : theme.cardOutline,
-                        transform:       isCorrect ? [{ scale: cardScale }] : [{ scale: 1 }],
-                      },
-                      isCorrect && showGreen && styles.optionCardCorrect,
+                      styles.labelText,
+                      { color: isCorrect && showGreen ? '#2E7D32' : theme.headingText },
                     ]}
                   >
-                    {/* Ripple on correct card */}
-                    {isCorrect && (
-                      <Animated.View
-                        style={[
-                          styles.ripple,
-                          { borderColor: theme.button, transform: [{ scale: rippleScale }], opacity: rippleOpacity },
-                        ]}
-                        pointerEvents="none"
-                      />
-                    )}
-                    <View style={{ width: IMG_SIZE, height: IMG_SIZE }}>
-                      <Image source={option.real} style={styles.optionImage} resizeMode="contain" />
-                    </View>
-                  </Animated.View>
-                );
-              })}
-            </View>
+                    {option.label}
+                  </Text>
+                </Animated.View>
+              );
+            })}
 
-            {/* Hand — rises from below into the center card */}
+            {/* Hand rises from below onto the middle pill */}
             <View style={styles.handAnchor} pointerEvents="none">
               <Animated.View
                 style={{
@@ -194,7 +200,7 @@ export default function ConceptDemoScreen({ route, navigation }) {
             </View>
           </View>
 
-        </View>{/* end body */}
+        </View>
 
         {/* Thumbs-up feedback bubble */}
         <Animated.View
@@ -220,13 +226,6 @@ export default function ConceptDemoScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safe:      { flex: 1 },
   safeInner: { flex: 1, alignItems: 'center' },
-  body: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 100,
-  },
 
   topBar: {
     width: '100%',
@@ -264,7 +263,6 @@ const styles = StyleSheet.create({
   questionBlock: {
     alignItems: 'center',
     marginTop: 6,
-    marginBottom: 22,
     paddingHorizontal: Layout.spacing.lg,
     gap: 4,
   },
@@ -281,33 +279,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  cardsArea: {
-    width: '100%',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  optionsRow: {
+  contentRow: {
+    flex: 1,
     flexDirection: 'row',
     width: '100%',
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    paddingBottom: 130,
   },
-  optionCard: {
-    borderRadius: 18,
-    borderWidth: 2.5,
+  imageContainer: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingLeft: 130,
+  },
+  labelsContainer: {
+    width: 320,
+    justifyContent: 'center',
+    gap: 24,
+    marginRight: 60,
+  },
+  labelPill: {
+    paddingHorizontal: 28,
+    paddingVertical: 20,
+    borderRadius: 28,
+    borderWidth: 3,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    overflow: 'visible',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  optionCardCorrect: {
-    shadowColor: '#4CAF50',
-    shadowOpacity: 0.25,
-    elevation: 6,
+  labelText: {
+    fontSize: 22,
+    fontFamily: 'Nunito_900Black',
+    letterSpacing: 0.2,
   },
   ripple: {
     position: 'absolute',
@@ -316,16 +323,14 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     borderWidth: 3,
   },
-  optionImage: {
-    width: '100%',
-    height: '100%',
-  },
 
+  // Centred on the middle pill; the hand animates up from +150 to rest here.
   handAnchor: {
     position: 'absolute',
-    bottom: -80,
     left: 0,
     right: 0,
+    top: '50%',
+    marginTop: -20,
     alignItems: 'center',
   },
 
@@ -350,5 +355,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_800ExtraBold',
     color: '#FFF',
   },
-
 });

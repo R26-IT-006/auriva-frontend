@@ -13,14 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
-import { playConceptAudio, stopConceptAudio } from '../../../utils/audioUtils';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptQuestion, getConceptQuestionSi } from '../../../data/conceptData';
-import { conceptApi } from '../../../api/concept';
-import { Layout } from '../../../constants/layout';
+import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { getConceptItem, getConceptQuestion, getConceptQuestionSi } from '../../../../data/conceptData';
+import { conceptApi } from '../../../../api/concept';
+import { Layout } from '../../../../constants/layout';
 
-const CORRECT_GIF = require('../../../../assets/feedback/correct.gif');
-const WRONG_GIF   = require('../../../../assets/feedback/wrong.gif');
+const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
+const WRONG_GIF   = require('../../../../../assets/feedback/wrong.gif');
 
 function shuffle(arr) {
   const a = [...arr];
