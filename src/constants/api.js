@@ -39,6 +39,9 @@ export const ENDPOINTS = {
   DIALOGUE_LEVEL1_PHASE3_COMPLETE:  (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/phase3-complete`,
   DIALOGUE_TRAJECTORY:              (sid, wid) => `/teacher/student/${sid}/word/${wid}/trajectory`,
 
+  // Dialogue – TASK-12 Non-Verbal Adaptive Wait-Time Escalation
+  DIALOGUE_SPEECH_STATE:            (sid) => `/teacher/student/${sid}/speech-state`,
+
   // Dialogue – Rule 5 periodic production probe (TASK-37/TASK-39)
   DIALOGUE_PROBE_CANDIDATE: (sid) => `/teacher/student/${sid}/level1/probe-candidate`,
   DIALOGUE_PROBE_RESULT:    (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/probe-result`,

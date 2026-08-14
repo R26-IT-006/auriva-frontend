@@ -102,6 +102,14 @@ export const dialogueApi = {
     return data;
   },
 
+  // TASK-12 — Non-Verbal Adaptive Wait-Time Escalation
+  // Returns { consecutive_refusals_today, wait_multiplier, auto_nonverbal_today }.
+  // Fetched by each Phase 2 production screen on mount; failure degrades to 1.0×.
+  async getSpeechState(studentId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_SPEECH_STATE(studentId));
+    return data;
+  },
+
   // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend)
   async getProbeCandidate(studentId, category) {
     const { data } = await client.get(ENDPOINTS.DIALOGUE_PROBE_CANDIDATE(studentId), {

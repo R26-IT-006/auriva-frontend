@@ -154,12 +154,20 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
   const avatarAudioEndRef = useRef(null); // RC3
   const recordingStartRef = useRef(null); // RC3
   const micDelayRef       = useRef(0);    // RC3
+  // TASK-12: Non-Verbal Adaptive Wait-Time Escalation. Populated on mount by
+  // getSpeechState(); at streak 0 multiplier is 1.0 — behaviour unchanged.
+  const waitMultiplierRef    = useRef(1.0);
+  const autoNonverbalRef     = useRef(false);
   const settingsFade  = useRef(new Animated.Value(0)).current;
 
   function setPhase(p) {
     phaseRef.current = p;
     if (activeRef.current) _setPhase(p);
   }
+
+  // TASK-12: scale a wait duration by today's speech-escalation multiplier.
+  // At multiplier 1.0 (streak 0) this is a no-op — byte-identical to pre-TASK-12.
+  function w(ms) { return Math.round(ms * waitMultiplierRef.current); }
 
   function say(text) {
     if (activeRef.current) setCloudText(text);
@@ -245,6 +253,31 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
   useEffect(() => {
     let cancelled = false;
     async function runIntro() {
+      // TASK-12: fetch today's speech escalation state before any timer fires.
+      // Must happen first so waitMultiplierRef is set when startListening() runs.
+      // Failure is silent — multiplier defaults to 1.0 (normal behaviour).
+      if (student?.sid) {
+        try {
+          const state = await dialogueApi.getSpeechState(student.sid);
+          waitMultiplierRef.current = state?.wait_multiplier ?? 1.0;
+          autoNonverbalRef.current  = state?.auto_nonverbal_today ?? false;
+        } catch { /* degrade gracefully to multiplier 1.0 */ }
+      }
+      if (cancelled) return;
+
+      // TASK-12: ≥3 consecutive refusals today → skip production entirely;
+      // route straight to the existing non-verbal pathway (no production UI shown).
+      if (autoNonverbalRef.current) {
+        await delay(50); // yield so component finishes mounting before navigating
+        if (activeRef.current) {
+          navigation.navigate('GreetingPhase2NonVerbal', {
+            student, wordKey, wordId,
+            sessionId: sessionIdRef.current,
+          });
+        }
+        return;
+      }
+
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
       if (cancelled) return;
       say(wordLabel);
@@ -293,7 +326,8 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
     setTileGlow(false);
     setBtnGlow(false);
     clearTimer();
-    timerRef.current = setTimeout(enterNoResponse, 15_000);
+    // TASK-12: w() scales the duration by today's wait_multiplier (1.0 at streak 0 → no-op)
+    timerRef.current = setTimeout(enterNoResponse, w(15_000));
   }
 
   async function enterNoResponse() {
@@ -306,7 +340,7 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
     await playSound(AUDIO.tapToListen);
     avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
-    timerRef.current = setTimeout(enterReprompt1, 10_000);
+    timerRef.current = setTimeout(enterReprompt1, w(10_000)); // TASK-12
   }
 
   async function enterRecordHint() {
@@ -319,7 +353,7 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
     await playSound(AUDIO.tapRecordBtn);
     avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
-    timerRef.current = setTimeout(enterReprompt1, 10_000);
+    timerRef.current = setTimeout(enterReprompt1, w(10_000)); // TASK-12
   }
 
   async function enterReprompt1() {
@@ -332,7 +366,7 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
     await playSound(wordAudio.canYouSay);
     avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
-    timerRef.current = setTimeout(enterReprompt2, 20_000);
+    timerRef.current = setTimeout(enterReprompt2, w(20_000)); // TASK-12
   }
 
   async function enterReprompt2() {
@@ -345,7 +379,7 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
     await playSound(AUDIO.youCanDoIt);
     avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
-    timerRef.current = setTimeout(enterNonverbal, 20_000);
+    timerRef.current = setTimeout(enterNonverbal, w(20_000)); // TASK-12
   }
 
   async function enterNonverbal() {

@@ -121,11 +121,13 @@ export default function L2SentencePathScreen({ route, navigation }) {
     if (stop.isPractice) {
       navigation.navigate('L2ListenTogether', { student, sessionData });
     } else {
-      navigation.navigate('L2SentenceTeach', {
+      // TASK-18: route through the Sentence Familiarisation Ladder before teaching.
+      // L2ListenWatch → L2SentenceBuild → L2FillGap → L2SentenceMatch → L2SentenceTeach
+      // (L2SentenceTeach still navigates back here with justCompleted when done.)
+      navigation.navigate('L2ListenWatch', {
         student,
         sessionData,
         sentenceIndex: stop.sentenceIndex,
-        returnTo: 'L2SentencePath',
       });
     }
   }
