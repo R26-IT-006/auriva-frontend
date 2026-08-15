@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,27 @@ import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
 import ContributionChart from '../../../components/handwriting/ContributionChart';
+// Feature 8 Step 4 — read-only, longitudinal-evidence-based worksheet
+// recommendations (distinct source from generateRecommendations() above —
+// see the "Adaptive Practice Recommendations" subsection below).
+import {
+  fetchWorksheetRecommendations, formatCaseType, shouldShowFocusLetters, getWorksheetRecommendationEmptyState,
+} from '../../../utils/worksheetRecommendations';
+// Feature 9 Step 5 — teacher review controls + validation history for the
+// Feature 8 recommendations rendered above. Completely separate fetch
+// lifecycle from both the main report and the Feature 8 recommendations
+// themselves (Step 5 spec §33/§47).
+import {
+  fetchTeacherRecommendationValidationHistory, fetchTeacherRecommendationValidationState,
+  submitTeacherRecommendationValidation, formatTeacherReviewLabel, getOppositeValidationAction,
+  filterHistoryForStream, formatReviewDate, TEACHER_NOTE_MAX_LENGTH,
+} from '../../../utils/teacherRecommendationValidations';
+// Feature 10 Step 3 — static visual companion to a Feature 8 recommendation
+// (family movement example + focus-letter guides). Passive renderer only —
+// see ActivityPreview.js's own header for its full "what this never does"
+// list. Wrapped below by a small ActivityPreviewSection for expand/collapse,
+// mirroring WhyPanel's own established interaction pattern.
+import ActivityPreview from '../../../components/handwriting/ActivityPreview';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -352,6 +374,51 @@ export default function TeacherReportScreen({ route, navigation }) {
     }, [student])
   );
 
+  // ── Feature 8 Step 4 — adaptive practice recommendations ──────────────────
+  // Completely independent of the main report-loading effect above (Step 4
+  // spec §18 — must never block the rest of the report): its own state,
+  // its own loading indicator, its own failure handling. Fetched once per
+  // (screen-focus, student) — never per card, never on expand/collapse
+  // (Step 4 spec §17/§42). Same stale-response guard (`active`) the main
+  // effect above already uses (Step 4 spec §43) — if the teacher navigates
+  // to a different student before this resolves, the stale response is
+  // silently discarded, never applied to the new student.
+  const [worksheetRecs, setWorksheetRecs] = useState({ status: 'loading', recommendations: [], summary: null });
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setWorksheetRecs({ status: 'loading', recommendations: [], summary: null });
+      fetchWorksheetRecommendations({ studentId: student?.sid }).then((result) => {
+        if (!active) return;
+        setWorksheetRecs(result);
+      });
+      return () => { active = false; };
+    }, [student])
+  );
+
+  // ── Feature 9 Step 5 — teacher validation history ─────────────────────────
+  // Fetched ONCE per (screen-focus, student) — never per card (Step 5 spec
+  // §46/§47) — independent of both the main report and the Feature 8
+  // recommendation fetch above (its own loading state, its own failure
+  // handling, same stale-response `active` guard). Each
+  // AdaptivePracticeRecommendationCard filters this same array client-side
+  // for its own stream (Step 5 spec §49) — no additional history request
+  // is ever made per card.
+  const [teacherHistory, setTeacherHistory] = useState({ status: 'loading', events: [], latestByStream: {} });
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setTeacherHistory({ status: 'loading', events: [], latestByStream: {} });
+      fetchTeacherRecommendationValidationHistory({ studentId: student?.sid }).then((result) => {
+        if (!active) return;
+        setTeacherHistory(result);
+      });
+      return () => { active = false; };
+    }, [student])
+  );
+
   async function handleShare() {
     if (!report) return;
     const { motorScore, wordMastery, summary } = report;
@@ -559,6 +626,46 @@ export default function TeacherReportScreen({ route, navigation }) {
                   <RecommendationCard key={i} rec={rec} />
                 ))}
               </View>
+
+              {/* ── Feature 8 Step 4 — a second, clearly-attributed recommendation
+                  source: longitudinal practice evidence, never conflated with the
+                  general recommendations above (Step 4 spec §3/§15). ── */}
+              <View style={arp.divider} />
+              <View style={arp.subHeader}>
+                <Ionicons name="analytics-outline" size={15} color="#0D9488" />
+                <Text style={arp.subTitle}>Adaptive Practice Recommendations</Text>
+              </View>
+              <Text style={arp.subSubtitle}>
+                Suggested handwriting practice based on patterns observed across separate practice periods.
+              </Text>
+
+              {worksheetRecs.status === 'loading' && (
+                <View style={arp.loadingRow}>
+                  <ActivityIndicator size="small" color="#0D9488" />
+                  <Text style={arp.loadingText}>Loading practice recommendations…</Text>
+                </View>
+              )}
+
+              {(worksheetRecs.status === 'read_failed' || worksheetRecs.status === 'invalid_input') && (
+                <Text style={arp.errorText}>Practice recommendations could not be loaded.</Text>
+              )}
+
+              {worksheetRecs.status === 'evaluated' && worksheetRecs.recommendations.length === 0 && (
+                <Text style={arp.emptyText}>{getWorksheetRecommendationEmptyState(worksheetRecs.summary)}</Text>
+              )}
+
+              {worksheetRecs.status === 'evaluated' && worksheetRecs.recommendations.length > 0 && (
+                <View style={{ gap: 10, marginTop: 4 }}>
+                  {worksheetRecs.recommendations.map((rec, i) => (
+                    <AdaptivePracticeRecommendationCard
+                      key={i}
+                      recommendation={rec}
+                      studentId={student?.sid}
+                      historyEvents={teacherHistory.events}
+                    />
+                  ))}
+                </View>
+              )}
             </SectionCard>
 
             <View style={{ height: 40 }} />
@@ -835,6 +942,350 @@ const rc = StyleSheet.create({
   whyText:       { fontSize: 11, color: '#6366F1', fontWeight: '600' },
   panel:         { backgroundColor: '#EEF2FF', borderRadius: 8, padding: 10 },
   panelText:     { fontSize: 12, color: '#3730A3', lineHeight: 18 },
+});
+
+// ─── Feature 8 Step 4 — Adaptive Practice Recommendation card ──────────────
+//
+// Deliberately a DEDICATED component, never a variant of RecommendationCard
+// above (Step 4 spec §48 — lower regression risk; RecommendationCard's own
+// existing priority-badge behavior is untouched). Feature 8 recommendations
+// carry NO priority/severity/confidence field at all, so this card renders
+// with one flat neutral accent color — never a red/orange/green severity
+// palette (Step 4 spec §6/§7/§33). Reuses the existing WhyPanel component
+// for the "Why this recommendation?" interaction (Step 4 spec §9) — each
+// card instance gets its own independent expand/collapse state, since
+// WhyPanel's `open` state lives inside WhyPanel itself (Step 4 spec §50).
+//
+// `rationale`/`title`/`suggestedActivities` are rendered EXACTLY as the
+// backend sent them (Step 4 spec §9/§23) — this component performs no
+// wording generation of its own beyond the caseType label
+// (formatCaseType()) and the focus-letter join, both pure presentation
+// only, never content invention.
+
+function AdaptivePracticeRecommendationCard({ recommendation, studentId, historyEvents }) {
+  const caseLabel = formatCaseType(recommendation.caseType);
+  return (
+    <View style={apc.card}>
+      <View style={apc.top}>
+        <View style={apc.iconWrap}>
+          <Ionicons name="body-outline" size={16} color="#0D9488" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={apc.title}>{recommendation.title}</Text>
+          {caseLabel ? <Text style={apc.caseLabel}>{caseLabel}</Text> : null}
+        </View>
+      </View>
+
+      {shouldShowFocusLetters(recommendation.focusLetters) && (
+        <Text style={apc.focusLetters}>
+          Focus letters: <Text style={apc.focusLettersValue}>{recommendation.focusLetters.join(', ')}</Text>
+        </Text>
+      )}
+
+      <ActivityPreviewSection
+        family={recommendation.family}
+        caseType={recommendation.caseType}
+        focusLetters={recommendation.focusLetters}
+      />
+
+      {recommendation.suggestedActivities.length > 0 && (
+        <View style={apc.activityList}>
+          {recommendation.suggestedActivities.map((activity, i) => (
+            <View key={i} style={apc.activityRow}>
+              <View style={apc.bullet} />
+              <Text style={apc.activityText}>{activity}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <WhyPanel label="Why this recommendation?" explanation={recommendation.rationale} />
+
+      <TeacherReviewSection
+        studentId={studentId}
+        caseType={recommendation.caseType}
+        family={recommendation.family}
+        recommendationFingerprint={recommendation.recommendationFingerprint}
+        historyEvents={historyEvents}
+      />
+    </View>
+  );
+}
+
+// ─── Feature 9 Step 5 — Teacher Review section ─────────────────────────────
+//
+// Embedded beneath each AdaptivePracticeRecommendationCard's existing
+// content (Step 5 spec §24). Never suppresses the recommendation itself,
+// regardless of the teacher's judgement (Step 5 spec §31/§41) — this
+// section is purely additive presentation.
+//
+// State machine (Step 5 spec §25 — presentation states only; the ONLY
+// persisted values remain `confirmed`/`dismissed`):
+//   loading -> not_reviewed | confirmed | dismissed
+//   (confirmed | dismissed) --[opposite button pressed]--> saving -> refetch
+//   any state --[submit fails]--> error (recommendation_changed /
+//     recommendation_not_found / generic write failure)
+//
+// Current-state is fetched keyed by the exact
+// (studentId, caseType, family, recommendationFingerprint) identity (Step 5
+// spec §26/§27) — never refetched due to WhyPanel expand, note typing, or
+// unrelated parent re-renders, since the effect below depends on nothing
+// else. A stale in-flight request is discarded via the `mountedRef`/`active`
+// guard if the fingerprint changes or the component unmounts before it
+// resolves (Step 5 spec §28).
+function TeacherReviewSection({ studentId, caseType, family, recommendationFingerprint, historyEvents }) {
+  const [stateResult, setStateResult] = useState({ status: 'loading', current: null });
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!recommendationFingerprint) {
+      // No identity to look up against — never a fake "not reviewed" write
+      // path, just a safe empty current state (Step 5 spec §19).
+      setStateResult({ status: 'evaluated', current: null });
+      return () => { active = false; };
+    }
+
+    setStateResult((prev) => ({ ...prev, status: 'loading' }));
+    fetchTeacherRecommendationValidationState({ studentId, caseType, family, recommendationFingerprint }).then((result) => {
+      if (!active || !mountedRef.current) return; // stale-response guard (Step 5 spec §28)
+      setStateResult(result);
+    });
+
+    return () => { active = false; };
+  }, [studentId, caseType, family, recommendationFingerprint]);
+
+  async function handleAction(validation) {
+    if (!recommendationFingerprint || saving) return; // no automatic/duplicate POSTs (Step 5 spec §36/§61)
+    setSaving(true);
+    setSubmitMessage(null);
+
+    const result = await submitTeacherRecommendationValidation({
+      studentId, caseType, family, validation, teacherNote: note, recommendationFingerprint,
+    });
+
+    if (!mountedRef.current) return;
+    setSaving(false);
+
+    if (result.status === 'validated') {
+      // Refresh exact current state from the server rather than assuming
+      // the local value (Step 5 spec §37/§38) — a duplicate (200) is
+      // treated identically to a fresh success (201).
+      setNote('');
+      const refreshed = await fetchTeacherRecommendationValidationState({ studentId, caseType, family, recommendationFingerprint });
+      if (!mountedRef.current) return;
+      setStateResult(refreshed);
+    } else {
+      // recommendation_changed / recommendation_not_found / invalid_input /
+      // write_failed — never save a local review, never fake success (Step
+      // 5 spec §39/§40).
+      setSubmitMessage(result.message);
+    }
+  }
+
+  if (stateResult.status === 'loading') {
+    return (
+      <View style={trs.wrap}>
+        <View style={trs.divider} />
+        <ActivityIndicator size="small" color="#0D9488" />
+      </View>
+    );
+  }
+
+  const current = stateResult.current;
+  const currentValidation = current?.validation ?? null;
+  const opposite = getOppositeValidationAction(currentValidation);
+  // Never re-offer the same action already recorded (Step 5 spec §42/§43) —
+  // when never reviewed, both actions are available.
+  const showConfirmButton = currentValidation === null || opposite === 'confirmed';
+  const showDismissButton = currentValidation === null || opposite === 'dismissed';
+  const relevantHistory = filterHistoryForStream(historyEvents, caseType, family);
+
+  return (
+    <View style={trs.wrap}>
+      <View style={trs.divider} />
+      <Text style={trs.label}>Teacher review</Text>
+      <Text style={trs.statusText}>{formatTeacherReviewLabel(currentValidation)}</Text>
+      {current?.validatedAt ? (
+        <Text style={trs.dateText}>Reviewed: {formatReviewDate(current.validatedAt)}</Text>
+      ) : null}
+
+      {submitMessage ? <Text style={trs.messageText}>{submitMessage}</Text> : null}
+
+      <View style={trs.buttonsRow}>
+        {showConfirmButton && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Confirm this recommendation"
+            disabled={saving || !recommendationFingerprint}
+            onPress={() => handleAction('confirmed')}
+            style={[trs.button, trs.confirmButton, (saving || !recommendationFingerprint) && trs.buttonDisabled]}
+            activeOpacity={0.75}
+          >
+            <Text style={trs.buttonText}>{saving ? 'Saving…' : 'Confirm'}</Text>
+          </TouchableOpacity>
+        )}
+        {showDismissButton && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Mark this recommendation as not suitable"
+            disabled={saving || !recommendationFingerprint}
+            onPress={() => handleAction('dismissed')}
+            style={[trs.button, trs.dismissButton, (saving || !recommendationFingerprint) && trs.buttonDisabled]}
+            activeOpacity={0.75}
+          >
+            <Text style={trs.buttonText}>{saving ? 'Saving…' : 'Not suitable'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <TextInput
+        style={trs.noteInput}
+        placeholder="Optional note"
+        placeholderTextColor="#94A3B8"
+        multiline
+        maxLength={TEACHER_NOTE_MAX_LENGTH}
+        value={note}
+        onChangeText={setNote}
+        editable={!saving}
+        accessibilityLabel="Optional note about this teacher review"
+      />
+
+      {relevantHistory.length > 0 && (
+        <TouchableOpacity
+          onPress={() => setShowHistory((v) => !v)}
+          style={trs.historyToggle}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="View review history"
+        >
+          <Ionicons name={showHistory ? 'chevron-up' : 'chevron-down'} size={13} color="#0D9488" />
+          <Text style={trs.historyToggleText}>View review history</Text>
+        </TouchableOpacity>
+      )}
+
+      {showHistory && (
+        <View style={trs.historyList}>
+          {relevantHistory.map((event) => (
+            <View key={event.id} style={trs.historyRow}>
+              <Text style={trs.historyLine}>
+                {formatReviewDate(event.validatedAt)} — {formatTeacherReviewLabel(event.validation)}
+              </Text>
+              {event.teacherNote ? <Text style={trs.historyNote}>Note: {event.teacherNote}</Text> : null}
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const apc = StyleSheet.create({
+  card:              { borderRadius: 14, borderLeftWidth: 4, borderLeftColor: '#0D9488', backgroundColor: '#F0FDFA', padding: 14, gap: 10 },
+  top:               { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  iconWrap:          { width: 28, height: 28, borderRadius: 9, backgroundColor: '#CCFBF1', alignItems: 'center', justifyContent: 'center' },
+  title:             { fontSize: 13, fontWeight: '700', color: TEXT_1, lineHeight: 19 },
+  caseLabel:         { fontSize: 11, color: '#0F766E', fontWeight: '600', marginTop: 1 },
+  focusLetters:      { fontSize: 12, color: TEXT_2, fontWeight: '500' },
+  focusLettersValue: { fontWeight: '800', color: TEXT_1 },
+  activityList:      { gap: 5 },
+  activityRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
+  bullet:            { width: 5, height: 5, borderRadius: 3, backgroundColor: '#0D9488', marginTop: 6 },
+  activityText:      { flex: 1, fontSize: 12, color: TEXT_2, lineHeight: 18 },
+});
+
+// ─── Feature 10 Step 3 — Activity Preview expand/collapse wrapper ──────────
+//
+// Deliberately separate from ActivityPreview.js's own pure SVG rendering
+// (Step 3 spec §22/§26) — this component owns ONLY the open/closed state
+// and the toggle button, mirroring WhyPanel's own established pattern
+// (own local useState, TouchableOpacity toggle, conditional content) one
+// component instance per card, so two cards' preview sections never share
+// state (Step 3 spec §25).
+function ActivityPreviewSection({ family, caseType, focusLetters }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={aps.wrap}>
+      <TouchableOpacity
+        onPress={() => setOpen((o) => !o)}
+        style={aps.toggle}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={open ? 'Hide activity preview' : 'Show activity preview'}
+      >
+        <Ionicons name="eye-outline" size={14} color="#0D9488" />
+        <Text style={aps.toggleLabel}>Preview activity</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color="#0D9488" />
+      </TouchableOpacity>
+      {open && (
+        <View style={aps.previewContainer}>
+          <ActivityPreview family={family} caseType={caseType} focusLetters={focusLetters} />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const aps = StyleSheet.create({
+  wrap:            { marginTop: 2 },
+  toggle:          { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 2 },
+  toggleLabel:     { fontSize: 12, color: '#0D9488', fontWeight: '700' },
+  previewContainer:{ marginTop: 8 },
+});
+
+// Feature 9 Step 5 — Teacher Review section styles. Deliberately ONE flat
+// neutral accent (#0D9488, the same teal AdaptivePracticeRecommendationCard
+// itself already uses) for both Confirm and Not-suitable — never a
+// red/green correctness palette (Step 5 spec §54/§55/§56). "Not suitable"
+// is never styled as an error/warning state; it's a neutral second option.
+const trs = StyleSheet.create({
+  wrap:            { marginTop: 2 },
+  divider:         { height: 1, backgroundColor: '#CCFBF1', marginBottom: 10 },
+  label:           { fontSize: 11, fontWeight: '800', color: '#0F766E', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  statusText:      { fontSize: 13, fontWeight: '700', color: TEXT_1 },
+  dateText:        { fontSize: 11, color: TEXT_3, marginTop: 1, marginBottom: 8 },
+  messageText:     { fontSize: 12, color: TEXT_2, lineHeight: 17, marginTop: 6, marginBottom: 6 },
+  buttonsRow:      { flexDirection: 'row', gap: 8, marginTop: 8 },
+  button:          { flex: 1, borderRadius: 10, paddingVertical: 9, alignItems: 'center', justifyContent: 'center' },
+  confirmButton:   { backgroundColor: '#0D9488' },
+  dismissButton:   { backgroundColor: '#64748B' },
+  buttonDisabled:  { opacity: 0.5 },
+  buttonText:      { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  noteInput: {
+    marginTop: 10, borderRadius: 10, borderWidth: 1, borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF', padding: 10, fontSize: 12, color: TEXT_1,
+    minHeight: 44, textAlignVertical: 'top',
+  },
+  historyToggle:     { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'flex-start' },
+  historyToggleText: { fontSize: 11.5, color: '#0D9488', fontWeight: '700' },
+  historyList:       { marginTop: 8, gap: 8 },
+  historyRow:        { backgroundColor: '#FFFFFF', borderRadius: 8, padding: 8 },
+  historyLine:       { fontSize: 11.5, color: TEXT_1, fontWeight: '600' },
+  historyNote:       { fontSize: 11, color: TEXT_2, marginTop: 2, lineHeight: 15 },
+});
+
+// Adaptive Practice Recommendations subsection wrapper (inside the same
+// "Teacher Recommendations" SectionCard as the general recommendations —
+// Step 4 spec §1/§3, never a separate top-level section).
+const arp = StyleSheet.create({
+  divider:     { height: 1, backgroundColor: DIVIDER, marginVertical: 16 },
+  subHeader:   { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 4 },
+  subTitle:    { fontSize: 13, fontWeight: '800', color: TEXT_1, letterSpacing: 0.1 },
+  subSubtitle: { fontSize: 11.5, color: TEXT_3, lineHeight: 16, marginBottom: 12 },
+  loadingRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
+  loadingText: { fontSize: 12, color: TEXT_3 },
+  errorText:   { fontSize: 12, color: TEXT_2, lineHeight: 18 },
+  emptyText:   { fontSize: 12, color: TEXT_3, lineHeight: 18 },
 });
 
 // ─── Motor Difficulty Analysis card ──────────────────────────────────────────

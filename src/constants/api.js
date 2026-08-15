@@ -1,7 +1,7 @@
 // For Android emulator: http://10.0.2.2:3000/api
 // For iOS simulator: http://localhost:3000/api
 // For physical device: use your machine's local IP
-export const API_BASE_URL = "http://192.168.1.6:3000/api";
+export const API_BASE_URL = "http://172.17.12.159:3000/api";
 
 export const ENDPOINTS = {
   // Auth
@@ -49,6 +49,21 @@ export const ENDPOINTS = {
   // Feature 6 Step 3/4 — read-only adaptive demo-speed recommendation, same
   // (student, letter, caseType) scope as the recommendation endpoints above.
   DEMO_SPEED_RECOMMENDATION: (studentId, letter, caseType) => `/handwriting/demo-speed-recommendation/${studentId}/${letter}/${caseType}`,
+  // Feature 8 Step 3/4 — read-only, student-wide worksheet-recommendation
+  // list (one entry per Feature 7 persistent stream). Student-wide, unlike
+  // the narrower per-(letter, caseType) recommendation endpoints above.
+  WORKSHEET_RECOMMENDATIONS: (studentId) => `/handwriting/worksheet-recommendations/${studentId}`,
+  // Feature 9 Step 4/5 — teacher validation history (GET, POST) and current
+  // validation-state (GET) for Feature 8 recommendations. Path functions
+  // take only :studentId, matching Step 4's exact route shape — optional/
+  // required query params (?caseType=&family=&recommendationFingerprint=)
+  // are attached at the call site via axios `params`, not baked into the
+  // path string here (unlike REPETITION_RECOMMENDATION above), since GET
+  // history's filters are independently optional while GET state's three
+  // params are all required — a single manually-built query string would
+  // need two different shapes for the same constant.
+  WORKSHEET_RECOMMENDATION_VALIDATIONS: (studentId) => `/handwriting/worksheet-recommendation-validations/${studentId}`,
+  WORKSHEET_RECOMMENDATION_VALIDATION_STATE: (studentId) => `/handwriting/worksheet-recommendation-validation-state/${studentId}`,
 
   // Data Collection Mode
   COLLECTION_SESSION_START:    '/handwriting/collection-session/start',
