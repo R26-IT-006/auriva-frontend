@@ -23,8 +23,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 
-// Emoji keyed by sentence index
-const SENTENCE_EMOJIS = { 1: '👤', 2: '🎂', 3: '🏠', 4: '⭐', 5: '🎨' };
+// Emoji keyed by topic → sentence index.
+// self_introduction uses the original five.
+// describe_friend / describe_pet emojis mirror FRIEND_STOP_META / PET_STOP_META
+// in L2SentencePathScreen so the match-screen icons feel consistent with the path.
+const TOPIC_EMOJI_MAP = {
+  self_introduction: { 1: '👤', 2: '🎂', 3: '🏠', 4: '⭐', 5: '🎨' },
+  describe_friend:   { 1: '👫', 2: '🚻', 3: '🎂', 4: '📚', 5: '💛' },
+  describe_pet:      { 1: '🐾', 2: '🏷️', 3: '🌈', 4: '🍖', 5: '🏡' },
+};
 
 /** Fisher-Yates shuffle (pure). */
 function shuffle(arr) {
@@ -52,6 +59,9 @@ function pickThree(allSentences, currentIndex) {
 export default function L2SentenceMatchScreen({ route, navigation }) {
   const { student, sessionData, sentenceIndex = 1 } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
+
+  // Resolve emoji map for the active topic (falls back to self_introduction)
+  const SENTENCE_EMOJIS = TOPIC_EMOJI_MAP[sessionData?.topic] ?? TOPIC_EMOJI_MAP.self_introduction;
 
   const allSentences = sessionData?.sentences ?? [];
   const pickedRef    = useRef(pickThree(allSentences, sentenceIndex));

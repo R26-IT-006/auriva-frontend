@@ -71,7 +71,7 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
   const theme     = getAvatarTheme(student?.avatar_key);
   const avatarImg = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
-  const [step,     setStep]     = useState(sentenceIndex === 5 ? 'activityPre' : 'step1');
+  const [step,     setStep]     = useState(sentenceIndex === 5 && sessionData?.topic === 'self_introduction' ? 'activityPre' : 'step1');
   const [showGate, setShowGate] = useState(false);
 
   useFocusEffect(useCallback(() => {
@@ -84,7 +84,9 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
 
   // Steps for this one sentence only: activityPre (sentence 5) is step 0 of 5;
   // everyone else is 4 steps (step1–step4).
-  const STEP_ORDER = sentenceIndex === 5 ? ['activityPre', 'step1', 'step2', 'step3', 'step4'] : ['step1', 'step2', 'step3', 'step4'];
+  const STEP_ORDER = sentenceIndex === 5 && sessionData?.topic === 'self_introduction'
+    ? ['activityPre', 'step1', 'step2', 'step3', 'step4']
+    : ['step1', 'step2', 'step3', 'step4'];
   const progress = (STEP_ORDER.indexOf(step) + 1) / STEP_ORDER.length;
 
   function advanceStep() {
@@ -150,10 +152,10 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
           {step === 'step2' && sentence && (
             <Step2DragOne sentence={sentence} theme={theme} onComplete={advanceStep} />
           )}
-          {step === 'step3' && sentence && sentenceIndex === 4 && (
+          {step === 'step3' && sentence && sentenceIndex === 4 && sessionData?.topic === 'self_introduction' && (
             <Step3Gender theme={theme} gender={sessionData?.gender} onSelect={handleGenderTap} />
           )}
-          {step === 'step3' && sentence && sentenceIndex !== 4 && (
+          {step === 'step3' && sentence && !(sentenceIndex === 4 && sessionData?.topic === 'self_introduction') && (
             <Step3DragTwo sentence={sentence} theme={theme} onResult={handleStep3Result} />
           )}
           {step === 'step4' && sentence && (

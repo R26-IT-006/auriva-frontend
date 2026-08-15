@@ -40,7 +40,7 @@ function buildFallbackSession(q) {
 }
 
 export default function L2LoadingScreen({ route, navigation }) {
-  const { student, questionnaire } = route.params ?? {};
+  const { student, questionnaire, topic = 'self_introduction' } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
   const avatarImg = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
@@ -61,11 +61,13 @@ export default function L2LoadingScreen({ route, navigation }) {
   async function attemptStart() {
     setStatus('loading');
     try {
-      const resp = await level2Api.startSession(student.sid);
+      const resp = await level2Api.startSession(student.sid, null, topic);
       proceed(resp.data);
     } catch (err) {
-      // TTS not available – use fallback session data from questionnaire
-      if (questionnaire) {
+      // TTS not available – use fallback session data from questionnaire.
+      // Fallback is only supported for self_introduction (other topics have
+      // variable sentence structures that can't be safely reconstructed here).
+      if (questionnaire && topic === 'self_introduction') {
         proceed(buildFallbackSession(questionnaire));
       } else {
         setStatus('error');

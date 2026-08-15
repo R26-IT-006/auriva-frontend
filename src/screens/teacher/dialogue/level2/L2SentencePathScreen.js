@@ -8,7 +8,7 @@
  * existing L2ListenTogether → L2Production flow (full paragraph, then
  * sentence-by-sentence repeat) which still ends at L2SessionComplete.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,20 +20,65 @@ import { Nunito_800ExtraBold, Nunito_700Bold, Nunito_600SemiBold } from '@expo-g
 import { Layout } from '../../../../constants/layout';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 
-// Falls back to "Myself" for the current self-introduction topic; extend this
-// if/when other Level 2 topics (Describing a Friend, etc.) get their own path.
 const TOPIC_TITLES = {
   self_introduction: 'Myself',
+  describe_friend:   'My Friend',
+  describe_pet:      'My Pet',
 };
 
-const STOPS = [
-  { id: 1, sentenceIndex: 1, title: 'My Name',        emoji: '👤' },
-  { id: 2, sentenceIndex: 2, title: 'My Age',          emoji: '🎂' },
-  { id: 3, sentenceIndex: 3, title: 'Where do I Live?', emoji: '🏠' },
-  { id: 4, sentenceIndex: 4, title: 'Who am I?',        emoji: '⭐' },
-  { id: 5, sentenceIndex: 5, title: 'My Hobbies',       emoji: '🎨' },
+// Static stops for self_introduction (always 5 sentences, fixed titles).
+const SELF_INTRO_STOPS = [
+  { id: 1, sentenceIndex: 1, title: 'My Name',          emoji: '👤' },
+  { id: 2, sentenceIndex: 2, title: 'My Age',            emoji: '🎂' },
+  { id: 3, sentenceIndex: 3, title: 'Where do I Live?',  emoji: '🏠' },
+  { id: 4, sentenceIndex: 4, title: 'Who am I?',         emoji: '⭐' },
+  { id: 5, sentenceIndex: 5, title: 'My Hobbies',        emoji: '🎨' },
   { id: 6, sentenceIndex: null, title: "Let's Practice!", emoji: '🏆', isPractice: true },
 ];
+
+// Per-sentence stop metadata for topics with variable sentence counts.
+// Index matches the sentence index from the backend sentence builder.
+const FRIEND_STOP_META = {
+  1: { title: "My Friend's Name", emoji: '👫' },
+  2: { title: 'Girl or Boy?',     emoji: '🚻' },
+  3: { title: 'Their Age',        emoji: '🎂' },
+  4: { title: 'Their Grade',      emoji: '📚' },
+  5: { title: 'Why I Like Them',  emoji: '💛' },
+};
+const PET_STOP_META = {
+  1: { title: 'My Pet',          emoji: '🐾' },
+  2: { title: "Pet's Name",      emoji: '🏷️' },
+  3: { title: 'What It Does',    emoji: '🌈' },
+  4: { title: 'What It Eats',    emoji: '🍖' },
+  5: { title: 'Where It Lives',  emoji: '🏡' },
+};
+
+/**
+ * Build the stop array from session data.
+ * For self_introduction: return the static SELF_INTRO_STOPS (5 sentences + practice).
+ * For friend/pet: derive stops from sessionData.sentences (variable count 2–5)
+ * using the meta tables above, then append a practice stop.
+ */
+function getStops(topic, sentences = []) {
+  if (!topic || topic === 'self_introduction') return SELF_INTRO_STOPS;
+
+  const meta = topic === 'describe_friend' ? FRIEND_STOP_META : PET_STOP_META;
+
+  const sentenceStops = [...sentences]
+    .sort((a, b) => a.index - b.index)
+    .map((s, i) => ({
+      id: i + 1,
+      sentenceIndex: s.index,
+      title: meta[s.index]?.title ?? `Sentence ${s.index}`,
+      emoji: meta[s.index]?.emoji ?? '📖',
+    }));
+
+  const practiceId = sentenceStops.length + 1;
+  return [
+    ...sentenceStops,
+    { id: practiceId, sentenceIndex: null, title: "Let's Practice!", emoji: '🏆', isPractice: true },
+  ];
+}
 
 // Positions as % of the path area — alternating up/down zigzag, matching the wireframe.
 // Shifted up vs. the original 40–80% band (and back down a little from the first
@@ -92,6 +137,11 @@ export default function L2SentencePathScreen({ route, navigation }) {
   const { student, sessionData } = route.params ?? {};
   const topicTitle = TOPIC_TITLES[sessionData?.topic] ?? 'Myself';
 
+  const stops = useMemo(
+    () => getStops(sessionData?.topic, sessionData?.sentences ?? []),
+    [sessionData?.topic, sessionData?.sentences],
+  );
+
   const [activeId, setActiveId] = useState(null);
   const [completed, setCompleted] = useState({}); // { [stopId]: true }
   const [showGate, setShowGate] = useState(false);
@@ -132,7 +182,7 @@ export default function L2SentencePathScreen({ route, navigation }) {
     }
   }
 
-  const activeStop = STOPS.find((s) => s.id === activeId);
+  const activeStop = stops.find((s) => s.id === activeId);
 
   return (
     <LinearGradient
@@ -165,9 +215,9 @@ export default function L2SentencePathScreen({ route, navigation }) {
             <Path d={ROAD_PATH} fill="none" stroke="#E8B87A" strokeWidth={3.5} strokeLinecap="round" strokeDasharray="18 16" />
           </Svg>
 
-          {STOPS.map((stop, i) => {
+          {stops.map((stop, i) => {
             const pos = POSITIONS[i];
-            const isDone = !!completed[stop.id];
+            const isDone = !!completed[stop.sentenceIndex];
             const accent = stop.isPractice ? '#FFB800' : '#3DBB5A';
             const btnColor = stop.isPractice ? '#FFB800' : '#E83A6D';
 

@@ -25,8 +25,19 @@ export const level2Api = {
     return data;
   },
 
-  async startSession(studentId, sessionId = null) {
-    const body = sessionId ? { session_id: sessionId } : {};
+  /**
+   * PATCH individual questionnaire fields (friend/pet data) without touching
+   * the self-introduction fields already saved via saveQuestionnaire (PUT).
+   */
+  async patchQuestionnaire(studentId, payload) {
+    const { data } = await client.patch(ENDPOINTS.LEVEL2_QUESTIONNAIRE(studentId), payload);
+    return data;
+  },
+
+  async startSession(studentId, sessionId = null, topic = 'self_introduction') {
+    const body = sessionId
+      ? { session_id: sessionId, topic }
+      : { topic };
     const { data } = await client.post(ENDPOINTS.LEVEL2_SESSION_START(studentId), body);
     return data;
   },
