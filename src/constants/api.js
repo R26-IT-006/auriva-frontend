@@ -1,6 +1,11 @@
 import Constants from "expo-constants";
 
-const DEFAULT_API_BASE_URL = "http://192.168.1.180:3000/api";
+// Physical device on same WiFi → machine's LAN IP, e.g. http://172.28.8.184:3000/api
+// Android emulator → 10.0.2.2 maps to the host machine's localhost
+// iOS simulator → http://localhost:3000/api
+// This is only the last-resort fallback: an EXPO_PUBLIC_API_BASE_URL env var or
+// the Expo host detected below both take precedence, so it rarely applies.
+const DEFAULT_API_BASE_URL = "http://172.28.8.184:3000/api";
 
 function normalizeApiBaseUrl(value) {
   if (!value) return DEFAULT_API_BASE_URL;
@@ -107,7 +112,6 @@ export const ENDPOINTS = {
   CONCEPT_ACTIVITY_COMPLETE:  '/teacher/concepts/activity/complete',
   TEACHER_SESSION_START: "/teacher/session/start",
   TEACHER_SESSION_END: "/teacher/session/end",
-  TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
   TEACHER_STUDENT_SENSORY_SETTINGS: (id) =>
     `/teacher/students/${id}/sensory-settings`,
   TEACHER_PRONUNCIATION_SCORE: (id) =>

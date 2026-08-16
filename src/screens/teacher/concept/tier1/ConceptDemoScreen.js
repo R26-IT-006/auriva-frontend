@@ -11,9 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptItemsForCategory, getConceptQuestion, getConceptQuestionSi } from '../../../constants/conceptData';
-import { Layout } from '../../../constants/layout';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { getConceptItem, getConceptItemsForCategory, getConceptQuestion, getConceptQuestionSi } from '../../../../data/conceptData';
+import { Layout } from '../../../../constants/layout';
 
 export default function ConceptDemoScreen({ route, navigation }) {
   const { student, category, conceptKey, sessionId } = route.params;

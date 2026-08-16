@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItemsForCategory } from '../../../constants/conceptData';
+import { getConceptItemsForCategory } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
@@ -332,7 +332,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
         </View>
 
         <Text style={[styles.subtitle, { color: theme.headingText }]}>
-          Tap a fruit to start learning
+          Tap a picture to start learning
         </Text>
 
         {loading ? (

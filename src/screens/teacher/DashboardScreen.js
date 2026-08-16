@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,48 +42,17 @@ function KpiTile({ icon, value, label, colors }) {
   );
 }
 
-function scoreColor(score) {
-  if (score == null) return '#C8CDD8';
-  if (score >= 0.75) return '#52C07C';
-  if (score >= 0.45) return '#F0A940';
-  return '#E05C48';
-}
-
-function ScoreBar({ score }) {
-  const pct = score != null ? Math.round(score * 100) : null;
-  const color = scoreColor(score);
-  return (
-    <View style={styles.scoreBarWrap}>
-      <View style={styles.scoreBarTrack}>
-        <View style={[styles.scoreBarFill, { width: `${pct ?? 0}%`, backgroundColor: color }]} />
-      </View>
-      <Text style={[styles.scoreBarText, { color }]}>{pct != null ? `${pct}%` : '—'}</Text>
-    </View>
-  );
-}
-
-function ProficiencyRow({ student, index, onPress }) {
+function StudentCard({ student, width, onPress }) {
   return (
     <TouchableOpacity
-      style={[styles.profRow, index % 2 === 1 && styles.profRowAlt]}
+      style={[styles.studentCard, { width }]}
       onPress={onPress}
-      activeOpacity={0.75}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={student.fullName}
     >
-      <View style={[styles.avatarRing, { borderColor: scoreColor(student.avgScore) }]}>
-        <Avatar name={student.fullName} uri={student.profilePhotoUrl} size={32} />
-      </View>
-      <Text style={styles.profName} numberOfLines={1}>{student.fullName}</Text>
-
-      <View style={styles.profMasteredPill}>
-        <Ionicons name="ribbon-outline" size={12} color="#52C07C" />
-        <Text style={styles.profMasteredText}>{student.conceptsMastered}/{student.conceptsAssigned}</Text>
-      </View>
-
-      <ScoreBar score={student.avgScore} />
-
-      <Text style={styles.profLastActive} numberOfLines={1}>
-        {student.lastSessionAt ? timeAgo(student.lastSessionAt) : 'No sessions yet'}
-      </Text>
+      <Avatar name={student.fullName} uri={student.profilePhotoUrl} size={52} />
+      <Text style={styles.studentName} numberOfLines={1}>{student.fullName}</Text>
     </TouchableOpacity>
   );
 }
@@ -143,6 +113,13 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   const logout = useAuthStore((s) => s.logout);
   const toast  = useToast();
+
+  // Two student cards per row once there is room; one on a phone.
+  const { width } = useWindowDimensions();
+  const GRID_GAP     = 12;
+  const contentWidth = width - Layout.spacing.lg * 2;
+  const twoCol       = contentWidth >= 620;
+  const cardW        = twoCol ? (contentWidth - GRID_GAP) / 2 : contentWidth;
 
   // Guards against overlapping requests: the focus fetch and the interval tick
   // can otherwise fire together and race each other into setData.
@@ -237,7 +214,7 @@ export default function TeacherDashboardScreen({ navigation }) {
             <View style={styles.topBarRight}>
               <TouchableOpacity
                 style={styles.iconBtn}
-                onPress={() => navigation.getParent()?.getParent()?.navigate('WorkspaceSelect')}
+                onPress={() => navigation.getParent()?.navigate('WorkspaceSelect')}
                 activeOpacity={0.75}
               >
                 <Ionicons name="grid-outline" size={20} color="#2A5A48" />
@@ -294,24 +271,29 @@ export default function TeacherDashboardScreen({ navigation }) {
             />
           </View>
 
-          {/* ── Students proficiency ── */}
-          <Text style={styles.sectionTitle}>Students Proficiency</Text>
+          {/* ── Students ── */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>My Students</Text>
+            {proficiency.length > 0 && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('TeacherStudentList')}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.sectionLink}>View all ({proficiency.length})</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {proficiency.length > 0 ? (
-            <View style={styles.listCard}>
-              <View style={styles.profHeaderRow}>
-                <Text style={[styles.profHeaderText, { flex: 1, marginLeft: 48 }]}>Student</Text>
-                <Text style={[styles.profHeaderText, { width: 64, textAlign: 'center' }]}>Mastered</Text>
-                <Text style={[styles.profHeaderText, { width: 90, textAlign: 'center' }]}>Avg Score</Text>
-                <Text style={[styles.profHeaderText, { width: 88, textAlign: 'right' }]}>Last Active</Text>
-              </View>
-              {proficiency.map((s, index) => (
-                <ProficiencyRow
+            <View style={styles.studentGrid}>
+              {proficiency.map((s) => (
+                <StudentCard
                   key={s.studentId}
                   student={s}
-                  index={index}
-                  onPress={() => navigation.navigate('Students', {
-                    screen: 'TeacherStudentDetail',
-                    params: { student: { sid: s.studentId, full_name: s.fullName, profile_photo_url: s.profilePhotoUrl } },
+                  width={cardW}
+                  onPress={() => navigation.navigate('TeacherStudentDetail', {
+                    student: { sid: s.studentId, full_name: s.fullName, profile_photo_url: s.profilePhotoUrl },
                   })}
                 />
               ))}
@@ -335,7 +317,7 @@ export default function TeacherDashboardScreen({ navigation }) {
               sub="View and manage your class"
               color={TEAL}
               bg="#D6F0F4"
-              onPress={() => navigation.navigate('Students')}
+              onPress={() => navigation.navigate('TeacherStudentList')}
             />
           </View>
 
@@ -383,7 +365,7 @@ export default function TeacherDashboardScreen({ navigation }) {
           <TouchableOpacity
             activeOpacity={0.88}
             style={styles.bannerWrap}
-            onPress={() => navigation.navigate('Students')}
+            onPress={() => navigation.navigate('TeacherStudentList')}
           >
             <LinearGradient
               colors={TEAL_GRAD}
@@ -545,83 +527,30 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
   },
 
-  // ── Students proficiency table ───────────────────────────────────────────
-  profHeaderRow: {
+  // ── Student cards ─────────────────────────────────────────────────────────
+  studentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  studentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  profHeaderText: {
-    fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
-    color: '#9BAFA8',
-    letterSpacing: 0.5,
-  },
-  profRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F4F2',
-  },
-  profRowAlt: {
-    backgroundColor: '#FAFCFB',
-  },
-  avatarRing: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profName: {
+  studentName: {
     flex: 1,
-    fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontSize: 16,
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#1A3D2E',
-  },
-  profMasteredPill: {
-    width: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  profMasteredText: {
-    fontSize: 12,
-    fontFamily: 'Nunito_700Bold',
-    color: '#3FAE6F',
-  },
-  scoreBarWrap: {
-    width: 90,
-    alignItems: 'center',
-    gap: 3,
-  },
-  scoreBarTrack: {
-    width: '100%',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EEF2F0',
-    overflow: 'hidden',
-  },
-  scoreBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  scoreBarText: {
-    fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
-  },
-  profLastActive: {
-    width: 88,
-    fontSize: 11,
-    fontFamily: 'Nunito_600SemiBold',
-    color: '#6B8A80',
-    textAlign: 'right',
   },
 
   // ── Empty states ──────────────────────────────────────────────────────────
@@ -661,10 +590,22 @@ const styles = StyleSheet.create({
   },
 
   // ── Section title ─────────────────────────────────────────────────────────
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
   sectionTitle: {
     fontSize: 15,
     fontFamily: 'Nunito_800ExtraBold',
     color: '#1A3D2E',
+    marginTop: 4,
+  },
+  sectionLink: {
+    fontSize: 13,
+    fontFamily: 'Nunito_700Bold',
+    color: TEAL,
     marginTop: 4,
   },
 

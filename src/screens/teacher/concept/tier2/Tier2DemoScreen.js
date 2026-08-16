@@ -11,14 +11,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import {
   getConceptItem,
   getConceptItemsForCategory,
   NAMING_QUESTION_EN,
   NAMING_QUESTION_SI,
-} from '../../../constants/conceptData';
-import { Layout } from '../../../constants/layout';
+} from '../../../../data/conceptData';
+import { Layout } from '../../../../constants/layout';
 
 // Mirrors ConceptDemoScreen (tier 1), but demonstrates the tier 2 task: the child
 // picks the correct *name* for the picture rather than the correct picture.

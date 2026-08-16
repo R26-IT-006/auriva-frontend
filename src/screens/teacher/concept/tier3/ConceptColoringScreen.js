@@ -14,10 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem } from '../../../constants/conceptData';
-import { conceptApi } from '../../../api/concept';
-import { Layout } from '../../../constants/layout';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { getConceptItem } from '../../../../data/conceptData';
+import { conceptApi } from '../../../../api/concept';
+import { Layout } from '../../../../constants/layout';
 
 const COLORS = [
   { key: 'red',    hex: '#E53935' },

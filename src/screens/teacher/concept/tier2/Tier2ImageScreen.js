@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,15 +11,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
-import { playConceptAudio, stopConceptAudio } from '../../../utils/audioUtils';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptPhrase } from '../../../constants/conceptData';
-import { conceptApi } from '../../../api/concept';
-import { ParentGateModal } from '../../../components/common/ParentGateModal';
-import { Layout } from '../../../constants/layout';
+import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { getConceptItem } from '../../../../data/conceptData';
+import { conceptApi } from '../../../../api/concept';
+import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import { Layout } from '../../../../constants/layout';
 
-export default function ConceptImageScreen({ route, navigation }) {
-  const { student, category, conceptKey, sessionId, isRelearn, confusedKeys } = route.params;
+function LetterBubble({ char, index, color }) {
+  const scale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, bounciness: 16, speed: 8 }).start();
+    }, 200 + index * 90);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <Animated.View style={[styles.letterBubble, { borderColor: color, transform: [{ scale }] }]}>
+      <Text style={[styles.letterText, { color }]}>{char}</Text>
+    </Animated.View>
+  );
+}
+
+export default function Tier2ImageScreen({ route, navigation }) {
+  const { student, category, conceptKey, sessionId } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
   const theme   = getAvatarTheme(student?.avatar_key);
@@ -28,41 +45,41 @@ export default function ConceptImageScreen({ route, navigation }) {
   const [tapCount,    setTapCount]    = useState(0);
   const [gateVisible, setGateVisible] = useState(false);
 
-  const fwdBtnScale  = useRef(new Animated.Value(0)).current;
-  const imageScale   = useRef(new Animated.Value(1)).current;
-  const handScale    = useRef(new Animated.Value(1)).current;
-  const handY        = useRef(new Animated.Value(0)).current;
-  const rippleScale  = useRef(new Animated.Value(0.4)).current;
+  const fwdBtnScale   = useRef(new Animated.Value(0)).current;
+  const imageScale    = useRef(new Animated.Value(1)).current;
+  const handScale     = useRef(new Animated.Value(1)).current;
+  const handY         = useRef(new Animated.Value(0)).current;
+  const rippleScale   = useRef(new Animated.Value(0.4)).current;
   const rippleOpacity = useRef(new Animated.Value(0.7)).current;
-  const sessionStart = useRef(Date.now());
-  const lastTapTime  = useRef(null);
-  const tapHintLoop  = useRef(null);
+  const sessionStart  = useRef(Date.now());
+  const lastTapTime   = useRef(null);
+  const tapHintLoop   = useRef(null);
 
-  const playIntro = useCallback(() => {
+  const playAudio = useCallback(() => {
     if (concept?.introAudio) {
       playConceptAudio(concept.introAudio);
     } else {
       Speech.stop();
-      Speech.speak(getConceptPhrase(concept), { language: 'en-US', rate: 0.75, pitch: 1.0 });
+      Speech.speak(concept?.label || '', { language: 'en-US', rate: 0.75, pitch: 1.0 });
+      setTimeout(() => {
+        if (concept?.labelSi) Speech.speak(concept.labelSi, { language: 'si-LK', rate: 0.7 });
+      }, 1200);
     }
   }, [concept]);
 
-  // Tap-hint animation loop (hand press + ripple)
   useEffect(() => {
     tapHintLoop.current = Animated.loop(
       Animated.sequence([
         Animated.delay(400),
-        // Press down
         Animated.parallel([
-          Animated.timing(handScale, { toValue: 0.78, duration: 180, useNativeDriver: true }),
-          Animated.timing(handY,     { toValue: 10,   duration: 180, useNativeDriver: true }),
-          Animated.timing(rippleScale,   { toValue: 0.4, duration: 10,  useNativeDriver: true }),
-          Animated.timing(rippleOpacity, { toValue: 0.7, duration: 10,  useNativeDriver: true }),
+          Animated.timing(handScale,    { toValue: 0.78, duration: 180, useNativeDriver: true }),
+          Animated.timing(handY,        { toValue: 10,   duration: 180, useNativeDriver: true }),
+          Animated.timing(rippleScale,   { toValue: 0.4,  duration: 10,  useNativeDriver: true }),
+          Animated.timing(rippleOpacity, { toValue: 0.7,  duration: 10,  useNativeDriver: true }),
         ]),
-        // Release + ripple expands
         Animated.parallel([
-          Animated.timing(handScale, { toValue: 1,   duration: 260, useNativeDriver: true }),
-          Animated.timing(handY,     { toValue: 0,   duration: 260, useNativeDriver: true }),
+          Animated.timing(handScale,    { toValue: 1,   duration: 260, useNativeDriver: true }),
+          Animated.timing(handY,        { toValue: 0,   duration: 260, useNativeDriver: true }),
           Animated.timing(rippleScale,   { toValue: 1.8, duration: 500, useNativeDriver: true }),
           Animated.timing(rippleOpacity, { toValue: 0,   duration: 500, useNativeDriver: true }),
         ]),
@@ -71,40 +88,22 @@ export default function ConceptImageScreen({ route, navigation }) {
     );
     tapHintLoop.current.start();
     return () => tapHintLoop.current?.stop();
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!concept) return;
-
-    if (!isRelearn) {
-      conceptApi.startTier1({
-        studentId:   student.sid,
-        categoryKey: category.key,
-        conceptKey,
-      }).catch(() => {});
-    } else {
-      conceptApi.logInteraction({
-        studentId:   student.sid,
-        sessionId:   sessionId || null,
-        categoryKey: category.key,
-        conceptKey,
-        eventType:   'relearn_start',
-        eventData:   {},
-      }).catch(() => {});
-    }
-
-    const t = setTimeout(() => playIntro(), 800);
+    conceptApi.startTier2({ studentId: student.sid, categoryKey: category.key, conceptKey }).catch(() => {});
+    const t = setTimeout(() => playAudio(), 800);
     return () => clearTimeout(t);
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleImageTap() {
     const now      = Date.now();
     const newCount = tapCount + 1;
     setTapCount(newCount);
-
     if (newCount === 1) tapHintLoop.current?.stop();
 
-    playIntro();
+    playAudio();
 
     Animated.sequence([
       Animated.spring(imageScale, { toValue: 0.93, useNativeDriver: true, speed: 60 }),
@@ -119,17 +118,13 @@ export default function ConceptImageScreen({ route, navigation }) {
       sessionId:   sessionId || null,
       categoryKey: category.key,
       conceptKey,
+      tier:        2,
       eventType:   'image_tap',
       eventData:   { tap_index: newCount, time_ms: now - sessionStart.current, inter_tap_ms: interTapMs },
     }).catch(() => {});
 
     if (newCount === 2) {
-      Animated.spring(fwdBtnScale, {
-        toValue:    1,
-        useNativeDriver: true,
-        bounciness: 14,
-        speed:      6,
-      }).start();
+      Animated.spring(fwdBtnScale, { toValue: 1, useNativeDriver: true, bounciness: 14, speed: 6 }).start();
     }
   }
 
@@ -139,32 +134,19 @@ export default function ConceptImageScreen({ route, navigation }) {
       sessionId:   sessionId || null,
       categoryKey: category.key,
       conceptKey,
-      tier:        1,
+      tier:        2,
       eventType:   'screen_exit',
       eventData:   { total_time_ms: Date.now() - sessionStart.current },
     }).catch(() => {});
     Speech.stop();
     stopConceptAudio();
-    if (isRelearn) {
-      if (confusedKeys?.length > 0) {
-        // Adaptive 2-card quiz targeting exactly the fruits the student confused
-        navigation.navigate('ConceptAdaptiveQuiz', {
-          student, category, conceptKey,
-          sessionId: sessionId || null,
-          confusedKeys,
-        });
-      } else {
-        // Relearn without confusion data — fall back to standard quiz
-        navigation.navigate('ConceptMatch', { student, category, conceptKey, sessionId: sessionId || null });
-      }
-    } else {
-      navigation.navigate('ConceptDemo', { student, category, conceptKey, sessionId: sessionId || null });
-    }
+    // Demo first, mirroring tier 1's ConceptImage → ConceptDemo → ConceptMatch flow.
+    navigation.navigate('Tier2Demo', { student, category, conceptKey, sessionId: sessionId || null });
   }
 
   if (!concept) return null;
 
-  const imgSize = Math.min(width, height) * 0.58;
+  const imgSize = Math.min(width, height) * 0.48;
 
   return (
     <LinearGradient
@@ -184,32 +166,33 @@ export default function ConceptImageScreen({ route, navigation }) {
           >
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
-
           <View />
-
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={playIntro}
+            onPress={playAudio}
             activeOpacity={0.7}
           >
             <Ionicons name="volume-high-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
 
-        {isRelearn && (
-          <View style={[styles.relearnBanner, { backgroundColor: theme.button + '22', borderColor: theme.cardOutline }]}>
-            <Ionicons name="refresh-circle-outline" size={16} color={theme.button} />
-            <Text style={[styles.relearnText, { color: theme.button }]}>Let's look again!</Text>
-          </View>
+        {/* Letter bubbles */}
+        <View style={styles.letterRow}>
+          {concept.label.toUpperCase().split('').map((char, i) => (
+            <LetterBubble key={i} char={char} index={i} color={theme.button} />
+          ))}
+        </View>
+
+        {/* Sinhala label — the screen already speaks labelSi, but never showed it */}
+        {concept.labelSi && (
+          <Text style={[styles.labelSi, { color: theme.headingText }]}>
+            {concept.labelSi}
+          </Text>
         )}
 
         {/* Main image — tappable */}
         <View style={[styles.imageContainer, { width: imgSize, height: imgSize }]}>
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={handleImageTap}
-            style={StyleSheet.absoluteFill}
-          >
+          <TouchableOpacity activeOpacity={1} onPress={handleImageTap} style={StyleSheet.absoluteFill}>
             <Animated.Image
               source={concept.real}
               style={{ width: imgSize, height: imgSize, transform: [{ scale: imageScale }] }}
@@ -217,17 +200,11 @@ export default function ConceptImageScreen({ route, navigation }) {
             />
           </TouchableOpacity>
 
-          {/* Tap hint — vanishes after first tap */}
           {tapCount === 0 && (
             <View style={styles.tapHint} pointerEvents="none">
-              {/* Ripple ring */}
               <Animated.View
-                style={[
-                  styles.ripple,
-                  { borderColor: theme.button, transform: [{ scale: rippleScale }], opacity: rippleOpacity },
-                ]}
+                style={[styles.ripple, { borderColor: theme.button, transform: [{ scale: rippleScale }], opacity: rippleOpacity }]}
               />
-              {/* Hand icon */}
               <Animated.View style={{ transform: [{ scale: handScale }, { translateY: handY }] }}>
                 <Ionicons name="hand-left" size={52} color={theme.button} />
               </Animated.View>
@@ -238,13 +215,7 @@ export default function ConceptImageScreen({ route, navigation }) {
         {/* Tap count dots */}
         <View style={styles.tapDots}>
           {[1, 2].map((n) => (
-            <View
-              key={n}
-              style={[
-                styles.tapDot,
-                { backgroundColor: tapCount >= n ? theme.button : 'rgba(0,0,0,0.15)' },
-              ]}
-            />
+            <View key={n} style={[styles.tapDot, { backgroundColor: tapCount >= n ? theme.button : 'rgba(0,0,0,0.15)' }]} />
           ))}
         </View>
 
@@ -289,52 +260,71 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  relearnBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    marginBottom: 6,
-  },
-  relearnText: {
-    fontSize: 13,
+
+  labelSi: {
+    fontSize: 22,
     fontFamily: 'Nunito_700Bold',
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 22,
   },
-  imageContainer: {
-    position: 'relative',
+  letterRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+    // Was 30 — the Sinhala label now carries the gap down to the image.
+    marginBottom: 10,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
+  letterBubble: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  letterText: {
+    fontSize: 32,
+    fontFamily: 'Nunito_900Black',
+  },
+
+  imageContainer: { position: 'relative' },
+
   tapHint: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ripple: {
     position: 'absolute',
-    width: 100,
-    height: 100,
+    width: 100, height: 100,
     borderRadius: 50,
     borderWidth: 4,
   },
+
   tapDots: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 24,
   },
   tapDot: {
-    width: 10,
-    height: 10,
+    width: 10, height: 10,
     borderRadius: 5,
   },
+
   fwdBtnWrap: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 36,
     alignSelf: 'center',
   },
   fwdBtn: {

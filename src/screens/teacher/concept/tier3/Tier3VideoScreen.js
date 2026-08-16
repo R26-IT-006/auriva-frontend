@@ -12,11 +12,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem } from '../../../constants/conceptData';
-import { conceptApi } from '../../../api/concept';
-import { ParentGateModal } from '../../../components/common/ParentGateModal';
-import { Layout } from '../../../constants/layout';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { getConceptItem } from '../../../../data/conceptData';
+import { conceptApi } from '../../../../api/concept';
+import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import { Layout } from '../../../../constants/layout';
 
 export default function Tier3VideoScreen({ route, navigation }) {
   const { student, category, conceptKey, needsReplay = false } = route.params;

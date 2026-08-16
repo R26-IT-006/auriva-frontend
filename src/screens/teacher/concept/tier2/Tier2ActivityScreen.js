@@ -15,20 +15,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
-import { stopConceptAudio } from '../../../utils/audioUtils';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
+import { stopConceptAudio } from '../../../../utils/audioUtils';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import {
   getConceptItem,
   getConceptItemsForCategory,
   NAMING_QUESTION_EN,
   NAMING_QUESTION_SI,
-} from '../../../constants/conceptData';
-import { conceptApi } from '../../../api/concept';
-import { ParentGateModal } from '../../../components/common/ParentGateModal';
-import { Layout } from '../../../constants/layout';
+} from '../../../../data/conceptData';
+import { conceptApi } from '../../../../api/concept';
+import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import { Layout } from '../../../../constants/layout';
 
-const CORRECT_GIF = require('../../../../assets/feedback/correct.gif');
-const WRONG_GIF   = require('../../../../assets/feedback/wrong.gif');
+const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
+const WRONG_GIF   = require('../../../../../assets/feedback/wrong.gif');
 
 function LabelPill({ option, index, locked, isCorrect, isWrong, cardOutline, headingText, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -218,7 +218,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
               conceptKey,
               passed,
               score,
-              attemptCount: 3,
+              attemptCount: updatedAttempts.length,
               confusedWith,
             });
           } catch { /* continue */ }

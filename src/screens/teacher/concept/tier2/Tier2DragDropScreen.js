@@ -14,14 +14,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
-import { stopConceptAudio } from '../../../utils/audioUtils';
-import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem, getConceptItemsForCategory } from '../../../constants/conceptData';
-import { conceptApi } from '../../../api/concept';
-import { Layout } from '../../../constants/layout';
+import { stopConceptAudio } from '../../../../utils/audioUtils';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { getConceptItem, getConceptItemsForCategory } from '../../../../data/conceptData';
+import { conceptApi } from '../../../../api/concept';
+import { Layout } from '../../../../constants/layout';
 
-const CORRECT_GIF = require('../../../../assets/feedback/correct.gif');
-const WRONG_GIF   = require('../../../../assets/feedback/wrong.gif');
+const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
+const WRONG_GIF   = require('../../../../../assets/feedback/wrong.gif');
 
 function shuffle(arr) {
   const a = [...arr];
@@ -229,7 +229,7 @@ export default function Tier2DragDropScreen({ route, navigation }) {
               conceptKey,
               passed,
               score,
-              attemptCount: 3,
+              attemptCount: updatedAttempts.length,
               confusedWith,
             });
           } catch { /* continue */ }

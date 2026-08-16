@@ -1,9 +1,6 @@
-import React from "react"; // required for JSX
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "../constants/colors";
-import { Layout } from "../constants/layout";
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Colors } from '../constants/colors';
+import { Layout } from '../constants/layout';
 
 import ConceptReportScreen        from '../screens/teacher/students/ConceptReportScreen';
 import TeacherDashboardScreen from "../screens/teacher/DashboardScreen";
@@ -64,18 +61,18 @@ import L2ProductionScreen      from '../screens/teacher/dialogue/level2/L2Produc
 import L2SessionCompleteScreen from '../screens/teacher/dialogue/level2/L2SessionCompleteScreen';
 import ConceptCategoriesScreen        from '../screens/teacher/concept/ConceptCategoriesScreen';
 import ConceptItemsScreen            from '../screens/teacher/concept/ConceptItemsScreen';
-import ConceptImageScreen            from '../screens/teacher/concept/ConceptImageScreen';
-import ConceptDemoScreen             from '../screens/teacher/concept/ConceptDemoScreen';
-import ConceptMatchScreen            from '../screens/teacher/concept/ConceptMatchScreen';
+import ConceptImageScreen            from '../screens/teacher/concept/tier1/ConceptImageScreen';
+import ConceptDemoScreen             from '../screens/teacher/concept/tier1/ConceptDemoScreen';
+import ConceptMatchScreen            from '../screens/teacher/concept/tier1/ConceptMatchScreen';
 import ConceptCongratulationsScreen  from '../screens/teacher/concept/ConceptCongratulationsScreen';
-import ConceptAdaptiveQuizScreen     from '../screens/teacher/concept/ConceptAdaptiveQuizScreen';
-import Tier2ImageScreen              from '../screens/teacher/concept/Tier2ImageScreen';
-import Tier2DemoScreen               from '../screens/teacher/concept/Tier2DemoScreen';
-import Tier2ActivityScreen           from '../screens/teacher/concept/Tier2ActivityScreen';
-import Tier2DragDropScreen           from '../screens/teacher/concept/Tier2DragDropScreen';
-import Tier3VideoScreen              from '../screens/teacher/concept/Tier3VideoScreen';
-import ConceptColoringScreen              from '../screens/teacher/concept/ConceptColoringScreen';
-import ConceptActivityScreen              from '../screens/teacher/concept/ConceptActivityScreen';
+import ConceptAdaptiveQuizScreen     from '../screens/teacher/concept/tier1/ConceptAdaptiveQuizScreen';
+import Tier2ImageScreen              from '../screens/teacher/concept/tier2/Tier2ImageScreen';
+import Tier2DemoScreen               from '../screens/teacher/concept/tier2/Tier2DemoScreen';
+import Tier2ActivityScreen           from '../screens/teacher/concept/tier2/Tier2ActivityScreen';
+import Tier2DragDropScreen           from '../screens/teacher/concept/tier2/Tier2DragDropScreen';
+import Tier3VideoScreen              from '../screens/teacher/concept/tier3/Tier3VideoScreen';
+import ConceptColoringScreen              from '../screens/teacher/concept/tier3/ConceptColoringScreen';
+import ConceptActivityScreen              from '../screens/teacher/concept/tier1/ConceptActivityScreen';
 import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
 import L2PortraitScreen        from '../screens/teacher/dialogue/level2/L2PortraitScreen';
 import PronunciationSessionSetupScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSessionSetupScreen";
@@ -87,7 +84,6 @@ import PronunciationSpeakWordScreen from "../screens/teacher/students/modules/pr
 import PronunciationResultScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultScreen";
 import PronunciationResultsHistoryScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultsHistoryScreen";
 
-const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const stackOptions = {
@@ -103,32 +99,17 @@ const stackOptions = {
   headerBackTitle: "",
 };
 
-function DashboardStack() {
+// The teacher workspace — reached via "Teacher Workspace". A single stack: the
+// dashboard is the entry point and navigates onward to the student screens.
+function TeacherWorkspace() {
   return (
     <Stack.Navigator screenOptions={stackOptions}>
-      <Stack.Screen
-        name="TeacherHome"
-        component={TeacherDashboardScreen}
-        options={{ headerShown: false }}
-      />
-    </Stack.Navigator>
-  );
-}
-
-function StudentsStack() {
-  return (
-    <Stack.Navigator screenOptions={stackOptions}>
+      <Stack.Screen name="TeacherHome"          component={TeacherDashboardScreen}   options={{ headerShown: false }} />
+      <Stack.Screen name="TeacherStudentList"   component={TeacherStudentListScreen}  options={{ title: 'My Students' }} />
+      <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
+      {/* Both reports stay in this stack, not the root one, so they keep Colors
+          theming rather than the student-workspace chrome. */}
       <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
-      <Stack.Screen
-        name="TeacherStudentList"
-        component={TeacherStudentListScreen}
-        options={{ title: "My Students" }}
-      />
-      <Stack.Screen
-        name="TeacherStudentDetail"
-        component={TeacherStudentDetailScreen}
-        options={{ title: "Student Profile" }}
-      />
       <Stack.Screen
         name="StudentHandwritingReport"
         component={TeacherReportScreen}
@@ -138,62 +119,13 @@ function StudentsStack() {
   );
 }
 
-// The full teacher tab UI — reached via "Teacher Workspace"
-function TeacherTabs() {
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.icon.default,
-        tabBarStyle: {
-          backgroundColor: Colors.surface,
-          borderTopColor: Colors.borderLight,
-          borderTopWidth: 1,
-          height: Layout.tabBarHeight,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: {
-          fontSize:   Layout.fontSize.xs,
-          fontFamily: 'Nunito_600SemiBold',
-        },
-        tabBarIcon: ({ color, size, focused }) => {
-          const icons = {
-            Dashboard: focused ? "home" : "home-outline",
-            Students: focused ? "people" : "people-outline",
-          };
-          return (
-            <Ionicons name={icons[route.name]} size={size} color={color} />
-          );
-        },
-      })}
-    >
-      <Tab.Screen
-        name="Dashboard"
-        component={DashboardStack}
-        options={{ title: "Home" }}
-      />
-      <Tab.Screen
-        name="Students"
-        component={StudentsStack}
-        options={{ title: "My Students" }}
-      />
-    </Tab.Navigator>
-  );
-}
-
-// Root stack: WorkspaceSelect → TeacherMain (tabs) or StudentPicker → StudentSession
+// Root stack: WorkspaceSelect → TeacherMain or StudentPicker → StudentDashboard
 export default function TeacherNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WorkspaceSelect" component={WorkspaceSelectScreen} />
-      <Stack.Screen name="TeacherMain" component={TeacherTabs} />
-      <Stack.Screen name="StudentPicker" component={StudentPickerScreen} />
-      <Stack.Screen
-        name="StudentSession"
-        component={TeacherStudentDetailScreen}
-      />
+      <Stack.Screen name="TeacherMain"     component={TeacherWorkspace} />
+      <Stack.Screen name="StudentPicker"    component={StudentPickerScreen} />
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
       <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
       <Stack.Screen name="HandwritingModule" component={HandwritingNavigator} />
