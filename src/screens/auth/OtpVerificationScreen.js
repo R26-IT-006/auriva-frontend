@@ -1,31 +1,38 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
+  Modal,
   ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   Alert,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '../../components/common/Button';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { authApi } from '../../api/auth';
 
-const OTP_LENGTH = 6;
+const TEAL           = '#3A9BA8';
+const TEAL_GRAD      = ['#4AABB8', '#52C07C'];
+const TEAL_LIGHT     = '#E3F5F7';
+const OTP_LENGTH     = 6;
 const RESEND_COUNTDOWN = 60;
 
 export default function OtpVerificationScreen({ navigation, route }) {
   const { email } = route.params;
-  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
-  const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [countdown, setCountdown] = useState(RESEND_COUNTDOWN);
+
+  const [otp, setOtp]               = useState(Array(OTP_LENGTH).fill(''));
+  const [loading, setLoading]       = useState(false);
+  const [resending, setResending]   = useState(false);
+  const [countdown, setCountdown]   = useState(RESEND_COUNTDOWN);
+  const [toast, setToast]           = useState({ visible: false, type: 'success', title: '', message: '' });
   const inputRefs = useRef([]);
 
   useEffect(() => {
@@ -34,17 +41,20 @@ export default function OtpVerificationScreen({ navigation, route }) {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  function handleOtpChange(value, index) {
-    // Only accept digits
-    if (value && !/^\d$/.test(value)) return;
+  function showToast(type, title, message) {
+    setToast({ visible: true, type, title, message });
+  }
 
+  function hideToast() {
+    setToast((t) => ({ ...t, visible: false }));
+  }
+
+  function handleOtpChange(value, index) {
+    if (value && !/^\d$/.test(value)) return;
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-
-    if (value && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
+    if (value && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
   }
 
   function handleKeyPress(e, index) {
@@ -53,7 +63,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
     }
   }
 
-  function handlePaste(e, index) {
+  function handlePaste(e, _index) {
     const text = e.nativeEvent.text;
     if (/^\d{6}$/.test(text)) {
       setOtp(text.split(''));
@@ -64,7 +74,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
   async function handleVerify() {
     const code = otp.join('');
     if (code.length !== OTP_LENGTH) {
-      Alert.alert('Incomplete OTP', 'Please enter all 6 digits.');
+      showToast('error', 'Incomplete OTP', 'Please enter all 6 digits.');
       return;
     }
     setLoading(true);
@@ -72,7 +82,7 @@ export default function OtpVerificationScreen({ navigation, route }) {
       const { reset_token } = await authApi.verifyOtp(email, code);
       navigation.navigate('ResetPassword', { resetToken: reset_token });
     } catch (err) {
-      Alert.alert('Invalid OTP', err.message || 'The OTP is incorrect or has expired.');
+      showToast('error', 'Invalid OTP', err.message || 'The OTP is incorrect or has expired.');
       setOtp(Array(OTP_LENGTH).fill(''));
       inputRefs.current[0]?.focus();
     } finally {
@@ -87,9 +97,9 @@ export default function OtpVerificationScreen({ navigation, route }) {
       setCountdown(RESEND_COUNTDOWN);
       setOtp(Array(OTP_LENGTH).fill(''));
       inputRefs.current[0]?.focus();
-      Alert.alert('OTP Sent', 'A new OTP has been sent to your email.');
+      showToast('success', 'OTP Sent', 'A new OTP has been sent to your email.');
     } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to resend OTP.');
+      showToast('error', 'Failed to Resend', err.message || 'Failed to resend OTP. Please try again.');
     } finally {
       setResending(false);
     }
@@ -97,171 +107,327 @@ export default function OtpVerificationScreen({ navigation, route }) {
 
   const maskedEmail = email.replace(/(.{2})(.*)(@.*)/, (_, a, b, c) => a + '*'.repeat(b.length) + c);
 
+  const isSuccess = toast.type === 'success';
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.iconSection}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="key-outline" size={40} color={Colors.primary} />
+    <LinearGradient
+      colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']}
+      style={styles.root}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      {/* ── Toast Modal ── */}
+      <Modal visible={toast.visible} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.overlay}>
+          <View style={styles.toastCard}>
+            <View style={[styles.toastIconCircle, isSuccess ? styles.toastIconSuccess : styles.toastIconError]}>
+              <Ionicons
+                name={isSuccess ? 'checkmark-circle' : 'alert-circle'}
+                size={44}
+                color={isSuccess ? '#52C07C' : '#E05C48'}
+              />
             </View>
+            <Text style={styles.toastTitle}>{toast.title}</Text>
+            <Text style={styles.toastMessage}>{toast.message}</Text>
+            <TouchableOpacity
+              onPress={hideToast}
+              activeOpacity={0.85}
+              style={styles.toastBtn}
+            >
+              <LinearGradient
+                colors={isSuccess ? TEAL_GRAD : ['#E07060', '#C04030']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.toastBtnGradient}
+              >
+                <Text style={styles.toastBtnText}>OK</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
 
-          <Text style={styles.title}>Enter OTP</Text>
-          <Text style={styles.subtitle}>
-            A 6-digit code was sent to{'\n'}
-            <Text style={styles.emailText}>{maskedEmail}</Text>
-          </Text>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.card}>
 
-          <View style={styles.formCard}>
-            {/* OTP Input boxes */}
-            <View style={styles.otpRow}>
-              {otp.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={(ref) => { inputRefs.current[index] = ref; }}
-                  style={[styles.otpBox, digit ? styles.otpBoxFilled : null]}
-                  value={digit}
-                  onChangeText={(v) => handleOtpChange(v, index)}
-                  onKeyPress={(e) => handleKeyPress(e, index)}
-                  onChange={(e) => handlePaste(e, index)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  selectTextOnFocus
-                  textAlign="center"
-                />
-              ))}
+              {/* Back */}
+              <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.75} style={styles.backBtn}>
+                <Ionicons name="chevron-back" size={16} color={TEAL} />
+                <Text style={styles.backBtnText}>Back</Text>
+              </TouchableOpacity>
+
+              {/* Heading */}
+              <Text style={styles.cardTitle}>Enter verification code</Text>
+              <Text style={styles.cardSubtitle}>
+                We sent a 6-digit code to{' '}
+                <Text style={styles.emailHighlight}>{maskedEmail}</Text>
+              </Text>
+
+              {/* OTP boxes */}
+              <View style={styles.otpRow}>
+                {otp.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => { inputRefs.current[index] = ref; }}
+                    style={[styles.otpBox, digit ? styles.otpBoxFilled : null]}
+                    value={digit}
+                    onChangeText={(v) => handleOtpChange(v, index)}
+                    onKeyPress={(e) => handleKeyPress(e, index)}
+                    onChange={(e) => handlePaste(e, index)}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    selectTextOnFocus
+                    textAlign="center"
+                  />
+                ))}
+              </View>
+
+              {/* Verify button */}
+              <TouchableOpacity
+                onPress={handleVerify}
+                disabled={loading}
+                activeOpacity={0.85}
+                style={[styles.btn, loading && { opacity: 0.75 }]}
+              >
+                <LinearGradient
+                  colors={TEAL_GRAD}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.btnGradient}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#FFF" size="small" />
+                    : <Text style={styles.btnText}>Verify OTP</Text>
+                  }
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Resend */}
+              <View style={styles.resendRow}>
+                <Text style={styles.resendLabel}>Didn't receive it?</Text>
+                {countdown > 0 ? (
+                  <Text style={styles.resendTimer}>{'  '}Resend in {countdown}s</Text>
+                ) : (
+                  <TouchableOpacity onPress={handleResend} disabled={resending}>
+                    <Text style={[styles.resendLink, resending && styles.resendLinkDisabled]}>
+                      {'  '}{resending ? 'Sending...' : 'Resend OTP'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
             </View>
 
-            <Button
-              title="Verify OTP"
-              onPress={handleVerify}
-              loading={loading}
-              style={styles.btn}
-            />
-
-            <View style={styles.resendRow}>
-              {countdown > 0 ? (
-                <Text style={styles.resendTimer}>
-                  Resend OTP in <Text style={styles.resendTimerBold}>{countdown}s</Text>
-                </Text>
-              ) : (
-                <TouchableOpacity onPress={handleResend} disabled={resending}>
-                  <Text style={[styles.resendLink, resending && styles.resendLinkDisabled]}>
-                    {resending ? 'Sending...' : 'Resend OTP'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <Button
-              title="Back"
-              onPress={() => navigation.goBack()}
-              variant="outline"
-              style={styles.backBtn}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <Text style={styles.footer}>AURIVA 2026</Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  root:      { flex: 1 },
+  safeInner: { flex: 1 },
+
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xl,
-  },
-  iconSection: {
-    alignItems: 'center',
-    paddingTop: Layout.spacing.xl,
-    paddingBottom: Layout.spacing.md,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.status.infoLight,
-    alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.primaryLight,
+    alignItems: 'center',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.xxl,
   },
-  title: {
-    fontSize: Layout.fontSize.xxl,
-    fontWeight: Layout.fontWeight.extrabold,
-    color: Colors.text.primary,
-    textAlign: 'center',
-    marginBottom: Layout.spacing.sm,
+
+  // ── Card ─────────────────────────────────────────────────────────────────
+  card: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 32,
+    paddingVertical: 36,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 24,
+    elevation: 8,
   },
-  subtitle: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: Layout.spacing.lg,
+
+  // ── Back ──────────────────────────────────────────────────────────────────
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  emailText: {
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.primary,
+  backBtnText: {
+    fontSize: 13,
+    fontFamily: 'Nunito_600SemiBold',
+    color: TEAL,
   },
-  formCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.md,
+
+  // ── Headings ──────────────────────────────────────────────────────────────
+  cardTitle: {
+    fontSize: 26,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#1A1A2E',
+    marginBottom: 8,
   },
+  cardSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: '#9B9FB0',
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  emailHighlight: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: TEAL,
+  },
+
+  // ── OTP boxes ─────────────────────────────────────────────────────────────
   otpRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: Layout.spacing.lg,
+    marginBottom: 28,
+    gap: 8,
   },
   otpBox: {
-    width: 46,
+    flex: 1,
     height: 56,
-    borderRadius: Layout.radius.md,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceAlt,
-    fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
+    borderColor: '#E0E4EE',
+    backgroundColor: '#F5F7FA',
+    fontSize: 22,
+    fontFamily: 'Nunito_700Bold',
+    color: '#1A1A2E',
   },
   otpBoxFilled: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.status.infoLight,
+    borderColor: TEAL,
+    backgroundColor: TEAL_LIGHT,
   },
-  btn: { marginBottom: Layout.spacing.md },
-  resendRow: {
+
+  // ── Verify button ─────────────────────────────────────────────────────────
+  btn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  btnGradient: {
+    height: 54,
     alignItems: 'center',
-    marginBottom: Layout.spacing.sm,
+    justifyContent: 'center',
+  },
+  btnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: 'Nunito_700Bold',
+    letterSpacing: 0.4,
+  },
+
+  // ── Resend ────────────────────────────────────────────────────────────────
+  resendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resendLabel: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: '#9B9FB0',
   },
   resendTimer: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.muted,
-  },
-  resendTimerBold: {
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.secondary,
+    fontSize: 13,
+    fontFamily: 'Nunito_600SemiBold',
+    color: '#9B9FB0',
   },
   resendLink: {
-    fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
-    color: Colors.primary,
+    fontSize: 13,
+    fontFamily: 'Nunito_600SemiBold',
+    color: TEAL,
   },
   resendLinkDisabled: {
-    color: Colors.text.muted,
+    color: '#9B9FB0',
   },
-  backBtn: { marginTop: Layout.spacing.xs },
+
+  // ── Toast Modal ───────────────────────────────────────────────────────────
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  toastCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    paddingVertical: 36,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+  toastIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  toastIconSuccess: { backgroundColor: '#E8F8EF' },
+  toastIconError:   { backgroundColor: '#FDF0EE' },
+  toastTitle: {
+    fontSize: 20,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#1A1A2E',
+    textAlign: 'center',
+  },
+  toastMessage: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 4,
+  },
+  toastBtn: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  toastBtnGradient: {
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toastBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontFamily: 'Nunito_700Bold',
+    letterSpacing: 0.3,
+  },
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  footer: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontSize: 10,
+    letterSpacing: 1.8,
+    color: Colors.text.muted,
+    fontFamily: 'Nunito_600SemiBold',
+  },
 });

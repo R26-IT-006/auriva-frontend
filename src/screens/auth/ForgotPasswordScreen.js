@@ -1,25 +1,31 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
+  TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { authApi } from '../../api/auth';
 
+const TEAL       = '#3A9BA8';
+const TEAL_GRAD  = ['#4AABB8', '#52C07C'];
+const TEAL_LIGHT = '#E3F5F7';
+
 export default function ForgotPasswordScreen({ navigation }) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail]     = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors]   = useState({});
 
   function validate() {
     const e = {};
@@ -46,103 +52,206 @@ export default function ForgotPasswordScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.iconSection}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="mail-outline" size={40} color={Colors.primary} />
+    <LinearGradient
+      colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']}
+      style={styles.root}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.card}>
+
+              {/* Icon */}
+              <View style={styles.iconCircle}>
+                <Ionicons name="lock-open-outline" size={32} color={TEAL} />
+              </View>
+
+              {/* Heading */}
+              <Text style={styles.cardTitle}>Forgot Password?</Text>
+              <Text style={styles.cardSubtitle}>
+                Enter the email address linked to your teacher account.{'\n'}We'll send you a one-time password.
+              </Text>
+
+              {/* Email field */}
+              <Input
+                label="Email Address"
+                value={email}
+                onChangeText={(v) => { setEmail(v); setErrors((e) => ({ ...e, email: null })); }}
+                placeholder="Enter your registered email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={errors.email}
+              />
+
+              {/* Send OTP button */}
+              <TouchableOpacity
+                onPress={handleSendOtp}
+                disabled={loading}
+                activeOpacity={0.85}
+                style={[styles.btn, loading && { opacity: 0.75 }]}
+              >
+                <LinearGradient
+                  colors={TEAL_GRAD}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.btnGradient}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#FFF" size="small" />
+                    : <Text style={styles.btnText}>Send OTP</Text>
+                  }
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Back to login */}
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.75}
+                style={styles.backBtn}
+              >
+                <Ionicons name="arrow-back-outline" size={15} color={TEAL} />
+                <Text style={styles.backBtnText}>Back to Login</Text>
+              </TouchableOpacity>
             </View>
-          </View>
 
-          <Text style={styles.title}>Forgot Password?</Text>
-          <Text style={styles.subtitle}>
-            Enter the email address linked to your teacher account.{'\n'}We'll send you a one-time password.
-          </Text>
-
-          <View style={styles.formCard}>
-            <Input
-              label="Email Address"
-              value={email}
-              onChangeText={(v) => { setEmail(v); setErrors((e) => ({ ...e, email: null })); }}
-              placeholder="Enter your registered email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              leftIcon={<Ionicons name="mail-outline" size={18} color={Colors.icon.default} />}
-              error={errors.email}
-            />
-
-            <Button
-              title="Send OTP"
-              onPress={handleSendOtp}
-              loading={loading}
-              style={styles.btn}
-            />
-
-            <Button
-              title="Back to Login"
-              onPress={() => navigation.goBack()}
-              variant="outline"
-              style={styles.backBtn}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <Text style={styles.footer}>AURIVA 2026</Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  root: { flex: 1 },
+  safeInner: { flex: 1 },
+
+  // ── Scroll / layout ──────────────────────────────────────────────────────
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xl,
-  },
-  iconSection: {
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: Layout.spacing.xl,
-    paddingBottom: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.xxl,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.status.infoLight,
+
+  // ── Card ─────────────────────────────────────────────────────────────────
+  card: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 36,
+    paddingVertical: 40,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+
+  // ── Logo ──────────────────────────────────────────────────────────────────
+  logoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.primaryLight,
+    gap: 10,
+    marginBottom: 24,
   },
-  title: {
-    fontSize: Layout.fontSize.xxl,
-    fontWeight: Layout.fontWeight.extrabold,
-    color: Colors.text.primary,
+  logoBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: TEAL,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoLetter: {
+    color: '#FFF',
+    fontSize: 22,
+    fontFamily: 'Nunito_800ExtraBold',
+  },
+  logoText: {
+    fontSize: 24,
+    fontFamily: 'Nunito_700Bold',
+    color: '#1A1A2E',
+  },
+
+  // ── Icon circle ───────────────────────────────────────────────────────────
+  iconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: TEAL_LIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+
+  // ── Headings ──────────────────────────────────────────────────────────────
+  cardTitle: {
+    fontSize: 28,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#1A1A2E',
     textAlign: 'center',
-    marginBottom: Layout.spacing.sm,
+    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.secondary,
+  cardSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: '#9B9FB0',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: Layout.spacing.lg,
+    lineHeight: 22,
+    marginBottom: 28,
   },
-  formCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.md,
+
+  // ── Send OTP button ───────────────────────────────────────────────────────
+  btn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 8,
   },
-  btn: { marginTop: Layout.spacing.sm },
-  backBtn: { marginTop: Layout.spacing.sm },
+  btnGradient: {
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: 'Nunito_700Bold',
+    letterSpacing: 0.4,
+  },
+
+  // ── Back to login ─────────────────────────────────────────────────────────
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 20,
+  },
+  backBtnText: {
+    fontSize: 13,
+    fontFamily: 'Nunito_600SemiBold',
+    color: TEAL,
+  },
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  footer: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontSize: 10,
+    letterSpacing: 1.8,
+    color: Colors.text.muted,
+    fontFamily: 'Nunito_600SemiBold',
+  },
 });

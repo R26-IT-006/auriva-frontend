@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../constants/api';
 import { storage } from '../utils/storage';
+import { useAuthStore } from '../store/authStore';
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -44,6 +45,10 @@ client.interceptors.response.use(
     }
 
     if (response) {
+      if (response.status === 401) {
+        useAuthStore.getState().logout();
+        return Promise.reject(new Error('Session expired. Please log in again.'));
+      }
       const message =
         response.data?.message ||
         response.data?.error ||
