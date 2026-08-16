@@ -135,10 +135,6 @@ export default function TeacherDashboardScreen({ navigation }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  const engagementDisplay = stats?.avgEngagement != null
-    ? `${Math.round(stats.avgEngagement * 100)}%`
-    : null;
-
   if (!data) {
     return (
       <LinearGradient
@@ -233,12 +229,6 @@ export default function TeacherDashboardScreen({ navigation }) {
               value={stats?.weeklySessions ?? '—'}
               label="This Week"
               colors={['#5FCB8C', '#3FAE6F']}
-            />
-            <KpiTile
-              icon="pulse-outline"
-              value={engagementDisplay ?? '—'}
-              label="Engagement"
-              colors={['#F5B85B', '#E89A2E']}
             />
           </View>
 
