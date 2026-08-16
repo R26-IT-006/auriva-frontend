@@ -20,7 +20,7 @@
       "permissions": ["RECORD_AUDIO"]
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.auriva.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Allow Auriva to use the microphone for pronunciation practice."
@@ -31,6 +31,18 @@
     },
     "extra": {
       "apiBaseUrl": "http://192.168.8.132:3000/api"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Auriva to access your photos to upload profile pictures."
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

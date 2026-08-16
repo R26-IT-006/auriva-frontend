@@ -1,30 +1,23 @@
-import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Modal, ScrollView, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "../../constants/colors";
-import { Layout } from "../../constants/layout";
-import { ButtonFeedback } from "./ButtonFeedback";
+﻿import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/colors';
+import { Layout } from '../../constants/layout';
 
 const K = {
-  purple: "#8A80BC",
-  purpleLight: "#EFEDF8",
-  banner: "#3D5A9E",
+  purple:     '#8A80BC',
+  purpleLight:'#EFEDF8',
+  banner:     '#3D5A9E',
 };
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const ITEM_H = 44;
 const VISIBLE = 5; // rows shown
 
@@ -69,7 +62,7 @@ function WheelColumn({ items, selectedIndex, onChange, format }) {
         style={{ height: ITEM_H * VISIBLE }}
       >
         {items.map((item, i) => (
-          <ButtonFeedback
+          <TouchableOpacity
             key={i}
             style={col.item}
             activeOpacity={0.7}
@@ -78,12 +71,10 @@ function WheelColumn({ items, selectedIndex, onChange, format }) {
               ref.current?.scrollTo({ y: i * ITEM_H, animated: true });
             }}
           >
-            <Text
-              style={[col.itemText, i === selectedIndex && col.itemTextActive]}
-            >
-              {format ? format(item) : String(item).padStart(2, "0")}
+            <Text style={[col.itemText, i === selectedIndex && col.itemTextActive]}>
+              {format ? format(item) : String(item).padStart(2, '0')}
             </Text>
-          </ButtonFeedback>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
@@ -91,9 +82,9 @@ function WheelColumn({ items, selectedIndex, onChange, format }) {
 }
 
 const col = StyleSheet.create({
-  wrapper: { flex: 1, position: "relative" },
+  wrapper: { flex: 1, position: 'relative' },
   highlight: {
-    position: "absolute",
+    position: 'absolute',
     top: ITEM_H * 2,
     left: 4,
     right: 4,
@@ -103,34 +94,33 @@ const col = StyleSheet.create({
     zIndex: 0,
   },
   fade: {
-    position: "absolute",
-    left: 0,
-    right: 0,
+    position: 'absolute',
+    left: 0, right: 0,
     height: ITEM_H * 2,
     zIndex: 2,
   },
   fadeTop: {
     top: 0,
-    background: "transparent",
+    background: 'transparent',
   },
   fadeBottom: {
     bottom: 0,
   },
   item: {
     height: ITEM_H,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 1,
   },
   itemText: {
     fontSize: Layout.fontSize.lg,
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
   itemTextActive: {
     fontSize: Layout.fontSize.xl,
     color: K.purple,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'Nunito_800ExtraBold',
   },
 });
 
@@ -153,19 +143,19 @@ export default function DatePickerField({
 }) {
   const [show, setShow] = useState(false);
 
-  const now = new Date();
+  const now     = new Date();
   const minYear = minimumDate ? minimumDate.getFullYear() : 1940;
   const maxYear = maximumDate ? maximumDate.getFullYear() : now.getFullYear();
 
   // Parse current value or default to today
-  const parsed = value ? new Date(value + "T00:00:00") : now;
-  const [selDay, setSelDay] = useState(parsed.getDate());
+  const parsed = value ? new Date(value + 'T00:00:00') : now;
+  const [selDay,   setSelDay]   = useState(parsed.getDate());
   const [selMonth, setSelMonth] = useState(parsed.getMonth()); // 0-based
-  const [selYear, setSelYear] = useState(parsed.getFullYear());
+  const [selYear,  setSelYear]  = useState(parsed.getFullYear());
 
-  const days = range(1, daysInMonth(selMonth, selYear));
+  const days   = range(1, daysInMonth(selMonth, selYear));
   const months = MONTHS;
-  const years = range(minYear, maxYear).reverse();
+  const years  = range(minYear, maxYear).reverse();
 
   function daysInMonth(month, year) {
     return new Date(year, month + 1, 0).getDate();
@@ -179,16 +169,13 @@ export default function DatePickerField({
 
   function formatDisplay(iso) {
     if (!iso) return null;
-    const [y, m, d] = iso.split("-");
+    const [y, m, d] = iso.split('-');
     return `${d} ${MONTHS[parseInt(m, 10) - 1]} ${y}`;
   }
 
   function handleDone() {
-    const d = String(Math.min(selDay, daysInMonth(selMonth, selYear))).padStart(
-      2,
-      "0",
-    );
-    const m = String(selMonth + 1).padStart(2, "0");
+    const d = String(Math.min(selDay, daysInMonth(selMonth, selYear))).padStart(2, '0');
+    const m = String(selMonth + 1).padStart(2, '0');
     onChange(`${selYear}-${m}-${d}`);
     setShow(false);
   }
@@ -196,7 +183,7 @@ export default function DatePickerField({
   function handleOpen() {
     // sync wheel state to current value each time the picker opens
     if (value) {
-      const p = new Date(value + "T00:00:00");
+      const p = new Date(value + 'T00:00:00');
       setSelDay(p.getDate());
       setSelMonth(p.getMonth());
       setSelYear(p.getFullYear());
@@ -208,7 +195,7 @@ export default function DatePickerField({
     <View style={styles.wrapper}>
       {label && <Text style={styles.label}>{label}</Text>}
 
-      <ButtonFeedback
+      <TouchableOpacity
         style={[styles.field, error && { borderColor: Colors.status.error }]}
         onPress={handleOpen}
         activeOpacity={0.8}
@@ -217,10 +204,10 @@ export default function DatePickerField({
           <Ionicons name="calendar-outline" size={16} color={K.purple} />
         </View>
         <Text style={[styles.fieldText, !value && styles.placeholder]}>
-          {formatDisplay(value) || "Select date of birth"}
+          {formatDisplay(value) || 'Select date of birth'}
         </Text>
         <Ionicons name="chevron-down" size={16} color={Colors.icon.default} />
-      </ButtonFeedback>
+      </TouchableOpacity>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -230,19 +217,20 @@ export default function DatePickerField({
         animationType="slide"
         onRequestClose={() => setShow(false)}
       >
-        <ButtonFeedback
+        <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
           onPress={() => setShow(false)}
         >
-          <ButtonFeedback activeOpacity={1} style={styles.sheet}>
+          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
+
             {/* Sheet header */}
             <View style={styles.sheetBanner} />
             <View style={styles.sheetTitleRow}>
               <View style={styles.sheetIconBox}>
                 <Ionicons name="calendar" size={16} color={K.purple} />
               </View>
-              <Text style={styles.sheetTitle}>{label || "Date of Birth"}</Text>
+              <Text style={styles.sheetTitle}>{label || 'Date of Birth'}</Text>
             </View>
 
             {/* Column labels */}
@@ -269,24 +257,19 @@ export default function DatePickerField({
               <View style={styles.wheelDivider} />
               <WheelColumn
                 items={years}
-                selectedIndex={
-                  years.indexOf(selYear) === -1 ? 0 : years.indexOf(selYear)
-                }
+                selectedIndex={years.indexOf(selYear) === -1 ? 0 : years.indexOf(selYear)}
                 onChange={(i) => setSelYear(years[i])}
                 format={(y) => String(y)}
               />
             </View>
 
             {/* Done */}
-            <ButtonFeedback
-              style={styles.doneBtn}
-              onPress={handleDone}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={styles.doneBtn} onPress={handleDone} activeOpacity={0.85}>
               <Text style={styles.doneBtnText}>Confirm</Text>
-            </ButtonFeedback>
-          </ButtonFeedback>
-        </ButtonFeedback>
+            </TouchableOpacity>
+
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -297,13 +280,13 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'Nunito_600SemiBold',
     color: Colors.text.secondary,
     marginBottom: 2,
   },
   field: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.background,
     borderRadius: Layout.radius.lg,
     borderWidth: 1.5,
@@ -313,22 +296,19 @@ const styles = StyleSheet.create({
     gap: Layout.spacing.sm,
   },
   iconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 28, height: 28, borderRadius: 8,
     backgroundColor: K.purpleLight,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center', justifyContent: 'center',
   },
   fieldText: {
     flex: 1,
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'Nunito_600SemiBold',
   },
   placeholder: {
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.regular,
+    fontFamily: 'Nunito_400Regular',
   },
   error: {
     fontSize: Layout.fontSize.xs,
@@ -339,14 +319,14 @@ const styles = StyleSheet.create({
   // Modal
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: Colors.surface,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    overflow: "hidden",
+    overflow: 'hidden',
     paddingBottom: Layout.spacing.xl,
   },
   sheetBanner: {
@@ -354,8 +334,8 @@ const styles = StyleSheet.create({
     backgroundColor: K.banner,
   },
   sheetTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Layout.spacing.sm,
     paddingHorizontal: Layout.spacing.lg,
     paddingVertical: Layout.spacing.md,
@@ -363,37 +343,34 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
   },
   sheetIconBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
+    width: 30, height: 30, borderRadius: 9,
     backgroundColor: K.purpleLight,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center', justifyContent: 'center',
   },
   sheetTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.primary,
   },
 
   colLabels: {
-    flexDirection: "row",
+    flexDirection: 'row',
     paddingHorizontal: Layout.spacing.lg,
     paddingTop: Layout.spacing.md,
     paddingBottom: 4,
   },
   colLabel: {
     flex: 1,
-    textAlign: "center",
+    textAlign: 'center',
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'Nunito_700Bold',
     color: Colors.text.muted,
     letterSpacing: 0.6,
-    textTransform: "uppercase",
+    textTransform: 'uppercase',
   },
 
   wheels: {
-    flexDirection: "row",
+    flexDirection: 'row',
     paddingHorizontal: Layout.spacing.lg,
     gap: 4,
   },
@@ -409,11 +386,11 @@ const styles = StyleSheet.create({
     backgroundColor: K.purple,
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: "center",
+    alignItems: 'center',
   },
   doneBtnText: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: "#FFFFFF",
+    fontFamily: 'Nunito_700Bold',
+    color: '#FFFFFF',
   },
 });

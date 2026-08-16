@@ -1,27 +1,34 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
+  Modal,
+  Alert,
   ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '../../components/common/Button';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '../../components/common/Input';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { authApi } from '../../api/auth';
 import { validatePassword } from '../../utils/validation';
 
+const TEAL       = '#3A9BA8';
+const TEAL_GRAD  = ['#4AABB8', '#52C07C'];
+const TEAL_LIGHT = '#E3F5F7';
+
 function Requirement({ met, label }) {
   return (
     <View style={styles.reqRow}>
       <View style={[styles.reqDot, met && styles.reqDotMet]}>
-        {met && <Ionicons name="checkmark" size={10} color="#fff" />}
+        {met && <Ionicons name="checkmark" size={13} color="#fff" />}
       </View>
       <Text style={[styles.reqText, met && styles.reqTextMet]}>{label}</Text>
     </View>
@@ -30,10 +37,12 @@ function Requirement({ met, label }) {
 
 export default function ResetPasswordScreen({ navigation, route }) {
   const { resetToken } = route.params;
-  const [newPassword, setNewPassword] = useState('');
+
+  const [newPassword,     setNewPassword]     = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [loading,         setLoading]         = useState(false);
+  const [errors,          setErrors]          = useState({});
+  const [successVisible,  setSuccessVisible]  = useState(false);
 
   const { rules } = validatePassword(newPassword);
 
@@ -58,11 +67,7 @@ export default function ResetPasswordScreen({ navigation, route }) {
     setLoading(true);
     try {
       await authApi.resetPassword(resetToken, newPassword);
-      Alert.alert(
-        'Password Reset',
-        'Your password has been reset successfully. Please log in with your new password.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-      );
+      setSuccessVisible(true);
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to reset password. Please try again.');
     } finally {
@@ -71,127 +76,190 @@ export default function ResetPasswordScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.iconSection}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="shield-checkmark-outline" size={40} color={Colors.primary} />
+    <LinearGradient
+      colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']}
+      style={styles.root}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      {/* ── Success Modal ── */}
+      <Modal visible={successVisible} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.overlay}>
+          <View style={styles.successCard}>
+            <View style={styles.successIconCircle}>
+              <Ionicons name="checkmark-circle" size={52} color="#52C07C" />
             </View>
+            <Text style={styles.successTitle}>Password Reset!</Text>
+            <Text style={styles.successMessage}>
+              Your password has been reset successfully.{'\n'}Please log in with your new password.
+            </Text>
+            <TouchableOpacity
+              style={styles.successBtn}
+              onPress={() => { setSuccessVisible(false); navigation.navigate('Login'); }}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={TEAL_GRAD}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.successBtnGradient}
+              >
+                <Text style={styles.successBtnText}>Back to Login</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
 
-          <Text style={styles.title}>Set New Password</Text>
-          <Text style={styles.subtitle}>
-            Choose a strong password for your account.
-          </Text>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.card}>
 
-          <View style={styles.formCard}>
-            <Input
-              label="New Password"
-              value={newPassword}
-              onChangeText={(v) => { setNewPassword(v); setErrors((e) => ({ ...e, newPassword: null })); }}
-              placeholder="Enter new password"
-              secureTextEntry
-              error={errors.newPassword}
-            />
+              {/* Back */}
+              <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.75} style={styles.backBtn}>
+                <Ionicons name="chevron-back" size={16} color={TEAL} />
+                <Text style={styles.backBtnText}>Back</Text>
+              </TouchableOpacity>
 
-            <View style={styles.requirements}>
-              <Text style={styles.reqTitle}>SECURITY REQUIREMENTS</Text>
-              <Requirement met={rules.minLength} label="8 or more characters" />
-              <Requirement met={rules.hasUppercase} label="At least one uppercase letter" />
-              <Requirement met={rules.hasLowercase} label="At least one lowercase letter" />
-              <Requirement met={rules.hasNumber} label="At least one number" />
-              <Requirement met={rules.hasSpecial} label="At least one special character" />
+              {/* Heading */}
+              <Text style={styles.cardTitle}>Set new password</Text>
+              <Text style={styles.cardSubtitle}>Choose a strong password for your account.</Text>
+
+              {/* New password */}
+              <Input
+                label="New Password"
+                value={newPassword}
+                onChangeText={(v) => { setNewPassword(v); setErrors((e) => ({ ...e, newPassword: null })); }}
+                placeholder="Enter new password"
+                secureTextEntry
+                error={errors.newPassword}
+              />
+
+              {/* Confirm password */}
+              <Input
+                label="Confirm New Password"
+                value={confirmPassword}
+                onChangeText={(v) => { setConfirmPassword(v); setErrors((e) => ({ ...e, confirmPassword: null })); }}
+                placeholder="Re-enter your password"
+                secureTextEntry
+                error={errors.confirmPassword}
+              />
+
+              {/* Requirements */}
+              <View style={styles.requirements}>
+                <Text style={styles.reqTitle}>PASSWORD MUST INCLUDE</Text>
+                <Requirement met={rules.minLength}    label="At least 8 characters" />
+                <Requirement met={rules.hasUppercase} label="One uppercase letter" />
+                <Requirement met={rules.hasLowercase} label="One lowercase letter" />
+                <Requirement met={rules.hasNumber}    label="One number" />
+                <Requirement met={rules.hasSpecial}   label="One special character" />
+              </View>
+
+              {/* Reset button */}
+              <TouchableOpacity
+                onPress={handleReset}
+                disabled={loading}
+                activeOpacity={0.85}
+                style={[styles.btn, loading && { opacity: 0.75 }]}
+              >
+                <LinearGradient
+                  colors={TEAL_GRAD}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.btnGradient}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#FFF" size="small" />
+                    : <Text style={styles.btnText}>Update Password</Text>
+                  }
+                </LinearGradient>
+              </TouchableOpacity>
+
             </View>
 
-            <Input
-              label="Confirm New Password"
-              value={confirmPassword}
-              onChangeText={(v) => { setConfirmPassword(v); setErrors((e) => ({ ...e, confirmPassword: null })); }}
-              placeholder="Repeat your password"
-              secureTextEntry
-              error={errors.confirmPassword}
-              style={{ marginTop: Layout.spacing.sm }}
-            />
-
-            <Button
-              title="Reset Password"
-              onPress={handleReset}
-              loading={loading}
-              style={styles.btn}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <Text style={styles.footer}>AURIVA 2026</Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  root:      { flex: 1 },
+  safeInner: { flex: 1 },
+
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xl,
-  },
-  iconSection: {
-    alignItems: 'center',
-    paddingTop: Layout.spacing.xl,
-    paddingBottom: Layout.spacing.md,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.status.infoLight,
-    alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.primaryLight,
+    alignItems: 'center',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.xxl,
   },
-  title: {
-    fontSize: Layout.fontSize.xxl,
-    fontWeight: Layout.fontWeight.extrabold,
-    color: Colors.text.primary,
-    textAlign: 'center',
-    marginBottom: Layout.spacing.sm,
+
+  // ── Card ─────────────────────────────────────────────────────────────────
+  card: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 32,
+    paddingVertical: 36,
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 24,
+    elevation: 8,
   },
-  subtitle: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: Layout.spacing.lg,
+
+  // ── Back ──────────────────────────────────────────────────────────────────
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  formCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Layout.shadow.md,
+  backBtnText: {
+    fontSize: 13,
+    fontFamily: 'Nunito_600SemiBold',
+    color: TEAL,
   },
+
+  // ── Headings ──────────────────────────────────────────────────────────────
+  cardTitle: {
+    fontSize: 26,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#1A1A2E',
+    marginBottom: 6,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: '#9B9FB0',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+
+  // ── Requirements ──────────────────────────────────────────────────────────
   requirements: {
-    backgroundColor: Colors.surfaceAlt,
-    borderRadius: Layout.radius.md,
-    padding: Layout.spacing.md,
-    marginBottom: Layout.spacing.sm,
+    backgroundColor: '#F7F9FC',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E8ECF4',
   },
   reqTitle: {
     fontSize: 10,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.muted,
+    fontFamily: 'Nunito_700Bold',
+    color: '#9B9FB0',
     letterSpacing: 1.2,
-    marginBottom: Layout.spacing.sm,
+    marginBottom: 10,
   },
   reqRow: {
     flexDirection: 'row',
@@ -199,25 +267,117 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   reqDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    marginRight: Layout.spacing.sm,
+    borderColor: '#C8CDD8',
+    marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   reqDotMet: {
-    backgroundColor: Colors.status.success,
-    borderColor: Colors.status.success,
+    backgroundColor: '#52C07C',
+    borderColor: '#52C07C',
   },
   reqText: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.muted,
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: '#9B9FB0',
   },
   reqTextMet: {
-    color: Colors.text.secondary,
+    color: '#1A1A2E',
+    fontFamily: 'Nunito_600SemiBold',
   },
-  btn: { marginTop: Layout.spacing.md },
+
+  // ── Reset button ──────────────────────────────────────────────────────────
+  btn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  btnGradient: {
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: 'Nunito_700Bold',
+    letterSpacing: 0.4,
+  },
+
+  // ── Success Modal ─────────────────────────────────────────────────────────
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  successCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#FFF',
+    borderRadius: 28,
+    paddingVertical: 40,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+  successIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#E8F8EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  successTitle: {
+    fontSize: Layout.fontSize.xl,
+    fontFamily: 'Nunito_900Black',
+    color: '#1A1A2E',
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: Layout.fontSize.sm,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 4,
+  },
+  successBtn: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  successBtnGradient: {
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successBtnText: {
+    color: '#FFF',
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'Nunito_700Bold',
+    letterSpacing: 0.2,
+  },
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  footer: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontSize: 10,
+    letterSpacing: 1.8,
+    color: Colors.text.muted,
+    fontFamily: 'Nunito_600SemiBold',
+  },
 });

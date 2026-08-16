@@ -41,6 +41,14 @@ export const Layout = {
     extrabold: '800',
   },
 
+  fonts: {
+    regular:   'Nunito_400Regular',
+    semibold:  'Nunito_600SemiBold',
+    bold:      'Nunito_700Bold',
+    extrabold: 'Nunito_800ExtraBold',
+    black:     'Nunito_900Black',
+  },
+
   shadow: {
     sm: {
       shadowColor: '#6478C8',
@@ -68,3 +76,9 @@ export const Layout = {
   headerHeight: 56,
   tabBarHeight: 60,
 };
+
+// Principal sidebar rail widths, expanded and collapsed. They live here rather
+// than in PrincipalNavigator because PrincipalSidebar needs them too, and a
+// component importing from the navigator that renders it is a cycle.
+export const SIDEBAR_WIDTH = 230;
+export const MINI_WIDTH    = 64;
