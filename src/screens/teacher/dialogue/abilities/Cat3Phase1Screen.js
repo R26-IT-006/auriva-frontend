@@ -43,7 +43,7 @@ const WORD_LABELS = {
 
 // Scene images for the AnimatedWord/BoldWord familiarisation screens — same
 // per-word images Cat3DragToLineScreen.js uses (abilities has no entries in
-// constants/dialogueAssets.js by design; the scene/context concept there
+// data/dialogueAssets.js by design; the scene/context concept there
 // doesn't apply to this category — confirmed 2026-07-28).
 const CAT3_WORD_IMAGE = {
   cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),

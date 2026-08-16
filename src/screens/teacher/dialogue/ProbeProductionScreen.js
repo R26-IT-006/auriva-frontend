@@ -10,7 +10,7 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { dialogueApi } from '../../../api/dialogue';
 import { cat3Api } from '../../../api/cat3';
 import { useGuardedRecorder } from '../../../utils/useGuardedRecorder';
-import { DIALOGUE_WORD_ASSETS } from '../../../constants/dialogueAssets';
+import { DIALOGUE_WORD_ASSETS } from '../../../data/dialogueAssets';
 
 // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend).
 // Shared/category-agnostic, same precedent as AnimatedWordScreen.js/
@@ -42,7 +42,7 @@ const DIALOGUE_WORD_AUDIO = {
   happy_new_year: PLACEHOLDER_WORD_AUDIO,
 };
 
-// Abilities: no entries in constants/dialogueAssets.js by design (confirmed
+// Abilities: no entries in data/dialogueAssets.js by design (confirmed
 // 2026-07-28) — mirrors Cat3Phase1Screen.js's/Cat3Phase2Screen.js's own
 // CAT3_WORD_IMAGE/CAT3_WORD_AUDIO maps exactly (same keys, same asset paths).
 const CAT3_WORD_IMAGE = {

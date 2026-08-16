@@ -28,7 +28,7 @@ const CATEGORY_LABEL = {
 };
 
 // "Correct context" picture per word, keyed by asset_key — the same field the
-// evaluation-build API returns. NOT sourced from constants/dialogueAssets.js:
+// evaluation-build API returns. NOT sourced from data/dialogueAssets.js:
 // that shared map (out of this task's Files in scope) assumes every word has
 // scene.png/context_correct.png/context_wrong.png/context_wrong_2.png, but
 // several folders on disk actually use the comic-strip naming

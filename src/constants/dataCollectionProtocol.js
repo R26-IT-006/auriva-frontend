@@ -1,4 +1,4 @@
-import { getAllLetters } from './letterCategories';
+import { getAllLetters } from '../data/letterCategories';
 
 // Fixed letter sets for the research protocol.
 // Order is intentional: straight → curved → mixed, easy → hard within each group.

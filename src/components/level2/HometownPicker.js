@@ -1,7 +1,7 @@
 import { useWindowDimensions, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
-import { SRI_LANKA_DISTRICTS } from '../../constants/sriLankaDistricts';
+import { SRI_LANKA_DISTRICTS } from '../../data/sriLankaDistricts';
 
 /**
  * Step 1 implementation: scrollable grid of the 25 district names as large

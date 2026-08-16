@@ -11,7 +11,7 @@ import StudentPickerScreen from "../screens/teacher/students/StudentPickerScreen
 import StudentDashboardScreen from "../screens/teacher/students/StudentDashboardScreen";
 import AvatarSelectionScreen from "../screens/teacher/students/AvatarSelectionScreen";
 import HandwritingNavigator from "./HandwritingNavigator";
-import TeacherReportScreen from "../screens/handwriting/reports/TeacherReportScreen";
+import TeacherReportScreen from "../screens/teacher/handwriting/reports/TeacherReportScreen";
 import DialogueLandingScreen      from '../screens/teacher/students/DialogueLandingScreen';
 import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
@@ -75,14 +75,14 @@ import ConceptColoringScreen              from '../screens/teacher/concept/tier3
 import ConceptActivityScreen              from '../screens/teacher/concept/tier1/ConceptActivityScreen';
 import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
 import L2PortraitScreen        from '../screens/teacher/dialogue/level2/L2PortraitScreen';
-import PronunciationSessionSetupScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSessionSetupScreen";
-import PronunciationWordSelectionScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationWordSelectionScreen";
-import PronunciationLearnWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationLearnWordScreen";
-import PronunciationListenChooseScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationListenChooseScreen";
-import PronunciationMouthShapeScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationMouthShapeScreen";
-import PronunciationSpeakWordScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationSpeakWordScreen";
-import PronunciationResultScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultScreen";
-import PronunciationResultsHistoryScreen from "../screens/teacher/students/modules/pronunciationSupport/PronunciationResultsHistoryScreen";
+import PronunciationSessionSetupScreen from "../screens/teacher/pronunciation/PronunciationSessionSetupScreen";
+import PronunciationWordSelectionScreen from "../screens/teacher/pronunciation/PronunciationWordSelectionScreen";
+import PronunciationLearnWordScreen from "../screens/teacher/pronunciation/PronunciationLearnWordScreen";
+import PronunciationListenChooseScreen from "../screens/teacher/pronunciation/PronunciationListenChooseScreen";
+import PronunciationMouthShapeScreen from "../screens/teacher/pronunciation/PronunciationMouthShapeScreen";
+import PronunciationSpeakWordScreen from "../screens/teacher/pronunciation/PronunciationSpeakWordScreen";
+import PronunciationResultScreen from "../screens/teacher/pronunciation/PronunciationResultScreen";
+import PronunciationResultsHistoryScreen from "../screens/teacher/pronunciation/PronunciationResultsHistoryScreen";
 
 const Stack = createNativeStackNavigator();
 

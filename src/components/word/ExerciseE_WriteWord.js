@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, PanResponder } from 'react-na
 import Svg, { Line, Circle, Polyline, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import WordImageDisplay from './WordImageDisplay';
-import { buildWordGuide, wordGuideToSvgPath, wordGuideGhostDots } from '../../constants/wordPaths';
+import { buildWordGuide, wordGuideToSvgPath, wordGuideGhostDots } from '../../data/wordPaths';
 
 // Image column shrunk / canvas widened vs. the original 230/430 split — a
 // whole word needs more horizontal room than the small illustration does.

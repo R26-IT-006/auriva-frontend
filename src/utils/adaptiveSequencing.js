@@ -29,7 +29,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { LETTER_CATEGORIES } from '../constants/letterCategories';
+import { LETTER_CATEGORIES } from '../data/letterCategories';
 
 // ─── Score conversion ─────────────────────────────────────────────────────────
 // Raw assessment data uses two quality metrics (lower = worse performance):

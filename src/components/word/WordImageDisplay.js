@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import WORD_IMAGES from '../../constants/wordImages';
+import WORD_IMAGES from '../../data/wordImages';
 
 export default function WordImageDisplay({ imageKey, emoji, size = 120 }) {
   const source = WORD_IMAGES[imageKey];

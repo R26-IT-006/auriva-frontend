@@ -9,3 +9,6 @@ android/
 *.p12
 *.key
 *.mobileprovision
+# macOS finder metadata
+.DS_Store
+**/.DS_Store

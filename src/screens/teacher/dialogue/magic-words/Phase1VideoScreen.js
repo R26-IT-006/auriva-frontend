@@ -18,7 +18,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
-import { DIALOGUE_WORD_ASSETS } from '../../../../constants/dialogueAssets';
+import { DIALOGUE_WORD_ASSETS } from '../../../../data/dialogueAssets';
 
 const WORD_LABELS = {
   thank_you:     'Thank You',
