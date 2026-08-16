@@ -130,28 +130,3 @@ export const dialogueApi = {
     return data;
   },
 };
-
-// Days of the Week – specific API methods
-export const daysApi = {
-  async getPhase3Question(studentId, wordId) {
-    const { data } = await client.get(ENDPOINTS.DAYS_PHASE3_QUESTION(studentId, wordId));
-    return data;
-  },
-
-  async getSpinningWheelRound(studentId, attemptedWordIds = []) {
-    const { data } = await client.get(ENDPOINTS.DAYS_SPINNING_WHEEL(studentId, attemptedWordIds));
-    return data;
-  },
-
-  async recordSpinningWheelAttempt(studentId, { targetWordId, selectedWordId, sessionId }) {
-    const { data } = await client.post(
-      ENDPOINTS.DAYS_SPINNING_WHEEL_ATTEMPT(studentId),
-      {
-        target_word_id:   targetWordId,
-        selected_word_id: selectedWordId,
-        session_id:       sessionId ?? undefined,
-      }
-    );
-    return data;
-  },
-};
