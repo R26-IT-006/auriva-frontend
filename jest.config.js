@@ -6,7 +6,11 @@
 // test` fast.
 module.exports = {
   testEnvironment: 'node',
-  testMatch: ['<rootDir>/src/utils/**/*.test.js'],
+  // src/research/**: offline, non-production candidate-scoring modules
+  // (e.g. motor_score_v2 research — never imported by any live screen)
+  // that still deserve the same deterministic pure-function test coverage
+  // as src/utils/.
+  testMatch: ['<rootDir>/src/utils/**/*.test.js', '<rootDir>/src/research/**/*.test.js'],
   transform: {
     '^.+\\.js$': 'babel-jest',
   },

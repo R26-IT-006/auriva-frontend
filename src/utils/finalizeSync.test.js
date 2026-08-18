@@ -154,7 +154,7 @@ describe('Test 7 — no assessmentId', () => {
     expect(result).toEqual({ status: 'skipped' });
   });
 
-  it('also skips when motorScore is null (computeMotorComfortScore had no data)', async () => {
+  it('also skips when motorScore is null (AssessmentCompleteScreen had no shape data to average)', async () => {
     const result = await attemptFinalization(baseParams({ motorScore: null }));
 
     expect(mockStore).not.toHaveBeenCalled();
@@ -368,8 +368,8 @@ describe('retryPendingFinalizationForStudent — additional coverage', () => {
 // ─── Test 8 (collection mode) / Test 9 (double-tap) / Test 10 (calculation
 // preserved) — NOT automated here. All three are properties of
 // AssessmentCompleteScreen.js's React component (the collectionMode early
-// return, the isSaving state guard, and the unchanged
-// generateAdaptiveSequence/computeMotorComfortScore/storeLetterSequence/
+// return, the isSaving state guard, and the
+// generateAdaptiveSequence/motor_score averaging/storeLetterSequence/
 // storeMotorProfile call sites), not of attemptFinalization(). This
 // project's jest.config.js runs in a plain Node environment with testMatch
 // limited to src/utils/**/*.test.js and no React Native rendering harness

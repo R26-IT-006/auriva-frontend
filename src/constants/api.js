@@ -30,6 +30,13 @@ export const ENDPOINTS = {
   TEACHER_CONCEPT_REPORT:  (id) => `/teacher/students/${id}/concepts/report`,
 
   // Handwriting
+  // Initial Motor Assessment scoring audit — read-only Feature 1 baseline
+  // fetch, used to show the AUTHORITATIVE persisted assessment result when
+  // the in-memory assessmentData from the just-completed session is no
+  // longer available (e.g. reopening "Assessment Summary" in a later app
+  // session). Never duplicates the scoring formula — this is a straight
+  // read of what motorBaselineService.js already persisted.
+  MOTOR_BASELINE:             (studentId) => `/handwriting/motor-baseline/${studentId}`,
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
   PRE_WRITING_ACTIVITY:       '/handwriting/pre-writing-activity',
   HANDWRITING_FINALIZE:       (id)       => `/handwriting/assessment/${id}/finalize`,
@@ -37,6 +44,10 @@ export const ENDPOINTS = {
   LETTER_COMPLETE:            '/handwriting/letter-complete',
   LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
   LETTER_PROGRESS_REPORT:     (studentId) => `/handwriting/letter-progress-report/${studentId}`,
+  // Teacher Dashboard integration fix — read-only, all three current
+  // Feature 2 family thresholds together (never the legacy
+  // /teacher/students/:id personal_thresholds shape).
+  FAMILY_THRESHOLDS:          (studentId) => `/handwriting/family-thresholds/${studentId}`,
   // Feature 3 Step 6 — read-only adaptive support recommendation, scoped to
   // one (student, letter, caseType) since support is family-specific.
   SUPPORT_RECOMMENDATION:     (studentId, letter, caseType) => `/handwriting/support-recommendation/${studentId}/${letter}/${caseType}`,

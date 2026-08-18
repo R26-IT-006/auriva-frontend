@@ -1113,7 +1113,13 @@ export default function LetterWritingScreen({ route, navigation }) {
 
     try {
       await Promise.all([
-        storeLetterProgress(student.sid, letter, {
+        // Data-collection isolation (final integration audit) — this local
+        // AsyncStorage record is what TeacherReportScreen's normal progress
+        // section (completedLetters / letterProgressMap) later reads back.
+        // A collection-mode attempt must never contribute to it — matches
+        // every other Feature 3/4/5/6 fetch in this same screen, which
+        // already skips entirely under collectionMode.
+        collectionMode ? Promise.resolve() : storeLetterProgress(student.sid, letter, {
           attempt,
           deviation:      0,
           pauseCount:     features.pauseCount,
@@ -1141,12 +1147,17 @@ export default function LetterWritingScreen({ route, navigation }) {
         });
         // Developer-only export — full raw/normalized paths for offline
         // inspection. Never sent to the backend, never used for scoring.
-        console.log('[DTW debug export]', buildDtwDebugExport({
+        // JSON.stringify (not the raw object) — console.log's default
+        // object-inspection depth truncates normalized_child_path (an
+        // array of strokes of points, one level deeper than
+        // normalized_template_path) to "[Object]"; stringifying bypasses
+        // that depth limit entirely.
+        console.log('[DTW debug export]', JSON.stringify(buildDtwDebugExport({
           childStrokes:   allPathsRef.current,
           templatePoints: templatePath ? sampleSmoothPath(templatePath, 60, CANVAS_W, CANVAS_H).points : [],
           dtwResult:      dtwResult,
           qualityScore:   attemptScore,
-        }));
+        })));
       }
 
       try {
@@ -1168,7 +1179,14 @@ export default function LetterWritingScreen({ route, navigation }) {
           task_order:            LOWERCASE_TASK_ORDER_OFFSET + letterIdx,
           ...getDeviceMetadata(),
         });
-        if (!collectionMode && (!wroteCorrectly || response.data.completed === false)) {
+        // Coverage-fix audit: the server's `completed` result is now the
+        // sole signal — it already reflects a coverage/geometry check (see
+        // attemptCoverageValidity.js), so the client no longer second-
+        // guesses a confirmed pass with its own wroteCorrectly. wroteCorrectly
+        // is still computed/sent/logged and still drives the cosmetic
+        // per-attempt badge above (setAttemptFeedback) — it just can't force
+        // a retry the database already recorded as complete.
+        if (!collectionMode && response.data.completed === false) {
           if (response.data.completed === false) {
             show('Keep practising — try again!', 'info');
           }

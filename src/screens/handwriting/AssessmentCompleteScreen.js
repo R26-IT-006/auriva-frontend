@@ -16,7 +16,6 @@ import { generateAdaptiveSequence, calculateMotorProfile } from '../../utils/ada
 import { storeLetterSequence, storeMotorProfile } from '../../utils/storage';
 import { attemptFinalization } from '../../utils/finalizeSync';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
-import { computeMotorComfortScore } from '../../utils/reportEngine';
 import { useToast } from '../../context/ToastContext';
 
 const SHAPE_LABELS = {
@@ -38,25 +37,37 @@ const SHAPE_ICONS = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+//
+// Screen-consistency fix (Initial Motor Assessment scoring audit): both the
+// per-shape difficulty badge and the "Accuracy" percentage bar below now
+// derive from the SAME per-shape score — motor_score, the unified
+// direction-/start-point-invariant-DTW + smoothness score
+// calculateFeatures() (ShapeAssessmentScreen.js) already computes per shape
+// via utils/unifiedShapeScoreMirror.js. This is the same score
+// buildScoreMap() (adaptiveSequencing.js) reads for
+// motor_profile.shapeScores and, via generateAdaptiveSequence() below,
+// what gets persisted as this student's Feature 1 baseline — previously
+// featuresToScore() served this role; that function is unchanged and still
+// used by letters/words/uppercase/pre-writing, just no longer here. This
+// screen no longer computes its own separate score formula (the old local
+// getAccuracyScore has been removed), and the difficulty badge is now
+// bucketed from that SAME score rather than raw accuracy/smoothness
+// thresholds that could previously disagree with the bar shown right next
+// to it.
 
-function getDifficulty({ accuracy, smoothness }) {
-  if (accuracy < 20 && smoothness < 0.15) {
-    return { label: 'Easy',           bg: '#E8F5E9', color: '#2E7D32' };
-  }
-  if (accuracy < 40 || smoothness < 0.3) {
-    return { label: 'Moderate',       bg: '#FFF8E1', color: '#F57F17' };
-  }
-  return   { label: 'Needs Practice', bg: '#FFEBEE', color: '#C62828' };
-}
-
-function getAccuracyScore({ accuracy, smoothness }) {
-  if (accuracy === 0) {
-    return Math.min(100, Math.max(0, Math.round(100 - smoothness * 100)));
-  }
-  return Math.min(100, Math.max(0, Math.round(100 - accuracy)));
+// score === null (motor_score genuinely unavailable) renders as its own
+// explicit, visually distinct "Not available" grey state — never silently
+// treated as a real score. See the ?? 50 fallback removal pass: a missing
+// score must never render as a plausible-looking mid-range number.
+function getDifficulty(score) {
+  if (score == null) return { label: 'Not available', bg: '#EEEEEE', color: '#757575' };
+  if (score >= 75) return { label: 'Easy',           bg: '#E8F5E9', color: '#2E7D32' };
+  if (score >= 50) return { label: 'Moderate',       bg: '#FFF8E1', color: '#F57F17' };
+  return             { label: 'Needs Practice', bg: '#FFEBEE', color: '#C62828' };
 }
 
 function getScoreColor(score) {
+  if (score == null) return { color: '#757575', bg: '#EEEEEE' };
   if (score >= 75) return { color: '#2E7D32', bg: '#E8F5E9' };
   if (score >= 50) return { color: '#F57F17', bg: '#FFF8E1' };
   return { color: '#C62828', bg: '#FFEBEE' };
@@ -73,10 +84,18 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
   const entrance = useRef(new Animated.Value(0)).current;
   const bgAnim = useRef(new Animated.Value(0)).current;
 
-  const scores       = assessmentData.map(s => getAccuracyScore(s.features));
-  const overallScore = scores.length
-    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-    : 0;
+  // null (not 50) when a shape's motor_score is genuinely unavailable —
+  // this screen only ever shows freshly-computed, same-session data, so in
+  // practice every shape should have one, but a missing value must never
+  // render as a fabricated mid-range score if it somehow doesn't.
+  const scores = assessmentData.map(s => {
+    const v = s.features?.motor_score;
+    return v == null ? null : Math.round(v);
+  });
+  const realScores   = scores.filter(s => s != null);
+  const overallScore = realScores.length
+    ? Math.round(realScores.reduce((a, b) => a + b, 0) / realScores.length)
+    : null;
 
   const scoreTheme = getScoreColor(overallScore);
   const bgMoveUp = bgAnim.interpolate({
@@ -198,7 +217,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
             {/* Overall score badge */}
             <View style={[styles.scoreBadge, { backgroundColor: scoreTheme.bg }]}>
               <Text style={[styles.scoreBadgeValue, { color: scoreTheme.color }]}>
-                {overallScore}%
+                {overallScore != null ? `${overallScore}%` : 'N/A'}
               </Text>
               <Text style={[styles.scoreBadgeLabel, { color: scoreTheme.color }]}>Overall</Text>
             </View>
@@ -207,8 +226,8 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
           {/* ── Results list — flat View, all 6 distributed evenly ── */}
           <View style={styles.resultsList}>
             {assessmentData.map((shape, i) => {
-              const difficulty = getDifficulty(shape.features);
               const score      = scores[i];
+              const difficulty = getDifficulty(score);
 
               return (
                 <Animated.View
@@ -243,7 +262,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                       <View
                         style={[
                           styles.barFill,
-                          { width: `${score}%`, backgroundColor: theme.button },
+                          { width: `${score ?? 0}%`, backgroundColor: theme.button },
                         ]}
                       />
                     </View>
@@ -298,7 +317,24 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                 await storeLetterSequence(student.sid, letters);
                 await storeMotorProfile(student.sid, motorProfile);
 
-                const { score: motor_score } = computeMotorComfortScore(assessmentData, motorProfile);
+                // Consolidation (shape-assessment scoring unification): this
+                // used to be computeMotorComfortScore(assessmentData,
+                // motorProfile)'s smoothness-only score. It now averages the
+                // same unified motor_score (invariant DTW + smoothness) each
+                // shape's features already carry — the SAME per-shape number
+                // the "Overall %" above and buildScoreMap() use, so this is
+                // no longer a fourth, independently-drifting formula. This
+                // is the value that gets persisted server-side as this
+                // student's Feature 1 baseline motor_score — real scores
+                // only, never a fabricated 50 blended in for a shape that's
+                // missing one (attemptFinalization already treats an overall
+                // null motorScore as "nothing to persist", see finalizeSync.js).
+                const realMotorScores = assessmentData
+                  .map(item => item.features?.motor_score)
+                  .filter(v => v != null);
+                const motor_score = realMotorScores.length
+                  ? Math.round(realMotorScores.reduce((s, v) => s + v, 0) / realMotorScores.length)
+                  : null;
 
                 // Reliability Step 2: persist a pending-finalization record
                 // locally BEFORE attempting the PATCH, then actually await

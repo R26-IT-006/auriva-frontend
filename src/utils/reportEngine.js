@@ -33,6 +33,12 @@ function smoothnessLabel(s) {
 // ─── Motor Comfort Score ──────────────────────────────────────────────────────
 
 /**
+ * @deprecated Unused — superseded by computeUnifiedMotorReportScore() below,
+ * which generateReport() now calls instead. Kept temporarily (not deleted)
+ * pending verification of the new unified (invariant DTW + smoothness)
+ * scoring on a real device; remove in a follow-up once that's confirmed.
+ * Do not add new callers.
+ *
  * Computes a 0-100 motor comfort score from shape assessment smoothness data.
  * Formula:  avgStrokeScore × 0.6 + pauseBonus × 0.2 + consistencyBonus × 0.2
  * (When only smoothness data is available, strokeScore carries 100% weight.)
@@ -79,6 +85,94 @@ export function computeMotorComfortScore(assessmentData, motorProfile) {
     `The Motor Comfort Score (${avgScore}/100) is calculated from ${breakdown.length} shape exercises. ` +
     `Each shape is scored by stroke smoothness — the steadiness of the child's hand movement ` +
     `(0 = perfectly smooth, 1 = very shaky; converted to 0–100 where higher is better). ` +
+    `Best shape: ${best.shapeId} (${best.score}/100, ${best.label}). ` +
+    `Shape needing most practice: ${worst.shapeId} (${worst.score}/100, ${worst.label}). ` +
+    `${strengthHint} ` +
+    `Scores above 75 indicate good motor readiness for handwriting. ` +
+    `Below 50 suggests motor warm-up exercises before writing sessions.`;
+
+  return { score: avgScore, level, breakdown, explanation };
+}
+
+/**
+ * Computes the report's 0-100 motor score from each shape's unified
+ * motor_score (direction-/start-point-invariant DTW, 80% weight, plus
+ * stroke smoothness, 20% weight — see utils/unifiedShapeScoreMirror.js).
+ * Supersedes computeMotorComfortScore() above as the source generateReport()
+ * uses; same {score, level, breakdown, explanation} shape so
+ * computeProgressIndicators()/generateRecommendations() below need no
+ * changes.
+ *
+ * @param {Array}  assessmentData  [{ shapeId, features: { motor_score } }]
+ * @param {Object} motorProfile    { straightScore, curvedScore, primaryStrength }
+ * @returns {{ score, level, breakdown, explanation }}
+ */
+export function computeUnifiedMotorReportScore(assessmentData, motorProfile) {
+  if (!assessmentData || assessmentData.length === 0) {
+    return {
+      score: null,
+      level: 'No data',
+      breakdown: [],
+      explanation:
+        'Motor score could not be computed because no shape assessment data was found. ' +
+        'Ask the student to complete the initial shape drawing assessment first.',
+    };
+  }
+
+  const scoreLabel = (score) => {
+    if (score == null) return 'Not available';
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Moderate';
+    return 'Needs Practice';
+  };
+
+  // score stays null (never a fabricated 50) when a shape's motor_score is
+  // genuinely unavailable — the caller (backend getInitialReport, for
+  // historical assessments) fills it in with a real recomputed value from
+  // raw stroke data wherever it can; only truly unrecoverable shapes (no
+  // stroke_points AND no stored smoothness) come through as null here.
+  const breakdown = assessmentData.map(shape => {
+    const raw = shape.features?.motor_score;
+    const score = raw == null ? null : Math.round(raw);
+    return { shapeId: shape.shapeId ?? 'unknown', score, label: scoreLabel(score) };
+  });
+
+  const realScores = breakdown.filter(b => b.score != null);
+
+  if (realScores.length === 0) {
+    return {
+      score: null,
+      level: 'No data',
+      breakdown,
+      explanation:
+        'Motor score could not be computed for any shape in this assessment — ' +
+        'the stored data for this attempt is incomplete (missing both a computed score ' +
+        'and enough raw stroke data to derive one).',
+    };
+  }
+
+  const avgScore = Math.round(realScores.reduce((s, b) => s + b.score, 0) / realScores.length);
+
+  let level;
+  if (avgScore >= 80) level = 'High Control';
+  else if (avgScore >= 60) level = 'Moderate Control';
+  else if (avgScore >= 40) level = 'Basic Control';
+  else level = 'Needs Support';
+
+  const best  = realScores.reduce((a, b) => a.score > b.score ? a : b);
+  const worst = realScores.reduce((a, b) => a.score < b.score ? a : b);
+  const missingCount = breakdown.length - realScores.length;
+
+  const strengthHint = motorProfile
+    ? `Their motor profile shows stronger ${motorProfile.primaryStrength === 'straight' ? 'straight-line' : 'curved'} strokes.`
+    : '';
+
+  const explanation =
+    `The Motor Score (${avgScore}/100) is calculated from ${realScores.length} of ${breakdown.length} shape exercises` +
+    `${missingCount > 0 ? ` (${missingCount} shape${missingCount === 1 ? '' : 's'} could not be scored and ${missingCount === 1 ? 'is' : 'are'} excluded)` : ''}, using ` +
+    `direction- and start-point-invariant DTW (how closely the traced shape matches the template's path, ` +
+    `80% weight) plus stroke smoothness (steadiness of the child's hand movement, 20% weight). ` +
     `Best shape: ${best.shapeId} (${best.score}/100, ${best.label}). ` +
     `Shape needing most practice: ${worst.shapeId} (${worst.score}/100, ${worst.label}). ` +
     `${strengthHint} ` +
@@ -329,8 +423,15 @@ export function generateRecommendations({ motorScore, letterMetrics, wordMastery
           `stroke smoothness by 15–30% within 2–4 sessions.`,
       });
     }
-    if (motorScore.breakdown) {
-      const worstShape = motorScore.breakdown.reduce((a, b) => a.score < b.score ? a : b);
+    // Filter to real (non-null) scores first — motorScore.breakdown can
+    // contain "Not available" entries (score: null) for shapes whose
+    // motor_score couldn't be computed even on read; without this filter,
+    // reduce's `a.score < b.score` would treat null as 0 and always pick
+    // an unavailable shape as "worst", generating a recommendation that
+    // cites "scored null/100".
+    const scoredShapes = (motorScore.breakdown ?? []).filter(b => b.score != null);
+    if (scoredShapes.length > 0) {
+      const worstShape = scoredShapes.reduce((a, b) => a.score < b.score ? a : b);
       if (worstShape.score < 65) {
         recs.push({
           priority: 'medium',
@@ -454,7 +555,7 @@ export function computeMotorDifficulty(assessmentData, letterMetrics, motorScore
  * Master entry point — computes the complete report.
  */
 export function generateReport({ assessmentData, motorProfile, letterProgressMap, wordProgress, completedLetters, student }) {
-  const motorScore         = computeMotorComfortScore(assessmentData, motorProfile);
+  const motorScore         = computeUnifiedMotorReportScore(assessmentData, motorProfile);
   const letterMetrics      = computeLetterMetrics(letterProgressMap);
   const wordMastery        = computeWordMastery(wordProgress);
   const progressIndicators = computeProgressIndicators({ motorScore, letterMetrics, wordMastery, completedLetters });

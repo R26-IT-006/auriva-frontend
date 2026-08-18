@@ -4,6 +4,7 @@ import Svg, { Line, Circle, Polyline, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import WordImageDisplay from './WordImageDisplay';
 import { buildWordGuide, wordGuideToSvgPath, wordGuideGhostDots } from '../../constants/wordPaths';
+import { evaluateWordAttempt } from '../../utils/wordScoring';
 
 // Image column shrunk / canvas widened vs. the original 230/430 split — a
 // whole word needs more horizontal room than the small illustration does.
@@ -21,6 +22,7 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
   const [currentPath, setCurrentPath] = useState([]);
   const [allPaths, setAllPaths] = useState([]);
   const [done, setDone] = useState(false);
+  const [result, setResult] = useState(null);
   const startTimeRef = useRef(null);
 
   const hasDrawn = allPaths.length > 0;
@@ -66,10 +68,14 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
     if (done) return;
     setCurrentPath([]);
     setAllPaths([]);
+    setResult(null);
   }
 
   function handleDone() {
     if (!hasDrawn || done) return;
+    const nextResult = evaluateWordAttempt({ wordGuide, childStrokes: allPaths, canvasW: CANVAS_W, canvasH: CANVAS_H });
+    setResult(nextResult);
+    if (!nextResult.passed) return;
     setDone(true);
     setTimeout(() => onComplete(true), 500);
   }
@@ -156,6 +162,11 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
         </View>
 
         <View style={styles.actions}>
+          {result && !result.passed && (
+            <Text accessibilityRole="alert" style={styles.retryText}>
+              {result.completed ? `Score ${result.score}/100 — try once more` : 'Finish every letter, then try Done again'}
+            </Text>
+          )}
           <TouchableOpacity
             style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
             onPress={handleClear}
@@ -265,4 +276,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
+  retryText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', maxWidth: 210, textAlign: 'center' },
 });

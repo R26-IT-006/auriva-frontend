@@ -25,6 +25,7 @@ beforeEach(() => {
 });
 
 const FP = 'a'.repeat(64);
+const ACTION_ID = '11111111-1111-4111-8111-111111111111';
 
 function historyEvent(overrides = {}) {
   return {
@@ -197,11 +198,11 @@ describe('14. teacherId never sent', () => {
 });
 
 describe('15. only allowed body keys sent', () => {
-  it('the POST body contains exactly caseType/family/validation/teacherNote/recommendationFingerprint', async () => {
+  it('the POST body contains exactly caseType/family/validation/teacherNote/recommendationFingerprint/actionId', async () => {
     client.post.mockResolvedValueOnce({ data: { status: 'validated', duplicate: false } });
-    await submitTeacherRecommendationValidation({ studentId: 13, caseType: 'lowercase', family: 'curved', validation: 'confirmed', teacherNote: 'x', recommendationFingerprint: FP });
+    await submitTeacherRecommendationValidation({ studentId: 13, caseType: 'lowercase', family: 'curved', validation: 'confirmed', teacherNote: 'x', recommendationFingerprint: FP, actionId: ACTION_ID });
     const [, body] = client.post.mock.calls[0];
-    expect(Object.keys(body).sort()).toEqual(['caseType', 'family', 'validation', 'teacherNote', 'recommendationFingerprint'].sort());
+    expect(Object.keys(body).sort()).toEqual(['caseType', 'family', 'validation', 'teacherNote', 'recommendationFingerprint', 'actionId'].sort());
   });
 
   it('studentId is never in the body (it is the URL path param)', async () => {
@@ -226,6 +227,27 @@ describe('16. fingerprint preserved', () => {
     await fetchTeacherRecommendationValidationState({ studentId: 13, caseType: 'lowercase', family: 'curved', recommendationFingerprint: FP });
     const [, config] = client.get.mock.calls[0];
     expect(config.params.recommendationFingerprint).toBe(FP);
+  });
+});
+
+describe('16b. actionId preserved (Feature 9 repair)', () => {
+  it('the exact actionId given by the caller is sent verbatim, never generated here', async () => {
+    client.post.mockResolvedValueOnce({ data: { status: 'validated', duplicate: false } });
+    await submitTeacherRecommendationValidation({
+      studentId: 13, caseType: 'lowercase', family: 'curved', validation: 'confirmed',
+      recommendationFingerprint: FP, actionId: ACTION_ID,
+    });
+    const [, body] = client.post.mock.calls[0];
+    expect(body.actionId).toBe(ACTION_ID);
+  });
+
+  it('two separate submit calls with two different actionIds send two different bodies', async () => {
+    const OTHER_ACTION_ID = '22222222-2222-4222-8222-222222222222';
+    client.post.mockResolvedValue({ data: { status: 'validated', duplicate: false } });
+    await submitTeacherRecommendationValidation({ studentId: 13, caseType: 'lowercase', family: 'curved', validation: 'confirmed', recommendationFingerprint: FP, actionId: ACTION_ID });
+    await submitTeacherRecommendationValidation({ studentId: 13, caseType: 'lowercase', family: 'curved', validation: 'dismissed', recommendationFingerprint: FP, actionId: OTHER_ACTION_ID });
+    expect(client.post.mock.calls[0][1].actionId).toBe(ACTION_ID);
+    expect(client.post.mock.calls[1][1].actionId).toBe(OTHER_ACTION_ID);
   });
 });
 

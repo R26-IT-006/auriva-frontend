@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   useWindowDimensions,
   Animated,
@@ -44,6 +43,15 @@ export default function WelcomeScreen({ route, navigation }) {
   const floatSmall = useRef(new Animated.Value(0)).current;
   const buttonEntrance = useRef(new Animated.Value(-36)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
+
+  // ── Mascot animation (right panel) ─────────────────────────────────────
+  const mascotEntranceY = useRef(new Animated.Value(28)).current;
+  const mascotEntranceOpacity = useRef(new Animated.Value(0)).current;
+  const mascotFloat = useRef(new Animated.Value(0)).current;
+  const mascotTilt = useRef(new Animated.Value(0)).current;
+  const mascotScale = useRef(new Animated.Value(1)).current;
+  const bubbleScale = useRef(new Animated.Value(0.7)).current;
+  const bubbleOpacity = useRef(new Animated.Value(0)).current;
   const sliderX = useRef(new Animated.Value(0)).current;
   const sliderPosition = useRef(0);
   const knobScale = useRef(new Animated.Value(1)).current;
@@ -68,6 +76,13 @@ export default function WelcomeScreen({ route, navigation }) {
       knobPulse.setValue(0);
       chevronPulse.setValue(0);
       shine.setValue(0);
+      mascotEntranceY.setValue(0);
+      mascotEntranceOpacity.setValue(1);
+      mascotFloat.setValue(0);
+      mascotTilt.setValue(0);
+      mascotScale.setValue(1);
+      bubbleScale.setValue(1);
+      bubbleOpacity.setValue(1);
       return undefined;
     }
 
@@ -118,17 +133,72 @@ export default function WelcomeScreen({ route, navigation }) {
       Animated.timing(chevronPulse, { toValue: 0, duration: 850, useNativeDriver: true }),
     ]));
 
+    // Mascot entrance — springs/fades in once on mount, then hands off to
+    // the continuous idle loops below.
+    const mascotEntrance = Animated.parallel([
+      Animated.spring(mascotEntranceY, {
+        toValue: 0,
+        speed: 10,
+        bounciness: 9,
+        useNativeDriver: true,
+      }),
+      Animated.timing(mascotEntranceOpacity, {
+        toValue: 1,
+        duration: 550,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    // Mascot idle animation — gentle continuous float (bob), a slow
+    // side-to-side tilt (with idle pauses so it doesn't read as a
+    // metronome), and a subtle breathing scale, all looped indefinitely.
+    const mascotFloatLoop = Animated.loop(Animated.sequence([
+      Animated.timing(mascotFloat, { toValue: -14, duration: 2600, useNativeDriver: true }),
+      Animated.timing(mascotFloat, { toValue: 0, duration: 2600, useNativeDriver: true }),
+    ]));
+
+    const mascotTiltLoop = Animated.loop(Animated.sequence([
+      Animated.timing(mascotTilt, { toValue: 1, duration: 1700, useNativeDriver: true }),
+      Animated.timing(mascotTilt, { toValue: -1, duration: 1700, useNativeDriver: true }),
+      Animated.timing(mascotTilt, { toValue: 0, duration: 1100, useNativeDriver: true }),
+      Animated.delay(1400),
+    ]));
+
+    const mascotBreatheLoop = Animated.loop(Animated.sequence([
+      Animated.timing(mascotScale, { toValue: 1.035, duration: 2100, useNativeDriver: true }),
+      Animated.timing(mascotScale, { toValue: 1, duration: 2100, useNativeDriver: true }),
+    ]));
+
+    // Speech bubble pops in shortly after the mascot lands.
+    const bubbleEntrance = Animated.sequence([
+      Animated.delay(400),
+      Animated.parallel([
+        Animated.spring(bubbleScale, { toValue: 1, speed: 14, bounciness: 10, useNativeDriver: true }),
+        Animated.timing(bubbleOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+    ]);
+
     floating.start();
     entrance.start();
     shineLoop.start();
     knobPulseLoop.start();
     chevronPulseLoop.start();
+    mascotEntrance.start();
+    mascotFloatLoop.start();
+    mascotTiltLoop.start();
+    mascotBreatheLoop.start();
+    bubbleEntrance.start();
     return () => {
       floating.stop();
       entrance.stop();
       shineLoop.stop();
       knobPulseLoop.stop();
       chevronPulseLoop.stop();
+      mascotEntrance.stop();
+      mascotFloatLoop.stop();
+      mascotTiltLoop.stop();
+      mascotBreatheLoop.stop();
+      bubbleEntrance.stop();
     };
   }, [
     buttonEntrance,
@@ -140,11 +210,23 @@ export default function WelcomeScreen({ route, navigation }) {
     knobPulse,
     reduceMotion,
     shine,
+    mascotEntranceY,
+    mascotEntranceOpacity,
+    mascotFloat,
+    mascotTilt,
+    mascotScale,
+    bubbleScale,
+    bubbleOpacity,
   ]);
 
   const shineX = shine.interpolate({
     inputRange: [0, 1],
     outputRange: [-90, 360],
+  });
+
+  const mascotTiltDeg = mascotTilt.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-3deg', '3deg'],
   });
 
   const maxSlide = Math.max(0, trackWidth - 66);
@@ -270,10 +352,9 @@ export default function WelcomeScreen({ route, navigation }) {
             transform: [{ translateY: floatSmall }],
           }]} />
 
-          {/* Brand block — no logo, large name fills the space */}
+          {/* Brand block — no logo, no wordmark; headline fills the space */}
           <View style={styles.brandBlock}>
             <Text style={[styles.eyebrow, { color: themeColor }]}>LETTER WRITING</Text>
-            <Text style={[styles.appName, { color: themeColor }]}>Auriva</Text>
             <Text style={[styles.headline, { color: theme?.headingText ?? '#202124' }]}>
               Let&apos;s write together
             </Text>
@@ -396,18 +477,38 @@ export default function WelcomeScreen({ route, navigation }) {
 
         </View>
 
-        {/* ── Right panel — unchanged ─────────────────────────────────────── */}
+        {/* ── Right panel — animated mascot ───────────────────────────────── */}
         <View style={styles.right}>
 
-          <Image
+          <Animated.Image
             source={mascot}
-            style={[styles.mascot, { height: height * 0.72 }]}
+            style={[
+              styles.mascot,
+              {
+                height: height * 0.72,
+                opacity: mascotEntranceOpacity,
+                transform: [
+                  { translateY: mascotEntranceY },
+                  { translateY: mascotFloat },
+                  { rotate: mascotTiltDeg },
+                  { scale: mascotScale },
+                ],
+              },
+            ]}
             resizeMode="contain"
           />
 
-          <View style={styles.bubble}>
+          <Animated.View
+            style={[
+              styles.bubble,
+              {
+                opacity: bubbleOpacity,
+                transform: [{ scale: bubbleScale }],
+              },
+            ]}
+          >
             <Text style={styles.bubbleText}>Ready to write?</Text>
-          </View>
+          </Animated.View>
 
         </View>
 
@@ -455,11 +556,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 2.4,
-  },
-  appName: {
-    fontSize: 60,
-    fontWeight: '900',
-    letterSpacing: 0.5,
   },
   headline: {
     fontSize: 25,

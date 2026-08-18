@@ -22,6 +22,9 @@ import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
 import { formatDate } from '../../../utils/formatters';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
+// Teacher Dashboard integration fix — Feature 2's own current family
+// thresholds, never the legacy student.personal_thresholds field.
+import { fetchFamilyThresholds } from '../../../utils/familyThresholds';
 
 function InfoRow({ icon, label, value }) {
   if (!value) return null;
@@ -38,75 +41,69 @@ function InfoRow({ icon, label, value }) {
   );
 }
 
-const GLOBAL_DEFAULT = 55;
+// Teacher Dashboard integration fix (final live-runtime-trace finding):
+// this card previously read the LEGACY students.personal_thresholds field
+// and displayed a hardcoded 55/100 fallback whenever no `.default` key was
+// set — completely disconnected from Feature 2's real family thresholds.
+// It now renders exactly what GET /handwriting/family-thresholds/:studentId
+// (Feature 2's own current target per family) returns, via
+// utils/familyThresholds.js — never personal_thresholds, never a
+// hardcoded number standing in for a real adaptive target.
+const FAMILY_LABELS = { straight: 'Straight', curved: 'Curved', complex: 'Complex' };
+const FAMILY_ORDER = ['straight', 'curved', 'complex'];
 
-function ThresholdCard({ thresholds = {} }) {
-  const effectiveDefault = typeof thresholds.default === 'number' ? thresholds.default : GLOBAL_DEFAULT;
-  const wasRaised  = effectiveDefault > GLOBAL_DEFAULT;
+function ThresholdCard({ status, families }) {
+  if (status === 'loading') {
+    return (
+      <Card style={styles.infoCard}>
+        <View style={styles.thresholdLoadingRow}>
+          <ActivityIndicator size="small" color={Colors.primary} />
+          <Text style={styles.thresholdLoadingText}>Loading learning targets…</Text>
+        </View>
+      </Card>
+    );
+  }
 
-  const letterOverrides = Object.entries(thresholds)
-    .filter(([k]) => k !== 'default')
-    .map(([letter, value]) => ({ letter, value }))
-    .sort((a, b) => a.letter.localeCompare(b.letter));
+  const anyAvailable = FAMILY_ORDER.some((family) => typeof families?.[family] === 'number');
 
-  const noChanges = !wasRaised && letterOverrides.length === 0;
+  if (!anyAvailable) {
+    return (
+      <Card style={styles.infoCard}>
+        <View style={styles.thresholdHeader}>
+          <View style={styles.thresholdIconWrap}>
+            <Ionicons name="stats-chart-outline" size={16} color="#94A3B8" />
+          </View>
+          <View style={{ flex: 1 }}>
+            {/* Deliberately NOT "55/100" or any other number — an
+                unavailable target is never presented as though it were a
+                real adaptive value (final integration audit §4). */}
+            <Text style={styles.thresholdUnavailableText}>Learning targets not available yet</Text>
+            <Text style={styles.thresholdNote}>
+              Targets appear automatically once the student completes their initial assessment.
+            </Text>
+          </View>
+        </View>
+      </Card>
+    );
+  }
 
   return (
     <Card style={styles.infoCard}>
-      <View style={styles.thresholdHeader}>
-        <View style={[styles.thresholdIconWrap, wasRaised && styles.thresholdIconRaised]}>
-          <Ionicons
-            name="stats-chart-outline"
-            size={16}
-            color={wasRaised ? '#059669' : '#6366F1'}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.thresholdScore}>{effectiveDefault} / 100</Text>
-          <Text style={styles.thresholdNote}>
-            {wasRaised
-              ? `Raised from ${GLOBAL_DEFAULT} — student is improving consistently!`
-              : 'Using the default writing standard'}
-          </Text>
-        </View>
-        <View style={[styles.thresholdBadge, wasRaised && styles.thresholdBadgeGreen]}>
-          <Text style={[styles.thresholdBadgeText, wasRaised && styles.thresholdBadgeTextGreen]}>
-            {wasRaised ? '▲ Raised' : 'Default'}
-          </Text>
-        </View>
-      </View>
-
-      {letterOverrides.length > 0 && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.thresholdLetterSection}>
-            <Text style={styles.thresholdLetterHeading}>Letters with a lower standard:</Text>
-            {letterOverrides.map(({ letter, value }) => (
-              <View key={letter} style={styles.thresholdLetterRow}>
-                <View style={styles.thresholdLetterBadge}>
-                  <Text style={styles.thresholdLetterChar}>{letter.toUpperCase()}</Text>
-                </View>
-                <Text style={styles.thresholdLetterLabel}>Letter '{letter}'</Text>
-                <Text style={styles.thresholdLetterValue}>{value} / 100</Text>
-                <Text style={styles.thresholdLetterTag}>↓ adjusted</Text>
-              </View>
-            ))}
-            <Text style={styles.thresholdHint}>
-              These letters were automatically adjusted after the student struggled
-              with them repeatedly.
+      <Text style={styles.thresholdCardTitle}>Current Learning Targets</Text>
+      {FAMILY_ORDER.map((family) => {
+        const value = families?.[family];
+        return (
+          <View key={family} style={styles.thresholdFamilyRow}>
+            <Text style={styles.thresholdFamilyLabel}>{FAMILY_LABELS[family]}</Text>
+            <Text style={typeof value === 'number' ? styles.thresholdFamilyValue : styles.thresholdFamilyValueUnavailable}>
+              {typeof value === 'number' ? `${value} / 100` : 'Not available yet'}
             </Text>
           </View>
-        </>
-      )}
-
-      {noChanges && (
-        <>
-          <View style={styles.divider} />
-          <Text style={styles.thresholdAllGood}>
-            No adjustments yet — all letters use the standard setting.
-          </Text>
-        </>
-      )}
+        );
+      })}
+      <Text style={styles.thresholdHint}>
+        Each motor family's target adjusts automatically as the student practices.
+      </Text>
     </Card>
   );
 }
@@ -165,6 +162,15 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
   const [activeModule, setActiveModule] = useState('concept');
+  // Teacher Dashboard integration fix — Feature 2's current family
+  // thresholds, fetched lazily (only once the Writing tab is actually
+  // open, since ThresholdCard only renders there) rather than on every
+  // screen load. `families: null` means "not fetched yet" (renders the
+  // loading state); `{straight: null, ...}` after a resolved/failed fetch
+  // means "genuinely unavailable" (renders the neutral message) — the two
+  // are deliberately distinct so a slow network never flashes "not
+  // available yet" before the real values arrive.
+  const [familyThresholds, setFamilyThresholds] = useState({ status: 'loading', families: null });
 
   const fetch = useCallback(async () => {
     if (!initialStudent?.sid) { setRefreshing(false); return; }
@@ -189,10 +195,25 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
+  const loadFamilyThresholds = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    setFamilyThresholds((prev) => ({ ...prev, status: 'loading' }));
+    const result = await fetchFamilyThresholds({ studentId: initialStudent.sid });
+    setFamilyThresholds({ status: result.status, families: result.families });
+  }, [initialStudent?.sid]);
+
   useEffect(() => { fetch(); }, [fetch]);
 
   // Refetch on focus so returning from the report reflects a session just played.
   useFocusEffect(useCallback(() => { fetchConcepts(); }, [fetchConcepts]));
+
+  // Lazy-load only when the Writing tab is actually selected (mirrors
+  // getConceptReport's own "expensive, lazy-load from the report screen"
+  // convention) — fetched once per (student, module-becomes-writing), not
+  // on every render or every tab switch back to Writing.
+  useEffect(() => {
+    if (activeModule === 'writing') loadFamilyThresholds();
+  }, [activeModule, loadFamilyThresholds]);
 
   if (!student) return null;
 
@@ -332,10 +353,10 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
 
         {activeModule === 'writing' ? (
           <>
-            {/* Writing Standard — the per-student thresholds the handwriting
-                module adapts as the child improves. */}
+            {/* Writing Standard — Feature 2's current per-family adaptive
+                targets, never the legacy personal_thresholds field. */}
             <SectionHeader icon="speedometer-outline" title="Writing Standard" />
-            <ThresholdCard thresholds={student.personal_thresholds ?? {}} />
+            <ThresholdCard status={familyThresholds.status} families={familyThresholds.families} />
 
             {/* Handwriting Report */}
             <SectionHeader icon="document-text-outline" title="Handwriting Report" />
@@ -565,7 +586,7 @@ const styles = StyleSheet.create({
   reportTagText: { fontSize: 10, color: '#6366F1', fontWeight: '700' },
   reportArrow: { paddingLeft: 4 },
 
-  // ── Threshold card ────────────────────────────────────────────────────────
+  // ── Threshold card (Feature 2 — Current Learning Targets) ─────────────────
   thresholdHeader: {
     flexDirection: 'row', alignItems: 'center',
     padding: Layout.spacing.md, gap: Layout.spacing.sm,
@@ -574,49 +595,35 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 10,
     backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
   },
-  thresholdIconRaised: { backgroundColor: '#D1FAE5' },
-  thresholdScore: {
-    fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold,
+  thresholdNote: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
+  thresholdLoadingRow: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: Layout.spacing.md, gap: Layout.spacing.sm,
+  },
+  thresholdLoadingText: { fontSize: Layout.fontSize.sm, color: Colors.text.muted },
+  thresholdUnavailableText: {
+    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
     color: Colors.text.primary,
   },
-  thresholdNote: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-  thresholdBadge: {
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 8, backgroundColor: '#EEF2FF',
+  thresholdCardTitle: {
+    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
+    color: Colors.text.primary, padding: Layout.spacing.md, paddingBottom: Layout.spacing.xs,
   },
-  thresholdBadgeGreen: { backgroundColor: '#D1FAE5' },
-  thresholdBadgeText: { fontSize: 11, fontWeight: '700', color: '#6366F1' },
-  thresholdBadgeTextGreen: { color: '#059669' },
-  thresholdLetterSection: {
-    paddingHorizontal: Layout.spacing.md,
-    paddingTop: Layout.spacing.sm,
-    paddingBottom: Layout.spacing.md,
+  thresholdFamilyRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.md, paddingVertical: Layout.spacing.xs,
   },
-  thresholdLetterHeading: {
-    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.semibold, marginBottom: Layout.spacing.sm,
+  thresholdFamilyLabel: { fontSize: Layout.fontSize.sm, color: Colors.text.primary },
+  thresholdFamilyValue: {
+    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#6366F1',
   },
-  thresholdLetterRow: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: Layout.spacing.sm, marginBottom: Layout.spacing.xs,
+  thresholdFamilyValueUnavailable: {
+    fontSize: Layout.fontSize.xs, color: Colors.text.muted, fontStyle: 'italic',
   },
-  thresholdLetterBadge: {
-    width: 26, height: 26, borderRadius: 6,
-    backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center',
-  },
-  thresholdLetterChar: { fontSize: 13, fontWeight: '800', color: '#D97706' },
-  thresholdLetterLabel: { flex: 1, fontSize: Layout.fontSize.sm, color: Colors.text.primary },
-  thresholdLetterValue: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#D97706',
-  },
-  thresholdLetterTag: { fontSize: Layout.fontSize.xs, color: '#D97706' },
   thresholdHint: {
     fontSize: Layout.fontSize.xs, color: Colors.text.muted,
-    marginTop: Layout.spacing.sm, fontStyle: 'italic',
-  },
-  thresholdAllGood: {
-    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
-    padding: Layout.spacing.md, fontStyle: 'italic',
+    paddingHorizontal: Layout.spacing.md, paddingBottom: Layout.spacing.md,
+    marginTop: Layout.spacing.xs, fontStyle: 'italic',
   },
 
   // ── Module selector ───────────────────────────────────────────────────────

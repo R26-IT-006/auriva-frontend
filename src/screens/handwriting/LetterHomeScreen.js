@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,41 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Ellipse } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { getLetterSequence, getMotorProfile } from '../../utils/storage';
 import { retryPendingFinalizationForStudent } from '../../utils/finalizeSync';
 import { recordAssessmentSnapshot } from '../../constants/sessionProgress';
+// Same parent-verification gate already used on back navigation in the
+// Concept Learning section (e.g. Tier2ActivityScreen.js, ConceptItemsScreen.js)
+// and on StudentDashboardScreen's "back to student picker" — a random
+// 4-digit code shown as number-words that a child can't casually read past.
+// Applied here to the Why/Assessment/View Progress buttons so a child can't
+// wander into teacher-facing data the same way they couldn't back out of a
+// concept lesson.
+import { ParentGateModal } from '../../components/common/ParentGateModal';
+// Screen-consistency fix (Initial Motor Assessment scoring audit): reads
+// features.motor_score, the SAME per-shape unified score
+// AssessmentCompleteScreen.js reads (and the same one that produces the
+// persisted Feature 1 baseline) — the Assessment Summary modal below no
+// longer computes its own separate formula. Previously this used
+// featuresToScore() from adaptiveSequencing.js; that function is unchanged
+// and still used by letters/words/uppercase/pre-writing, just no longer
+// here — see unifiedShapeScoreMirror.js for where motor_score comes from.
+// Fallback authoritative source for the Assessment Summary modal when the
+// in-memory assessmentData route param is empty (e.g. reopened in a later
+// app session, or reached via "Skip Assessment") — reads the SAME
+// persisted Feature 1 baseline Feature 2+ already relies on, rather than
+// showing an empty state whenever one actually exists.
+import { fetchMotorBaseline } from '../../utils/motorBaseline';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -38,23 +62,33 @@ function formatShapeName(key) {
   return key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-function getBadge(smoothness) {
-  if (smoothness < 0.15) return { label: 'Good',           bg: '#E8F5E9', color: '#2E7D32' };
-  if (smoothness < 0.4)  return { label: 'Moderate',       bg: '#FFFDE7', color: '#F57F17' };
-  return                        { label: 'Needs practice',  bg: '#FFF3E0', color: '#E65100' };
+// Screen-consistency fix: same score → same label wherever it's shown,
+// bucketed with the exact thresholds AssessmentCompleteScreen.js uses
+// (getScoreColor/getDifficulty there) so "Good"/"Moderate"/"Needs practice"
+// here always agrees with "Easy"/"Moderate"/"Needs Practice" there for the
+// identical underlying score.
+// score === null (motor_score genuinely unavailable) is its own explicit
+// grey state — never silently falls through to "Needs practice", which
+// would misrepresent missing data as a real, poor result.
+function getScoreBadge(score) {
+  if (score == null) return { label: 'Not available', bg: '#EEEEEE', color: '#757575' };
+  if (score >= 75) return { label: 'Good',           bg: '#E8F5E9', color: '#2E7D32' };
+  if (score >= 50) return { label: 'Moderate',       bg: '#FFFDE7', color: '#F57F17' };
+  return                   { label: 'Needs practice', bg: '#FFF3E0', color: '#E65100' };
 }
 
-function getOverallLabel(avg) {
-  if (avg < 0.15) return 'Good';
-  if (avg < 0.4)  return 'Moderate';
-  return 'Needs practice';
-}
+const FAMILY_LABELS = { straight: 'Straight Lines', curved: 'Curves & Circles', complex: 'Zigzag & Waves' };
+const FAMILY_ICONS  = { straight: 'remove-outline', curved: 'ellipse-outline', complex: 'pulse-outline' };
+const FAMILY_ORDER  = ['straight', 'curved', 'complex'];
 
+// Real Ionicons instead of raw Unicode glyphs (━ ○ ✓) — renders consistently
+// across devices/fonts, and matches the same icon language SHAPE_ICONS/
+// FAMILY_ICONS already use for these exact concepts elsewhere on this screen.
 function getLearningPathContent(primaryStrength) {
   switch (primaryStrength) {
     case 'straight':
       return {
-        icon:    '━',
+        icon:    'remove-outline',
         headline: "Great at straight lines!",
         detail:   "We'll start with letters like l, i, t that use the strokes you already control well.",
         color:    '#1565C0',
@@ -63,7 +97,7 @@ function getLearningPathContent(primaryStrength) {
       };
     case 'curved':
       return {
-        icon:    '○',
+        icon:    'ellipse-outline',
         headline: "Smooth, confident curves!",
         detail:   "We'll start with letters like o, c, e that match your circle and arc strength.",
         color:    '#6A1B9A',
@@ -72,7 +106,7 @@ function getLearningPathContent(primaryStrength) {
       };
     default:
       return {
-        icon:    '✓',
+        icon:    'checkmark-circle-outline',
         headline: "Well-rounded motor skills!",
         detail:   "You're balanced across all strokes. We'll practise step by step, easy to hard.",
         color:    '#2E7D32',
@@ -102,6 +136,117 @@ function getXAIExplanation(motorProfile) {
   );
 }
 
+// Shared "Overall Assessment Score" card — used identically for both the
+// in-memory (just-completed) and persisted-baseline (later visit) data
+// states, so the two never drift into visually different presentations of
+// the same kind of number.
+function OverallScoreCard({ theme, label, score, note }) {
+  const badge = getScoreBadge(score);
+  return (
+    <View style={[styles.overallCard, {
+      backgroundColor: theme.button + '10',
+      borderColor:     theme.button + '25',
+    }]}>
+      <View style={[styles.overallIconWrap, { backgroundColor: theme.button + '20' }]}>
+        <Ionicons name="analytics-outline" size={22} color={theme.button} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.overallLabel}>{label}</Text>
+        <Text style={[styles.overallValue, { color: theme.headingText }]}>
+          {score != null ? `${score}%` : 'N/A'} · {badge.label}
+        </Text>
+        {note ? <Text style={styles.overallNote}>{note}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+// Circular "Overall Progress" ring — same underlying progressPercent value
+// the old inline header/bar showed, just presented as a ring in the new
+// side panel instead of a straight bar. No new data source.
+function ProgressRing({ percent, size = 124, strokeWidth = 12, color = '#F5A623', trackColor = '#FCEACB' }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, percent ?? 0));
+  const offset = circumference * (1 - clamped / 100);
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size}>
+        <Circle cx={size / 2} cy={size / 2} r={radius} stroke={trackColor} strokeWidth={strokeWidth} fill="none" />
+        <Circle
+          cx={size / 2} cy={size / 2} r={radius}
+          stroke={color} strokeWidth={strokeWidth} fill="none"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          rotation="-90"
+          origin={`${size / 2}, ${size / 2}`}
+        />
+      </Svg>
+      <Text style={styles.ringPercentText}>{clamped}%</Text>
+    </View>
+  );
+}
+
+// Short, encouraging note derived purely from the existing progressPercent
+// value — presentation only, no new progress-tracking feature/data.
+function progressEncouragement(percent) {
+  if (percent >= 100) return "All done — fantastic job!";
+  if (percent >= 50)  return "Almost there — amazing work!";
+  if (percent > 0)    return "Keep going! You're doing great!";
+  return "Let's get started!";
+}
+
+// Flat, static "rolling hills" scene filling the bottom of the Letters/
+// Words cards — purely decorative (pointerEvents="none"), built from plain
+// SVG shapes rather than an image asset. 'letters' keeps green tones and
+// the small flower accent; 'words' reuses this app's existing purple Words
+// theming instead of introducing a new color identity for just this card.
+function CardLandscape({ variant }) {
+  const isLetters = variant === 'letters';
+  const hillBack  = isLetters ? '#BFE3B8' : '#DCC7EF';
+  const hillFront = isLetters ? '#9ED895' : '#C7A3E0';
+  const bush      = isLetters ? '#5CA85A' : '#9B62C4';
+
+  return (
+    // Anchored to just the bottom band of the card (not the full height) —
+    // stretching a wide, flat scene across the whole card distorted it
+    // against the card's actual (taller, narrower) proportions. A shorter
+    // band close to the viewBox's own 300:160 aspect stretches cleanly.
+    <Svg
+      width="100%" height="100%"
+      viewBox="0 0 300 160"
+      preserveAspectRatio="none"
+      style={styles.cardLandscapeSvg}
+      pointerEvents="none"
+    >
+      {/* Clouds */}
+      <Ellipse cx={46}  cy={22} rx={24} ry={12} fill="#FFFFFF" opacity={0.75} />
+      <Ellipse cx={252} cy={16} rx={20} ry={10} fill="#FFFFFF" opacity={0.6} />
+
+      {/* Rolling hills */}
+      <Ellipse cx={70}  cy={195} rx={210} ry={70} fill={hillBack} opacity={0.8} />
+      <Ellipse cx={230} cy={205} rx={220} ry={75} fill={hillFront} opacity={0.9} />
+
+      {/* Small bushes tucked into the hill line */}
+      <Circle cx={26}  cy={148} r={11} fill={bush} opacity={0.75} />
+      <Circle cx={40}  cy={152} r={8}  fill={bush} opacity={0.6} />
+      <Circle cx={272} cy={146} r={10} fill={bush} opacity={0.7} />
+
+      {/* Tiny flower accent — letters card only */}
+      {isLetters && (
+        <>
+          <Circle cx={264} cy={130} r={4} fill="#F8A5C2" />
+          <Circle cx={270} cy={126} r={4} fill="#F8A5C2" />
+          <Circle cx={274} cy={132} r={4} fill="#F8A5C2" />
+          <Circle cx={268} cy={136} r={4} fill="#F8A5C2" />
+          <Circle cx={269} cy={131} r={2.5} fill="#FFD966" />
+        </>
+      )}
+    </Svg>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function LetterHomeScreen({ route, navigation }) {
@@ -119,6 +264,26 @@ export default function LetterHomeScreen({ route, navigation }) {
   const [lowercaseProgress, setLowercaseProgress] = useState(0);
   const [motorProfile,      setMotorProfile]      = useState(passedProfile);
   const [adaptiveSequence,  setAdaptiveSequence]  = useState([]);
+  // Parent-verification gate (same ParentGateModal used on back navigation
+  // in Concept Learning) — guards the Why/Assessment/View Progress buttons.
+  // pendingGateAction records which of the three was tapped so a single
+  // modal instance can dispatch the right action once the code is entered,
+  // rather than needing three separate gate/modal pairs.
+  const [gateVisible,       setGateVisible]       = useState(false);
+  const [pendingGateAction, setPendingGateAction] = useState(null); // 'why' | 'assessment' | 'progress'
+  // Screen-consistency fix: fallback authoritative source for the
+  // Assessment Summary modal, fetched only when there's no in-memory
+  // assessmentData to show (see effect below) — never fetched, and never
+  // shown, when the just-completed session's data is already available.
+  const [baselineSummary, setBaselineSummary] = useState({ status: 'idle', baseline: null });
+
+  useEffect(() => {
+    if (!showSummary) return;               // only fetch while the modal is actually open
+    if (assessmentData.length > 0) return;   // in-memory data already covers this visit
+    if (baselineSummary.status !== 'idle') return; // fetch once per screen instance
+    setBaselineSummary({ status: 'loading', baseline: null });
+    fetchMotorBaseline({ studentId: student.sid }).then(setBaselineSummary);
+  }, [showSummary, assessmentData.length, baselineSummary.status, student.sid]);
 
   // Reliability Step 3: guards against useFocusEffect firing a second
   // overlapping retry attempt (e.g. the child navigates away and quickly
@@ -166,11 +331,44 @@ export default function LetterHomeScreen({ route, navigation }) {
   const progressPercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
   const wordsUnlocked   = true;
 
-  const avgSmoothness = assessmentData.length > 0
-    ? assessmentData.reduce((sum, s) => sum + (s.features?.smoothness ?? 0), 0) / assessmentData.length
-    : 0;
+  // Screen-consistency fix: per-shape scores read from the SAME
+  // features.motor_score AssessmentCompleteScreen.js reads — replaces the
+  // old smoothness-only avgSmoothness/getOverallLabel calculation, which
+  // could disagree with the "Overall X%" AssessmentCompleteScreen had just
+  // shown moments earlier for the identical assessment.
+  // null (not 50) when a shape's motor_score is genuinely unavailable — see
+  // getScoreBadge's explicit "Not available" state above.
+  const shapeScores = assessmentData.map(item => {
+    const v = item.features?.motor_score;
+    return v == null ? null : Math.round(v);
+  });
+  const realShapeScores = shapeScores.filter(s => s != null);
+  const overallShapeScore = realShapeScores.length
+    ? Math.round(realShapeScores.reduce((a, b) => a + b, 0) / realShapeScores.length)
+    : null;
 
   const pathContent = getLearningPathContent(motorProfile?.primaryStrength ?? 'balanced');
+
+  // Opens the gate for one of the three guarded actions; the actual
+  // navigation/modal only fires from handleGateSuccess once the code is
+  // entered correctly.
+  function requestGatedAction(action) {
+    setPendingGateAction(action);
+    setGateVisible(true);
+  }
+
+  function handleGateSuccess() {
+    setGateVisible(false);
+    if (pendingGateAction === 'why') setShowWhyModal(true);
+    else if (pendingGateAction === 'assessment') setShowSummary(true);
+    else if (pendingGateAction === 'progress') navigation.navigate('TeacherReport', { student, theme });
+    setPendingGateAction(null);
+  }
+
+  function handleGateCancel() {
+    setGateVisible(false);
+    setPendingGateAction(null);
+  }
 
   return (
     <LinearGradient
@@ -197,52 +395,59 @@ export default function LetterHomeScreen({ route, navigation }) {
 
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
+          {/* Avatar moved out of the top bar — it now appears large, once,
+              in the side column above "Your Progress" (see below), rather
+              than being shown small here as well. */}
           <View style={styles.nameRow}>
-            <View style={[styles.avatarRing, { borderColor: theme.button + '40' }]}>
-              <Image source={AVATAR_MAP[student?.avatar_key]} style={styles.avatarImg} />
-            </View>
-            <View>
-              <Text style={[styles.studentName, { color: theme.headingText }]}>
-                {student?.full_name}
-              </Text>
-              <Text style={styles.studentSubLabel}>Letter Writing</Text>
-            </View>
+            <Text style={[styles.studentName, { color: theme.headingText }]}>
+              {student?.full_name}
+            </Text>
+            <Text style={styles.studentSubLabel}>Letter Writing</Text>
           </View>
 
           <View style={styles.topBtnGroup}>
+            {/* Dashboard stays a normal, ungated, friendly action — it's
+                just navigation, not teacher-facing data. */}
             <TouchableOpacity
-              style={[styles.summaryBtn, {
+              style={[styles.dashboardBtn, {
                 backgroundColor: theme.button + '14',
                 borderColor: theme.button + '40',
               }]}
               onPress={() => navigation.navigate('TeacherMain')}
               activeOpacity={0.8}
             >
-              <Ionicons name="home-outline" size={14} color={theme.button} />
-              <Text style={[styles.summaryBtnText, { color: theme.button }]}>Dashboard</Text>
+              <Ionicons name="home-outline" size={15} color={theme.button} />
+              <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Dashboard</Text>
             </TouchableOpacity>
 
+            {/* Assessment + Progress — same pill style as Dashboard above,
+                so all three top-bar buttons read as one consistent group.
+                Still gated by ParentGateModal on tap (requestGatedAction);
+                only the visual treatment matches Dashboard now. */}
             <TouchableOpacity
-              style={[styles.summaryBtn, {
+              style={[styles.dashboardBtn, {
                 backgroundColor: theme.button + '14',
                 borderColor: theme.button + '40',
               }]}
-              onPress={() => setShowSummary(true)}
+              onPress={() => requestGatedAction('assessment')}
               activeOpacity={0.8}
+              accessibilityLabel="Assessment — needs a code"
             >
-              <Ionicons name="clipboard-outline" size={14} color={theme.button} />
-              <Text style={[styles.summaryBtnText, { color: theme.button }]}>Assessment</Text>
+              <Ionicons name="clipboard-outline" size={15} color={theme.button} />
+              <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Assessment</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.reportBtn, { backgroundColor: theme.button }]}
-              onPress={() => navigation.navigate('TeacherReport', { student, theme })}
-              activeOpacity={0.85}
+              style={[styles.dashboardBtn, {
+                backgroundColor: theme.button + '14',
+                borderColor: theme.button + '40',
+              }]}
+              onPress={() => requestGatedAction('progress')}
+              activeOpacity={0.8}
+              accessibilityLabel="Progress report — needs a code"
             >
-              <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
-              <Text style={[styles.reportBtnText, { color: theme.buttonText }]}>
-                View Progress Report
-              </Text>
+              <Ionicons name="document-text-outline" size={15} color={theme.button} />
+              <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Progress</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -250,77 +455,69 @@ export default function LetterHomeScreen({ route, navigation }) {
         {/* ── Main content ── */}
         <View style={styles.mainContent}>
 
-          {/* ── Hero section ── */}
-          <View style={styles.heroSection}>
-            <Image
-              source={AVATAR_MAP[student?.avatar_key]}
-              style={styles.heroAvatar}
-              resizeMode="contain"
-            />
-            <Text style={[styles.heroGreeting, { color: theme.headingText }]}>
-              Hello, {student?.full_name}!
-            </Text>
-            <Text style={[styles.heroSubtitle, { color: theme.button }]}>
-              Ready to practice writing today?
-            </Text>
-          </View>
+          {/* ── Main column ── */}
+          <View style={styles.mainColumn}>
 
-          {/* ── "Your Learning Path" card ── */}
-          <View style={[styles.learningPathCard, {
-            backgroundColor: pathContent.bg,
-            borderColor: pathContent.border,
-          }]}>
-            <View style={styles.learningPathHeader}>
-              <View style={styles.learningPathLeft}>
-                <View style={[styles.pathIconBadge, { backgroundColor: pathContent.color + '20' }]}>
-                  <Text style={styles.learningPathIcon}>{pathContent.icon}</Text>
-                </View>
-                <View style={styles.learningPathTextCol}>
-                  <Text style={[styles.learningPathHeadline, { color: pathContent.color }]}>
-                    {pathContent.headline}
-                  </Text>
-                  <Text style={styles.learningPathDetail}>
-                    {pathContent.detail}
-                  </Text>
-                  {motorProfile && (
-                    <Text style={[styles.sequenceTag, { color: pathContent.color + 'CC' }]}>
-                      {motorProfile.recommendedSequence}
+            {/* ── Hero section ── */}
+            {/* Avatar removed here — it now appears once, in the side
+                column above "Your Progress", rather than twice on screen. */}
+            <View style={styles.heroSection}>
+              <Text style={[styles.heroGreeting, { color: theme.headingText }]}>
+                Hello, {student?.full_name}!
+              </Text>
+              <Text style={[styles.heroSubtitle, { color: theme.button }]}>
+                Ready to practice writing today?
+              </Text>
+            </View>
+
+            {/* ── "Your Learning Path" card ── */}
+            <View style={[styles.learningPathCard, {
+              backgroundColor: pathContent.bg,
+              borderColor: pathContent.border,
+            }]}>
+              {/* Decorative — the student's own avatar, reused rather than a
+                  new illustration asset, sitting behind the text as a quiet
+                  bit of personality in the corner. */}
+              <Image
+                source={AVATAR_MAP[student?.avatar_key]}
+                style={styles.learningPathAvatar}
+                resizeMode="contain"
+                pointerEvents="none"
+              />
+              <View style={styles.learningPathHeader}>
+                <View style={styles.learningPathLeft}>
+                  <View style={[styles.pathIconBadge, { backgroundColor: pathContent.color + '20' }]}>
+                    <Ionicons name={pathContent.icon} size={24} color={pathContent.color} />
+                  </View>
+                  <View style={styles.learningPathTextCol}>
+                    <Text style={[styles.learningPathHeadline, { color: pathContent.color }]}>
+                      {pathContent.headline}
                     </Text>
-                  )}
+                    <Text style={styles.learningPathDetail}>
+                      {pathContent.detail}
+                    </Text>
+                    {motorProfile && (
+                      <Text style={[styles.sequenceTag, { color: pathContent.color + 'CC' }]}>
+                        {motorProfile.recommendedSequence}
+                      </Text>
+                    )}
+                  </View>
                 </View>
+                <TouchableOpacity
+                  onPress={() => requestGatedAction('why')}
+                  style={[styles.whyBtn, { borderColor: pathContent.color + '50', backgroundColor: pathContent.color + '12' }]}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="information-circle-outline" size={14} color={pathContent.color} />
+                  <Text style={[styles.whyBtnText, { color: pathContent.color }]}>Why?</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowWhyModal(true)}
-                style={[styles.whyBtn, { borderColor: pathContent.color + '50', backgroundColor: pathContent.color + '12' }]}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="information-circle-outline" size={14} color={pathContent.color} />
-                <Text style={[styles.whyBtnText, { color: pathContent.color }]}>Why?</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* ── Main Lowercase / Uppercase card ── */}
-          <View style={styles.card}>
-
-            {/* Progress header inside card */}
-            <View style={styles.progressHeader}>
-              <View style={styles.progressHeaderLeft}>
-                <Ionicons name="trophy-outline" size={20} color="#F57F17" />
-                <Text style={styles.progressHeaderText}>
-                  Letters: {lowercaseProgress} / 26 completed
-                </Text>
-              </View>
-              <Text style={styles.progressPercent}>{progressPercent}%</Text>
-            </View>
-            <View style={styles.progressTrackWide}>
-              <View style={[styles.progressFillWide, { width: `${progressPercent}%` }]} />
             </View>
 
-            {/* Lowercase / Uppercase row */}
+            {/* ── Lowercase / Uppercase row ── */}
             <View style={styles.pathRow}>
 
-              {/* Lowercase card */}
+              {/* Letters card */}
               <TouchableOpacity
                 style={styles.lettersCard}
                 onPress={() => navigation.navigate('LetterPractice', {
@@ -329,25 +526,45 @@ export default function LetterHomeScreen({ route, navigation }) {
                   letterSequence: adaptiveSequence,
                   motorProfile,
                 })}
-                activeOpacity={0.85}
+                activeOpacity={0.9}
               >
+                <LinearGradient
+                  colors={['#EFFAEC', '#D8F0D0']}
+                  style={StyleSheet.absoluteFillObject}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                />
+                <CardLandscape variant="letters" />
                 <View style={styles.modeIconCircle}>
-                  <Ionicons name="text-outline" size={34} color="#2E7D32" />
+                  <Text style={styles.aaIconText}>Aa</Text>
                 </View>
                 <Text style={styles.lettersTitle}>Letters</Text>
                 <Text style={styles.modeSubLabel}>{lowercaseProgress} / 26 done</Text>
+                <View style={[styles.startBtn, { backgroundColor: '#2E7D32' }]}>
+                  <Text style={styles.startBtnText}>Start Practice</Text>
+                  <View style={styles.startBtnChevronWrap}>
+                    <Ionicons name="chevron-forward" size={13} color="#FFFFFF" />
+                  </View>
+                </View>
               </TouchableOpacity>
 
               {/* Words card — locked until all lowercase completed */}
               <TouchableOpacity
                 style={styles.wordsCard}
-                activeOpacity={wordsUnlocked ? 0.85 : 0.5}
+                activeOpacity={wordsUnlocked ? 0.9 : 0.5}
                 onPress={() => navigation.navigate('WordLetterSelect', { student, theme })}
               >
+                <LinearGradient
+                  colors={wordsUnlocked ? ['#F6EEFC', '#E8D6F5'] : ['#F2F2F2', '#E6E6E6']}
+                  style={StyleSheet.absoluteFillObject}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                />
+                {wordsUnlocked && <CardLandscape variant="words" />}
                 <View style={[styles.modeIconCircle, { backgroundColor: wordsUnlocked ? '#EDE7F6' : '#EEEEEE' }]}>
                   <Ionicons
                     name={wordsUnlocked ? 'book-outline' : 'lock-closed'}
-                    size={34}
+                    size={38}
                     color={wordsUnlocked ? '#7B1FA2' : '#AAAAAA'}
                   />
                 </View>
@@ -357,24 +574,59 @@ export default function LetterHomeScreen({ route, navigation }) {
                 <Text style={[styles.modeSubLabel, !wordsUnlocked && { color: '#AAAAAA' }]}>
                   {wordsUnlocked ? 'Unlocked!' : 'Finish letters first'}
                 </Text>
+                {wordsUnlocked ? (
+                  <View style={[styles.startBtn, { backgroundColor: '#7B1FA2' }]}>
+                    <Text style={styles.startBtnText}>Start Practice</Text>
+                    <View style={styles.startBtnChevronWrap}>
+                      <Ionicons name="chevron-forward" size={13} color="#FFFFFF" />
+                    </View>
+                  </View>
+                ) : (
+                  <View style={[styles.startBtn, { backgroundColor: '#BBBBBB' }]}>
+                    <Ionicons name="lock-closed" size={13} color="#FFFFFF" />
+                    <Text style={styles.startBtnText}>Locked</Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
             </View>
 
-            {/* Word progress link */}
-            <TouchableOpacity
-              style={styles.progressLink}
-              onPress={() => navigation.navigate('WordProgress', { student, theme })}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="bar-chart-outline" size={15} color="#7B1FA2" />
-              <Text style={styles.progressLinkText}>View Word Progress</Text>
-              <Ionicons name="chevron-forward" size={14} color="#7B1FA2" />
-            </TouchableOpacity>
+          </View>
 
-            <Text style={styles.footerNote}>
-              Practice Letters and Words in any order you like.
-            </Text>
+          {/* ── Side column ── */}
+          <View style={styles.sideColumn}>
+
+            {/* The student's avatar, moved here from the top bar — sits at
+                the top of this column, roughly level with the hero section
+                on the left, so the column doesn't start with empty space
+                above "Your Progress". No frame/border — just the image. */}
+            <View style={styles.sideAvatarCard}>
+              <Image
+                source={AVATAR_MAP[student?.avatar_key]}
+                style={styles.sideAvatarImg}
+                resizeMode="contain"
+              />
+            </View>
+
+            {/* "Your Progress" panel — pushed down by the avatar card above
+                it, landing roughly level with the Learning Path / Letters-
+                Words cards instead of starting at the very top. */}
+            <View style={[styles.progressPanel, { borderColor: theme.button + '25' }]}>
+              <View style={styles.progressPanelHeader}>
+                <Ionicons name="trophy" size={18} color="#F5A623" />
+                <Text style={styles.progressPanelTitle}>Your Progress</Text>
+              </View>
+
+              <ProgressRing percent={progressPercent} color={theme.button} />
+
+              <Text style={styles.progressPanelLabel}>Overall Progress</Text>
+              <Text style={styles.progressPanelNote}>{progressEncouragement(progressPercent)}</Text>
+
+              <View style={styles.progressPanelStat}>
+                <Ionicons name="book-outline" size={14} color={theme.button} />
+                <Text style={styles.progressPanelStatText}>{lowercaseProgress} of 26 letters done</Text>
+              </View>
+            </View>
 
           </View>
 
@@ -431,48 +683,81 @@ export default function LetterHomeScreen({ route, navigation }) {
                   </View>
                 </View>
 
-                {/* Shape rows — fills available space evenly */}
-                <View style={styles.modalShapeList}>
-                  {assessmentData.map((item, index) => {
-                    const badge    = getBadge(item.features?.smoothness ?? 0);
-                    const iconName = SHAPE_ICONS[item.shapeId] ?? 'brush-outline';
-                    return (
-                      <View key={item.shapeId ?? index} style={styles.shapeRow}>
-                        <View style={[styles.shapeIconWrap, { backgroundColor: badge.bg }]}>
-                          <Ionicons name={iconName} size={18} color={badge.color} />
-                        </View>
-                        <Text style={styles.shapeName}>
-                          {formatShapeName(item.shapeId ?? '')}
-                        </Text>
-                        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                          <Text style={[styles.badgeText, { color: badge.color }]}>
-                            {badge.label}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
+                {/* Shape/family rows — fills available space evenly.
+                    Screen-consistency fix: three data states, never a
+                    silently-different formula between them.
+                    1. assessmentData present (same session as the just-
+                       completed assessment) → 6 per-shape rows, scored from
+                       the SAME features.motor_score AssessmentCompleteScreen
+                       read a moment earlier.
+                    2. assessmentData empty, persisted baseline found (a
+                       later visit) → 3 per-family rows read straight from
+                       Feature 1's authoritative StudentMotorBaseline.
+                    3. Neither available → loading / empty state. */}
+                {assessmentData.length > 0 ? (
+                  <>
+                    <View style={styles.modalShapeList}>
+                      {assessmentData.map((item, index) => {
+                        const score    = shapeScores[index];
+                        const badge    = getScoreBadge(score);
+                        const iconName = SHAPE_ICONS[item.shapeId] ?? 'brush-outline';
+                        return (
+                          <View key={item.shapeId ?? index} style={styles.shapeRow}>
+                            <View style={[styles.shapeIconWrap, { backgroundColor: badge.bg }]}>
+                              <Ionicons name={iconName} size={18} color={badge.color} />
+                            </View>
+                            <Text style={styles.shapeName}>
+                              {formatShapeName(item.shapeId ?? '')}
+                            </Text>
+                            <Text style={styles.shapeScoreText}>{score != null ? `${score}%` : 'N/A'}</Text>
+                            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                              <Text style={[styles.badgeText, { color: badge.color }]}>
+                                {badge.label}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
 
-                {/* Overall motor control card */}
-                {assessmentData.length > 0 && (
-                  <View style={[styles.overallCard, {
-                    backgroundColor: theme.button + '10',
-                    borderColor:     theme.button + '25',
-                  }]}>
-                    <View style={[styles.overallIconWrap, { backgroundColor: theme.button + '20' }]}>
-                      <Ionicons name="analytics-outline" size={22} color={theme.button} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.overallLabel}>Overall motor control</Text>
-                      <Text style={[styles.overallValue, { color: theme.headingText }]}>
-                        {getOverallLabel(avgSmoothness)}
-                      </Text>
-                    </View>
+                    <OverallScoreCard theme={theme} label="Overall Assessment Score" score={overallShapeScore} />
+                  </>
+                ) : baselineSummary.status === 'loading' ? (
+                  <View style={styles.summaryLoadingRow}>
+                    <ActivityIndicator size="small" color={theme.button} />
+                    <Text style={styles.summaryLoadingText}>Loading assessment results…</Text>
                   </View>
-                )}
+                ) : baselineSummary.status === 'found' ? (
+                  <>
+                    <View style={styles.modalShapeList}>
+                      {FAMILY_ORDER.map((family) => {
+                        const score = Math.round(baselineSummary.baseline[family]);
+                        const badge = getScoreBadge(score);
+                        return (
+                          <View key={family} style={styles.shapeRow}>
+                            <View style={[styles.shapeIconWrap, { backgroundColor: badge.bg }]}>
+                              <Ionicons name={FAMILY_ICONS[family]} size={18} color={badge.color} />
+                            </View>
+                            <Text style={styles.shapeName}>{FAMILY_LABELS[family]}</Text>
+                            <Text style={styles.shapeScoreText}>{score}%</Text>
+                            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                              <Text style={[styles.badgeText, { color: badge.color }]}>
+                                {badge.label}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
 
-                {assessmentData.length === 0 && (
+                    <OverallScoreCard
+                      theme={theme}
+                      label="Overall Assessment Score"
+                      score={Math.round(baselineSummary.baseline.overall)}
+                      note="From the student's initial assessment"
+                    />
+                  </>
+                ) : (
                   <Text style={styles.emptyText}>No assessment data available.</Text>
                 )}
 
@@ -534,6 +819,12 @@ export default function LetterHomeScreen({ route, navigation }) {
           </View>
         </Modal>
 
+        <ParentGateModal
+          visible={gateVisible}
+          onSuccess={handleGateSuccess}
+          onCancel={handleGateCancel}
+        />
+
       </SafeAreaView>
     </LinearGradient>
   );
@@ -565,27 +856,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 22,
+    paddingHorizontal: 32,
     paddingVertical: 14,
   },
+  // Column now — no avatar to sit alongside since it moved to the side
+  // column (see sideAvatarCard below).
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  avatarRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    flexDirection: 'column',
   },
   studentName: {
     fontSize: 17,
@@ -601,7 +878,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  summaryBtn: {
+  dashboardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -610,47 +887,57 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
-  summaryBtnText: {
+  dashboardBtnText: {
     fontSize: 13,
     fontWeight: '600',
   },
-  reportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  reportBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
+  // Grown-ups-only cluster (Assessment + Progress, both gated) — quiet grey,
+  // deliberately smaller and less colorful than Dashboard or the Letters/
+  // Words cards, so a child's attention isn't pulled toward controls that
+  // aren't meant for them.
   // Main content
+  // Two columns: the main choice column (hero + learning path + Letters/
+  // Words) alongside a dedicated "Your Progress" side panel — same data as
+  // before (progressPercent/lowercaseProgress), just laid out the way a
+  // wide tablet screen has room for, instead of a single centered column.
+  // No flex:1 here, and alignItems:'stretch' (not 'flex-start') — the two
+  // columns should size to match each other (sideColumn stretched to
+  // mainColumn's natural content height), not to the full remaining screen
+  // height, so "Your Progress" ends up matching the height of [Learning
+  // Path card + Letters/Words row] rather than stretching to the bottom of
+  // the screen.
+  // More outer breathing room (32 → 44), and mainColumn now has a maxWidth
+  // (see below) rather than filling all available width — so the whole
+  // [mainColumn + sideColumn] block is narrower than the screen and
+  // justifyContent:'center' actually has room to center it, instead of
+  // mainColumn consuming every pixel up to sideColumn.
   mainContent: {
-    flex: 1,
+    flexDirection: 'row',
     justifyContent: 'center',
-    paddingHorizontal: 22,
+    alignItems: 'stretch',
+    paddingHorizontal: 44,
+    paddingTop: 6,
     paddingBottom: 20,
-    gap: 18,
-    alignItems: 'center',
+    gap: 20,
+  },
+  // Capped width so the Letters/Words cards come out closer to square
+  // (width roughly matching their height) instead of being stretched wide
+  // — also what makes the centering above actually visible. Widened back
+  // up from an earlier, too-small 480 to 560. gap widened further (36 →
+  // 44) so pathRow's bottom edge lands level with the progress panel's
+  // bottom edge, instead of relying on stretching the progress panel
+  // (see its own note — that caused a real overflow bug last time).
+  mainColumn: {
+    flex: 1,
+    maxWidth: 560,
+    gap: 44,
+    alignItems: 'stretch',
   },
 
   // ── Hero section ──────────────────────────────────────────────────────────
   heroSection: {
     alignItems: 'center',
     gap: 6,
-  },
-  heroAvatar: {
-    width: 100,
-    height: 100,
-    marginBottom: 6,
   },
   heroGreeting: {
     fontSize: 30,
@@ -668,15 +955,23 @@ const styles = StyleSheet.create({
   // ── Learning Path Card ─────────────────────────────────────────────────────
   learningPathCard: {
     width: '100%',
-    maxWidth: 620,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1.5,
-    padding: 16,
+    padding: 18,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
+  },
+  learningPathAvatar: {
+    position: 'absolute',
+    right: -6,
+    bottom: -10,
+    width: 92,
+    height: 92,
+    opacity: 0.16,
   },
   learningPathHeader: {
     flexDirection: 'row',
@@ -696,9 +991,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-  },
-  learningPathIcon: {
-    fontSize: 22,
   },
   learningPathTextCol: {
     flex: 1,
@@ -734,110 +1026,111 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // ── Letters / Words card ───────────────────────────────────────────────────
-  card: {
-    width: '100%',
-    maxWidth: 620,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 26,
-    padding: 24,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    gap: 16,
-  },
-
-  // Progress header
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  progressHeaderText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#444444',
-  },
-  progressPercent: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#4CAF50',
-  },
-  progressTrackWide: {
-    width: '100%',
-    height: 10,
-    backgroundColor: '#EEEEEE',
-    borderRadius: 5,
-    overflow: 'hidden',
-    marginTop: -8,
-  },
-  progressFillWide: {
-    backgroundColor: '#4CAF50',
-    height: '100%',
-    borderRadius: 5,
-  },
-
+  // ── Letters / Words cards ──────────────────────────────────────────────────
   pathRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 18,
+    width: '100%',
   },
 
   lettersCard: {
     flex: 1,
     backgroundColor: '#F1F8E9',
-    borderRadius: 22,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    minHeight: 190,
+    borderRadius: 26,
+    paddingVertical: 26,
+    paddingHorizontal: 18,
+    minHeight: 300,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     borderWidth: 2,
     borderColor: '#A5D6A7',
+    overflow: 'hidden',
+    position: 'relative',
     shadowColor: '#4CAF50',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 2,
   },
+  cardLandscapeSvg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '40%',
+  },
   modeIconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 82,
+    height: 82,
+    borderRadius: 41,
     backgroundColor: '#DCEDC8',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
   },
-  lettersTitle: {
-    fontSize: 22,
+  // "Aa" badge for the Letters card, in place of a generic text icon —
+  // matches the reference design directly.
+  aaIconText: {
+    fontSize: 34,
     fontWeight: '900',
     color: '#2E7D32',
+  },
+  lettersTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#2E7D32',
+    zIndex: 1,
   },
   modeSubLabel: {
     fontSize: 13,
     color: '#555555',
     fontWeight: '500',
+    zIndex: 1,
+  },
+  // The card's real, filled "Start Practice" button — a visual affordance
+  // only (the whole card is already the tap target), matching how clearly
+  // spelled-out, unambiguous actions help an ASD child know exactly what
+  // happens when they tap.
+  startBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 18,
+    paddingRight: 8,
+    paddingVertical: 8,
+    borderRadius: 24,
+    marginTop: 4,
+    zIndex: 1,
+  },
+  startBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  startBtnChevronWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   wordsCard: {
     flex: 1,
     backgroundColor: '#F3E5F5',
-    borderRadius: 22,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    minHeight: 190,
+    borderRadius: 26,
+    paddingVertical: 26,
+    paddingHorizontal: 18,
+    minHeight: 300,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     borderWidth: 2,
     borderColor: '#CE93D8',
+    overflow: 'hidden',
+    position: 'relative',
     shadowColor: '#7B1FA2',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.10,
@@ -845,32 +1138,101 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   wordsTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '900',
     color: '#7B1FA2',
-  },
-  progressLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  progressLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#7B1FA2',
-  },
-  footerNote: {
-    fontSize: 12,
-    color: '#AAAAAA',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginTop: -6,
+    zIndex: 1,
   },
 
+  // ── Side column: avatar + Your Progress panel ──────────────────────────────
+  sideColumn: {
+    width: 260,
+    gap: 18,
+  },
+  // Fills the vertical gap above the progress panel — roughly level with
+  // the hero section on the left, so the side column doesn't start empty.
+  // No border/background/shadow — just the image, no card frame around it.
+  sideAvatarCard: {
+    width: '100%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sideAvatarImg: {
+    width: '85%',
+    height: '85%',
+  },
+  // flex:1 (matching the left column's stretched height) turned out
+  // unreliable here — a flex-grow child inside a column whose own height
+  // is itself content-derived (no ancestor gives mainContent an explicit
+  // height) doesn't reliably get a definite size to grow into, and the
+  // ring/text ended up overflowing past the card's rounded edges. Sized to
+  // its own content instead, with generous padding so nothing is tight;
+  // height parity with the left side is now achieved via more generous
+  // spacing on the left (see mainColumn's gap) rather than stretching this
+  // card to fit. overflow:hidden is a safety net, not the real fix — it
+  // should never actually need to clip anything now.
+  progressPanel: {
+    width: '100%',
+    backgroundColor: '#FFFBF0',
+    borderRadius: 26,
+    borderWidth: 1.5,
+    paddingVertical: 26,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    gap: 6,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  progressPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  progressPanelTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#3A2E1F',
+  },
+  ringPercentText: {
+    position: 'absolute',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#3A2E1F',
+  },
+  progressPanelLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#3A2E1F',
+    marginTop: 10,
+  },
+  progressPanelNote: {
+    fontSize: 12,
+    color: '#8A7A5C',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  progressPanelStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 14,
+  },
+  progressPanelStatText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#555555',
+  },
   // ── Assessment Summary Modal ───────────────────────────────────────────────
   modalHeader: {
     flexDirection: 'row',
@@ -964,6 +1326,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333333',
   },
+  shapeScoreText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#666666',
+    marginRight: 4,
+  },
   badge: {
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -998,6 +1366,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     marginTop: 2,
+  },
+  overallNote: {
+    fontSize: 11,
+    color: '#999999',
+    marginTop: 3,
+  },
+  summaryLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 30,
+  },
+  summaryLoadingText: {
+    fontSize: 14,
+    color: '#888888',
   },
   emptyText: {
     fontSize: 14,

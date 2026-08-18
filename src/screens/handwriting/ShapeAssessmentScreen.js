@@ -17,8 +17,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
-import { computeDTW } from '../../utils/dtw';
-import { normalizeStrokesForDTW, normalizePointsForDTW } from '../../utils/dtwNormalization';
+// computeDTW / normalizeStrokesForDTW / normalizePointsForDTW previously
+// imported here directly for the zigzag/curve_wave-only DTW branch below;
+// that branch is now the shape-agnostic computeInvariantDtwDistance import
+// below, which delegates to dtw.js/dtwNormalization.js internally (see
+// unifiedShapeScoreMirror.js) — no longer imported directly in this file.
+import {
+  computeShapeTemplate, computeInvariantDtwDistance, computeUnifiedShapeScore,
+} from '../../utils/unifiedShapeScoreMirror';
 import {
   calculatePauseMetrics,
   calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
@@ -47,47 +53,51 @@ const AVATAR_MAP = {
   megatron: require('../../../assets/avatar-images/Megatron.png'),
 };
 
+// Instruction text — kept deliberately short (2-4 words), one idea per
+// line, same "Trace ___" opening word every time. Short + predictable
+// wording reduces reading/processing load for an ASD child, matching the
+// slowed-down pointer demo below.
 const SHAPES = [
   {
     id: 'horizontal_line',
     label: 'Draw a straight line',
-    instruction:   'Follow the dotted line from left to right',
-    instructionSi: 'වමේ සිට දකුණට තිත් රේඛාව අනුගමනය කරන්න',
+    instruction:   'Trace left to right',
+    instructionSi: 'වමේ සිට දකුණට අඳින්න',
     pageLabel: 'Assessment 1 of 6',
   },
   {
     id: 'vertical_line',
     label: 'Draw a straight line down',
-    instruction:   'Follow the dotted line from top to bottom',
-    instructionSi: 'ඉහළ සිට පහළට තිත් රේඛාව අනුගමනය කරන්න',
+    instruction:   'Trace top to bottom',
+    instructionSi: 'ඉහළ සිට පහළට අඳින්න',
     pageLabel: 'Assessment 2 of 6',
   },
   {
     id: 'full_circle',
     label: 'Draw a full circle',
-    instruction:   'Trace around the full dotted circle',
-    instructionSi: 'තිත් වෘත්තය වටා ඉර අඳින්න',
+    instruction:   'Trace the circle',
+    instructionSi: 'වෘත්තය අඳින්න',
     pageLabel: 'Assessment 3 of 6',
   },
   {
     id: 'half_circle',
     label: 'Draw a half circle',
-    instruction:   'Trace the curved line from left to right',
-    instructionSi: 'වමේ සිට දකුණට වක්‍ර රේඛාව අනුගමනය කරන්න',
+    instruction:   'Trace the curve',
+    instructionSi: 'වක්‍රය අඳින්න',
     pageLabel: 'Assessment 4 of 6',
   },
   {
     id: 'zigzag',
     label: 'Draw the zigzag pattern',
-    instruction:   'Follow the zigzag line from left to right',
-    instructionSi: 'වමේ සිට දකුණට සිග්සැග් රේඛාව අනුගමනය කරන්න',
+    instruction:   'Trace the zigzag',
+    instructionSi: 'සිග්සැග් රේඛාව අඳින්න',
     pageLabel: 'Assessment 5 of 6',
   },
   {
     id: 'curve_wave',
     label: 'Draw the wave',
-    instruction:   'Follow the wavy line from left to right',
-    instructionSi: 'වමේ සිට දකුණට රැළි රේඛාව අනුගමනය කරන්න',
+    instruction:   'Trace the wave',
+    instructionSi: 'රැළි රේඛාව අඳින්න',
     pageLabel: 'Assessment 6 of 6',
   },
 ];
@@ -112,81 +122,13 @@ const SHAPE_AUDIO = {
 };
 
 // ─── Animated pointer path sampling ───────────────────────────────────────────
-
+// computePathPoints moved to utils/unifiedShapeScoreMirror.js as
+// computeShapeTemplate(shapeId, canvasWidth, canvasHeight) — same geometry,
+// now also the template the unified motor score is computed against, so the
+// pointer guide and the score can never drift apart. Local wrapper below
+// keeps every existing call site in this file unchanged.
 function computePathPoints(shapeId) {
-  const cx = CANVAS_CX;
-  const cy = CANVAS_CY;
-  const pts = [];
-
-  if (shapeId === 'horizontal_line') {
-    for (let i = 0; i <= N_POINTS; i++) {
-      const t = i / N_POINTS;
-      pts.push({ x: cx - 200 + t * 400, y: cy });
-    }
-
-  } else if (shapeId === 'vertical_line') {
-    for (let i = 0; i <= N_POINTS; i++) {
-      const t = i / N_POINTS;
-      pts.push({ x: cx, y: cy - 150 + t * 300 });
-    }
-
-  } else if (shapeId === 'full_circle') {
-    const r = 120;
-    for (let i = 0; i <= N_POINTS; i++) {
-      const angle = -Math.PI / 2 + (i / N_POINTS) * 2 * Math.PI;
-      pts.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
-    }
-
-  } else if (shapeId === 'half_circle') {
-    const r = 150;
-    for (let i = 0; i <= N_POINTS; i++) {
-      const angle = Math.PI + (i / N_POINTS) * Math.PI;
-      pts.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
-    }
-
-  } else if (shapeId === 'zigzag') {
-    const nodes = [
-      { x: cx - 180, y: cy + 40 },
-      { x: cx - 120, y: cy - 40 },
-      { x: cx - 60,  y: cy + 40 },
-      { x: cx,       y: cy - 40 },
-      { x: cx + 60,  y: cy + 40 },
-      { x: cx + 120, y: cy - 40 },
-      { x: cx + 180, y: cy + 40 },
-    ];
-    const segs   = nodes.length - 1;
-    const perSeg = Math.floor(N_POINTS / segs);
-    for (let s = 0; s < segs; s++) {
-      const from  = nodes[s];
-      const to    = nodes[s + 1];
-      const count = s === segs - 1 ? N_POINTS - s * perSeg + 1 : perSeg;
-      for (let i = 0; i < count; i++) {
-        const t = i / (count > 1 ? count - 1 : 1);
-        pts.push({ x: from.x + t * (to.x - from.x), y: from.y + t * (to.y - from.y) });
-      }
-    }
-
-  } else if (shapeId === 'curve_wave') {
-    const segs = [
-      { p0: { x: cx - 180, y: cy }, p1: { x: cx - 120, y: cy - 60 }, p2: { x: cx - 60, y: cy } },
-      { p0: { x: cx - 60,  y: cy }, p1: { x: cx,       y: cy + 60 }, p2: { x: cx + 60, y: cy } },
-      { p0: { x: cx + 60,  y: cy }, p1: { x: cx + 120, y: cy - 60 }, p2: { x: cx + 180, y: cy } },
-    ];
-    const perSeg = Math.floor(N_POINTS / 3);
-    for (let s = 0; s < 3; s++) {
-      const { p0, p1, p2 } = segs[s];
-      const count = s === 2 ? N_POINTS - s * perSeg + 1 : perSeg;
-      for (let i = 0; i < count; i++) {
-        const t = i / (count > 1 ? count - 1 : 1);
-        pts.push({
-          x: (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x,
-          y: (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y,
-        });
-      }
-    }
-  }
-
-  return pts;
+  return computeShapeTemplate(shapeId, CANVAS_WIDTH, CANVAS_HEIGHT);
 }
 
 // ─── Feature calculation ───────────────────────────────────────────────────────
@@ -202,6 +144,7 @@ function calculateFeatures(paths, shapeId) {
   if (allPoints.length < 2) {
     return {
       duration_ms: 0, total_distance: 0, avg_speed: 0, smoothness: 0, pause_count: 0, accuracy: null, dtw_distance: null,
+      motor_score: null, dtw_score: null, smoothness_score: null,
       attempt_duration_ms: null, attempt_avg_speed: null, attempt_pause_frequency: null, attempt_pause_duration_ratio: null,
     };
   }
@@ -242,8 +185,11 @@ function calculateFeatures(paths, shapeId) {
 
   const cx = CANVAS_CX;
   const cy = CANVAS_CY;
+  // accuracy: diagnostic-only from here on (see unified motor score below).
+  // Kept exactly as before, still computed only for the 4 line/circle
+  // shapes — it no longer feeds any score, but is cheap and still useful
+  // for debugging/inspection.
   let accuracy = null;
-  let dtw_distance = null;
 
   if (shapeId === 'horizontal_line') {
     accuracy = allPoints.reduce((s, p) => s + Math.abs(p.y - cy), 0) / allPoints.length;
@@ -259,21 +205,15 @@ function calculateFeatures(paths, shapeId) {
     accuracy = allPoints.reduce((s, p) => {
       return s + Math.abs(Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2) - r);
     }, 0) / allPoints.length;
-  } else if (shapeId === 'zigzag' || shapeId === 'curve_wave') {
-    // dtw_norm_v1: translate + scale both paths to their own 100-unit
-    // bounding box before DTW so device/canvas size and drawing the shape
-    // larger/smaller/shifted don't skew dtw_distance (see dtwNormalization.js).
-    // Stroke boundaries (pen-lifts within one shape attempt) are preserved
-    // through normalization even though DTW itself compares the
-    // concatenated point sequence, matching the existing single-sequence
-    // DTW call below.
-    const template = computePathPoints(shapeId);
-    const normTemplate = normalizePointsForDTW(template);
-    const normChildStrokes = normalizeStrokesForDTW(paths);
-    const childPts = normChildStrokes.flat().map(p => ({ x: p.x, y: p.y }));
-    const result = computeDTW(childPts, normTemplate);
-    dtw_distance = result.normalizedDistance;
   }
+
+  // dtw_distance: now computed for ALL SIX shapes (previously zigzag/
+  // curve_wave only), via the direction- and (full_circle only)
+  // start-point-invariant DTW in utils/unifiedShapeScoreMirror.js. This is
+  // what motor_score below is actually derived from; accuracy above no
+  // longer feeds it.
+  const dtw_distance = computeInvariantDtwDistance(allPoints, shapeId, CANVAS_WIDTH, CANVAS_HEIGHT);
+  const { motor_score, dtw_score, smoothness_score } = computeUnifiedShapeScore(dtw_distance, smoothness);
 
   // ML-safe duration pass — reuses the canonical pause metrics purely to get
   // total_pause_duration_ms (this shape function's own `pause_count` above,
@@ -286,6 +226,7 @@ function calculateFeatures(paths, shapeId) {
 
   return {
     duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy, dtw_distance,
+    motor_score, dtw_score, smoothness_score,
     attempt_duration_ms: attemptDurationMs,
     attempt_avg_speed: attemptAvgSpeed,
     attempt_pause_frequency,
@@ -467,12 +408,19 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     animValue.setValue(0);
     pulseAnim.setValue(0);
 
+    // Slowed down (was 2500ms) + a short rest at the finished shape before
+    // looping back to the start, so the demo reads as a calm, predictable
+    // "trace, then pause" rhythm rather than a fast, continuous loop —
+    // easier for an ASD child to visually follow and anticipate.
     const pointerLoop = Animated.loop(
-      Animated.timing(animValue, {
-        toValue: 1,
-        duration: 2500,
-        useNativeDriver: false,
-      })
+      Animated.sequence([
+        Animated.timing(animValue, {
+          toValue: 1,
+          duration: 6000,
+          useNativeDriver: false,
+        }),
+        Animated.delay(700),
+      ])
     );
     pointerLoop.start();
 
@@ -595,12 +543,17 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     if (__DEV__ && (shapeId === 'zigzag' || shapeId === 'curve_wave')) {
       // Developer-only export — full raw/normalized paths for offline
       // inspection. Never sent to the backend, never used for scoring.
-      console.log('[DTW debug export]', buildDtwDebugExport({
+      // JSON.stringify (not the raw object) — console.log's default
+      // object-inspection depth truncates normalized_child_path (an array
+      // of strokes of points, one level deeper than
+      // normalized_template_path) to "[Object]"; stringifying bypasses
+      // that depth limit entirely.
+      console.log('[DTW debug export]', JSON.stringify(buildDtwDebugExport({
         childStrokes:   allPathsRef.current,
         templatePoints: computePathPoints(shapeId),
         dtwResult:      { normalizedDistance: shapeData.features.dtw_distance, strokeOrderMeta: null },
         qualityScore:   null,
-      }));
+      })));
     }
 
     const updated = [...completedShapesRef.current, shapeData];
@@ -691,10 +644,6 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
                 {currentShape.pageLabel}
               </Text>
             </View>
-
-            <Text style={[styles.shapeTitle, { color: theme.headingText }]}>
-              {currentShape.label}
-            </Text>
 
             <View style={[styles.instructionCard, { borderLeftColor: theme.button }]}>
               <View style={styles.instructionInner}>
@@ -911,12 +860,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  shapeTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
 
   successBadge: {
     flexDirection: 'row',
@@ -937,8 +880,8 @@ const styles = StyleSheet.create({
   instructionCard: {
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 22,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     borderLeftWidth: 4,
     width: '100%',
     maxWidth: 520,
@@ -960,16 +903,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   instructionEn: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#444444',
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#333333',
     textAlign: 'center',
+    lineHeight: 30,
   },
   instructionSi: {
-    fontSize: 15,
+    fontSize: 19,
+    fontWeight: '600',
     color: '#7B7B9E',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 26,
   },
   speakerBtn: {
     width: 48,

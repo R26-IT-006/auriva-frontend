@@ -1,0 +1,64 @@
+/**
+ * motorBaseline.js
+ *
+ * Initial Motor Assessment scoring/consistency fix — fetch wrapper for
+ * Feature 1's persisted baseline (GET /handwriting/motor-baseline/:studentId).
+ * Mirrors this project's established "thin, impure fetch wrapper + pure
+ * normalization + never throws" contract (see familyThresholds.js,
+ * supportRecommendation.js).
+ *
+ * Used by LetterHomeScreen.js's "Assessment Summary" modal as the fallback
+ * authoritative source when the in-memory `assessmentData` route param from
+ * the just-completed session is unavailable (e.g. the teacher re-opens the
+ * summary in a later app session, or reached LetterHome via "Skip
+ * Assessment") — so a later visit shows the SAME persisted result instead
+ * of an empty state, closing the two-screens-disagree gap for the
+ * "immediate vs later" case as well as the "same session" case.
+ */
+
+'use strict';
+
+import client from '../api/client';
+import { ENDPOINTS } from '../constants/api';
+
+const FAILSAFE = Object.freeze({ status: 'read_failed', baseline: null });
+
+/**
+ * @param {*} data — response.data, or undefined/null.
+ * @returns {{status: 'found'|'baseline_not_found'|'read_failed', baseline: {straight:number,curved:number,complex:number,overall:number}|null}}
+ */
+export function normalizeMotorBaselineResponse(data) {
+  if (!data || typeof data !== 'object') return { ...FAILSAFE };
+  if (data.status === 'baseline_not_found') return { status: 'baseline_not_found', baseline: null };
+  if (data.status !== 'found' || !data.baseline || typeof data.baseline.scores !== 'object') {
+    return { ...FAILSAFE };
+  }
+
+  const { straight, curved, complex, overall } = data.baseline.scores;
+  const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+  if (![straight, curved, complex, overall].every(isNum)) return { ...FAILSAFE };
+
+  return { status: 'found', baseline: { straight, curved, complex, overall } };
+}
+
+/**
+ * Fetches the student's persisted Feature 1 baseline. Never throws — every
+ * failure mode resolves to `read_failed`, the same shape the caller already
+ * handles for "no baseline recorded yet" (`baseline_not_found`), so the UI
+ * needs only one graceful fallback branch.
+ *
+ * @param {{studentId: number}} params
+ * @returns {Promise<ReturnType<typeof normalizeMotorBaselineResponse>>}
+ */
+export async function fetchMotorBaseline({ studentId } = {}) {
+  try {
+    const response = await client.get(ENDPOINTS.MOTOR_BASELINE(studentId));
+    return normalizeMotorBaselineResponse(response?.data);
+  } catch (err) {
+    if (err?.response?.status === 404) return { status: 'baseline_not_found', baseline: null };
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log('[motorBaseline] fetch failed — treating as read_failed:', err?.message ?? err);
+    }
+    return { ...FAILSAFE };
+  }
+}

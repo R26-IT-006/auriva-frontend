@@ -71,8 +71,9 @@ export async function attemptFinalization({ studentId, assessmentId, motorScore,
   // assessmentId can be null when the earlier POST /handwriting/assessment
   // failed (see ShapeAssessmentScreen's submitAssessment try/catch) — a
   // separate, pre-existing upstream reliability gap, out of scope here.
-  // motorScore can be null when computeMotorComfortScore() had no shape data
-  // to work with. Either way, there is nothing replayable to persist.
+  // motorScore can be null when AssessmentCompleteScreen had no shape data
+  // to average a motor_score from. Either way, there is nothing replayable
+  // to persist.
   if (!assessmentId || motorScore == null) {
     console.warn('Skipping finalize: no assessmentId or motorScore available (see upstream assessment-submission reliability gap)');
     return { status: 'skipped' };

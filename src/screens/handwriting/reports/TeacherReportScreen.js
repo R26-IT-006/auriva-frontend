@@ -44,6 +44,13 @@ import {
 // list. Wrapped below by a small ActivityPreviewSection for expand/collapse,
 // mirroring WhyPanel's own established interaction pattern.
 import ActivityPreview from '../../../components/handwriting/ActivityPreview';
+// Feature 9 repair (final integration audit finding) — one action_id per
+// Confirm/Not-suitable button press, the sole idempotency key the backend
+// now uses (see teacherRecommendationValidationService.js's own module
+// header). Zero-dependency, already used elsewhere in this codebase for the
+// same "one UUID per user action" pattern (collectionSession.js,
+// preWritingSessionGuard.js) — no new dependency added.
+import { generateUuidV4 } from '../../../utils/uuid';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -1070,8 +1077,17 @@ function TeacherReviewSection({ studentId, caseType, family, recommendationFinge
     setSaving(true);
     setSubmitMessage(null);
 
+    // Feature 9 repair — generated exactly ONCE per button press, right
+    // here at the user-gesture boundary, never inside the submit helper
+    // below. Any transport-level retry of this same request (client.js's
+    // response interceptor) resends the identical body — including this
+    // same actionId — so the backend still sees it as one action; a
+    // second, later button press always calls this handler again and
+    // gets a fresh actionId here.
+    const actionId = generateUuidV4();
+
     const result = await submitTeacherRecommendationValidation({
-      studentId, caseType, family, validation, teacherNote: note, recommendationFingerprint,
+      studentId, caseType, family, validation, teacherNote: note, recommendationFingerprint, actionId,
     });
 
     if (!mountedRef.current) return;

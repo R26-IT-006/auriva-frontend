@@ -128,7 +128,27 @@ function buildScoreMap(assessmentData) {
 
   for (const shape of assessmentData) {
     if (shape?.shapeId && shape?.features) {
-      map[shape.shapeId] = featuresToScore(shape.features);
+      // Shape-assessment scoring path: reads the unified motor_score
+      // calculateFeatures() (ShapeAssessmentScreen.js) already computed via
+      // utils/unifiedShapeScoreMirror.js, rather than calling
+      // featuresToScore() below. featuresToScore itself is UNCHANGED and
+      // still used as-is by letters/words/uppercase/pre-writing — this is
+      // a narrower, shape-assessment-only substitution, not a retirement
+      // of featuresToScore().
+      //
+      // Unlike the display-facing ?? 50 fallbacks removed elsewhere (which
+      // could silently show a fabricated score to a teacher), this map
+      // feeds calculateMotorProfile's family-averaging arithmetic directly
+      // below — it structurally needs a number for every key, it can't
+      // leave a hole the way a "Not available" badge can. This path only
+      // ever runs on freshly-computed, same-session data (calculateFeatures
+      // always sets motor_score), so motor_score should never actually be
+      // missing here; if it is, that's a real bug, not stale historical
+      // data — so this warns loudly rather than substituting silently.
+      if (shape.features.motor_score == null) {
+        console.warn(`buildScoreMap: motor_score missing for shape "${shape.shapeId}" in a live assessment — falling back to neutral 50, but this should never happen (calculateFeatures() always sets it).`);
+      }
+      map[shape.shapeId] = shape.features.motor_score ?? 50;
     }
   }
   return map;
