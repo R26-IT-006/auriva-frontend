@@ -105,6 +105,8 @@ export default function WordProgressScreen({ route, navigation }) {
             style={[styles.backBtn, { backgroundColor: theme.button + '18' }]}
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="chevron-back" size={22} color={theme.headingText} />
           </TouchableOpacity>

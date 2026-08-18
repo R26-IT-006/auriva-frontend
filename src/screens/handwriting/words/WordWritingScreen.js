@@ -739,6 +739,15 @@ export default function WordWritingScreen({ route, navigation }) {
           </View>
         )}
 
+        {/* â”€â”€ Child layout-feedback pill â”€â”€ shown only after an authoritative
+            backend save that returned a size/spacing advisory; auto-dismisses
+            and never blocks/represents pass-fail (see handleNext). */}
+        {childFeedbackText && (
+          <View style={styles.layoutFeedbackPill} accessibilityRole="text">
+            <Text style={styles.layoutFeedbackText}>{childFeedbackText}</Text>
+          </View>
+        )}
+
         {/* â”€â”€ Buttons â”€â”€ */}
         {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', textAlign:'center' }}>{saveError}</Text>}
         <View style={styles.buttonsRow}>
@@ -746,6 +755,8 @@ export default function WordWritingScreen({ route, navigation }) {
             style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
             onPress={resetCanvas}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Clear the canvas"
           >
             <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
           </TouchableOpacity>
@@ -811,7 +822,13 @@ function WordVideoModal({ videoSource, theme, onDismiss }) {
 
   return (
     <Modal visible animationType="fade" statusBarTranslucent>
-      <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onDismiss}>
+      <TouchableOpacity
+        style={{ flex: 1 }}
+        activeOpacity={1}
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Close video"
+      >
         <LinearGradient
           colors={theme.backgroundGradient}
           style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
@@ -984,6 +1001,18 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   feedbackText: { fontSize: 13, fontWeight: '700' },
+
+  // â”€â”€ Child layout-feedback pill â”€â”€ deliberately neutral/calm (not a
+  // pass/fail colour, not red/green) — an advisory, not a verdict.
+  layoutFeedbackPill: {
+    alignSelf: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 5,
+    borderRadius: 50,
+    marginBottom: 4,
+    backgroundColor: '#F1EFFA',
+  },
+  layoutFeedbackText: { fontSize: 12, fontWeight: '600', color: '#5B5470', textAlign: 'center' },
 
   // â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buttonsRow: {

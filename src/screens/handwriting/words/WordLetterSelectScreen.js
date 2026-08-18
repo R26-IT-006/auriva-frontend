@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
-import { getAllWordProgress } from '../../../utils/storage';
+import { fetchWordProgress } from '../../../utils/wordApi';
 import { buildWordRouteParams, getSelectedWords } from '../../../utils/wordWorkflow';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -80,12 +80,25 @@ export default function WordLetterSelectScreen({ route, navigation }) {
     return () => pulseLoop.current?.stop();
   }, []);
 
-  // Reload progress whenever screen comes into focus
+  // Reload progress whenever screen comes into focus — server-backed
+  // (final-completion-pass fix, section 24/37: this previously read a local
+  // AsyncStorage snapshot via getAllWordProgress(student?.sid ?? 0), which
+  // both used the `?? 0` cross-student-unsafe fallback this task explicitly
+  // flags and could drift from the real per-student progress across devices
+  // or a cleared app cache. Matches WordProgressScreen's own established
+  // fetchWordProgress + try/catch pattern.
   useFocusEffect(
     useCallback(() => {
-      getAllWordProgress(student?.sid ?? 0).then(data => {
-        setWordProgress(data ?? {});
-      });
+      let active = true;
+      (async () => {
+        try {
+          const authoritative = await fetchWordProgress(student);
+          if (active) setWordProgress(authoritative ?? {});
+        } catch {
+          if (active) setWordProgress({});
+        }
+      })();
+      return () => { active = false; };
     }, [student?.sid])
   );
 

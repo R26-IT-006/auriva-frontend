@@ -1,18 +1,27 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, PanResponder } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, PanResponder, Dimensions } from 'react-native';
 import Svg, { Line, Circle, Polyline, Path, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import WordImageDisplay from './WordImageDisplay';
 import { buildWordGuide, wordGuideToSvgPath, wordGuideGhostDots, buildWordLetterBoxes } from '../../constants/wordPaths';
 import { evaluateWordAttempt } from '../../utils/wordScoring';
 import { submitWordAttempt, newActionId } from '../../utils/wordApi';
+import { childFeedbackMessage } from '../../utils/wordFeedback';
+import { computeExerciseECanvasSize } from '../../utils/wordExerciseECanvas';
 
-// Image column shrunk / canvas widened vs. the original 230/430 split — a
-// whole word needs more horizontal room than the small illustration does.
-const CANVAS_W = 490;
-const CANVAS_H = 220;
-const LINE_1 = 22;
-const LINE_2 = 82;
+// Responsive canvas (final-completion-pass fix) — was a fixed ~490×220,
+// which could clip on a small phone or leave excessive empty width on a
+// tablet. The actual sizing math lives in wordExerciseECanvas.js (a pure,
+// unit-tested helper — see wordExerciseECanvas.test.js) so it stays covered
+// without needing a React Native rendering harness. This SAME CANVAS_W/
+// CANVAS_H feeds the guide path, the guide boxes, the PanResponder's touch
+// coordinates (locationX/Y are already canvas-relative), and the submitted
+// payload below — one transform, one coordinate system, matching
+// WordWritingScreen's own module-level sizing.
+const { width: SCREEN_W } = Dimensions.get('window');
+const { width: CANVAS_W, height: CANVAS_H } = computeExerciseECanvasSize(SCREEN_W);
+const LINE_1 = Math.round(CANVAS_H * 0.10);
+const LINE_2 = Math.round(CANVAS_H * 0.37);
 // Baseline/descender match the LETTER_PATHS fy=0.64/0.92 convention so the
 // reference-path guide sits exactly on these ruling lines (see WordWritingScreen).
 const LINE_3 = Math.round(CANVAS_H * 0.64);
@@ -73,6 +82,18 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
           return [];
         });
       },
+      // Gesture-cancellation audit — finalize an interrupted stroke exactly
+      // like a normal release (same "keep if usable, discard if too short"
+      // rule as onPanResponderRelease / WordWritingScreen / LetterWritingScreen)
+      // instead of leaving a dangling currentPath.
+      onPanResponderTerminate: () => {
+        setCurrentPath(prev => {
+          if (prev.length > 2) {
+            setAllPaths(paths => [...paths, prev]);
+          }
+          return [];
+        });
+      },
     })
   ).current;
 
@@ -89,7 +110,10 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
     actionIdRef.current ||= newActionId();
     try {
       const authoritative = await submitWordAttempt({student,actionId:actionIdRef.current,word,stage:'practice_exercise_e',strokes:allPaths,canvas_width:CANVAS_W,canvas_height:CANVAS_H});
-      const nextResult={score:authoritative.score,passed:authoritative.passed,completed:authoritative.completion_passed};setResult(nextResult);
+      // childFeedback/layoutMessage are advisory only — see wordFeedback.js
+      // and section 5 of the completion-pass task: never read anywhere that
+      // decides authoritative.passed above.
+      const nextResult={score:authoritative.score,passed:authoritative.passed,completed:authoritative.completion_passed,layoutMessage:childFeedbackMessage(authoritative.child_feedback)};setResult(nextResult);
       if (!authoritative.passed) { actionIdRef.current=null; return; }
       setDone(true); setTimeout(() => onComplete(true), 500);
     } catch { setSaveError('Could not save yet. Check the connection and try again.'); }
@@ -112,6 +136,8 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
         <View
           style={[styles.canvasCard, { borderColor: theme.button + '32' }]}
           {...panResponder.panHandlers}
+          accessible
+          accessibilityLabel="Word handwriting practice area"
         >
           <Svg width={CANVAS_W} height={CANVAS_H}>
             <Line x1="0" y1={LINE_1} x2={CANVAS_W} y2={LINE_1} stroke="#9BC4E8" strokeWidth="1.5" />
@@ -197,7 +223,16 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
           {result && !result.passed && (
             <Text accessibilityRole="alert" style={styles.retryText}>
               {result.completed ? `Score ${result.score}/100 — try once more` : 'Finish every letter, then try Done again'}
+              {/* Layout advisory shown alongside retry feedback (section 4)
+                  only when the word was actually complete — an incomplete
+                  word has no meaningful size/spacing metrics to advise on. */}
+              {result.completed && result.layoutMessage ? `\n${result.layoutMessage}` : ''}
             </Text>
+          )}
+          {/* Passed + a layout advisory — optional, brief, neutral; never a
+              pass criterion (the checkmark/onComplete above already fired). */}
+          {result && result.passed && result.layoutMessage && (
+            <Text style={styles.layoutHintText}>{result.layoutMessage}</Text>
           )}
           {saveError && <Text accessibilityRole="alert" style={styles.retryText}>{saveError}</Text>}
           <TouchableOpacity
@@ -205,6 +240,8 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
             onPress={handleClear}
             activeOpacity={0.72}
             disabled={done}
+            accessibilityRole="button"
+            accessibilityLabel="Clear the canvas"
           >
             <Ionicons name="refresh" size={16} color={theme.headingText} />
             <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
@@ -218,6 +255,8 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
             onPress={handleDone}
             activeOpacity={0.82}
             disabled={!hasDrawn || done || submitting}
+            accessibilityRole="button"
+            accessibilityLabel="Submit this word attempt"
           >
             <Text style={[styles.doneText, { color: hasDrawn ? theme.buttonText : '#7B8190' }]}>
               {submitting ? 'Saving…' : 'Done'}
@@ -310,4 +349,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   retryText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', maxWidth: 210, textAlign: 'center' },
+  // Neutral (not red/error-styled) — an advisory, not a failure message.
+  layoutHintText: { color: '#5B5470', fontSize: 12, fontWeight: '600', maxWidth: 220, textAlign: 'center' },
 });

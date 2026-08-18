@@ -617,6 +617,21 @@ export default function TeacherReportScreen({ route, navigation }) {
               )}
             </SectionCard>
 
+            {/* ══ 6b. Word Writing Performance (final-completion-pass task) ══
+                Read-only detail: per-word writing score + letter-size/
+                spacing consistency labels, sourced from the backend's own
+                word-report (report.wordWritingHistory.words) — nothing
+                recomputed here, no raw DTW/CV/gap-ratio numbers shown. */}
+            <SectionCard title="Word Writing Performance" icon="create" accentColor="#0891B2">
+              {report.wordWritingHistory?.words?.length > 0 ? (
+                report.wordWritingHistory.words.map(w => (
+                  <WordWritingRow key={w.word} data={w} />
+                ))
+              ) : (
+                <Empty message="No word-writing attempts yet" />
+              )}
+            </SectionCard>
+
             {/* ══ 7. Learning Progress ════════════════════════════════════ */}
             <SectionCard title="Learning Progress" icon="trending-up" accentColor="#0284C7">
               {report.progressIndicators.length > 0 ? (
@@ -908,6 +923,67 @@ const wl = StyleSheet.create({
   exChip:       { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
   exLabel:      { fontSize: 10, fontWeight: '800' },
   stars:        { flexDirection: 'row', gap: 1 },
+});
+
+// ─── Word Writing Performance (final-completion-pass task, section 22) ────────
+// Small, read-only detail card for the backend's per-word writing scores —
+// latest_score/best_score/attempt_count/passed/last_practised plus the
+// letter_size/letter_spacing consistency LABELS (never the raw DTW distance,
+// CV, or gap-ratio numbers those labels are derived from — see
+// wordLayoutService.js's scoreToConsistencyLabel on the backend). Distinct
+// from the "Word Activities" card above, which shows A–D/E exercise
+// completion, not the writing/tracing SCORE itself.
+
+function layoutConsistencyToken(value) {
+  if (value === 'Consistent')      return T.good;
+  if (value === 'Some variation')  return T.moderate;
+  if (value === 'High variation')  return T.needs;
+  // null from the backend (no layout data yet for this word, e.g. a
+  // historical attempt predating this metric) — a neutral, non-judgemental
+  // "not enough data" state, never a guessed label.
+  return { bg: '#F1F5F9', border: '#E2E8F0', text: TEXT_3, dot: '#CBD5E1' };
+}
+
+function LayoutConsistencyPill({ label, value }) {
+  const t = layoutConsistencyToken(value);
+  return (
+    <View style={[wwp.metricPill, { backgroundColor: t.bg, borderColor: t.border }]}>
+      <Text style={[wwp.metricLabel, { color: t.text }]}>{label}: {value ?? 'Not enough writing data'}</Text>
+    </View>
+  );
+}
+
+function WordWritingRow({ data }) {
+  return (
+    <View style={wwp.row}>
+      <View style={wwp.topLine}>
+        <Text style={wwp.word}>{data.word}</Text>
+        <Pill label={data.passed ? 'Passed' : 'In progress'} status={data.passed ? 'good' : 'moderate'} />
+      </View>
+      <View style={wwp.scoreLine}>
+        <Text style={wwp.metaText}>Latest score {data.latest_score}</Text>
+        <Text style={wwp.metaText}>·</Text>
+        <Text style={wwp.metaText}>Best {data.best_score}</Text>
+        <Text style={wwp.metaText}>·</Text>
+        <Text style={wwp.metaText}>{data.attempt_count} attempt{data.attempt_count !== 1 ? 's' : ''}</Text>
+      </View>
+      <View style={wwp.metricsRow}>
+        <LayoutConsistencyPill label="Letter size" value={data.letter_size} />
+        <LayoutConsistencyPill label="Spacing" value={data.letter_spacing} />
+      </View>
+    </View>
+  );
+}
+
+const wwp = StyleSheet.create({
+  row:         { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 6 },
+  topLine:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  word:        { fontSize: 14, fontWeight: '800', color: TEXT_1, textTransform: 'capitalize' },
+  scoreLine:   { flexDirection: 'row', gap: 5 },
+  metaText:    { fontSize: 11, color: TEXT_3, fontWeight: '500' },
+  metricsRow:  { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  metricPill:  { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20, borderWidth: 1.5 },
+  metricLabel: { fontSize: 10, fontWeight: '700' },
 });
 
 function RecommendationCard({ rec }) {
