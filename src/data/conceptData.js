@@ -122,7 +122,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'pineapple',
         label:    'Pineapple',
-        labelSi:  'අනන්නාස්',
+        labelSi:  'අන්නාස්',
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/pineapple.png'),
         real:     require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_IO.png'),
@@ -152,7 +152,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'baker',
         label:    'Baker',
-        labelSi:  'බේකරය',
+        labelSi:  'බේකර්',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/baker.png'),
         real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/baker.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Baker/Baker_Coloring.png'),
@@ -224,7 +224,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:        'ant',
         label:      'Ant',
-        labelSi:    'කුහුඹුවා',
+        labelSi:    'කූඹියා',
         icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/ant.png'),
         real:       require('../../assets/concepts/categories/Animals/Ant/Ant_Real.png'),
         tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Ant.mp4'),
@@ -260,7 +260,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:     'caterpillar',
         label:   'Caterpillar',
-        labelSi: 'ගෙරි පණුවා',
+        labelSi: 'දලඹුවා',
         icon: require('../../assets/concepts/categories/Animals/Animals_Icons/caterpillar.png'),
         real: require('../../assets/concepts/categories/Animals/Animals_Icons/caterpillar.png'),
       },
@@ -285,7 +285,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:        'crow',
         label:      'Crow',
-        labelSi:    'කාකයා',
+        labelSi:    'කපුටා',
         icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/crow.png'),
         real:       require('../../assets/concepts/categories/Animals/Crow/Crow_Real.png'),
         tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Crow.mp4'),
@@ -348,7 +348,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:        'owl',
         label:      'Owl',
-        labelSi:    'බාලකාවා',
+        labelSi:    'බකමූනා',
         icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/owl.png'),
         real:       require('../../assets/concepts/categories/Animals/Owl/Owl_Real.png'),
         tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Owl.mp4'),
@@ -357,7 +357,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:        'parrot',
         label:      'Parrot',
-        labelSi:    'ගිරාවා',
+        labelSi:    'ගිරවා',
         icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/parrot.png'),
         real:       require('../../assets/concepts/categories/Animals/Parrot/Parrot_Real.png'),
         tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Parrot.mp4'),
@@ -402,7 +402,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:        'tiger',
         label:      'Tiger',
-        labelSi:    'ව්‍යාඝ්‍රයා',
+        labelSi:    'කොටියා',
         icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/tiger.png'),
         real:       require('../../assets/concepts/categories/Animals/Tiger/Toger_Real.png'),
         tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Tiger.mp4'),
@@ -426,7 +426,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:     'roof',
         label:   'Roof',
-        labelSi: 'වහල',
+        labelSi: 'වහලය',
         icon: require('../../assets/concepts/categories/House Parts/House_Icons/roof.png'),
         real: require('../../assets/concepts/categories/House Parts/House_Icons/roof.png'),
       },
@@ -440,7 +440,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:     'windows',
         label:   'Windows',
-        labelSi: 'ජනේල',
+        labelSi: 'කවුළුව',
         plural:  true,
         icon: require('../../assets/concepts/categories/House Parts/House_Icons/windows.png'),
         real: require('../../assets/concepts/categories/House Parts/House_Icons/windows.png'),
@@ -656,7 +656,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'brush',
         label:    'Brush',
-        labelSi:  'බ්‍රෂය',
+        labelSi:  'බුරුසුව',
         icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/brush.png'),
         real:     require('../../assets/concepts/categories/Household Items/Household_Icons/brush.png'),
         coloring: require('../../assets/concepts/categories/Household Items/Brush/Brush_Coloring.png'),
@@ -664,7 +664,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'comb',
         label:    'Comb',
-        labelSi:  'කෙස් තෙලියා',
+        labelSi:  'පනාව',
         icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/comb.png'),
         real:     require('../../assets/concepts/categories/Household Items/Household_Icons/comb.png'),
         coloring: require('../../assets/concepts/categories/Household Items/Comb/Comb_Coloring.png'),
@@ -704,7 +704,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'mug',
         label:    'Mug',
-        labelSi:  'මගය',
+        labelSi:  'ජෝගුව',
         icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/mug.png'),
         real:     require('../../assets/concepts/categories/Household Items/Household_Icons/mug.png'),
         coloring: require('../../assets/concepts/categories/Household Items/Mug/Mug_Coloring.png'),
@@ -712,7 +712,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'pillows',
         label:    'Pillows',
-        labelSi:  'කොට්ට',
+        labelSi:  'කොට්ටය',
         plural:   true,
         icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/pillows.png'),
         real:     require('../../assets/concepts/categories/Household Items/Household_Icons/pillows.png'),
@@ -721,7 +721,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'plate',
         label:    'Plate',
-        labelSi:  'තැටිය',
+        labelSi:  'පිඟාන',
         icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/plate.png'),
         real:     require('../../assets/concepts/categories/Household Items/Household_Icons/plate.png'),
         coloring: require('../../assets/concepts/categories/Household Items/Plate/Plate_Coloring.png'),
@@ -745,7 +745,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'toothbrush',
         label:    'Toothbrush',
-        labelSi:  'දත් බ්‍රෂය',
+        labelSi:  'දත් බුරුසුව',
         icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/toothbrush.png'),
         real:     require('../../assets/concepts/categories/Household Items/Household_Icons/toothbrush.png'),
         coloring: require('../../assets/concepts/categories/Household Items/Toothbrush/Toothbrush_Coloring.png'),
@@ -753,7 +753,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'toothpaste',
         label:    'Toothpaste',
-        labelSi:  'දත් කිරිල්ල',
+        labelSi:  'දන්තාලේප',
         icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/toothpaste.png'),
         real:     require('../../assets/concepts/categories/Household Items/Household_Icons/toothpaste.png'),
         coloring: require('../../assets/concepts/categories/Household Items/Toothpaste/Toothpaste_Coloring.png'),
@@ -779,7 +779,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'blackboard',
         label:    'Blackboard',
-        labelSi:  'කළු පුවරුව',
+        labelSi:  'කළු ලෑල්ල',
         icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/blackboard.png'),
         real:     require('../../assets/concepts/categories/Classroom Objects/Blackboard/Blackboard_Real.png'),
         io:       require('../../assets/concepts/categories/Classroom Objects/Blackboard/Blackboard_Coloring.png'),
@@ -819,7 +819,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'desk',
         label:    'Desk',
-        labelSi:  'ඩෙස්කය',
+        labelSi:  'මේසය',
         icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/desk.png'),
         real:     require('../../assets/concepts/categories/Classroom Objects/Desk/Desk_Real.png'),
         io:       require('../../assets/concepts/categories/Classroom Objects/Desk/Desk_Coloring.png'),
@@ -829,7 +829,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'dustbin',
         label:    'Dustbin',
-        labelSi:  'කුණු බකට',
+        labelSi:  'කුණු බඳුන',
         icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/dustbin.png'),
         real:     require('../../assets/concepts/categories/Classroom Objects/Dustbin/Dustbin_Real.png'),
         io:       require('../../assets/concepts/categories/Classroom Objects/Dustbin/Dustbin_Coloring.png'),
@@ -839,7 +839,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'eraser',
         label:    'Eraser',
-        labelSi:  'ඉරේසරය',
+        labelSi:  'මකනය',
         icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/eraser.png'),
         real:     require('../../assets/concepts/categories/Classroom Objects/Eraser/Eraser_Real.png'),
         io:       require('../../assets/concepts/categories/Classroom Objects/Eraser/Eraser_Coloring.png'),
