@@ -5,27 +5,34 @@ export const API_BASE_URL = 'http://10.93.255.245:3000/api';
 
 export const ENDPOINTS = {
   // Auth
-  LOGIN: '/auth/login',
-  SET_PASSWORD: '/auth/set-password',
-  FORGOT_PASSWORD: '/auth/forgot-password',
-  VERIFY_OTP: '/auth/verify-otp',
-  RESET_PASSWORD: '/auth/reset-password',
+  LOGIN: "/auth/login",
+  SET_PASSWORD: "/auth/set-password",
+  FORGOT_PASSWORD: "/auth/forgot-password",
+  VERIFY_OTP: "/auth/verify-otp",
+  RESET_PASSWORD: "/auth/reset-password",
 
   // Principal
-  PRINCIPAL_DASHBOARD: '/principal/dashboard',
-  PRINCIPAL_TEACHERS: '/principal/teachers',
+  PRINCIPAL_DASHBOARD: "/principal/dashboard",
+  PRINCIPAL_TEACHERS: "/principal/teachers",
   PRINCIPAL_TEACHER: (id) => `/principal/teachers/${id}`,
-  PRINCIPAL_STUDENTS: '/principal/students',
+  PRINCIPAL_STUDENTS: "/principal/students",
   PRINCIPAL_STUDENT: (id) => `/principal/students/${id}`,
   PRINCIPAL_ASSIGN_STUDENT: (id) => `/principal/students/${id}/assign`,
 
   // Teacher
-  TEACHER_DASHBOARD: '/teacher/dashboard',
-  TEACHER_STUDENTS: '/teacher/students',
+  TEACHER_DASHBOARD: "/teacher/dashboard",
+  TEACHER_STUDENTS: "/teacher/students",
   TEACHER_STUDENT: (id) => `/teacher/students/${id}`,
-  TEACHER_SESSION_START: '/teacher/session/start',
-  TEACHER_SESSION_END: '/teacher/session/end',
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
+  TEACHER_CONCEPT_SUMMARY: (id) => `/teacher/students/${id}/concepts/summary`,
+  TEACHER_CONCEPT_REPORT:  (id) => `/teacher/students/${id}/concepts/report`,
+
+  // Handwriting
+  HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
+  HANDWRITING_FINALIZE:       (id)       => `/handwriting/assessment/${id}/finalize`,
+  HANDWRITING_INITIAL_REPORT: (studentId) => `/handwriting/initial-report/${studentId}`,
+  LETTER_COMPLETE:            '/handwriting/letter-complete',
+  LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
 
   // Dialogue – Level 1
   DIALOGUE_LEVEL1_OVERVIEW:        (sid) => `/teacher/student/${sid}/level1/overview`,
@@ -62,4 +69,24 @@ export const ENDPOINTS = {
   LEVEL2_ACTIVITY_SELECTION:    (sid, sessId) => `/teacher/student/${sid}/level2/session/${sessId}/activity-selection`,
   LEVEL2_PARAGRAPH_ATTEMPT:     (sid, sessId) => `/teacher/student/${sid}/level2/session/${sessId}/paragraph-attempt`,
   LEVEL2_SXS_ATTEMPT:           (sid, sessId, sentIdx) => `/teacher/student/${sid}/level2/session/${sessId}/sentence-by-sentence/${sentIdx}`,
+
+  // Concept Learning
+  CONCEPT_ITEMS:              (cat) => `/teacher/concepts/${cat}/items`,
+  CONCEPT_TIER1_START:        '/teacher/concepts/tier1/start',
+  CONCEPT_TIER1_INTERACTION:  '/teacher/concepts/tier1/interaction',
+  CONCEPT_TIER1_ATTEMPT:      '/teacher/concepts/tier1/attempt',
+  CONCEPT_TIER1_COMPLETE:     '/teacher/concepts/tier1/complete',
+  CONCEPT_ADAPTIVE_ATTEMPT:   '/teacher/concepts/adaptive/attempt',
+  CONCEPT_ADAPTIVE_COMPLETE:  '/teacher/concepts/adaptive/complete',
+  CONCEPT_TIER2_START:        '/teacher/concepts/tier2/start',
+  CONCEPT_TIER2_COMPLETE:     '/teacher/concepts/tier2/complete',
+  CONCEPT_TIER3_START:        '/teacher/concepts/tier3/start',
+  CONCEPT_TIER3_COMPLETE:     '/teacher/concepts/tier3/complete',
+  CONCEPT_DISTRACTORS:        '/teacher/concepts/distractors',
+
+  // Concept Learning – cross-concept activities
+  CONCEPT_ACTIVITY_STATUS:    (cat) => `/teacher/concepts/${cat}/activity/status`,
+  CONCEPT_ACTIVITY_START:     '/teacher/concepts/activity/start',
+  CONCEPT_ACTIVITY_ATTEMPT:   '/teacher/concepts/activity/attempt',
+  CONCEPT_ACTIVITY_COMPLETE:  '/teacher/concepts/activity/complete',
 };

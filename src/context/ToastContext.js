@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState, useCallback } from 'react';
+﻿import React, { createContext, useContext, useRef, useState, useCallback } from 'react';
 import {
   Animated,
   View,
@@ -112,14 +112,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#FFFFFF',
     letterSpacing: 0.1,
   },
   message: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.78)',
-    fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     lineHeight: 16,
   },
   iconWrap: {

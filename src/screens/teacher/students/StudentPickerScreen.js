@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -13,25 +14,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Avatar } from '../../../components/common/Avatar';
-import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
 import { useToast } from '../../../context/ToastContext';
+import { getAvatarTheme } from '../../../constants/avatarThemes';
 
-const ACCENTS = [
-  { bg: '#E8F5F0', border: '#A8D8CC', text: '#0F6E56' },
-  { bg: '#EAF0FB', border: '#A8BCE8', text: '#2A4FAD' },
-  { bg: '#FDF3E7', border: '#F0C98A', text: '#9A5F10' },
-  { bg: '#F3EAF8', border: '#C9A8E0', text: '#6A2F9A' },
-];
+const COLS     = 3;
+const H_PAD    = 40;
+const CARD_GAP = 24;
+// Upper bound so a one- or two-student roster doesn't stretch cards across the tablet.
+const MAX_CARD = 260;
 
-function StudentCard({ student, index, size, onPress }) {
-  const accent = ACCENTS[index % ACCENTS.length];
-  const scale = useRef(new Animated.Value(1)).current;
+function StudentCard({ student, cardSize, onPress }) {
+  const theme      = getAvatarTheme(student.avatar_key);
+  const initial    = (student.full_name || '?')[0].toUpperCase();
+  const circleSize = cardSize * 0.54;
+  const nameSize   = cardSize * 0.1;
+  const ring       = Math.round(circleSize * 0.05);   // white ring around the avatar
+  const innerSize  = circleSize - ring * 2;           // photo sits inside the ring
+  // Cards show only the first two names; longer full names wrap past two lines
+  // and ellipsize mid-word.
+  const displayName = (student.full_name || '').trim().split(/\s+/).slice(0, 2).join(' ');
+  const scale      = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
-    Animated.spring(scale, { toValue: 1.06, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
   }
   function onPressOut() {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
@@ -44,19 +51,52 @@ function StudentCard({ student, index, size, onPress }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
-        style={[
-          styles.card,
-          {
-            width: size,
-            height: size,
-            backgroundColor: accent.bg,
-            borderColor: accent.border,
-          },
-        ]}
+        style={[styles.card, {
+          width: cardSize,
+          height: cardSize * 1.1,
+          borderColor: theme.cardOutline + '33',
+        }]}
       >
-        <Avatar name={student.full_name} uri={student.profile_photo_url} size={size * 0.62} />
-        <Text style={[styles.cardName, { color: accent.text }]} numberOfLines={2}>
-          {student.full_name}
+        {/* Themed gradient header. The flat 13%-alpha wash this replaces read as
+            unfinished; a soft gradient gives each child a colour identity they can
+            recognise at a glance. */}
+        <LinearGradient
+          colors={theme.backgroundGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardAccent}
+        />
+
+        {/* Avatar — the white ring lifts it off the gradient it sits against */}
+        <View style={[styles.circle, {
+          width: circleSize,
+          height: circleSize,
+          borderRadius: circleSize / 2,
+          borderWidth: ring,
+          borderColor: '#FFFFFF',
+          backgroundColor: theme.cardOutline + '26',
+        }]}>
+          {student.profile_photo_url ? (
+            <Image
+              source={{ uri: student.profile_photo_url }}
+              // Inset by the ring, so the photo fills the opening instead of being
+              // clipped by the border box.
+              style={{ width: innerSize, height: innerSize, borderRadius: innerSize / 2 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={[styles.initial, { fontSize: circleSize * 0.4, color: theme.button }]}>
+              {initial}
+            </Text>
+          )}
+        </View>
+
+        {/* Name */}
+        <Text
+          style={[styles.name, { fontSize: nameSize, lineHeight: nameSize * 1.3 }]}
+          numberOfLines={2}
+        >
+          {displayName}
         </Text>
       </TouchableOpacity>
     </Animated.View>
@@ -64,10 +104,17 @@ function StudentCard({ student, index, size, onPress }) {
 }
 
 export default function StudentPickerScreen({ navigation }) {
-  const { width, height }       = useWindowDimensions();
+  const { width }               = useWindowDimensions();
   const toast                   = useToast();
   const [students, setStudents] = useState([]);
   const [loading,  setLoading]  = useState(true);
+
+  // A teacher carries at most a handful of students, so match the column count to
+  // the roster rather than always laying out three — one or two students otherwise
+  // sit off-centre in a 3-wide grid. Cards fill their column (no arbitrary shrink)
+  // up to MAX_CARD, which also keeps the tap targets generous.
+  const cols     = Math.min(Math.max(students.length, 1), COLS);
+  const cardSize = Math.min((width - H_PAD * 2 - CARD_GAP * (cols - 1)) / cols, MAX_CARD);
 
   const load = useCallback(async () => {
     try {
@@ -82,34 +129,36 @@ export default function StudentPickerScreen({ navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const GAP      = Layout.spacing.lg;
-  const PADDING  = Layout.spacing.lg;
-  const cardSize = Math.min(
-    (width - PADDING * 2 - GAP) / 2,
-    Math.min(height * 0.38, 300),
-  );
-
   return (
-    <LinearGradient colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']} style={styles.safe}>
-      <SafeAreaView style={styles.safeInner}>
+    <LinearGradient
+      colors={['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']}
+      style={styles.gradient}
+    >
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate('WorkspaceSelect')} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={Colors.text.primary} />
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.navigate('WorkspaceSelect')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={20} color="#2A5A48" />
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.title}>My Students</Text>
+            <Text style={styles.subtitle}>Tap a student to begin their session</Text>
           </View>
         </View>
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+            <ActivityIndicator size="large" color="#2A5A48" />
           </View>
         ) : students.length === 0 ? (
           <View style={styles.centered}>
-            <View style={styles.emptyIconBox}>
-              <Ionicons name="people-outline" size={48} color={Colors.icon.muted} />
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="people-outline" size={40} color="#2A5A48" />
             </View>
             <Text style={styles.emptyTitle}>No students yet</Text>
             <Text style={styles.emptySub}>
@@ -120,17 +169,18 @@ export default function StudentPickerScreen({ navigation }) {
           <FlatList
             data={students}
             keyExtractor={(s) => String(s.sid)}
-            numColumns={2}
-            columnWrapperStyle={{ gap: GAP, justifyContent: 'center' }}
-            contentContainerStyle={styles.list}
+            numColumns={cols}
+            key={cols}
+            // React Native throws if columnWrapperStyle is set while numColumns is 1.
+            columnWrapperStyle={cols > 1 ? { gap: CARD_GAP, justifyContent: 'center' } : undefined}
+            contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD, flexGrow: 1, justifyContent: 'center' }]}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item, index }) => (
+            ItemSeparatorComponent={() => <View style={{ height: CARD_GAP }} />}
+            renderItem={({ item }) => (
               <StudentCard
                 student={item}
-                index={index}
-                size={cardSize}
+                cardSize={cardSize}
                 onPress={async () => {
-                  // avatar_key comes from API; fall back to local cache if missing
                   const avatarKey = item.avatar_key
                     ?? await AsyncStorage.getItem(`student_avatar_${item.sid}`);
                   if (!avatarKey) {
@@ -141,7 +191,6 @@ export default function StudentPickerScreen({ navigation }) {
                 }}
               />
             )}
-            ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
           />
         )}
 
@@ -151,86 +200,133 @@ export default function StudentPickerScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  safeInner: { flex: 1 },
+  gradient: { flex: 1 },
+  safe:     { flex: 1 },
 
+  // ── Header ────────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.md,
-    gap: Layout.spacing.md,
+    paddingHorizontal: H_PAD,
+    paddingTop: 20,
+    paddingBottom: 12,
+    gap: 14,
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  headerText: { flex: 1 },
+  headerText: {
+    gap: 2,
+  },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.text.primary,
-    letterSpacing: -0.5,
-    fontFamily: 'sans-serif-rounded',
+    fontFamily: 'Nunito_900Black',
+    fontSize: 24,
+    color: '#1A3D2E',
   },
   subtitle: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.muted,
-    marginTop: 2,
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 13,
+    color: '#4A7A60',
   },
 
+  // ── List ──────────────────────────────────────────────────────────────────
   list: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xxl,
-    paddingTop: Layout.spacing.sm,
+    paddingTop: 16,
+    paddingBottom: 36,
   },
 
+  // ── Card ──────────────────────────────────────────────────────────────────
   card: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
+    // Hairline in the student's own colour: enough definition to separate the card
+    // from the gradient background without competing with the avatar.
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Layout.spacing.sm,
+    gap: 14,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
+    elevation: 5,
   },
-  cardName: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: '700',
-    textAlign: 'center',
-    paddingHorizontal: Layout.spacing.sm,
+  cardAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
+    // Was 21 against a 24 card radius, which left a visible seam at the top
+    // corners. overflow:'hidden' on the card clips the rest.
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
 
+  // ── Avatar ────────────────────────────────────────────────────────────────
+  circle: {
+    // borderWidth/borderColor are set at render time — the ring scales with the card.
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  initial: {
+    fontFamily: 'Nunito_900Black',
+  },
+
+  // ── Name ──────────────────────────────────────────────────────────────────
+  name: {
+    fontFamily: 'Nunito_700Bold',
+    color: '#1A2E26',
+    textAlign: 'center',
+    paddingHorizontal: 10,
+    // lineHeight is set alongside fontSize at render time — both scale with the
+    // card, and a fixed value here clipped the glyphs once the card grew.
+    marginTop: 10,
+  },
+
+  // ── Empty state ───────────────────────────────────────────────────────────
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Layout.spacing.xl,
-    gap: Layout.spacing.md,
+    paddingHorizontal: 32,
+    gap: 14,
   },
-  emptyIconBox: {
-    width: 90, height: 90, borderRadius: 24,
-    backgroundColor: Colors.surfaceAlt,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: Layout.spacing.sm,
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.secondary,
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 18,
+    color: '#1A3D2E',
   },
   emptySub: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.muted,
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 14,
+    color: '#2A5A48',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+    opacity: 0.8,
   },
 });

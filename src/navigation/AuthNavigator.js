@@ -1,5 +1,4 @@
-import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+﻿import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SetPasswordScreen from '../screens/auth/SetPasswordScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
@@ -16,7 +15,7 @@ export default function AuthNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: Colors.surface },
         headerTitleStyle: {
-          fontWeight: Layout.fontWeight.bold,
+          fontFamily: 'Nunito_700Bold',
           color: Colors.text.primary,
           fontSize: Layout.fontSize.lg,
         },
@@ -38,17 +37,17 @@ export default function AuthNavigator() {
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
-        options={{ title: 'Forgot Password', headerBackTitle: '' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="OtpVerification"
         component={OtpVerificationScreen}
-        options={{ title: 'Verify OTP', headerBackTitle: '' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ResetPassword"
         component={ResetPasswordScreen}
-        options={{ title: 'Reset Password', headerBackTitle: '', headerBackVisible: false }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
