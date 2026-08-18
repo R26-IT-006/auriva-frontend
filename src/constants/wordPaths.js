@@ -298,6 +298,95 @@ export function wordGuideGhostDots(strokeDescriptors, canvasW, canvasH) {
   return dots;
 }
 
+// ─── Visible letter guide boxes (display-only) ─────────────────────────────
+// Word-writing guide-boxes task. These are VISIBLE, EXPECTED reference
+// rectangles shown to the child before/while writing ("write this letter
+// approximately here and at this size") — a completely different thing from
+// the invisible OBSERVED bounding boxes the backend's wordLayoutService.js
+// computes AFTER the child writes from their actual strokes. This function
+// only ever reads buildWordGuide()'s own canonical template geometry — the
+// exact same source the reference path/tracer already draw from — never the
+// child's strokes, and its output never leaves the device (not sent to the
+// backend, not used in scoring).
+
+// A purely vertical letter stroke (lowercase 'l' being the clearest example)
+// has an actual template width of ~0 by construction — a real, correct
+// property of that letter's shape (this is the same zero-width case the
+// backend's word-layout analysis found and handled on the scoring side; see
+// wordLayoutService.js). A zero-width box would be invisible and useless as
+// an instructional guide, so DISPLAY-ONLY boxes are floored to a fraction of
+// the word's own average letter width/height, centered on the letter's real
+// position. This floor is cosmetic only — it never touches buildWordGuide()'s
+// own path, the DTW/scoring geometry, or anything sent to the backend.
+const MIN_VISUAL_WIDTH_FRACTION = 0.55;
+const MIN_VISUAL_HEIGHT_FRACTION = 0.55;
+
+/**
+ * Visible EXPECTED guide box per letter, in canvas pixel space.
+ * Display-only — see module note above. Uses the exact same canonical
+ * templates and aspect-ratio transform as the reference path/tracer, so a
+ * box and its letter's guide path are always aligned by construction.
+ *
+ * @param {string} word
+ * @param {number} canvasW
+ * @param {number} canvasH
+ * @returns {Array<{letter: string|null, index: number, x: number, y: number, width: number, height: number}>}
+ */
+export function buildWordLetterBoxes(word, canvasW, canvasH) {
+  const guide = buildWordGuide(word);
+  if (!guide.strokeDescriptors.length || !Number.isFinite(canvasW) || !Number.isFinite(canvasH) || canvasW <= 0 || canvasH <= 0) {
+    return [];
+  }
+
+  const aspectX = makeAspectX(canvasW, canvasH);
+  const byLetter = new Map();
+  guide.strokeDescriptors.forEach(({ points, letterIndex }) => {
+    const bounds = byLetter.get(letterIndex) ?? { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+    points.forEach(p => {
+      const x = aspectX(p.fx) * canvasW;
+      const y = p.fy * canvasH;
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    });
+    byLetter.set(letterIndex, bounds);
+  });
+
+  const letterCount = byLetter.size;
+  const rawBounds = [];
+  for (let i = 0; i < letterCount; i++) rawBounds.push(byLetter.get(i));
+
+  // Word-level averages (same "average of this word's own letters" idea
+  // buildWordGuide() already uses for its inter-letter gap) — not a fixed
+  // pixel constant, so the floor scales naturally with word/canvas size.
+  const avgWidth  = rawBounds.reduce((sum, b) => sum + (b.maxX - b.minX), 0) / letterCount;
+  const avgHeight = rawBounds.reduce((sum, b) => sum + (b.maxY - b.minY), 0) / letterCount;
+  const letters = (word ?? '').replace(/[^a-zA-Z]/g, '').split('');
+
+  return rawBounds.map((b, i) => {
+    const rawWidth  = b.maxX - b.minX;
+    const rawHeight = b.maxY - b.minY;
+    const width  = Math.max(rawWidth,  avgWidth  * MIN_VISUAL_WIDTH_FRACTION);
+    const height = Math.max(rawHeight, avgHeight * MIN_VISUAL_HEIGHT_FRACTION);
+    // Centered on the letter's real midpoint, so the floor only ever widens/
+    // heightens the box symmetrically around its true position — it never
+    // shifts a normal (non-degenerate) letter's box off its actual bounds,
+    // since width/height equal rawWidth/rawHeight (and x/y equal b.minX/
+    // b.minY) whenever the floor isn't needed.
+    const centerX = (b.minX + b.maxX) / 2;
+    const centerY = (b.minY + b.maxY) / 2;
+    return {
+      letter: letters[i] ?? null,
+      index: i,
+      x: centerX - width / 2,
+      y: centerY - height / 2,
+      width,
+      height,
+    };
+  });
+}
+
 /**
  * Attempt-2 "where to start / which way to go" hint for a single stroke —
  * identical shape/logic to LetterWritingScreen's getStrokeDirectionHint,

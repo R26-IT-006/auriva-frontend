@@ -10,18 +10,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { getSessionProgress } from '../../../constants/sessionProgress';
-import { getAllWordProgress } from '../../../utils/storage';
+import { fetchWordProgress } from '../../../utils/wordApi';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
 
 const ALPHABET  = 'abcdefghijklmnopqrstuvwxyz'.split('');
-const EXERCISES = ['A', 'B', 'C', 'D'];
+const EXERCISES = ['A', 'B', 'C', 'D', 'E'];
 
 const EXERCISE_LABELS = {
   A: 'First Letter',
   B: 'Find the Picture',
   C: 'Fill the Gap',
   D: 'Spell It!',
+  E: 'Write Word',
 };
 
 const STATUS = {
@@ -58,9 +58,12 @@ export default function WordProgressScreen({ route, navigation }) {
     React.useCallback(() => {
       let active = true;
       async function load() {
-        const persistent = await getAllWordProgress(student?.sid ?? 0);
-        const session    = getSessionProgress();
-        if (active) setProgress({ ...persistent, ...session });
+        try {
+          const authoritative = await fetchWordProgress(student);
+          if (active) setProgress(authoritative ?? {});
+        } catch {
+          if (active) setProgress({});
+        }
       }
       load();
       return () => { active = false; };

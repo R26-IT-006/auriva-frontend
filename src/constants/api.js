@@ -44,6 +44,11 @@ export const ENDPOINTS = {
   LETTER_COMPLETE:            '/handwriting/letter-complete',
   LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
   LETTER_PROGRESS_REPORT:     (studentId) => `/handwriting/letter-progress-report/${studentId}`,
+  WORD_ATTEMPT:               '/handwriting/word-attempt',
+  WORD_ACTIVITY:              '/handwriting/word-activity',
+  WORD_PROGRESS:              (studentId) => `/handwriting/word-progress/${studentId}`,
+  WORD_ATTEMPTS:              (studentId) => `/handwriting/word-attempts/${studentId}`,
+  WORD_REPORT:                (studentId) => `/handwriting/word-report/${studentId}`,
   // Teacher Dashboard integration fix — read-only, all three current
   // Feature 2 family thresholds together (never the legacy
   // /teacher/students/:id personal_thresholds shape).

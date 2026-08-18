@@ -1,10 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, PanResponder } from 'react-native';
-import Svg, { Line, Circle, Polyline, Path } from 'react-native-svg';
+import Svg, { Line, Circle, Polyline, Path, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import WordImageDisplay from './WordImageDisplay';
-import { buildWordGuide, wordGuideToSvgPath, wordGuideGhostDots } from '../../constants/wordPaths';
+import { buildWordGuide, wordGuideToSvgPath, wordGuideGhostDots, buildWordLetterBoxes } from '../../constants/wordPaths';
 import { evaluateWordAttempt } from '../../utils/wordScoring';
+import { submitWordAttempt, newActionId } from '../../utils/wordApi';
 
 // Image column shrunk / canvas widened vs. the original 230/430 split — a
 // whole word needs more horizontal room than the small illustration does.
@@ -17,12 +18,15 @@ const LINE_2 = 82;
 const LINE_3 = Math.round(CANVAS_H * 0.64);
 const LINE_4 = Math.round(CANVAS_H * 0.92);
 
-export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
+export default function ExerciseE_WriteWord({ wordEntry, theme, student, onComplete }) {
   const { word, emoji, imageKey } = wordEntry;
   const [currentPath, setCurrentPath] = useState([]);
   const [allPaths, setAllPaths] = useState([]);
   const [done, setDone] = useState(false);
   const [result, setResult] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const actionIdRef = useRef(null);
   const startTimeRef = useRef(null);
 
   const hasDrawn = allPaths.length > 0;
@@ -35,6 +39,14 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
   const guideDots = useMemo(
     () => wordGuideGhostDots(wordGuide.strokeDescriptors, CANVAS_W, CANVAS_H),
     [wordGuide]
+  );
+
+  // Visible letter-size/spacing guide boxes — same instructional support as
+  // WordWritingScreen's guided attempts, reinforcing size/spacing without
+  // handing the child a full traced-letter answer (see wordPaths.js).
+  const letterBoxes = useMemo(
+    () => buildWordLetterBoxes(word, CANVAS_W, CANVAS_H),
+    [word]
   );
 
   const panResponder = useRef(
@@ -71,13 +83,17 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
     setResult(null);
   }
 
-  function handleDone() {
-    if (!hasDrawn || done) return;
-    const nextResult = evaluateWordAttempt({ wordGuide, childStrokes: allPaths, canvasW: CANVAS_W, canvasH: CANVAS_H });
-    setResult(nextResult);
-    if (!nextResult.passed) return;
-    setDone(true);
-    setTimeout(() => onComplete(true), 500);
+  async function handleDone() {
+    if (!hasDrawn || done || submitting) return;
+    setSubmitting(true); setSaveError(null);
+    actionIdRef.current ||= newActionId();
+    try {
+      const authoritative = await submitWordAttempt({student,actionId:actionIdRef.current,word,stage:'practice_exercise_e',strokes:allPaths,canvas_width:CANVAS_W,canvas_height:CANVAS_H});
+      const nextResult={score:authoritative.score,passed:authoritative.passed,completed:authoritative.completion_passed};setResult(nextResult);
+      if (!authoritative.passed) { actionIdRef.current=null; return; }
+      setDone(true); setTimeout(() => onComplete(true), 500);
+    } catch { setSaveError('Could not save yet. Check the connection and try again.'); }
+    finally { setSubmitting(false); }
   }
 
   return (
@@ -110,6 +126,22 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
               strokeDasharray="8,7"
             />
             <Line x1="0" y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#9BC4E8" strokeWidth="1.5" />
+
+            {/* Visible letter-size/spacing guide boxes — spatial guidance
+                only (no traced-letter answer). Below all ink/guide layers. */}
+            {letterBoxes.map(box => (
+              <Rect
+                key={`letter-box-${box.index}`}
+                x={box.x}
+                y={box.y}
+                width={box.width}
+                height={box.height}
+                rx={4}
+                fill="rgba(120,120,140,0.05)"
+                stroke="rgba(120,120,140,0.45)"
+                strokeWidth={1}
+              />
+            ))}
 
             {/* Reference-path guide — same LETTER_PATHS-based system as
                 letter tracing, instead of a flat ghost-text outline. */}
@@ -167,6 +199,7 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
               {result.completed ? `Score ${result.score}/100 — try once more` : 'Finish every letter, then try Done again'}
             </Text>
           )}
+          {saveError && <Text accessibilityRole="alert" style={styles.retryText}>{saveError}</Text>}
           <TouchableOpacity
             style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
             onPress={handleClear}
@@ -184,10 +217,10 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
             ]}
             onPress={handleDone}
             activeOpacity={0.82}
-            disabled={!hasDrawn || done}
+            disabled={!hasDrawn || done || submitting}
           >
             <Text style={[styles.doneText, { color: hasDrawn ? theme.buttonText : '#7B8190' }]}>
-              Done
+              {submitting ? 'Saving…' : 'Done'}
             </Text>
             {done && <Ionicons name="checkmark-circle" size={18} color={theme.buttonText} />}
           </TouchableOpacity>

@@ -17,7 +17,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Path, Line, Circle, Text as SvgText, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { getSessionProgress, getAssessmentSnapshot, getSessionDurationMinutes } from '../../../constants/sessionProgress';
-import { getMotorProfile, getCompletedLetters, getLetterProgress, getAllWordProgress } from '../../../utils/storage';
+import { getMotorProfile, getCompletedLetters, getLetterProgress } from '../../../utils/storage';
+import { fetchWordReport } from '../../../utils/wordApi';
 import { generateReport } from '../../../utils/reportEngine';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
@@ -317,8 +318,10 @@ export default function TeacherReportScreen({ route, navigation }) {
             (await getMotorProfile(student?.sid));
 
           // 4. Local letter / word / session data (unchanged — these accumulate per session)
-          const persistent       = await getAllWordProgress(student?.sid ?? 0);
-          const wordProgress     = { ...persistent, ...getSessionProgress() };
+          let serverWordReport = { progress: {}, words: [], summary: {} };
+          try { serverWordReport = await fetchWordReport(student); }
+          catch (netErr) { console.warn('Could not reach server for word report:', netErr?.message); }
+          const wordProgress = serverWordReport.progress ?? {};
           const completedLetters = await getCompletedLetters(student?.sid ?? 0);
 
           // Exact-match on letter string, which already encodes case
@@ -340,6 +343,7 @@ export default function TeacherReportScreen({ route, navigation }) {
             assessmentData, motorProfile, letterProgressMap,
             wordProgress, completedLetters, student,
           });
+          computed.wordWritingHistory = serverWordReport;
 
           // 6. Override difficultyAnalysis with server-stored result if available
           if (serverData?.explanation) {

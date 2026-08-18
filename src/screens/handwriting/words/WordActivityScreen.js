@@ -1,11 +1,10 @@
 /**
  * WordActivityScreen
  *
- * Per-letter activity loop:
- *   • 4 exercises (A→D) per word
- *   • After every word → next word immediately (no per-word summary)
- *   • After ALL words for this letter → show Letter Summary modal
- *   • Teacher can view all-letter progress via WordProgress screen
+ * One-word practice unit:
+ *   • Exercises A→E stay on the route's current word
+ *   • Passed E returns to WordWriting for the next selected word
+ *   • Passed E on the final word opens server-backed WordProgress
  *
  * ── How to add a new exercise type ──────────────────────────────────────────
  *  1. Create ExerciseE_YourName.js in src/components/word/
@@ -15,14 +14,12 @@
  * ────────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Modal,
-  ScrollView,
   Animated,
   Dimensions,
 } from 'react-native';
@@ -32,9 +29,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 
 import WORD_DATA from '../../../constants/wordData';
-import { recordLetterProgress } from '../../../constants/sessionProgress';
-import { storeWordProgress } from '../../../utils/storage';
-import WordImageDisplay from '../../../components/word/WordImageDisplay';
+import { saveWordActivity } from '../../../utils/wordApi';
+import { afterExerciseESuccess, buildWordRouteParams, resolveWordSession } from '../../../utils/wordWorkflow';
 import ExerciseA_WriteFirst  from '../../../components/word/ExerciseA_WriteFirst';
 import ExerciseB_CircleImage from '../../../components/word/ExerciseB_CircleImage';
 import ExerciseC_FillBlank   from '../../../components/word/ExerciseC_FillBlank';
@@ -67,68 +63,24 @@ const BLANK_STATUS = { A: 'pending', B: 'pending', C: 'pending', D: 'pending', E
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
-
-function getLengthGroup(word) {
-  const l = word.length;
-  if (l <= 3) return 3;
-  if (l <= 4) return 4;
-  return 5;
-}
-
-// 0-3 stars from a status map
-function calcStars(statusMap) {
-  const correct = Object.values(statusMap).filter(s => s === 'correct').length;
-  if (correct === EXERCISES.length)                      return 3;
-  if (correct >= Math.ceil(EXERCISES.length / 2))       return 2;
-  if (correct >= 1)                                      return 1;
-  return 0;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function WordActivityScreen({ route, navigation }) {
-  const { student, theme, letter = 'a' } = route.params;
+  const { student, theme } = route.params;
+  const { selectedLetter: letter, selectedWords: letterWords, currentWordIndex: wordIdx, currentWord } = resolveWordSession(route.params);
 
   // ── Letter-scoped word list ───────────────────────────────────────────────
-  const letterWords = useMemo(() =>
-    WORD_DATA
-      .filter(e => e.letter === letter)
-      .sort((a, b) => getLengthGroup(a.word) - getLengthGroup(b.word)),
-    [letter]
-  );
-
-  const nextLetter = useMemo(() => {
-    const idx = ALPHABET.indexOf(letter);
-    return idx < 25 ? ALPHABET[idx + 1] : null;
-  }, [letter]);
-
-  // Length-group celebrations (between short/medium/long word groups)
-  const GROUP_CELEBRATIONS = useMemo(() => ({
-    3: { icon: 'star-outline',   title: 'Short words done!',   msg: `Great with short '${letter.toUpperCase()}' words! Keep going!` },
-    4: { icon: 'star',           title: '4-letter words done!', msg: `Stronger every time with '${letter.toUpperCase()}'!` },
-    5: { icon: 'trophy-outline', title: 'Long words done!',     msg: `You nailed all the long '${letter.toUpperCase()}' words!` },
-  }), [letter]);
-
   // ── Word / exercise state ─────────────────────────────────────────────────
-  const [wordIdx,    setWordIdx]    = useState(0);
   const [exIdx,      setExIdx]      = useState(0);
   const [exStatus,   setExStatus]   = useState(BLANK_STATUS);
   const [score,      setScore]      = useState({ correct: 0, total: 0 });
 
   // Snapshot of all word results — set when letter is done, drives the summary modal
-  const [letterDoneData, setLetterDoneData] = useState(null);
 
   // Accumulates word results throughout this letter (ref = no re-render overhead)
-  const letterStatsRef = useRef([]);
 
   // ── Celebration state (group or letter-done) ──────────────────────────────
-  const [celebrating, setCelebrating] = useState(null); // '3'|'4'|'5'|'done'
-
-  const pendingNextWordIdx = useRef(null);
   const cardAnim = useRef(new Animated.Value(1)).current;
-
-  const currentWord = letterWords[wordIdx];
 
   // ── Speak word on change ──────────────────────────────────────────────────
   useEffect(() => {
@@ -149,9 +101,18 @@ export default function WordActivityScreen({ route, navigation }) {
   }
 
   // ── Core exercise handler ─────────────────────────────────────────────────
-  const handleExerciseComplete = useCallback((wasCorrect) => {
+  const [saveError, setSaveError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const handleExerciseComplete = useCallback(async (wasCorrect) => {
+    if (saving) return;
     const ex        = EXERCISES[exIdx];
     const result    = wasCorrect ? 'correct' : 'good';
+    if (ex !== 'E') {
+      setSaving(true); setSaveError(null);
+      try { await saveWordActivity({ student, word: currentWord.word, activity: ex, status: result }); }
+      catch { setSaveError('Could not save yet. Check the connection and try again.'); setSaving(false); return; }
+      setSaving(false);
+    }
     const newStatus = { ...exStatus, [ex]: result };
 
     setExStatus(newStatus);
@@ -164,92 +125,33 @@ export default function WordActivityScreen({ route, navigation }) {
     }
 
     // ── Last exercise of this word ────────────────────────────────────────
-    const wordResult = {
-      word:     currentWord.word,
-      emoji:    currentWord.emoji,
-      imageKey: currentWord.imageKey,
-      status:   newStatus,
-    };
-    letterStatsRef.current = [...letterStatsRef.current, wordResult];
-
-    const nextWordIdx = wordIdx + 1;
-    pendingNextWordIdx.current = nextWordIdx;
-
-    if (nextWordIdx >= letterWords.length) {
-      // All words for this letter complete — show letter summary
-      setLetterDoneData(letterStatsRef.current);
-      setCelebrating('done');
+    const transition = afterExerciseESuccess(wordIdx, letterWords.length);
+    if (transition.route === 'WordWriting') {
+      navigation.replace('WordWriting', buildWordRouteParams({
+        student,
+        theme,
+        selectedLetter: letter,
+        selectedWords: letterWords,
+        currentWordIndex: transition.currentWordIndex,
+      }));
       return;
     }
-
-    const curGroup  = getLengthGroup(letterWords[wordIdx].word);
-    const nextGroup = getLengthGroup(letterWords[nextWordIdx].word);
-
-    if (nextGroup > curGroup) {
-      setCelebrating(curGroup.toString());
-    } else {
-      animateTransition(() => {
-        setWordIdx(nextWordIdx);
-        setExIdx(0);
-        setExStatus(BLANK_STATUS);
-      });
-    }
-  }, [wordIdx, exIdx, exStatus, currentWord, letterWords]);
+    navigation.replace('WordProgress', { student, studentId: Number(student?.sid), theme });
+  }, [wordIdx, exIdx, exStatus, currentWord, letterWords, saving, student, theme, letter, navigation]);
 
   // ── Celebration dismiss ───────────────────────────────────────────────────
-  function handleCelebrationDone() {
-    const nextIdx = pendingNextWordIdx.current;
-    pendingNextWordIdx.current = null;
-    setCelebrating(null);
-
-    if (celebrating === 'done') {
-      // Persist this letter's results — memory cache + AsyncStorage
-      recordLetterProgress(letter, letterStatsRef.current);
-      storeWordProgress(student?.sid ?? 0, letter, letterStatsRef.current);
-      if (nextLetter) {
-        navigation.replace('WordWriting', { student, theme, letter: nextLetter });
-      } else {
-        navigation.navigate('LetterHome', { student, theme });
-      }
-      return;
-    }
-
-    // Length-group celebration dismissed → advance to next word
-    if (nextIdx === null || nextIdx >= letterWords.length) return;
-    animateTransition(() => {
-      setWordIdx(nextIdx);
-      setExIdx(0);
-      setExStatus(BLANK_STATUS);
-    });
-  }
-
   // ── Letter summary stats (computed from snapshot) ─────────────────────────
-  const letterStats = useMemo(() => {
-    if (!letterDoneData) return null;
-    const totalEx   = letterDoneData.length * EXERCISES.length;
-    const correctEx = letterDoneData.reduce(
-      (sum, w) => sum + Object.values(w.status).filter(s => s === 'correct').length, 0
-    );
-    const goodEx    = letterDoneData.reduce(
-      (sum, w) => sum + Object.values(w.status).filter(s => s === 'good').length, 0
-    );
-    return { totalEx, correctEx, goodEx };
-  }, [letterDoneData]);
-
   // ── Guard ─────────────────────────────────────────────────────────────────
   if (!currentWord) return null;
 
   const exKey     = EXERCISES[exIdx];
-  const celebrate = celebrating && celebrating !== 'done'
-    ? GROUP_CELEBRATIONS[celebrating]
-    : null;
-
   // ── Exercise renderer ─────────────────────────────────────────────────────
   function renderExercise() {
     const props = {
       wordEntry:  currentWord,
       allWords:   WORD_DATA,
       theme,
+      student,
       onComplete: handleExerciseComplete,
     };
     switch (exKey) {
@@ -347,6 +249,7 @@ export default function WordActivityScreen({ route, navigation }) {
               <Ionicons name="volume-high-outline" size={22} color="#888888" />
             </TouchableOpacity>
             <View style={styles.divider} />
+            {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', textAlign:'center' }}>{saveError}</Text>}
             {renderExercise()}
           </Animated.View>
         </View>
@@ -356,190 +259,16 @@ export default function WordActivityScreen({ route, navigation }) {
       {/* ════════════════════════════════════════════════════════════════════
           Group celebration modal  (short / medium / long words done)
          ════════════════════════════════════════════════════════════════════ */}
-      {celebrate && (
-        <Modal visible transparent animationType="fade" onRequestClose={handleCelebrationDone}>
-          <View style={styles.overlay}>
-            <View style={styles.simpleCelebCard}>
-              <View style={[styles.celebIconWrap, { backgroundColor: theme.button + '18' }]}>
-                <Ionicons name={celebrate.icon} size={44} color={theme.button} />
-              </View>
-              <Text style={[styles.celebTitle, { color: theme.headingText }]}>{celebrate.title}</Text>
-              <Text style={styles.celebMsg}>{celebrate.msg}</Text>
-              <Text style={styles.celebScore}>Score so far: {score.correct} / {score.total}</Text>
-              <TouchableOpacity
-                style={[styles.celebBtn, { backgroundColor: theme.button }]}
-                onPress={handleCelebrationDone}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.celebBtnText, { color: theme.buttonText }]}>Continue</Text>
-                <Ionicons name="arrow-forward" size={16} color={theme.buttonText} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
-
       {/* ════════════════════════════════════════════════════════════════════
           Letter-done modal  — full word-by-word results summary
          ════════════════════════════════════════════════════════════════════ */}
-      {celebrating === 'done' && letterDoneData && letterStats && (
-        <Modal visible transparent animationType="slide" onRequestClose={handleCelebrationDone}>
-          <View style={styles.overlay}>
-            <View style={styles.letterDoneCard}>
-
-              {/* Header */}
-              <View style={styles.ldHeader}>
-                <View style={[styles.ldIconWrap, { backgroundColor: theme.button + '18' }]}>
-                  <Ionicons name="trophy-outline" size={36} color={theme.button} />
-                </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={styles.ldTitle}>
-                    Letter {letter.toUpperCase()} Complete!
-                  </Text>
-                  <Text style={styles.ldScore}>
-                    {letterStats.correctEx} / {letterStats.totalEx} exercises correct
-                    {letterStats.goodEx > 0 ? `  ·  ${letterStats.goodEx} with help` : ''}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Stat pills */}
-              <View style={styles.ldPills}>
-                <StatPill count={letterStats.correctEx} label="Correct"  color="#2E7D32" bg="#E8F5E9" />
-                <StatPill count={letterStats.goodEx}    label="With help" color="#E65100" bg="#FFF3E0" />
-                <StatPill
-                  count={letterStats.totalEx - letterStats.correctEx - letterStats.goodEx}
-                  label="Pending"
-                  color="#9E9E9E" bg="#F5F5F5"
-                />
-              </View>
-
-              <View style={styles.ldDivider} />
-
-              {/* Scrollable word results */}
-              <ScrollView
-                style={styles.ldScroll}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
-              >
-                {letterDoneData.map((item, i) => (
-                  <WordResultRow key={`${item.word}-${i}`} item={item} />
-                ))}
-              </ScrollView>
-
-              <View style={styles.ldDivider} />
-
-              {/* Action button */}
-              <TouchableOpacity
-                style={[styles.celebBtn, { backgroundColor: theme.button }]}
-                onPress={handleCelebrationDone}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.celebBtnText, { color: theme.buttonText }]}>
-                  {nextLetter
-                    ? `Next: Letter ${nextLetter.toUpperCase()}`
-                    : 'All Done!'}
-                </Text>
-                <Ionicons
-                  name={nextLetter ? 'arrow-forward' : 'checkmark-circle-outline'}
-                  size={16}
-                  color={theme.buttonText}
-                />
-              </TouchableOpacity>
-
-            </View>
-          </View>
-        </Modal>
-      )}
     </LinearGradient>
   );
 }
 
 // ─── Word result row (inside letter-done modal) ───────────────────────────────
 
-function WordResultRow({ item }) {
-  const stars = calcStars(item.status);
-  return (
-    <View style={rowStyles.row}>
-      <WordImageDisplay imageKey={item.imageKey} emoji={item.emoji} size={36} />
-      <Text style={rowStyles.word} numberOfLines={1}>{item.word}</Text>
-      <View style={rowStyles.badges}>
-        {EXERCISES.map(ex => {
-          const cfg = STATUS[item.status?.[ex]] ?? STATUS.pending;
-          return (
-            <View key={ex} style={[rowStyles.badge, { backgroundColor: cfg.badgeBg, borderColor: cfg.badgeBorder }]}>
-              <Text style={[rowStyles.badgeLetter, { color: cfg.iconColor }]}>{ex}</Text>
-              <Ionicons name={cfg.icon} size={10} color={cfg.iconColor} />
-            </View>
-          );
-        })}
-      </View>
-      <View style={rowStyles.stars}>
-        {[0, 1, 2].map(i => (
-          <Ionicons
-            key={i}
-            name={i < stars ? 'star' : 'star-outline'}
-            size={14}
-            color={i < stars ? '#FFCA28' : '#CCCCCC'}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-const rowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    gap: 10,
-  },
-  word: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#222222',
-    textTransform: 'capitalize',
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: 5,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 1,
-  },
-  badgeLetter: { fontSize: 10, fontWeight: '900' },
-  badgeIcon:   { fontSize: 10, fontWeight: '900' },
-  stars: {
-    flexDirection: 'row',
-    gap: 1,
-  },
-  star: { fontSize: 12 },
-});
-
 // ─── Stat pill ────────────────────────────────────────────────────────────────
-
-function StatPill({ count, label, color, bg }) {
-  return (
-    <View style={[pillStyles.pill, { backgroundColor: bg }]}>
-      <Text style={[pillStyles.count, { color }]}>{count}</Text>
-      <Text style={[pillStyles.label, { color }]}>{label}</Text>
-    </View>
-  );
-}
-
-const pillStyles = StyleSheet.create({
-  pill:  { flex: 1, borderRadius: 12, paddingVertical: 8, alignItems: 'center', gap: 2 },
-  count: { fontSize: 22, fontWeight: '900' },
-  label: { fontSize: 11, fontWeight: '600' },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 

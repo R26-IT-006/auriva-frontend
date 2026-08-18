@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { getAllWordProgress } from '../../../utils/storage';
+import { buildWordRouteParams, getSelectedWords } from '../../../utils/wordWorkflow';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -181,7 +182,15 @@ export default function WordLetterSelectScreen({ route, navigation }) {
                 theme={theme}
                 onPress={() => {
                   if (isUnlocked) {
-                    navigation.navigate('WordWriting', { student, theme, letter: letter.toLowerCase() });
+                    const selectedLetter = letter.toLowerCase();
+                    const selectedWords = getSelectedWords(selectedLetter);
+                    navigation.navigate('WordWriting', buildWordRouteParams({
+                      student,
+                      theme,
+                      selectedLetter,
+                      selectedWords,
+                      currentWordIndex: 0,
+                    }));
                   }
                 }}
               />
@@ -426,4 +435,3 @@ const styles = StyleSheet.create({
     fontSize: IS_TABLET ? 11 : 9,
   },
 });
-

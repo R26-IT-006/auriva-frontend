@@ -13,10 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Line, Circle, Polyline, Polygon, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Line, Circle, Polyline, Polygon, Path, Rect, Text as SvgText } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import WORD_DATA from '../../../constants/wordData';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
 import WORD_VIDEOS from '../../../constants/wordVideos';
 import {
@@ -26,8 +25,12 @@ import {
   buildWordTracerStrokes,
   getWordStrokeDirectionHint,
   computeWordDTW,
+  buildWordLetterBoxes,
 } from '../../../constants/wordPaths';
 import { featuresToScore } from '../../../utils/adaptiveSequencing';
+import { submitWordAttempt, newActionId } from '../../../utils/wordApi';
+import { afterGuidedAttempt, buildWordRouteParams, resolveWordSession } from '../../../utils/wordWorkflow';
+import { childFeedbackMessage } from '../../../utils/wordFeedback';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
@@ -129,33 +132,25 @@ const TRACER_PX_PER_MS = 0.16;
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function WordWritingScreen({ route, navigation }) {
-  const { student, theme, letter = 'a' } = route.params;
+  const { student, theme } = route.params;
+  const { selectedLetter, selectedWords, currentWordIndex, currentWord: wordEntry } = resolveWordSession(route.params);
 
-  const letterWords = useMemo(() =>
-    WORD_DATA
-      .filter(e => e.letter === letter)
-      .sort((a, b) => getLengthGroup(a.word) - getLengthGroup(b.word)),
-    [letter]
-  );
-
-  const letterDoneCelebration = useMemo(() => ({
-    emoji: '🎯',
-    title: `Letter ${letter.toUpperCase()} Complete!`,
-    message: `You practised all '${letter.toUpperCase()}' words!\nTime to test your skills!`,
-    gradient: ['#E8F5E9', '#C8E6C9'],
-    color: '#2E7D32',
-  }), [letter]);
-
-  const [wordIdx,       setWordIdx]       = useState(0);
   const [attempt,       setAttempt]       = useState(1);
   const [currentPath,   setCurrentPath]   = useState([]);
   const [allPaths,      setAllPaths]      = useState([]);
   const [hasDrawn,      setHasDrawn]      = useState(false);
   const [feedbackData,  setFeedbackData]  = useState(null);
-  const [celebration,   setCelebration]   = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  // Word-writing child-feedback task — the backend's post-save size/spacing
+  // advisory, shown as a brief, separate pill (see styles.layoutFeedbackPill)
+  // so it survives resetCanvas()'s clearing of feedbackData (the LOCAL,
+  // pre-save estimate) and is still visible for a moment after the screen
+  // has already advanced to the next attempt — advancing never waits on it.
+  const [childFeedbackText, setChildFeedbackText] = useState(null);
+  const childFeedbackTimerRef = useRef(null);
   const [showWordVideo, setShowWordVideo] = useState(() => {
-    const entry = letterWords[0];
-    return !!(entry && WORD_VIDEOS[entry.word]);
+    return !!(wordEntry && WORD_VIDEOS[wordEntry.word]);
   });
   const [reduceMotion,    setReduceMotion]    = useState(false);
   const [tracerVisible,   setTracerVisible]   = useState(false);
@@ -169,24 +164,21 @@ export default function WordWritingScreen({ route, navigation }) {
   }, []);
 
   useEffect(() => {
-    const src = WORD_VIDEOS[letterWords[wordIdx]?.word] ?? null;
+    const src = WORD_VIDEOS[wordEntry?.word] ?? null;
     if (src) setShowWordVideo(true);
-  }, [wordIdx, letterWords]);
+  }, [wordEntry?.word]);
 
   const allPathsRef    = useRef([]);
   const startTimeRef   = useRef(null);
   const spellCancelRef = useRef(false);
   const spellTimersRef = useRef([]);
+  const submitActionIdRef = useRef(null);
 
-  const celebScale   = useRef(new Animated.Value(0.5)).current;
-  const celebOpacity = useRef(new Animated.Value(0)).current;
   const imageScale   = useRef(new Animated.Value(0.85)).current;
 
-  const wordEntry     = letterWords[wordIdx];
-  const word          = wordEntry?.word  ?? letter;
+  const word          = wordEntry?.word  ?? selectedLetter;
   const emoji         = wordEntry?.emoji ?? '📝';
   const imageKey      = wordEntry?.imageKey ?? '';
-  const isLastWord    = wordIdx >= letterWords.length - 1;
   const isLastAttempt = attempt === 3;
   const guideOpacity  = attempt === 3 ? 0 : attempt === 1 ? 0.15 : 0.28;
   const badge         = ATTEMPT_BADGE[attempt];
@@ -202,6 +194,15 @@ export default function WordWritingScreen({ route, navigation }) {
   const guideDots = useMemo(
     () => wordGuideGhostDots(wordGuide.strokeDescriptors, CANVAS_W, CANVAS_H),
     [wordGuide]
+  );
+
+  // Visible letter-size/spacing guide boxes — shown on ALL three attempts
+  // (unlike the reference path/tracer, which fade out by Attempt 3), since
+  // they're spatial-organization support, not letter-form/tracing support.
+  // See wordPaths.js's buildWordLetterBoxes for what this reuses/why.
+  const letterBoxes = useMemo(
+    () => buildWordLetterBoxes(word, CANVAS_W, CANVAS_H),
+    [word]
   );
 
   // Attempt-2 stroke-order marker — advances through the word's strokes as
@@ -327,7 +328,14 @@ export default function WordWritingScreen({ route, navigation }) {
   useEffect(() => {
     imageScale.setValue(0.85);
     Animated.spring(imageScale, { toValue: 1, friction: 5, tension: 60, useNativeDriver: false }).start();
-  }, [wordIdx, imageScale]);
+  }, [word, imageScale]);
+
+  // New word — no stale feedback/score state carries over (section 18: next
+  // word must start with no previous feedback state, no previous score state).
+  useEffect(() => {
+    clearTimeout(childFeedbackTimerRef.current);
+    setChildFeedbackText(null);
+  }, [word]);
 
   // Stop speech when leaving the screen
   useEffect(() => {
@@ -335,6 +343,7 @@ export default function WordWritingScreen({ route, navigation }) {
       spellCancelRef.current = true;
       spellTimersRef.current.forEach(clearTimeout);
       Speech.stop();
+      clearTimeout(childFeedbackTimerRef.current);
     };
   }, []);
 
@@ -375,6 +384,24 @@ export default function WordWritingScreen({ route, navigation }) {
           return [];
         });
       },
+      // Gesture-cancellation audit — if the OS/another responder interrupts
+      // mid-stroke (e.g. an incoming call, a system gesture), finalize
+      // whatever was drawn so far exactly like a normal release, instead of
+      // silently dropping it or leaving a dangling currentPath. Identical
+      // logic to onPanResponderRelease and to LetterWritingScreen's own
+      // onPanResponderTerminate — same "usable stroke kept, too-short one
+      // discarded" rule everywhere in the app.
+      onPanResponderTerminate: () => {
+        setCurrentPath(prev => {
+          if (prev.length > 2) {
+            const updated = [...allPathsRef.current, prev];
+            allPathsRef.current = updated;
+            setAllPaths(updated);
+            setHasDrawn(true);
+          }
+          return [];
+        });
+      },
     })
   ).current;
 
@@ -390,49 +417,42 @@ export default function WordWritingScreen({ route, navigation }) {
     Speech.stop();
   }, []);
 
-  const showCelebration = useCallback((data, isAllDone) => {
-    setCelebration({ data, isAllDone });
-    celebScale.setValue(0.5);
-    celebOpacity.setValue(0);
-    Animated.parallel([
-      Animated.spring(celebScale,   { toValue: 1, friction: 6, useNativeDriver: false }),
-      Animated.timing(celebOpacity, { toValue: 1, duration: 250, useNativeDriver: false }),
-    ]).start();
-  }, [celebScale, celebOpacity]);
+  const handleNext = useCallback(async () => {
+    if (submitting || !hasDrawn) return;
+    setSubmitting(true); setSaveError(null);
+    let saved;
+    try {
+      submitActionIdRef.current ||= newActionId();
+      saved = await submitWordAttempt({student,actionId:submitActionIdRef.current,word,stage:'guided_word_writing',attempt_number:attempt,strokes:allPathsRef.current,canvas_width:CANVAS_W,canvas_height:CANVAS_H});
+      submitActionIdRef.current = null;
+    } catch { setSaveError('Could not save yet. Check the connection and try again.'); setSubmitting(false); return; }
+    setSubmitting(false);
 
-  const handleNext = useCallback(() => {
-    if (!isLastAttempt) {
-      setAttempt(a => a + 1);
+    // Child-feedback task — shown after the AUTHORITATIVE backend save, never
+    // live while drawing, and never blocking progression: the attempt/word
+    // transition below always proceeds once the save succeeds, regardless of
+    // whether there's a layout advisory to show.
+    const message = childFeedbackMessage(saved?.child_feedback);
+    clearTimeout(childFeedbackTimerRef.current);
+    setChildFeedbackText(message);
+    if (message) {
+      childFeedbackTimerRef.current = setTimeout(() => setChildFeedbackText(null), 3200);
+    }
+
+    const transition = afterGuidedAttempt(attempt);
+    if (transition.type === 'attempt') {
+      setAttempt(transition.attemptNumber);
       resetCanvas();
       return;
     }
-    if (isLastWord) {
-      showCelebration(letterDoneCelebration, true);
-      resetCanvas();
-      return;
-    }
-    const currentGroup = getLengthGroup(letterWords[wordIdx].word);
-    const nextGroup    = getLengthGroup(letterWords[wordIdx + 1].word);
-    if (nextGroup > currentGroup) {
-      showCelebration(LENGTH_CELEBRATIONS[currentGroup] ?? LENGTH_CELEBRATIONS[5], false);
-      resetCanvas();
-    } else {
-      setWordIdx(i => i + 1);
-      setAttempt(1);
-      resetCanvas();
-    }
-  }, [isLastAttempt, isLastWord, wordIdx, letterWords, letterDoneCelebration, resetCanvas, showCelebration]);
-
-  const handleDismissCelebration = useCallback(() => {
-    const done = celebration?.isAllDone;
-    setCelebration(null);
-    if (done) {
-      navigation.replace('WordPractice', { student, theme, letter });
-    } else {
-      setWordIdx(i => i + 1);
-      setAttempt(1);
-    }
-  }, [celebration, navigation, student, theme, letter]);
+    navigation.replace('WordPractice', buildWordRouteParams({
+      student,
+      theme,
+      selectedLetter,
+      selectedWords,
+      currentWordIndex,
+    }));
+  }, [resetCanvas, submitting, hasDrawn, student, theme, selectedLetter, selectedWords, currentWordIndex, word, attempt, navigation]);
 
   // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
@@ -450,6 +470,8 @@ export default function WordWritingScreen({ route, navigation }) {
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
             style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="chevron-back" size={26} color={theme.headingText} />
           </TouchableOpacity>
@@ -457,11 +479,11 @@ export default function WordWritingScreen({ route, navigation }) {
           <View style={styles.headerCenter}>
             <View style={[styles.letterBadge, { backgroundColor: theme.button }]}>
               <Text style={[styles.letterBadgeText, { color: theme.buttonText }]}>
-                {letter.toUpperCase()}
+                {selectedLetter.toUpperCase()}
               </Text>
             </View>
             <Text style={[styles.counterText, { color: theme.headingText }]}>
-              {wordIdx + 1} / {letterWords.length}
+              {currentWordIndex + 1} / {selectedWords.length}
             </Text>
           </View>
 
@@ -510,6 +532,8 @@ export default function WordWritingScreen({ route, navigation }) {
                 onPress={() => spellWordRef.current?.()}
                 activeOpacity={0.75}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Replay pronunciation of ${word}`}
               >
                 <Ionicons name="volume-high" size={18} color={theme.buttonText} />
               </TouchableOpacity>
@@ -536,6 +560,8 @@ export default function WordWritingScreen({ route, navigation }) {
               <View
                 style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
                 {...panResponder.panHandlers}
+                accessible
+                accessibilityLabel="Word handwriting practice area"
               >
                 <Svg width={CANVAS_W} height={CANVAS_H}>
 
@@ -544,6 +570,26 @@ export default function WordWritingScreen({ route, navigation }) {
                   <Line x1={0} y1={LINE_2} x2={CANVAS_W} y2={LINE_2} stroke="#90CAF9" strokeWidth={1} />
                   <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3} stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
                   <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#90CAF9" strokeWidth={1.5} />
+
+                  {/* Visible letter-size/spacing guide boxes — instructional
+                      only, shown on every attempt. Thin, low-prominence
+                      border; no fill; rendered below the guide path/tracer/
+                      ink so handwriting always stays clearly on top. Purely
+                      decorative — writing outside a box never clips strokes
+                      or affects scoring (see wordPaths.js). */}
+                  {letterBoxes.map(box => (
+                    <Rect
+                      key={`letter-box-${box.index}`}
+                      x={box.x}
+                      y={box.y}
+                      width={box.width}
+                      height={box.height}
+                      rx={4}
+                      fill="rgba(120,120,140,0.05)"
+                      stroke="rgba(120,120,140,0.45)"
+                      strokeWidth={1}
+                    />
+                  ))}
 
                   {/* Reference-path guide — built from the same per-letter
                       LETTER_PATHS waypoints letter tracing uses, laid out
@@ -694,6 +740,7 @@ export default function WordWritingScreen({ route, navigation }) {
         )}
 
         {/* â”€â”€ Buttons â”€â”€ */}
+        {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', textAlign:'center' }}>{saveError}</Text>}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
             style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
@@ -707,11 +754,14 @@ export default function WordWritingScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.nextBtn, { backgroundColor: theme.button }]}
               onPress={handleNext}
+              disabled={submitting}
+              accessibilityRole="button"
+              accessibilityLabel="Save this word attempt and continue"
               activeOpacity={0.85}
             >
               <Text style={[styles.nextText, { color: theme.buttonText }]}>
-                {isLastAttempt
-                  ? (isLastWord ? 'Finish! 🎯' : 'Next Word →')
+                {submitting ? 'Saving…' : isLastAttempt
+                  ? 'Start Activities! 🎯'
                   : `Attempt ${attempt + 1} →`}
               </Text>
             </TouchableOpacity>
@@ -736,42 +786,6 @@ export default function WordWritingScreen({ route, navigation }) {
       </SafeAreaView>
 
       {/* â”€â”€ Celebration overlay â”€â”€ */}
-      {celebration && (
-        <View style={styles.celebOverlay}>
-          <LinearGradient
-            colors={celebration.data.gradient}
-            style={styles.celebGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          >
-            <Animated.View style={[styles.celebCard, {
-              opacity:   celebOpacity,
-              transform: [{ scale: celebScale }],
-            }]}>
-              <Text style={styles.celebEmoji}>{celebration.data.emoji}</Text>
-              <Text style={[styles.celebTitle, { color: celebration.data.color }]}>
-                {celebration.data.title}
-              </Text>
-              <Text style={styles.celebMessage}>{celebration.data.message}</Text>
-              <View style={styles.celebStars}>
-                {['⭐','⭐','⭐'].map((s, i) => (
-                  <Text key={i} style={styles.celebStar}>{s}</Text>
-                ))}
-              </View>
-              <TouchableOpacity
-                style={[styles.celebBtn, { backgroundColor: celebration.data.color }]}
-                onPress={handleDismissCelebration}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.celebBtnText}>
-                  {celebration.isAllDone ? 'Start Activities! 🎯' : 'Keep Going! →'}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </LinearGradient>
-        </View>
-      )}
-
       {/* â”€â”€ Word video modal â”€â”€ */}
       {showWordVideo && wordEntry && WORD_VIDEOS[wordEntry.word] && (
         <WordVideoModal
@@ -1048,4 +1062,3 @@ const styles = StyleSheet.create({
   celebBtn:     { paddingHorizontal: 36, paddingVertical: 14, borderRadius: 50, width: '100%', alignItems: 'center' },
   celebBtnText: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
 });
-

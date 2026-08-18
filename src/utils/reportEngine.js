@@ -265,12 +265,13 @@ export function computeWordMastery(wordProgress) {
     };
   }
 
-  const EXERCISE_NAMES = { A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It' };
+  const EXERCISE_NAMES = { A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It', E: 'Write the Word' };
 
   const byLetter = entries.map(([letter, words]) => {
     let correct = 0, good = 0, total = 0;
     const exBreakdown = { A: { correct: 0, good: 0, total: 0 }, B: { correct: 0, good: 0, total: 0 },
-                          C: { correct: 0, good: 0, total: 0 }, D: { correct: 0, good: 0, total: 0 } };
+                          C: { correct: 0, good: 0, total: 0 }, D: { correct: 0, good: 0, total: 0 },
+                          E: { correct: 0, good: 0, total: 0 } };
 
     words.forEach(w => {
       Object.entries(w.status).forEach(([ex, status]) => {
@@ -312,8 +313,8 @@ export function computeWordMastery(wordProgress) {
   const strongLetters= byLetter.filter(l => l.masteryStatus === 'Mastered').map(l => l.letter.toUpperCase());
 
   const explanation =
-    `Word activity accuracy is measured across 4 exercise types per word: First Letter (A), ` +
-    `Find the Picture (B), Fill the Gap (C), and Spell It (D). ` +
+    `Word activity accuracy is measured across 5 exercise types per word: First Letter (A), ` +
+    `Find the Picture (B), Fill the Gap (C), Spell It (D), and Write the Word (E). ` +
     `'Correct' = answered right on the first attempt; 'With help' = needed more tries. ` +
     `Overall accuracy: ${totalCorrect}/${totalEx} exercises correct (${overallPct}%). ` +
     `${strongLetters.length > 0 ? `Strong letters: ${strongLetters.join(', ')}. ` : ''}` +
@@ -477,8 +478,8 @@ export function generateRecommendations({ motorScore, letterMetrics, wordMastery
 
   // Word activity recommendations
   if (wordMastery?.byLetter?.length > 0) {
-    const weakEx = { A: 0, B: 0, C: 0, D: 0 };
-    const exNames = { A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It' };
+    const weakEx = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    const exNames = { A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It', E: 'Write the Word' };
     wordMastery.byLetter.forEach(l => {
       Object.entries(l.exBreakdown).forEach(([ex, v]) => {
         if (v.total > 0 && (v.correct / v.total) < 0.6) weakEx[ex]++;
