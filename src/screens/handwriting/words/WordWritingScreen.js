@@ -31,6 +31,7 @@ import { featuresToScore } from '../../../utils/adaptiveSequencing';
 import { submitWordAttempt, newActionId } from '../../../utils/wordApi';
 import { afterGuidedAttempt, buildWordRouteParams, resolveWordSession } from '../../../utils/wordWorkflow';
 import { childFeedbackMessage } from '../../../utils/wordFeedback';
+import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../../utils/touchPointSanitize';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
@@ -170,6 +171,17 @@ export default function WordWritingScreen({ route, navigation }) {
 
   const allPathsRef    = useRef([]);
   const startTimeRef   = useRef(null);
+  // Border-touch bug fix — the canvas's own on-screen origin, measured once
+  // on layout via measureInWindow(). Touch coordinates are derived from
+  // this + nativeEvent.pageX/Y (screen-absolute, always one stable frame)
+  // instead of nativeEvent.locationX/Y, which can silently re-base mid-drag
+  // right at a view boundary like the canvas's border — see
+  // touchPointSanitize.js for the full explanation.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+  }, []);
   const spellCancelRef = useRef(false);
   const spellTimersRef = useRef([]);
   const submitActionIdRef = useRef(null);
@@ -363,15 +375,24 @@ export default function WordWritingScreen({ route, navigation }) {
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
         startTimeRef.current = Date.now();
-        const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath([{ x: locationX, y: locationY, t: 0 }]);
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        setCurrentPath([{ x, y, t: 0 }]);
         if (allPathsRef.current.length === 0) spellWordRef.current?.();
       },
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath(prev => [
-          ...prev, { x: locationX, y: locationY, t: Date.now() - startTimeRef.current },
-        ]);
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          // Border-touch bug fix: a raw touch coordinate right at/near the
+          // canvas edge can occasionally glitch to a far-away value for one
+          // event — clamping (above) catches genuine overshoot, this catches
+          // an implausible same-event jump so it's dropped instead of drawn
+          // as a stray straight line (see touchPointSanitize.js).
+          if (last && isImplausibleJump(last, { x, y }, CANVAS_W, CANVAS_H)) return prev;
+          return [...prev, { x, y, t: Date.now() - startTimeRef.current }];
+        });
       },
       onPanResponderRelease: () => {
         setCurrentPath(prev => {
@@ -559,6 +580,8 @@ export default function WordWritingScreen({ route, navigation }) {
             <View style={styles.canvasOuter}>
               <View
                 style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
+                ref={canvasRef}
+                onLayout={measureCanvasOrigin}
                 {...panResponder.panHandlers}
                 accessible
                 accessibilityLabel="Word handwriting practice area"

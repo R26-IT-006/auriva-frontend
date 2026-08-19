@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, PanResponder, Dimensions } from 'react-native';
 import Svg, { Line, Circle, Polyline, Path, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { evaluateWordAttempt } from '../../utils/wordScoring';
 import { submitWordAttempt, newActionId } from '../../utils/wordApi';
 import { childFeedbackMessage } from '../../utils/wordFeedback';
 import { computeExerciseECanvasSize } from '../../utils/wordExerciseECanvas';
+import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
 
 // Responsive canvas (final-completion-pass fix) — was a fixed ~490×220,
 // which could clip on a small phone or leave excessive empty width on a
@@ -37,6 +38,12 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
   const [saveError, setSaveError] = useState(null);
   const actionIdRef = useRef(null);
   const startTimeRef = useRef(null);
+  // Border-touch bug fix — see touchPointSanitize.js / WordWritingScreen.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+  }, []);
 
   const hasDrawn = allPaths.length > 0;
 
@@ -64,15 +71,19 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
       onMoveShouldSetPanResponder: () => !done,
       onPanResponderGrant: (evt) => {
         startTimeRef.current = Date.now();
-        const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath([{ x: locationX, y: locationY, t: 0 }]);
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        setCurrentPath([{ x, y, t: 0 }]);
       },
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath(prev => [
-          ...prev,
-          { x: locationX, y: locationY, t: Date.now() - startTimeRef.current },
-        ]);
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x, y }, CANVAS_W, CANVAS_H)) return prev;
+          return [...prev, { x, y, t: Date.now() - startTimeRef.current }];
+        });
       },
       onPanResponderRelease: () => {
         setCurrentPath(prev => {
@@ -135,6 +146,8 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
 
         <View
           style={[styles.canvasCard, { borderColor: theme.button + '32' }]}
+          ref={canvasRef}
+          onLayout={measureCanvasOrigin}
           {...panResponder.panHandlers}
           accessible
           accessibilityLabel="Word handwriting practice area"

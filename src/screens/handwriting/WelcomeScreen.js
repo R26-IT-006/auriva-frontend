@@ -38,6 +38,19 @@ export default function WelcomeScreen({ route, navigation }) {
   const smallBubbleSize = panelW * 0.22;
 
   const [reduceMotion, setReduceMotion] = useState(false);
+  // Initial-assessment gate — the 6-shape assessment is core to adaptivity/
+  // personalization (Feature 1 baseline, Feature 2 thresholds) and must only
+  // ever be OFFERED on a student's first visit; a returning student (one who
+  // already has a stored assessment) skips straight to LetterHome instead of
+  // seeing this screen again. Read-only check against the SAME authoritative
+  // endpoint TeacherReportScreen/AssessmentCompleteScreen already use for
+  // "the" initial assessment (earliest non-collection HandwritingAssessment
+  // row) — no new backend logic, no change to how that assessment is scored,
+  // stored, or ever protected from being overwritten (that already happens
+  // server-side in motorBaselineService.js/dynamicThresholdService.js and is
+  // untouched here). A network failure fails OPEN (shows the assessment
+  // flow as before) rather than risking blocking a student from starting.
+  const [checkingReturningStudent, setCheckingReturningStudent] = useState(true);
   const floatLarge = useRef(new Animated.Value(0)).current;
   const floatMedium = useRef(new Animated.Value(0)).current;
   const floatSmall = useRef(new Animated.Value(0)).current;
@@ -65,6 +78,26 @@ export default function WelcomeScreen({ route, navigation }) {
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     return () => subscription.remove();
   }, []);
+
+  // See checkingReturningStudent above — one read-only request, resolved
+  // before this screen's own entrance animations start.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await client.get(ENDPOINTS.HANDWRITING_INITIAL_REPORT(student?.sid));
+        if (!active) return;
+        if (res.data?.hasData) {
+          navigation.replace('LetterHome', { student, theme });
+          return;
+        }
+      } catch (netErr) {
+        console.warn('Could not check initial-assessment status (defaulting to showing the assessment):', netErr?.message);
+      }
+      if (active) setCheckingReturningStudent(false);
+    })();
+    return () => { active = false; };
+  }, [student?.sid, navigation, student, theme]);
 
   useEffect(() => {
     if (reduceMotion) {
@@ -321,6 +354,13 @@ export default function WelcomeScreen({ route, navigation }) {
     student,
     theme,
   ]);
+
+  // Blank themed background only, no animated content — avoids a flash of
+  // the full "slide to begin" UI for a returning student who's about to be
+  // redirected straight to LetterHome (see the effect above).
+  if (checkingReturningStudent) {
+    return <SafeAreaView style={styles.safe} />;
+  }
 
   return (
     <SafeAreaView style={styles.safe}>

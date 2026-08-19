@@ -38,9 +38,13 @@ import { ParentGateModal } from '../../components/common/ParentGateModal';
 // Fallback authoritative source for the Assessment Summary modal when the
 // in-memory assessmentData route param is empty (e.g. reopened in a later
 // app session, or reached via "Skip Assessment") — reads the SAME
-// persisted Feature 1 baseline Feature 2+ already relies on, rather than
-// showing an empty state whenever one actually exists.
-import { fetchMotorBaseline } from '../../utils/motorBaseline';
+// per-shape data getInitialReport already derives for every assessment
+// (finalized or not), so a later visit shows the exact same 6-shape
+// breakdown instead of a coarser 3-family average (see
+// initialAssessmentShapes.js's own header for why this replaced the
+// earlier motorBaseline.js-based fallback, which required a finalized
+// Feature 1 baseline that many real assessments never reach).
+import { fetchInitialAssessmentShapes } from '../../utils/initialAssessmentShapes';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -77,13 +81,9 @@ function getScoreBadge(score) {
   return                   { label: 'Needs practice', bg: '#FFF3E0', color: '#E65100' };
 }
 
-const FAMILY_LABELS = { straight: 'Straight Lines', curved: 'Curves & Circles', complex: 'Zigzag & Waves' };
-const FAMILY_ICONS  = { straight: 'remove-outline', curved: 'ellipse-outline', complex: 'pulse-outline' };
-const FAMILY_ORDER  = ['straight', 'curved', 'complex'];
-
 // Real Ionicons instead of raw Unicode glyphs (━ ○ ✓) — renders consistently
-// across devices/fonts, and matches the same icon language SHAPE_ICONS/
-// FAMILY_ICONS already use for these exact concepts elsewhere on this screen.
+// across devices/fonts, and matches the same icon language SHAPE_ICONS
+// already uses for these exact concepts elsewhere on this screen.
 function getLearningPathContent(primaryStrength) {
   switch (primaryStrength) {
     case 'straight':
@@ -275,15 +275,15 @@ export default function LetterHomeScreen({ route, navigation }) {
   // Assessment Summary modal, fetched only when there's no in-memory
   // assessmentData to show (see effect below) — never fetched, and never
   // shown, when the just-completed session's data is already available.
-  const [baselineSummary, setBaselineSummary] = useState({ status: 'idle', baseline: null });
+  const [initialShapesSummary, setInitialShapesSummary] = useState({ status: 'idle', shapes: null });
 
   useEffect(() => {
     if (!showSummary) return;               // only fetch while the modal is actually open
     if (assessmentData.length > 0) return;   // in-memory data already covers this visit
-    if (baselineSummary.status !== 'idle') return; // fetch once per screen instance
-    setBaselineSummary({ status: 'loading', baseline: null });
-    fetchMotorBaseline({ studentId: student.sid }).then(setBaselineSummary);
-  }, [showSummary, assessmentData.length, baselineSummary.status, student.sid]);
+    if (initialShapesSummary.status !== 'idle') return; // fetch once per screen instance
+    setInitialShapesSummary({ status: 'loading', shapes: null });
+    fetchInitialAssessmentShapes({ studentId: student.sid }).then(setInitialShapesSummary);
+  }, [showSummary, assessmentData.length, initialShapesSummary.status, student.sid]);
 
   // Reliability Step 3: guards against useFocusEffect firing a second
   // overlapping retry attempt (e.g. the child navigates away and quickly
@@ -331,6 +331,13 @@ export default function LetterHomeScreen({ route, navigation }) {
   const progressPercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
   const wordsUnlocked   = true;
 
+  // Assessment Summary modal's shape data — the just-completed session's
+  // in-memory assessmentData when available, otherwise the same per-shape
+  // breakdown fetched from the server above. One unified 6-shape source
+  // either way (see initialAssessmentShapes.js) — the modal never falls
+  // back to a coarser 3-family view any more.
+  const summaryShapes = assessmentData.length > 0 ? assessmentData : (initialShapesSummary.shapes ?? []);
+
   // Screen-consistency fix: per-shape scores read from the SAME
   // features.motor_score AssessmentCompleteScreen.js reads — replaces the
   // old smoothness-only avgSmoothness/getOverallLabel calculation, which
@@ -338,7 +345,7 @@ export default function LetterHomeScreen({ route, navigation }) {
   // shown moments earlier for the identical assessment.
   // null (not 50) when a shape's motor_score is genuinely unavailable — see
   // getScoreBadge's explicit "Not available" state above.
-  const shapeScores = assessmentData.map(item => {
+  const shapeScores = summaryShapes.map(item => {
     const v = item.features?.motor_score;
     return v == null ? null : Math.round(v);
   });
@@ -683,21 +690,24 @@ export default function LetterHomeScreen({ route, navigation }) {
                   </View>
                 </View>
 
-                {/* Shape/family rows — fills available space evenly.
-                    Screen-consistency fix: three data states, never a
-                    silently-different formula between them.
+                {/* Shape rows — fills available space evenly.
+                    Screen-consistency fix: ONE 6-shape data shape and ONE
+                    rendering path regardless of source, never a coarser
+                    fallback view that could disagree with what the child
+                    saw moments earlier.
                     1. assessmentData present (same session as the just-
-                       completed assessment) → 6 per-shape rows, scored from
-                       the SAME features.motor_score AssessmentCompleteScreen
-                       read a moment earlier.
-                    2. assessmentData empty, persisted baseline found (a
-                       later visit) → 3 per-family rows read straight from
-                       Feature 1's authoritative StudentMotorBaseline.
-                    3. Neither available → loading / empty state. */}
-                {assessmentData.length > 0 ? (
+                       completed assessment) → in-memory, no fetch needed.
+                    2. assessmentData empty (a later visit) → the same
+                       6-shape breakdown fetched from the server (see
+                       initialAssessmentShapes.js) — real per-shape scores
+                       derived from stored stroke data even when the
+                       assessment was never finalized into a Feature 1
+                       baseline.
+                    3. Neither available yet → loading / empty state. */}
+                {summaryShapes.length > 0 ? (
                   <>
                     <View style={styles.modalShapeList}>
-                      {assessmentData.map((item, index) => {
+                      {summaryShapes.map((item, index) => {
                         const score    = shapeScores[index];
                         const badge    = getScoreBadge(score);
                         const iconName = SHAPE_ICONS[item.shapeId] ?? 'brush-outline';
@@ -722,41 +732,11 @@ export default function LetterHomeScreen({ route, navigation }) {
 
                     <OverallScoreCard theme={theme} label="Overall Assessment Score" score={overallShapeScore} />
                   </>
-                ) : baselineSummary.status === 'loading' ? (
+                ) : initialShapesSummary.status === 'loading' ? (
                   <View style={styles.summaryLoadingRow}>
                     <ActivityIndicator size="small" color={theme.button} />
                     <Text style={styles.summaryLoadingText}>Loading assessment results…</Text>
                   </View>
-                ) : baselineSummary.status === 'found' ? (
-                  <>
-                    <View style={styles.modalShapeList}>
-                      {FAMILY_ORDER.map((family) => {
-                        const score = Math.round(baselineSummary.baseline[family]);
-                        const badge = getScoreBadge(score);
-                        return (
-                          <View key={family} style={styles.shapeRow}>
-                            <View style={[styles.shapeIconWrap, { backgroundColor: badge.bg }]}>
-                              <Ionicons name={FAMILY_ICONS[family]} size={18} color={badge.color} />
-                            </View>
-                            <Text style={styles.shapeName}>{FAMILY_LABELS[family]}</Text>
-                            <Text style={styles.shapeScoreText}>{score}%</Text>
-                            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                              <Text style={[styles.badgeText, { color: badge.color }]}>
-                                {badge.label}
-                              </Text>
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-
-                    <OverallScoreCard
-                      theme={theme}
-                      label="Overall Assessment Score"
-                      score={Math.round(baselineSummary.baseline.overall)}
-                      note="From the student's initial assessment"
-                    />
-                  </>
                 ) : (
                   <Text style={styles.emptyText}>No assessment data available.</Text>
                 )}

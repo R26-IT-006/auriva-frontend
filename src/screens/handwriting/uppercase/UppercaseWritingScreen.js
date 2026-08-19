@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Line, Circle, Polyline, Polygon, Path, Text as SvgText } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import { storeLetterProgress } from '../../../utils/storage';
+import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../../utils/touchPointSanitize';
 import { getAllLetters } from '../../../constants/letterCategories';
 import { DATA_COLLECTION_PROTOCOL } from '../../../constants/dataCollectionProtocol';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../../utils/adaptiveSequencing';
@@ -515,6 +516,12 @@ export default function UppercaseWritingScreen({ route, navigation }) {
 
   const startTimeRef       = useRef(null);
   const allPathsRef        = useRef([]);
+  // Border-touch bug fix — see touchPointSanitize.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+  }, []);
   const attemptScoresRef   = useRef([]);   // accumulates featuresToScore result for each attempt
   const sessionAttemptsRef = useRef([]);   // ML: accumulates {attempt_number, features, strokes} per letter
   const strokeIdCounter    = useRef(0);    // ML: counts strokes within the current attempt
@@ -808,7 +815,8 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
         setAttemptFeedback(null);
-        const { locationX, locationY } = evt.nativeEvent;
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
         const now = Date.now();
         startTimeRef.current = now;
         strokeIdCounter.current += 1;  // ML: new stroke begins
@@ -818,10 +826,13 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         }
       },
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
         const now = Date.now();
         setCurrentPath(prev => {
           const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x: locationX, y: locationY }, CANVAS_W, CANVAS_H)) return prev;
           if (last && Math.hypot(locationX - last.x, locationY - last.y) < 1.5) return prev;
           return [...prev, {
             x: locationX, y: locationY, t: now - startTimeRef.current, tAbs: now, stroke_id: strokeIdCounter.current,
@@ -1232,6 +1243,8 @@ export default function UppercaseWritingScreen({ route, navigation }) {
               <View
                 style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
                 pointerEvents={attemptFeedback ? 'none' : 'auto'}
+                ref={canvasRef}
+                onLayout={measureCanvasOrigin}
                 {...panResponder.panHandlers}
               >
                 <Svg width={CANVAS_W} height={CANVAS_H}>

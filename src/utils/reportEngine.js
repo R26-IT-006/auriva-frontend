@@ -135,7 +135,10 @@ export function computeUnifiedMotorReportScore(assessmentData, motorProfile) {
   const breakdown = assessmentData.map(shape => {
     const raw = shape.features?.motor_score;
     const score = raw == null ? null : Math.round(raw);
-    return { shapeId: shape.shapeId ?? 'unknown', score, label: scoreLabel(score) };
+    // strokes carried through (already sent to the client by
+    // getInitialReport — nothing new exposed) so the teacher report can
+    // render a small preview of what the child actually drew, per shape.
+    return { shapeId: shape.shapeId ?? 'unknown', score, label: scoreLabel(score), strokes: shape.strokes ?? [] };
   });
 
   const realScores = breakdown.filter(b => b.score != null);

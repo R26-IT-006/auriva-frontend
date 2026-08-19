@@ -14,10 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import Svg, { Path, Line, Circle, Text as SvgText, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Line, Circle, Polyline, Text as SvgText, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { getSessionProgress, getAssessmentSnapshot, getSessionDurationMinutes } from '../../../constants/sessionProgress';
 import { getMotorProfile, getCompletedLetters, getLetterProgress } from '../../../utils/storage';
+import { computeShapePreviewPaths } from '../../../utils/shapePreviewGeometry';
 import { fetchWordReport } from '../../../utils/wordApi';
 import { generateReport } from '../../../utils/reportEngine';
 import client from '../../../api/client';
@@ -278,12 +279,23 @@ export default function TeacherReportScreen({ route, navigation }) {
   const [report,   setReport]   = useState(null);
   const [duration, setDuration] = useState(0);
   const [letterProgressReport, setLetterProgressReport] = useState(null);
+  // Report-load crash fix: several steps below (local AsyncStorage reads,
+  // report computation) are NOT individually try/caught the way the network
+  // calls are — if one of them throws (e.g. a legacy/corrupted local record
+  // for an older student), the outer catch below swallows it, but `report`
+  // was never set. The render used to assume "loading finished" meant
+  // "report is ready" and read straight into report.summary/etc. with no
+  // guard, crashing to a blank screen. loadError distinguishes "still
+  // loading" from "finished, but nothing to show" so the render can fall
+  // back to a clear retry message instead of crashing.
+  const [loadError, setLoadError] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       async function load() {
         setLoading(true);
+        setLoadError(false);
         try {
           // 1. Fetch stored initial assessment + analysis from the server
           let serverData = null;
@@ -376,6 +388,7 @@ export default function TeacherReportScreen({ route, navigation }) {
           }
         } catch (e) {
           console.warn('Report load error:', e);
+          if (active) setLoadError(true);
         } finally {
           if (active) setLoading(false);
         }
@@ -499,6 +512,21 @@ export default function TeacherReportScreen({ route, navigation }) {
           <View style={s.loadingWrap}>
             <ActivityIndicator size="large" color={theme.button} />
             <Text style={[s.loadingText, { color: theme.headingText }]}>Generating report…</Text>
+          </View>
+        ) : !report || loadError ? (
+          <View style={s.loadingWrap}>
+            <Ionicons name="cloud-offline-outline" size={40} color={theme.headingText} />
+            <Text style={[s.loadingText, { color: theme.headingText }]}>
+              Couldn't load this report. Check the connection and try again.
+            </Text>
+            <TouchableOpacity
+              style={[s.retryBtn, { backgroundColor: theme.button }]}
+              onPress={() => navigation.replace('TeacherReport', { student, theme })}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading the report"
+            >
+              <Text style={s.retryBtnText}>Retry</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <ScrollView
@@ -718,29 +746,70 @@ const st = StyleSheet.create({
   label: { fontSize: 11, color: TEXT_2, fontWeight: '600', textAlign: 'center' },
 });
 
+// Small preview of the child's actual traced strokes for one shape — see
+// shapePreviewGeometry.js. strokes were already sent to the client by
+// getInitialReport (nothing new exposed); this only renders them. Shows a
+// neutral placeholder icon rather than a blank box when a shape genuinely
+// has no usable stroke data (never fabricates a drawing).
+const SHAPE_PREVIEW_SIZE = 44;
+
+function ShapePreview({ strokes }) {
+  const paths = computeShapePreviewPaths(strokes, SHAPE_PREVIEW_SIZE, SHAPE_PREVIEW_SIZE, 5);
+  return (
+    <View style={sr.previewBox}>
+      {paths.length > 0 ? (
+        <Svg width={SHAPE_PREVIEW_SIZE} height={SHAPE_PREVIEW_SIZE}>
+          {paths.map((points, i) => (
+            <Polyline
+              key={i}
+              points={points.map(p => `${p.x},${p.y}`).join(' ')}
+              stroke="#334155"
+              strokeWidth={1.6}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          ))}
+        </Svg>
+      ) : (
+        <Ionicons name="image-outline" size={16} color="#CBD5E1" />
+      )}
+    </View>
+  );
+}
+
 function ShapeRow({ shape }) {
   const color = shape.score >= 70 ? '#15803D' : shape.score >= 45 ? '#B45309' : '#B91C1C';
   const label = shape.label ?? (shape.score >= 70 ? 'Excellent' : shape.score >= 45 ? 'Good' : 'Practice');
   return (
-    <View style={sr.row}>
-      <Text style={sr.name} numberOfLines={1}>
-        {shape.shapeId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-      </Text>
-      <View style={{ flex: 1, paddingHorizontal: 10 }}>
-        <ScoreBar pct={shape.score} height={10} />
-      </View>
-      <Text style={[sr.pct, { color }]}>{shape.score}%</Text>
-      <View style={[sr.labelWrap, {
-        backgroundColor: shape.score >= 70 ? '#F0FDF4' : shape.score >= 45 ? '#FFFBEB' : '#FEF2F2',
-        borderColor: shape.score >= 70 ? '#86EFAC' : shape.score >= 45 ? '#FCD34D' : '#FCA5A5',
-      }]}>
-        <Text style={[sr.labelText, { color }]}>{label}</Text>
+    <View style={sr.wrap}>
+      <ShapePreview strokes={shape.strokes} />
+      <View style={sr.row}>
+        <Text style={sr.name} numberOfLines={1}>
+          {shape.shapeId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+        </Text>
+        <View style={{ flex: 1, paddingHorizontal: 10 }}>
+          <ScoreBar pct={shape.score} height={10} />
+        </View>
+        <Text style={[sr.pct, { color }]}>{shape.score}%</Text>
+        <View style={[sr.labelWrap, {
+          backgroundColor: shape.score >= 70 ? '#F0FDF4' : shape.score >= 45 ? '#FFFBEB' : '#FEF2F2',
+          borderColor: shape.score >= 70 ? '#86EFAC' : shape.score >= 45 ? '#FCD34D' : '#FCA5A5',
+        }]}>
+          <Text style={[sr.labelText, { color }]}>{label}</Text>
+        </View>
       </View>
     </View>
   );
 }
 const sr = StyleSheet.create({
-  row:       { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  wrap:       { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
+  previewBox: {
+    width: SHAPE_PREVIEW_SIZE, height: SHAPE_PREVIEW_SIZE, borderRadius: 8,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  row:       { flex: 1, flexDirection: 'row', alignItems: 'center' },
   name:      { width: 110, fontSize: 13, color: TEXT_2, fontWeight: '500' },
   pct:       { width: 38, fontSize: 13, fontWeight: '800', textAlign: 'right' },
   labelWrap: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1 },
@@ -1603,8 +1672,10 @@ const s = StyleSheet.create({
   heroName:        { fontSize: 20, fontWeight: '900' },
   heroMeta:        { fontSize: 12, opacity: 0.7, fontWeight: '500', marginTop: 2 },
 
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
-  loadingText: { fontSize: 14, fontWeight: '600', opacity: 0.75 },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
+  loadingText: { fontSize: 14, fontWeight: '600', opacity: 0.75, textAlign: 'center' },
+  retryBtn:     { paddingHorizontal: 24, paddingVertical: 11, borderRadius: 50 },
+  retryBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 
   scrollArea: { flex: 1, backgroundColor: PAGE_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   scroll:     { padding: 16, paddingTop: 20 },

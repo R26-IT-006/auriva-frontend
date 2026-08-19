@@ -16,6 +16,7 @@ import Svg, { Polyline, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { computeDTW } from '../../utils/dtw';
+import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
 import { normalizeStrokesForDTW } from '../../utils/dtwNormalization';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../utils/adaptiveSequencing';
 import { DEFAULT_N_POINTS, selectPreWritingActivities } from '../../constants/preWritingActivities';
@@ -168,6 +169,12 @@ export default function PreWritingActivityScreen({ route, navigation }) {
 
   const startTimeRef      = useRef(null);
   const allPathsRef       = useRef([]);
+  // Border-touch bug fix — see touchPointSanitize.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+  }, []);
   const strokeIdCounter   = useRef(0);
   const resultsRef        = useRef([]); // accumulated across all activities this session
   const animValue         = useRef(new Animated.Value(0)).current;
@@ -281,7 +288,8 @@ export default function PreWritingActivityScreen({ route, navigation }) {
       onMoveShouldSetPanResponder:  () => true,
 
       onPanResponderGrant: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
         const now = Date.now();
         startTimeRef.current = now;
         strokeIdCounter.current += 1;
@@ -289,11 +297,17 @@ export default function PreWritingActivityScreen({ route, navigation }) {
       },
 
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
         const now = Date.now();
-        setCurrentPath(prev => [...prev, {
-          x: locationX, y: locationY, t: now - startTimeRef.current, tAbs: now, stroke_id: strokeIdCounter.current,
-        }]);
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x: locationX, y: locationY }, CANVAS_WIDTH, CANVAS_HEIGHT)) return prev;
+          return [...prev, {
+            x: locationX, y: locationY, t: now - startTimeRef.current, tAbs: now, stroke_id: strokeIdCounter.current,
+          }];
+        });
       },
 
       onPanResponderRelease: () => {
@@ -438,6 +452,8 @@ export default function PreWritingActivityScreen({ route, navigation }) {
           <View style={styles.canvasArea}>
             <View
               style={[styles.canvasCard, { borderColor: theme.button + '30' }]}
+              ref={canvasRef}
+              onLayout={measureCanvasOrigin}
               {...panResponder.panHandlers}
             >
               <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>

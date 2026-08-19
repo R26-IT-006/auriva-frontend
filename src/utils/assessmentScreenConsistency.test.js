@@ -60,10 +60,20 @@ describe('AssessmentCompleteScreen.js and LetterHomeScreen.js share one scoring 
     expect(home).not.toMatch(/function\s+getOverallLabel/);
   });
 
-  it('LetterHomeScreen falls back to the persisted Feature 1 baseline (utils/motorBaseline) rather than an empty state whenever one exists', () => {
+  // UPDATE (6-column Assessment Summary fix): the fallback source changed
+  // from utils/motorBaseline (Feature 1's persisted baseline — a coarser
+  // 3-family average, and only populated once an assessment has been
+  // finalized, which many real assessments on live data never reach) to
+  // utils/initialAssessmentShapes (the same 6-shape-per-attempt data
+  // getInitialReport already derives for any assessment, finalized or
+  // not). A later visit now shows the identical 6-row breakdown the child
+  // saw immediately after finishing, never a blended 3-row summary.
+  it('LetterHomeScreen falls back to the same 6-shape initial-report data (utils/initialAssessmentShapes) rather than a coarser 3-family summary or an empty state', () => {
     const home = read(LETTER_HOME_FILE);
-    expect(home).toMatch(/import\s*{\s*fetchMotorBaseline\s*}\s*from\s*['"].*utils\/motorBaseline['"]/);
-    expect(home).toMatch(/baselineSummary\.status === ['"]found['"]/);
+    expect(home).toMatch(/import\s*{\s*fetchInitialAssessmentShapes\s*}\s*from\s*['"].*utils\/initialAssessmentShapes['"]/);
+    expect(home).toMatch(/summaryShapes\.length > 0/);
+    expect(home).not.toMatch(/utils\/motorBaseline/);
+    expect(home).not.toMatch(/FAMILY_ORDER/);
   });
 
   it('both screens bucket "Good/Moderate/Needs practice"-style labels from a score >= 75 / >= 50 threshold, not from raw smoothness', () => {

@@ -30,6 +30,7 @@ import {
   calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
 } from '../../utils/trajectoryFeatures';
 import { buildDtwDebugExport } from '../../utils/dtwDebugExport';
+import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
@@ -313,6 +314,12 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const [reduceMotion,      setReduceMotion]      = useState(false);
 
   const startTime            = useRef(null);
+  // Border-touch bug fix — see touchPointSanitize.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+  }, []);
   const sessionStartTime     = useRef(Date.now());
   const currentShapeIndexRef = useRef(0);
   const allPathsRef          = useRef([]);
@@ -452,7 +459,8 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       onMoveShouldSetPanResponder:  () => true,
 
       onPanResponderGrant: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
         const now = Date.now();
         startTime.current = now;
         strokeIdCounter.current += 1;  // ML: new stroke starts
@@ -460,9 +468,15 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       },
 
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
+        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
         const now = Date.now();
-        setCurrentPath(prev => [...prev, { x: locationX, y: locationY, t: now - startTime.current, tAbs: now, stroke_id: strokeIdCounter.current }]);
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x: locationX, y: locationY }, CANVAS_WIDTH, CANVAS_HEIGHT)) return prev;
+          return [...prev, { x: locationX, y: locationY, t: now - startTime.current, tAbs: now, stroke_id: strokeIdCounter.current }];
+        });
       },
 
       onPanResponderRelease: () => {
@@ -668,6 +682,8 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
           <View style={styles.canvasArea}>
             <View
               style={[styles.canvasCard, { borderColor: theme.button + '30' }]}
+              ref={canvasRef}
+              onLayout={measureCanvasOrigin}
               {...panResponder.panHandlers}
             >
               <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
