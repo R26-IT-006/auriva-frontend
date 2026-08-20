@@ -176,9 +176,6 @@ export default function GreetingLandingScreen({ route, navigation }) {
             <Text style={[styles.title, { color: theme.headingText }]}>
               {"Let's learn the word"}
             </Text>
-            <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
-              වචනය ඉගෙනගනිමු!
-            </Text>
             <Text style={[styles.wordHighlight, { color: theme.button }]}>
               "{wordLabel}"
             </Text>

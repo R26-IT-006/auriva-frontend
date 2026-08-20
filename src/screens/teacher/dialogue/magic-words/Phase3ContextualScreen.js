@@ -510,9 +510,6 @@ export default function Phase3ContextualScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               {`Select the image where we can use the word '${wordLabel}'`}
             </Text>
-            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
-              {`'${wordLabel}' වචනය භාවිතා කළ හැකි රූපය තෝරන්න`}
-            </Text>
 
             {/* ── Image cards ── */}
             {isVerticalLayout ? (

@@ -57,20 +57,14 @@ export default function Phase1CompleteScreen({ route, navigation }) {
             <Text style={[styles.heading, { color: theme.headingText }]}>
               You did it! 🎉
             </Text>
-            <Text style={[styles.headingSinhala, { color: theme.headingText }]}>
-              ඔබ කළා! 🎉
-            </Text>
 
             <Text style={[styles.subtext, { color: theme.headingText }]}>
               You've learnt to recognise{'\n'}
               <Text style={[styles.wordAccent, { color: theme.button }]}>"{wordLabel}"</Text>
             </Text>
-            <Text style={[styles.subtextSinhala, { color: theme.headingText }]}>
-              {`"${wordLabel}" වචනය හඳුනාගෙන ඉගෙනගත්තා`}
-            </Text>
 
             <Text style={[styles.nextLabel, { color: theme.headingText }]}>
-              Next up: Say the word!  ·  ඊළඟ: වචනය කියමු!
+              Next up: Say the word!
             </Text>
           </Animated.View>
 
@@ -81,7 +75,7 @@ export default function Phase1CompleteScreen({ route, navigation }) {
               onPress={() => navigation.navigate('Phase2Production', { student, wordKey, wordId: route.params?.wordId, cueGrapheme: route.params?.cueGrapheme ?? null })}
             >
               <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>
-                Let's say it!  ·  අපි කියමු!
+                Let's say it!
               </Text>
             </TouchableOpacity>
           </Animated.View>

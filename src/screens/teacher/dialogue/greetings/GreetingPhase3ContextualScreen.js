@@ -670,9 +670,6 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               {`Select the image where we can use the word '${wordLabel}'`}
             </Text>
-            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
-              {`'${wordLabel}' වචනය භාවිතා කළ හැකි රූපය තෝරන්න`}
-            </Text>
 
             <View style={styles.cardsRow}>
               {imageItems.map(item => {

@@ -294,9 +294,6 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Look at the pictures and tap the correct scene
             </Text>
-            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
-              රූප බලා නිවැරදි දර්ශනය ස්පර්ශ කරන්න
-            </Text>
 
             <View style={styles.cardsRow}>
               {imageItems.map(item => {

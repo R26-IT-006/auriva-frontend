@@ -77,7 +77,7 @@ export default function L2ListenTogetherScreen({ route, navigation }) {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>Listen Together 🎧</Text>
-          <Text style={[styles.headerSub, { color: theme.headingText }]}>Section 7 · Hear the full paragraph  ·  කොටස 7 · සම්පූර්ණ ඡේදය අසන්න</Text>
+          <Text style={[styles.headerSub, { color: theme.headingText }]}>Section 7 · Hear the full paragraph</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -86,7 +86,6 @@ export default function L2ListenTogetherScreen({ route, navigation }) {
           <View style={styles.avatarRow}>
             <View style={[styles.bubble, { backgroundColor: theme.cardSurface }]}>
               <Text style={[styles.bubbleText, { color: theme.headingText }]}>Let's listen together!</Text>
-              <Text style={[styles.bubbleSinhala, { color: theme.headingText }]}>එකට සවන් දෙමු!</Text>
               <View style={[styles.bubbleTail, { borderLeftColor: theme.cardSurface }]} />
             </View>
             <Animated.Image source={avatarImg} style={[styles.avatar, { transform: [{ scale: pulse }] }]} resizeMode="contain" />
@@ -136,7 +135,7 @@ export default function L2ListenTogetherScreen({ route, navigation }) {
 
           {/* CTA */}
           <TouchableOpacity style={[styles.nextBtn, { backgroundColor: theme.button }]} onPress={goToProduction} activeOpacity={0.85}>
-            <Text style={[styles.nextText, { color: theme.buttonText }]}>Now it's your turn!  ·  දැන් ඔබේ වාරයයි!</Text>
+            <Text style={[styles.nextText, { color: theme.buttonText }]}>Now it's your turn!</Text>
             <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
           </TouchableOpacity>
 

@@ -76,7 +76,6 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
               <View style={styles.header}>
                 <Text style={styles.headerEmoji}>👫</Text>
                 <Text style={styles.title}>Tell me about your friend!</Text>
-                <Text style={styles.titleSinhala}>ඔබේ යෙහෙළිය ගැන කියන්න!</Text>
                 <TouchableOpacity style={styles.closeBtn} onPress={onCancel} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                   <Ionicons name="close" size={22} color="#666" />
                 </TouchableOpacity>
@@ -84,7 +83,6 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
 
               {/* Friend's Name */}
               <Text style={styles.label}>What is your friend's name? <Text style={styles.required}>*</Text></Text>
-              <Text style={styles.labelSinhala}>ඔබේ යෙහෙළියාගේ නම කුමක්ද?</Text>
               <TextInput
                 style={styles.textInput}
                 value={name}
@@ -97,7 +95,6 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
 
               {/* Gender */}
               <Text style={styles.label}>Is your friend a girl or a boy? <Text style={styles.required}>*</Text></Text>
-              <Text style={styles.labelSinhala}>ඔබේ යෙහෙළිය ගෑණු ළමයෙකු ද? පිරිමි ළමයෙකු ද?</Text>
               <View style={styles.chipRow}>
                 {[{ v: 'girl', label: 'Girl 👧' }, { v: 'boy', label: 'Boy 👦' }].map(({ v, label }) => (
                   <TouchableOpacity
@@ -113,7 +110,6 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
 
               {/* Age (optional) */}
               <Text style={styles.label}>How old is your friend? <Text style={styles.optional}>(optional)</Text></Text>
-              <Text style={styles.labelSinhala}>ඔබේ යෙහෙළිය කීයේ ද?</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
                 {AGE_OPTIONS.map(a => (
                   <TouchableOpacity
@@ -129,7 +125,6 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
 
               {/* Grade (optional) */}
               <Text style={styles.label}>What grade is your friend in? <Text style={styles.optional}>(optional)</Text></Text>
-              <Text style={styles.labelSinhala}>ඔබේ යෙහෙළිය කුමන ශ්‍රේණියේ ද?</Text>
               <View style={styles.chipRow}>
                 {GRADE_OPTIONS.map(g => (
                   <TouchableOpacity
@@ -145,7 +140,6 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
 
               {/* Personality (optional) */}
               <Text style={styles.label}>Why do you like your friend? <Text style={styles.optional}>(optional)</Text></Text>
-              <Text style={styles.labelSinhala}>ඔබ ඔබේ යෙහෙළිය ගැන කැමති ඇයි?</Text>
               <View style={styles.chipRow}>
                 {PERSONALITY_OPTIONS.map(p => (
                   <TouchableOpacity

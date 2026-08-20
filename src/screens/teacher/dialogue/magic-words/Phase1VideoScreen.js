@@ -319,7 +319,7 @@ export default function Phase1VideoScreen({ route, navigation }) {
             <View style={styles.btnRow}>
               {!hasFinished && (
                 <Text style={[styles.watchHint, { color: theme.headingText }]}>
-                  Watch the video to continue  ·  ඉදිරියට යාමට වීඩියෝව නරඹන්න
+                  Watch the video to continue
                 </Text>
               )}
               <TouchableOpacity

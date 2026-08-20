@@ -75,7 +75,6 @@ export default function PetPicker({ visible, student, existing, onSaved, onCance
               <View style={styles.header}>
                 <Text style={styles.headerEmoji}>🐾</Text>
                 <Text style={styles.title}>Do you have a pet?</Text>
-                <Text style={styles.titleSinhala}>ඔබට සතෙකු සිටිනවාද?</Text>
                 <TouchableOpacity style={styles.closeBtn} onPress={onCancel} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                   <Ionicons name="close" size={22} color="#666" />
                 </TouchableOpacity>
@@ -83,7 +82,6 @@ export default function PetPicker({ visible, student, existing, onSaved, onCance
 
               {/* Pet type grid */}
               <Text style={styles.label}>Tap your pet! <Text style={styles.required}>*</Text></Text>
-              <Text style={styles.labelSinhala}>ඔබේ සතා තෝරන්න!</Text>
               <View style={styles.petGrid}>
                 {PETS.map(({ key, emoji, label }) => {
                   const selected = petType === key;
@@ -108,7 +106,6 @@ export default function PetPicker({ visible, student, existing, onSaved, onCance
 
               {/* Optional pet name */}
               <Text style={styles.label}>What is your pet's name? <Text style={styles.optional}>(optional)</Text></Text>
-              <Text style={styles.labelSinhala}>ඔබේ සතාගේ නම කුමක්ද?</Text>
               <TextInput
                 style={styles.textInput}
                 value={petName}

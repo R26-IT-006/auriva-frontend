@@ -90,7 +90,6 @@ export default function L2LoadingScreen({ route, navigation }) {
             <>
               <Text style={[styles.heading, { color: theme.headingText }]}>Getting your lesson ready...</Text>
               <Text style={[styles.sub, { color: theme.headingText }]}>Just a moment! 🌟</Text>
-              <Text style={[styles.subSinhala, { color: theme.headingText }]}>ටිකකින් සූදානම් වෙයි!</Text>
               <View style={styles.dotsRow}>
                 {[0, 1, 2].map(i => <LoadingDot key={i} delay={i * 250} color={theme.button} />)}
               </View>

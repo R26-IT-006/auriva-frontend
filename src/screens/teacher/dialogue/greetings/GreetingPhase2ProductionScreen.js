@@ -586,9 +586,6 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
               </Text>
               {'?'}
             </Text>
-            <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
-              {`"${wordLabel}" කිව හැකිද?`}
-            </Text>
 
             <TouchableOpacity
               style={[
@@ -621,7 +618,7 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
             <View style={styles.hintRow}>
               <Ionicons name="hand-left-outline" size={15} color={theme.headingText} style={{ opacity: 0.45 }} />
               <Text style={[styles.hintText, { color: theme.headingText }]}>
-                Click on the card to hear the audio  ·  ශ්‍රව්‍ය ඇසීමට කාඩ්පත ස්පර්ශ කරන්න
+                Click on the card to hear the audio
               </Text>
             </View>
 
@@ -645,7 +642,7 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
                     {isRecording ? 'Stop Recording' : 'Record Audio'}
                   </Text>
                 </TouchableOpacity>
-                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK  ·  ස්පර්ශ කර කතා කරන්න</Text>
+                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK</Text>
               </View>
 
               <View style={styles.avatarWrap}>

@@ -277,9 +277,6 @@ export default function Phase2NonVerbalScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Look at the pictures and tap the correct scene
             </Text>
-            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
-              රූප බලා නිවැරදි දර්ශනය ස්පර්ශ කරන්න
-            </Text>
 
             {/* ── 3 image cards ── */}
             {isVerticalLayout ? (
