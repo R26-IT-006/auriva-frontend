@@ -94,9 +94,9 @@ const GREETINGS_NV_CAPTIONS = {
 };
 
 const CAN_YOU_NV = {
-  correct: require('../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  wrong1:  require('../../../../assets/dialogue-images/words/abilities/can_you/context_wrong.png'),
-  wrong2:  require('../../../../assets/dialogue-images/words/abilities/can_you/context_wrong_2.png'),
+  correct: require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  wrong1:  require('../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
+  wrong2:  require('../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
 };
 const ABILITIES_NV_IMAGES = {
   cat3_yes: CAN_YOU_NV,

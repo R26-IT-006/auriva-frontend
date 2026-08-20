@@ -46,15 +46,15 @@ const WORD_LABELS = {
 // constants/dialogueAssets.js by design; the scene/context concept there
 // doesn't apply to this category — confirmed 2026-07-28).
 const CAT3_WORD_IMAGE = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
   clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
   run:      require('../../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
   walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
   jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
 };
 
 // Word audio for the familiarisation screens — mirrors Cat3Phase2Screen.js's

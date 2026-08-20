@@ -46,15 +46,15 @@ const DIALOGUE_WORD_AUDIO = {
 // 2026-07-28) — mirrors Cat3Phase1Screen.js's/Cat3Phase2Screen.js's own
 // CAT3_WORD_IMAGE/CAT3_WORD_AUDIO maps exactly (same keys, same asset paths).
 const CAT3_WORD_IMAGE = {
-  cat3_yes: require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  cat3_no:  require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  cat3_yes: require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  cat3_no:  require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
   clap:     require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
   run:      require('../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
   walk:     require('../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
   jump:     require('../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  talk:     require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  dance:    require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  sing:     require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  talk:     require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  dance:    require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  sing:     require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
 };
 const CAT3_WORD_AUDIO = {
   clap:  require('../../../../assets/dialogue-audios/abilities/clap.mp3'),

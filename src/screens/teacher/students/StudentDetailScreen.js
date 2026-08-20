@@ -199,24 +199,11 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         )}
 
         {/* Module progress */}
-        {/* TASK-43 — the dialogue trajectory report is surfaced the same way the
-            concept report is: a "Report" action on this header, shown while its
-            own module tab is selected. Unlike concepts it has no summary call to
-            gate on, so it is always offered — the report itself says plainly
-            when a word has no prediction yet. */}
         <SectionHeader
           icon="stats-chart-outline"
           title="Module Progress"
-          action={
-            (activeModule === 'concept' && concepts && concepts.totals.started > 0)
-            || activeModule === 'dialogue'
-              ? 'Report'
-              : null
-          }
-          onAction={() => navigation.navigate(
-            activeModule === 'dialogue' ? 'TrajectoryReport' : 'ConceptReport',
-            { student }
-          )}
+          action={activeModule === 'concept' && concepts && concepts.totals.started > 0 ? 'Report' : null}
+          onAction={() => navigation.navigate('ConceptReport', { student })}
         />
 
         <ScrollView
@@ -249,17 +236,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         </ScrollView>
 
         <Card style={styles.infoCard} padding="none">
-          {activeModule === 'dialogue' ? (
-            // Dialogue has a report but no summary endpoint, so this panel points
-            // at the report rather than claiming the module is unreleased.
-            <View style={styles.conceptEmpty}>
-              <Ionicons name={activeMeta.icon} size={22} color={Colors.text.muted} />
-              <Text style={styles.conceptEmptyText}>
-                Open the trajectory report to see where {firstName} is heading on
-                each dialogue word, and what led to each label.
-              </Text>
-            </View>
-          ) : activeModule !== 'concept' ? (
+          {activeModule !== 'concept' ? (
             <View style={styles.conceptEmpty}>
               <Ionicons name={activeMeta.icon} size={22} color={Colors.text.muted} />
               <Text style={styles.conceptEmptyText}>

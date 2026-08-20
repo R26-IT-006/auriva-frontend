@@ -17,6 +17,9 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 const LEVELS = [
   { key: 'level1', label: 'Level 1 - Dialogue word Learning' },
   { key: 'level2', label: 'Level 2 - Sentence Construction' },
+  // TASK-43 — kept parallel to the "Concept Report" card so a teacher who
+  // already reads that naming convention reads this one the same way.
+  { key: 'trajectoryReport', label: 'Trajectory Report' },
 ];
 
 export default function DialogueLandingScreen({ route, navigation }) {
@@ -96,6 +99,8 @@ export default function DialogueLandingScreen({ route, navigation }) {
                       navigation.navigate('DialogueCategory', { student });
                     } else if (level.key === 'level2') {
                       navigation.navigate('L2TopicSelection', { student });
+                    } else if (level.key === 'trajectoryReport') {
+                      navigation.navigate('TrajectoryReport', { student });
                     }
                   }}
                 >

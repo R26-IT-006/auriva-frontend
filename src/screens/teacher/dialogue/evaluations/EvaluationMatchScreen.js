@@ -59,17 +59,16 @@ const EVAL_WORD_IMAGE = {
   excuse_me:       require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
 
   // Abilities
-  clap:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  run:        require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  walk:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  jump:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  talk:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  dance:      require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  sing:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  can_you:    require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  yes_i_can:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  no_i_cant:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  i_can:      require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  // can_you/yes_i_can/no_i_cant/i_can removed 2026-08-16 — those words were
+  // retired (not taught, asset folders deleted); their entries here were
+  // dead the moment those words stopped existing in dialogue_words.
+  clap:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+  run:        require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+  walk:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+  jump:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+  talk:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+  dance:      require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+  sing:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
 };
 
 // Standard word-pronunciation audio, reused from each category's Phase 2
