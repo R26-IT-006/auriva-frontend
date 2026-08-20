@@ -61,6 +61,11 @@ import { fetchMotorClusterProfile } from '../../../utils/motorClusterProfile';
 import {
   fetchLatestLetterMotorState, fetchLetterMotorStateHistory, fetchLetterMotorEvidenceTrend, METRIC_LABELS,
 } from '../../../utils/letterMotorState';
+// Proposal FR-19/FR-20, Phase 7C/7D — periodic report (flexible date
+// ranges) + real PDF export/share. Additive section only — every existing
+// section below (current-state Feature 8/9/10/11, family thresholds,
+// motor patterns) is untouched.
+import PeriodicReportSection from '../../../components/handwriting/reports/PeriodicReportSection';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -545,7 +550,19 @@ export default function TeacherReportScreen({ route, navigation }) {
             <Text style={[s.topTitle, { color: theme.headingText }]}>Progress Report</Text>
             <Text style={[s.topDate,  { color: theme.headingText }]}>{dateStr}</Text>
           </View>
-          <TouchableOpacity style={s.topBtn} onPress={handleShare} activeOpacity={0.75}>
+          {/* Proposal FR-19/FR-20, Phase 7C/7D §25 — this is the pre-
+              existing PLAINTEXT current-state summary share (Share.share,
+              unrelated to any date range). The new genuine PDF export/
+              share for a selected period lives in PeriodicReportSection
+              below, as its own distinctly-labeled "Export & Share PDF"
+              button — the two are never both called "Share Report". */}
+          <TouchableOpacity
+            style={s.topBtn}
+            onPress={handleShare}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel="Share text summary"
+          >
             <Ionicons name="share-social-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
@@ -593,6 +610,9 @@ export default function TeacherReportScreen({ route, navigation }) {
             contentContainerStyle={s.scroll}
             showsVerticalScrollIndicator={false}
           >
+
+            {/* ══ 0. Periodic Report (FR-19/FR-20) ═══════════════════════════ */}
+            <PeriodicReportSection student={student} theme={theme} />
 
             {/* ══ 1. Practice Summary ════════════════════════════════════════ */}
             <SectionCard title="Practice Summary" icon="stats-chart" accentColor="#6366F1">

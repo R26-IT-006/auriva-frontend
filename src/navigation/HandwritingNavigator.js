@@ -20,6 +20,12 @@ import WordProgressScreen       from '../screens/handwriting/words/WordProgressS
 import WordLetterSelectScreen   from '../screens/handwriting/words/WordLetterSelectScreen';
 import TeacherReportScreen        from '../screens/handwriting/reports/TeacherReportScreen';
 import DataCollectionDoneScreen  from '../screens/handwriting/DataCollectionDoneScreen';
+// Proposal FR-13, Phase 7A — one central session-duration mechanism for
+// the whole handwriting flow (prewriting/lowercase/uppercase/word
+// writing-practice only — never teacher report/setup/login). Mounted once
+// here so its lifetime matches "one continuous visit to the handwriting
+// flow for one student" — see LearningSessionContext.js's own header.
+import { LearningSessionProvider } from '../context/LearningSessionContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +36,7 @@ export default function HandwritingNavigator({ route }) {
   const theme   = getAvatarTheme(student?.avatar_key);
 
   return (
+    <LearningSessionProvider>
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
         name="Welcome"
@@ -122,5 +129,6 @@ export default function HandwritingNavigator({ route }) {
         initialParams={{ student, theme }}
       />
     </Stack.Navigator>
+    </LearningSessionProvider>
   );
 }

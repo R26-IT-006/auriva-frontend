@@ -32,6 +32,10 @@ import { submitWordAttempt, newActionId } from '../../../utils/wordApi';
 import { afterGuidedAttempt, buildWordRouteParams, resolveWordSession } from '../../../utils/wordWorkflow';
 import { childFeedbackMessage } from '../../../utils/wordFeedback';
 import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../../utils/touchPointSanitize';
+import { useLearningSessionActivity } from '../../../context/LearningSessionContext';
+import { LIVE_ACTIVITY_TYPES } from '../../../constants/liveSessionPolicy';
+import { buildProgressPatch, buildScorePatch } from '../../../utils/liveSessionSnapshot';
+import BreakPromptModal from '../../../components/handwriting/BreakPromptModal';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
@@ -136,6 +140,13 @@ export default function WordWritingScreen({ route, navigation }) {
   const { student, theme } = route.params;
   const { selectedLetter, selectedWords, currentWordIndex, currentWord: wordEntry } = resolveWordSession(route.params);
 
+  // Proposal FR-13, Phase 7A / FR-16, Phase 7B — see LetterWritingScreen.js's
+  // identical block. No collection_mode concept on this screen.
+  const { notifyStrokeStart, notifyStrokeEnd, notifyLiveSessionUpdate } = useLearningSessionActivity({
+    studentId: student.sid,
+    activityType: LIVE_ACTIVITY_TYPES.WORD_WRITING,
+  });
+
   const [attempt,       setAttempt]       = useState(1);
   const [currentPath,   setCurrentPath]   = useState([]);
   const [allPaths,      setAllPaths]      = useState([]);
@@ -198,6 +209,12 @@ export default function WordWritingScreen({ route, navigation }) {
   const spelling      = getSpelling(word);
 
   // â”€â”€ Reference-path guide (same LETTER_PATHS-based system as letter tracing) â”€â”€
+  // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
+  // No case_type/support_level concept on this screen.
+  useEffect(() => {
+    notifyLiveSessionUpdate(buildProgressPatch({ currentItem: word, attemptNumber: attempt }));
+  }, [word, attempt, notifyLiveSessionUpdate]);
+
   const wordGuide = useMemo(() => buildWordGuide(word), [word]);
   const guidePathD = useMemo(
     () => wordGuideToSvgPath(wordGuide.strokeDescriptors, CANVAS_W, CANVAS_H),
@@ -374,6 +391,7 @@ export default function WordWritingScreen({ route, navigation }) {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
+        notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
         const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
         const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
@@ -395,6 +413,7 @@ export default function WordWritingScreen({ route, navigation }) {
         });
       },
       onPanResponderRelease: () => {
+        notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -413,6 +432,7 @@ export default function WordWritingScreen({ route, navigation }) {
       // onPanResponderTerminate — same "usable stroke kept, too-short one
       // discarded" rule everywhere in the app.
       onPanResponderTerminate: () => {
+        notifyStrokeEnd(); // FR-13 — same as release: an OS-interrupted gesture must not leave isWriting stuck true
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -448,6 +468,12 @@ export default function WordWritingScreen({ route, navigation }) {
       submitActionIdRef.current = null;
     } catch { setSaveError('Could not save yet. Check the connection and try again.'); setSubmitting(false); return; }
     setSubmitting(false);
+
+    // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical
+    // block. `saved.score` is the server's own authoritative score.
+    if (typeof saved?.score === 'number') {
+      notifyLiveSessionUpdate(buildScorePatch(saved.score));
+    }
 
     // Child-feedback task — shown after the AUTHORITATIVE backend save, never
     // live while drawing, and never blocking progression: the attempt/word
@@ -828,6 +854,8 @@ export default function WordWritingScreen({ route, navigation }) {
           onDismiss={() => setShowWordVideo(false)}
         />
       )}
+
+      <BreakPromptModal navigation={navigation} student={student} theme={theme} />
 
     </LinearGradient>
   );

@@ -27,6 +27,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
+import { useLearningSessionActivity } from '../../../context/LearningSessionContext';
+import { LIVE_ACTIVITY_TYPES } from '../../../constants/liveSessionPolicy';
+import { buildProgressPatch } from '../../../utils/liveSessionSnapshot';
+import BreakPromptModal from '../../../components/handwriting/BreakPromptModal';
 
 import WORD_DATA from '../../../constants/wordData';
 import { saveWordActivity } from '../../../utils/wordApi';
@@ -69,6 +73,19 @@ export default function WordActivityScreen({ route, navigation }) {
   const { student, theme } = route.params;
   const { selectedLetter: letter, selectedWords: letterWords, currentWordIndex: wordIdx, currentWord } = resolveWordSession(route.params);
 
+  // Proposal FR-13, Phase 7A / FR-16, Phase 7B — registers the WHOLE A→E
+  // practice flow as one active learning screen (word writing/practice —
+  // spec item 4). Stroke notification for Exercise E's own canvas happens
+  // inside ExerciseE_WriteWord.js itself, via the base (non-registering)
+  // hook. The return value is used here only for its own current_item
+  // (word) push below — Exercise E's own score save is out of this
+  // screen's scope (it saves through the same saveWordActivity path as
+  // Exercises A-D; no separate score push is added there in this pass).
+  const { notifyLiveSessionUpdate } = useLearningSessionActivity({
+    studentId: student.sid,
+    activityType: LIVE_ACTIVITY_TYPES.WORD_ACTIVITY,
+  });
+
   // ── Letter-scoped word list ───────────────────────────────────────────────
   // ── Word / exercise state ─────────────────────────────────────────────────
   const [exIdx,      setExIdx]      = useState(0);
@@ -91,6 +108,14 @@ export default function WordActivityScreen({ route, navigation }) {
     }
     return () => Speech.stop();
   }, [currentWord?.word]);
+
+  // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
+  // No case_type/support_level/attempt_number concept at this screen's
+  // level (exercises A-E are not "attempts" in the letter-writing sense).
+  useEffect(() => {
+    if (!currentWord?.word) return;
+    notifyLiveSessionUpdate(buildProgressPatch({ currentItem: currentWord.word }));
+  }, [currentWord?.word, notifyLiveSessionUpdate]);
 
   // ── Card transition animation ─────────────────────────────────────────────
   function animateTransition(cb) {
@@ -264,6 +289,8 @@ export default function WordActivityScreen({ route, navigation }) {
       {/* ════════════════════════════════════════════════════════════════════
           Letter-done modal  — full word-by-word results summary
          ════════════════════════════════════════════════════════════════════ */}
+
+      <BreakPromptModal navigation={navigation} student={student} theme={theme} />
     </LinearGradient>
   );
 }

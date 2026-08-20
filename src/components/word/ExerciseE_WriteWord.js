@@ -9,6 +9,11 @@ import { submitWordAttempt, newActionId } from '../../utils/wordApi';
 import { childFeedbackMessage } from '../../utils/wordFeedback';
 import { computeExerciseECanvasSize } from '../../utils/wordExerciseECanvas';
 import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
+// Proposal FR-13, Phase 7A — the base (non-registering) hook: the parent
+// WordActivityScreen already registers/unregisters this whole A-E flow as
+// one active learning screen; this component only needs the stroke
+// notifiers so the break prompt never interrupts a stroke drawn here.
+import { useLearningSession } from '../../context/LearningSessionContext';
 
 // Responsive canvas (final-completion-pass fix) — was a fixed ~490×220,
 // which could clip on a small phone or leave excessive empty width on a
@@ -30,6 +35,7 @@ const LINE_4 = Math.round(CANVAS_H * 0.92);
 
 export default function ExerciseE_WriteWord({ wordEntry, theme, student, onComplete }) {
   const { word, emoji, imageKey } = wordEntry;
+  const { notifyStrokeStart, notifyStrokeEnd } = useLearningSession();
   const [currentPath, setCurrentPath] = useState([]);
   const [allPaths, setAllPaths] = useState([]);
   const [done, setDone] = useState(false);
@@ -70,6 +76,7 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
       onStartShouldSetPanResponder: () => !done,
       onMoveShouldSetPanResponder: () => !done,
       onPanResponderGrant: (evt) => {
+        notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
         const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
         const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
@@ -86,6 +93,7 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
         });
       },
       onPanResponderRelease: () => {
+        notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
           if (prev.length > 2) {
             setAllPaths(paths => [...paths, prev]);
@@ -98,6 +106,7 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
       // rule as onPanResponderRelease / WordWritingScreen / LetterWritingScreen)
       // instead of leaving a dangling currentPath.
       onPanResponderTerminate: () => {
+        notifyStrokeEnd(); // FR-13 — same as release: an OS-interrupted gesture must not leave isWriting stuck true
         setCurrentPath(prev => {
           if (prev.length > 2) {
             setAllPaths(paths => [...paths, prev]);

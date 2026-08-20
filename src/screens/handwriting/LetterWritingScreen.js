@@ -18,6 +18,10 @@ import { storeLetterProgress } from '../../utils/storage';
 import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
 import { getAllLetters } from '../../constants/letterCategories';
 import { fetchMasteredLetters, filterUnmasteredSequence } from '../../utils/masteredLetterFiltering';
+import { useLearningSessionActivity } from '../../context/LearningSessionContext';
+import BreakPromptModal from '../../components/handwriting/BreakPromptModal';
+import { LIVE_ACTIVITY_TYPES } from '../../constants/liveSessionPolicy';
+import { buildProgressPatch, buildScorePatch } from '../../utils/liveSessionSnapshot';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../utils/adaptiveSequencing';
 import { computeDTW, sampleSmoothPath, normalizeStrokes, computeMultiStrokeDTW } from '../../utils/dtw';
@@ -536,6 +540,24 @@ export default function LetterWritingScreen({ route, navigation }) {
 
   const { show } = useToast();
 
+  // Proposal FR-13, Phase 7A — registers this screen as active learning
+  // time for as long as it's mounted (never independent per-screen timer
+  // logic — see LearningSessionContext.js). notifyStrokeStart/End are
+  // wired into the PanResponder below so the break prompt can never
+  // interrupt an in-progress stroke.
+  // collection_mode is a fixed, teacher-supervised research-capture protocol,
+  // not open-ended self-paced practice — FR-13's break flow AND FR-16's
+  // live-session monitoring are both excluded from it entirely (spec item
+  // 13 / Phase 7B spec §19; see useLearningSessionActivity's own doc).
+  // Proposal FR-16, Phase 7B — studentId/activityType give this screen a
+  // live-session identity; notifyLiveSessionUpdate pushes its own
+  // meaningful events below (letter/attempt/support changed, saved score).
+  const { notifyStrokeStart, notifyStrokeEnd, notifyLiveSessionUpdate } = useLearningSessionActivity({
+    suspend: collectionMode,
+    studentId: student.sid,
+    activityType: LIVE_ACTIVITY_TYPES.LOWERCASE_LETTER,
+  });
+
   // Feature 11B Phase 5 §2-§5 — normal-progression fix (NOT a Feature 11B
   // adaptation change): skip already-mastered letters and resume at the
   // first remaining unmastered one, using the backend's authoritative
@@ -723,6 +745,17 @@ export default function LetterWritingScreen({ route, navigation }) {
   const guideOpacity  = supportPresentation?.guideOpacity ?? 0;
   const phonetic      = PHONETICS[letter.toLowerCase()] ?? '';
   const badge         = SUPPORT_BADGE[supportLevel];
+
+  // Proposal FR-16, Phase 7B — one bundled "meaningful event" push whenever
+  // the letter, attempt number, or support level changes (spec §8/§3). Not
+  // sent in collection_mode (notifyLiveSessionUpdate is already a no-op
+  // there — the hook never wires the live-session identity for it).
+  useEffect(() => {
+    if (collectionMode) return;
+    notifyLiveSessionUpdate(buildProgressPatch({
+      currentItem: letter, caseType, attemptNumber: attempt, supportLevel,
+    }));
+  }, [letter, caseType, attempt, supportLevel, collectionMode, notifyLiveSessionUpdate]);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
@@ -974,6 +1007,7 @@ export default function LetterWritingScreen({ route, navigation }) {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
+        notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         setAttemptFeedback(null);
         const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
         const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
@@ -1001,6 +1035,7 @@ export default function LetterWritingScreen({ route, navigation }) {
         });
       },
       onPanResponderRelease: () => {
+        notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -1012,6 +1047,7 @@ export default function LetterWritingScreen({ route, navigation }) {
         });
       },
       onPanResponderTerminate: () => {
+        notifyStrokeEnd(); // FR-13 — same as release: an OS-interrupted gesture must not leave isWriting stuck true
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -1228,6 +1264,13 @@ export default function LetterWritingScreen({ route, navigation }) {
           task_order:            LOWERCASE_TASK_ORDER_OFFSET + letterIdx,
           ...getDeviceMetadata(),
         });
+
+        // Proposal FR-16, Phase 7B — a saved attempt result just persisted
+        // (spec §3/§8's "latest_saved_score if available"). Never sent in
+        // collection_mode. The score itself, never raw strokes.
+        if (!collectionMode && attemptScoresRef.current.length > 0) {
+          notifyLiveSessionUpdate(buildScorePatch(Math.max(...attemptScoresRef.current)));
+        }
         // Coverage-fix audit: the server's `completed` result is now the
         // sole signal — it already reflects a coverage/geometry check (see
         // attemptCoverageValidity.js), so the client no longer second-
@@ -1740,6 +1783,10 @@ export default function LetterWritingScreen({ route, navigation }) {
               </Animated.View>
             </LinearGradient>
           </View>
+        )}
+
+        {!collectionMode && (
+          <BreakPromptModal navigation={navigation} student={student} theme={theme} />
         )}
 
       </SafeAreaView>

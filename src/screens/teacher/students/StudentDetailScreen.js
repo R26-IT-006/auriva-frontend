@@ -25,6 +25,10 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 // Teacher Dashboard integration fix — Feature 2's own current family
 // thresholds, never the legacy student.personal_thresholds field.
 import { fetchFamilyThresholds } from '../../../utils/familyThresholds';
+// Proposal FR-16, Phase 7B — compact "Live Handwriting Session" card, only
+// rendered while the Writing tab is open (spec §14: "most appropriate
+// teacher/student screen", "do not redesign TeacherReport completely").
+import LiveSessionCard from '../../../components/teacher/LiveSessionCard';
 
 function InfoRow({ icon, label, value }) {
   if (!value) return null;
@@ -353,6 +357,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
 
         {activeModule === 'writing' ? (
           <>
+            {/* Proposal FR-16, Phase 7B — near-real-time (not sub-second,
+                not biometric) live handwriting-session monitoring. Polls on
+                its own focus-gated interval; entirely independent of the
+                other Writing-tab sections above/below it. */}
+            <LiveSessionCard studentId={initialStudent?.sid} />
+
             {/* Writing Standard — Feature 2's current per-family adaptive
                 targets, never the legacy personal_thresholds field. */}
             <SectionHeader icon="speedometer-outline" title="Writing Standard" />

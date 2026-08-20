@@ -15,6 +15,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Polyline, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
+import { useLearningSessionActivity } from '../../context/LearningSessionContext';
+import BreakPromptModal from '../../components/handwriting/BreakPromptModal';
+import { LIVE_ACTIVITY_TYPES } from '../../constants/liveSessionPolicy';
+import { buildProgressPatch } from '../../utils/liveSessionSnapshot';
 import { computeDTW } from '../../utils/dtw';
 import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
 import { normalizeStrokesForDTW } from '../../utils/dtwNormalization';
@@ -159,6 +163,13 @@ export default function PreWritingActivityScreen({ route, navigation }) {
     return [];
   }, [activitiesParam, primitiveGroup, selectionOptions]);
 
+  // Proposal FR-13, Phase 7A / FR-16, Phase 7B — see LetterWritingScreen.js's
+  // identical block. No collection_mode concept on this screen.
+  const { notifyStrokeStart, notifyStrokeEnd, notifyLiveSessionUpdate } = useLearningSessionActivity({
+    studentId: student.sid,
+    activityType: LIVE_ACTIVITY_TYPES.PREWRITING,
+  });
+
   const [activityIndex, setActivityIndex] = useState(0);
   const [attempt,        setAttempt]        = useState(1);
   const [currentPath,    setCurrentPath]    = useState([]);
@@ -183,6 +194,15 @@ export default function PreWritingActivityScreen({ route, navigation }) {
 
   const activity     = activities[activityIndex];
   const isLastActivity = activityIndex === activities.length - 1;
+
+  // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
+  // Prewriting has no case_type/support_level concept, so only current_item
+  // (the activity's id) and attempt_number are ever sent (spec §3's "where
+  // relevant" qualifier).
+  useEffect(() => {
+    if (!activity) return;
+    notifyLiveSessionUpdate(buildProgressPatch({ currentItem: activity.id, attemptNumber: attempt }));
+  }, [activity, attempt, notifyLiveSessionUpdate]);
 
   const finish = useCallback(async () => {
     onComplete?.(resultsRef.current);
@@ -288,6 +308,7 @@ export default function PreWritingActivityScreen({ route, navigation }) {
       onMoveShouldSetPanResponder:  () => true,
 
       onPanResponderGrant: (evt) => {
+        notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
         const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
         const now = Date.now();
@@ -311,6 +332,7 @@ export default function PreWritingActivityScreen({ route, navigation }) {
       },
 
       onPanResponderRelease: () => {
+        notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -572,6 +594,8 @@ export default function PreWritingActivityScreen({ route, navigation }) {
             resizeMode="contain"
           />
         )}
+
+        <BreakPromptModal navigation={navigation} student={student} theme={theme} />
 
       </SafeAreaView>
     </LinearGradient>

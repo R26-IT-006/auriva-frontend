@@ -69,6 +69,20 @@ export const DTW_CORRECT_THRESHOLD = 22;
 /**
  * Converts a single shape/letter-attempt's features into a 0-100 score.
  *
+ * ⚠ NON-AUTHORITATIVE for progression (Motor Score Unification, 2026-08):
+ * this score is a local, client-side estimate only. It still drives
+ * in-session UX (live feedback, local sequencing hints, the instant number
+ * a child/teacher sees while writing) — that usage is fine and unchanged.
+ * It must NEVER be treated as deciding mastery, pass/fail, threshold
+ * updates, or Feature 2/3 evidence: those are decided solely by the
+ * backend's computeMotorScore() (auriva-backend/src/utils/motorScore.js)
+ * once an attempt reaches the server. Any `attempt_scores` this function
+ * produces and sends to the backend is read there only for a diagnostic
+ * mismatch check — see handwritingController.recordLetterCompletion() and
+ * tests/motorScoreAuthority.test.js (backend repo) for the enforcement and
+ * proof that a client-inflated/suppressed score here cannot move the
+ * authoritative outcome.
+ *
  * Three code paths:
  *  1. accuracy !== 0  → shape-assessment path (lines, circles): score = 100 - accuracy
  *  2. dtw_distance provided → letter-writing path: weighted DTW + smoothness

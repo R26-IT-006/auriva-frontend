@@ -266,12 +266,24 @@ describe('Item 48 — no PDF/download/print wording or packages', () => {
     expect(match[0]).not.toMatch(/pdf|download|print/i);
   });
 
-  it('package.json has no new PDF-related dependency', () => {
+  // Proposal FR-19/FR-20, Phase 7C/7D added expo-print + expo-sharing as a
+  // genuine, deliberate, explicitly-requested dependency for the periodic
+  // report's real PDF export/share (see utils/periodicReportPdf.js) — a
+  // completely separate feature from this file's own Feature 8 "Adaptive
+  // Practice Recommendations" block, which still never mentions pdf/
+  // download/print (proven by the assertion immediately above). This test
+  // originally guarded against scope creep INTO Feature 8 specifically,
+  // not against the whole app ever having a PDF capability — updated to
+  // assert that narrower, still-true claim instead of a now-outdated
+  // "no PDF dependency exists anywhere" claim.
+  it('no PDF-related dependency was added for Feature 8 itself — react-native-pdf/react-native-html-to-pdf remain absent; expo-print exists only for the unrelated Phase 7C/7D periodic-report export', () => {
     const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'));
     const allDeps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
-    for (const forbidden of ['expo-print', 'react-native-pdf', 'react-native-html-to-pdf']) {
-      expect(allDeps).not.toHaveProperty(forbidden);
+    for (const stillForbidden of ['react-native-pdf', 'react-native-html-to-pdf']) {
+      expect(allDeps).not.toHaveProperty(stillForbidden);
     }
+    // Feature 8's own screen/fetch source still never references expo-print.
+    expect(readScreen()).not.toMatch(/expo-print/i);
   });
 });
 

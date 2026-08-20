@@ -53,6 +53,17 @@ export const ENDPOINTS = {
   // every (letter, caseType) pair this student has mastered, used to skip
   // already-mastered letters and resume at the first remaining one.
   MASTERED_LETTERS:           (studentId) => `/handwriting/mastered-letters/${studentId}`,
+  // Proposal FR-16, Phase 7B — real-time (near-real-time, ~5s snapshot
+  // polling) teacher session monitoring. PUT from the child-side learning
+  // screens (via LearningSessionContext.js), GET from the teacher's Live
+  // Handwriting Session card. Same student-scoped path convention as every
+  // other endpoint on this list.
+  LIVE_SESSION:                (studentId) => `/handwriting/live-session/${studentId}`,
+  // Proposal FR-19/FR-20, Phase 7C/7D — periodic progress report. Explicit
+  // start_date/end_date (YYYY-MM-DD) query params — see the backend's
+  // utils/reportDateRange.js for exact UTC/inclusive semantics.
+  PERIODIC_REPORT:              (studentId, startDate, endDate) =>
+    `/handwriting/report/${studentId}?start_date=${startDate}&end_date=${endDate}`,
   // Feature 11B Phase 5 — read-only mastery-based Letter Motor State.
   LETTER_MOTOR_STATE_LATEST:  (studentId) => `/handwriting/letter-motor-state/latest/${studentId}`,
   LETTER_MOTOR_STATE_HISTORY: (studentId) => `/handwriting/letter-motor-state/history/${studentId}`,

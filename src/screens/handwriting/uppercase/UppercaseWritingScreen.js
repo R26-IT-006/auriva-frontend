@@ -18,6 +18,10 @@ import { storeLetterProgress } from '../../../utils/storage';
 import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../../utils/touchPointSanitize';
 import { getAllLetters } from '../../../constants/letterCategories';
 import { fetchMasteredLetters, filterUnmasteredSequence } from '../../../utils/masteredLetterFiltering';
+import { useLearningSessionActivity } from '../../../context/LearningSessionContext';
+import BreakPromptModal from '../../../components/handwriting/BreakPromptModal';
+import { LIVE_ACTIVITY_TYPES } from '../../../constants/liveSessionPolicy';
+import { buildProgressPatch, buildScorePatch } from '../../../utils/liveSessionSnapshot';
 import { DATA_COLLECTION_PROTOCOL } from '../../../constants/dataCollectionProtocol';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../../utils/adaptiveSequencing';
 import { computeDTW, sampleSmoothPath, normalizeStrokes, computeMultiStrokeDTW } from '../../../utils/dtw';
@@ -492,6 +496,16 @@ export default function UppercaseWritingScreen({ route, navigation }) {
 
   const { show } = useToast();
 
+  // Proposal FR-13, Phase 7A / FR-16, Phase 7B — see LetterWritingScreen.js's
+  // identical block. collection_mode is a fixed, teacher-supervised
+  // research-capture protocol, not open-ended self-paced practice — both
+  // features are excluded from it entirely (spec item 13 / Phase 7B §19).
+  const { notifyStrokeStart, notifyStrokeEnd, notifyLiveSessionUpdate } = useLearningSessionActivity({
+    suspend: collectionMode,
+    studentId: student.sid,
+    activityType: LIVE_ACTIVITY_TYPES.UPPERCASE_LETTER,
+  });
+
   // Feature 11B Phase 5 §2-§5 — see LetterWritingScreen.js's identical
   // block for the full rationale: normal-progression fix (NOT a Feature
   // 11B adaptation change), skips already-mastered letters using the
@@ -626,6 +640,14 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   const guideOpacity  = supportPresentation?.guideOpacity ?? 0;
   const phonetic      = PHONETICS[letter.toLowerCase()] ?? '';
   const badge         = SUPPORT_BADGE[supportLevel];
+
+  // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
+  useEffect(() => {
+    if (collectionMode) return;
+    notifyLiveSessionUpdate(buildProgressPatch({
+      currentItem: letter, caseType, attemptNumber: attempt, supportLevel,
+    }));
+  }, [letter, caseType, attempt, supportLevel, collectionMode, notifyLiveSessionUpdate]);
 
   const tracerXInterp = useMemo(() => {
     if (!tracerKeyframes) return null;
@@ -847,6 +869,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
+        notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         setAttemptFeedback(null);
         const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
         const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
@@ -873,6 +896,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         });
       },
       onPanResponderRelease: () => {
+        notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -884,6 +908,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         });
       },
       onPanResponderTerminate: () => {
+        notifyStrokeEnd(); // FR-13 — same as release: an OS-interrupted gesture must not leave isWriting stuck true
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -1076,6 +1101,11 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           task_order:            UPPERCASE_TASK_ORDER_OFFSET + letterIdx,
           ...getDeviceMetadata(),
         });
+
+        // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
+        if (!collectionMode && attemptScoresRef.current.length > 0) {
+          notifyLiveSessionUpdate(buildScorePatch(Math.max(...attemptScoresRef.current)));
+        }
         // Coverage-fix audit: see LetterWritingScreen.js's identical change
         // — the server's `completed` result is now the sole signal;
         // wroteCorrectly still drives the cosmetic per-attempt badge but no
@@ -1549,6 +1579,10 @@ export default function UppercaseWritingScreen({ route, navigation }) {
               </Animated.View>
             </LinearGradient>
           </View>
+        )}
+
+        {!collectionMode && (
+          <BreakPromptModal navigation={navigation} student={student} theme={theme} />
         )}
 
       </SafeAreaView>
