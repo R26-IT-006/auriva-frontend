@@ -102,6 +102,23 @@ export const dialogueApi = {
     return data;
   },
 
+  // TASK-43 — why a word got its trajectory label.
+  // Returns { trajectory, tier, confidence, explanation, caveat }.
+  async getTrajectoryExplanation(studentId, wordId) {
+    const { data } = await client.get(
+      ENDPOINTS.DIALOGUE_TRAJECTORY_EXPLAIN(studentId, wordId)
+    );
+    return data;
+  },
+
+  // TASK-43 — one trajectory report per student, in a single call.
+  // Returns { totals, words: [...] }. SHAP is slow enough that one round trip
+  // per word would be visibly bad, hence the batch shape.
+  async getTrajectoryReport(studentId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_TRAJECTORY_REPORT(studentId));
+    return data;
+  },
+
   // TASK-12 — Non-Verbal Adaptive Wait-Time Escalation
   // Returns { consecutive_refusals_today, wait_multiplier, auto_nonverbal_today }.
   // Fetched by each Phase 2 production screen on mount; failure degrades to 1.0×.

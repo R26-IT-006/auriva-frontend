@@ -13,6 +13,7 @@ import AvatarSelectionScreen      from '../screens/teacher/students/AvatarSelect
 import DialogueLandingScreen      from '../screens/teacher/students/DialogueLandingScreen';
 import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
+import TrajectoryReportScreen     from '../screens/teacher/dialogue/TrajectoryReportScreen';
 import AnimatedWordScreen         from '../screens/teacher/dialogue/AnimatedWordScreen';
 import BoldWordScreen             from '../screens/teacher/dialogue/BoldWordScreen';
 import ProbeProductionScreen      from '../screens/teacher/dialogue/ProbeProductionScreen';
@@ -105,8 +106,11 @@ function TeacherWorkspace() {
       <Stack.Screen name="TeacherStudentList"   component={TeacherStudentListScreen}  options={{ title: 'My Students' }} />
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
       {/* Kept in this stack, not the root one, so the report keeps Colors theming
-          rather than the student-workspace chrome. */}
+          rather than the student-workspace chrome. TASK-43's trajectory report is
+          registered alongside it for the same reason, and because both are opened
+          from the "Report" action on TeacherStudentDetail, which lives here. */}
       <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
+      <Stack.Screen name="TrajectoryReport"     component={TrajectoryReportScreen}     options={{ title: 'Trajectory Report' }} />
     </Stack.Navigator>
   );
 }

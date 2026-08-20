@@ -46,6 +46,12 @@ export const ENDPOINTS = {
   DIALOGUE_LEVEL1_PHASE3_COMPLETE:  (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/phase3-complete`,
   DIALOGUE_TRAJECTORY:              (sid, wid) => `/teacher/student/${sid}/word/${wid}/trajectory`,
 
+  // Dialogue – TASK-43 explainable trajectory predictions (teacher reports).
+  // The report screen calls the batch endpoint; the per-word one explains a
+  // single word.
+  DIALOGUE_TRAJECTORY_EXPLAIN:      (sid, wid) => `/teacher/student/${sid}/word/${wid}/trajectory/explain`,
+  DIALOGUE_TRAJECTORY_REPORT:       (sid) => `/teacher/student/${sid}/dialogue/trajectory-report`,
+
   // Dialogue – TASK-12 Non-Verbal Adaptive Wait-Time Escalation
   DIALOGUE_SPEECH_STATE:            (sid) => `/teacher/student/${sid}/speech-state`,
 
