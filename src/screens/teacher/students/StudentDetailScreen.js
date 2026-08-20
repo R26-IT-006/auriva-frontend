@@ -20,6 +20,7 @@ import { TierBar, TierLegend } from '../../../components/charts/TierBar';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
+import { dialogueApi } from '../../../api/dialogue';
 import { formatDate } from '../../../utils/formatters';
 
 function InfoRow({ icon, label, value }) {
@@ -62,13 +63,23 @@ function SectionHeader({ icon, title, action, onAction }) {
   );
 }
 
-// Only Concept Learning reports progress today; the rest render an unavailable
-// panel until those modules ship, so the selector stays honest about coverage.
+// Concept Learning and Dialogue report progress today; Writing and Pronunciation
+// still render an unavailable panel until those modules ship, so the selector
+// stays honest about coverage.
 const MODULES = [
   { key: 'concept',       tab: 'Concepts',      title: 'Concept Learning',     icon: 'school-outline' },
   { key: 'writing',       tab: 'Writing',       title: 'Writing Module',       icon: 'create-outline' },
   { key: 'pronunciation', tab: 'Pronunciation', title: 'Pronunciation Module', icon: 'mic-outline' },
   { key: 'dialogue',      tab: 'Dialogue',      title: 'Dialogue Module',      icon: 'chatbubbles-outline' },
+];
+
+// TASK-43 — the three categories the dialogue trajectory work covers. Days of
+// the Week is permanently out of scope, so it never appears in this summary and
+// never appears in the report either.
+const DIALOGUE_CATEGORIES = [
+  { key: 'greetings',   label: 'Greetings' },
+  { key: 'magic_words', label: 'Magic words' },
+  { key: 'abilities',   label: 'Abilities' },
 ];
 
 /** Whole years between a date of birth and today; null when unparseable. */
@@ -89,6 +100,8 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
+  const [dialogue, setDialogue] = useState(null);
+  const [dialogueLoading, setDialogueLoading] = useState(true);
   const [activeModule, setActiveModule] = useState('concept');
 
   const fetch = useCallback(async () => {
@@ -114,10 +127,28 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
+  // TASK-43 — the summary panel deliberately reads word *progress*, not the
+  // trajectory model. Deriving the trajectory counts here would run a prediction
+  // (and possibly SHAP) for every word on every visit to this screen; the
+  // prediction work belongs in the report the "View full report" link opens.
+  const fetchDialogue = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    try {
+      setDialogue(await dialogueApi.getLevel1Overview(initialStudent.sid));
+    } catch {
+      setDialogue(null); // section renders an inline error rather than blanking
+    } finally {
+      setDialogueLoading(false);
+    }
+  }, [initialStudent?.sid]);
+
   useEffect(() => { fetch(); }, [fetch]);
 
   // Refetch on focus so returning from the report reflects a session just played.
-  useFocusEffect(useCallback(() => { fetchConcepts(); }, [fetchConcepts]));
+  useFocusEffect(useCallback(() => {
+    fetchConcepts();
+    fetchDialogue();
+  }, [fetchConcepts, fetchDialogue]));
 
   if (!student) return null;
 
@@ -129,6 +160,23 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const age = ageFrom(student.date_of_birth);
   const activeMeta = MODULES.find((m) => m.key === activeModule) ?? MODULES[0];
   const firstName  = student.full_name.split(' ')[0];
+
+  // Dialogue summary. `status` here is the mastery state (Rules 1-3), not the
+  // trajectory label — the report's 'struggling' is a prediction about where a
+  // word is heading, this one is a record of what has already happened, so it is
+  // surfaced as "Needs work" to keep the two readable side by side.
+  const dialogueWords = (dialogue || [])
+    .filter((w) => DIALOGUE_CATEGORIES.some((c) => c.key === w.category));
+  const dialogueTotals = {
+    total:      dialogueWords.length,
+    mastered:   dialogueWords.filter((w) => w.status === 'mastered').length,
+    inProgress: dialogueWords.filter((w) => w.status === 'in_progress').length,
+    needsWork:  dialogueWords.filter((w) => w.status === 'struggling').length,
+  };
+  const dialogueStarted = dialogueWords.filter((w) => w.status !== 'not_started').length;
+  const dialogueMastery = dialogueTotals.total > 0
+    ? dialogueTotals.mastered / dialogueTotals.total
+    : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -199,11 +247,22 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         )}
 
         {/* Module progress */}
+        {/* TASK-43 — the dialogue trajectory report is offered exactly the way
+            the concept report is: a "Report" action here while its own tab is
+            selected, and a "View full report" link at the foot of the summary. */}
         <SectionHeader
           icon="stats-chart-outline"
           title="Module Progress"
-          action={activeModule === 'concept' && concepts && concepts.totals.started > 0 ? 'Report' : null}
-          onAction={() => navigation.navigate('ConceptReport', { student })}
+          action={
+            (activeModule === 'concept' && concepts && concepts.totals.started > 0)
+            || (activeModule === 'dialogue' && dialogueStarted > 0)
+              ? 'Report'
+              : null
+          }
+          onAction={() => navigation.navigate(
+            activeModule === 'dialogue' ? 'TrajectoryReport' : 'ConceptReport',
+            { student }
+          )}
         />
 
         <ScrollView
@@ -236,7 +295,69 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         </ScrollView>
 
         <Card style={styles.infoCard} padding="none">
-          {activeModule !== 'concept' ? (
+          {activeModule === 'dialogue' ? (
+            dialogueLoading ? (
+              <View style={styles.conceptLoading}>
+                <ActivityIndicator color={Colors.icon.active} />
+              </View>
+            ) : !dialogue ? (
+              <View style={styles.conceptEmpty}>
+                <Ionicons name="cloud-offline-outline" size={22} color={Colors.text.muted} />
+                <Text style={styles.conceptEmptyText}>Couldn't load dialogue progress.</Text>
+                <TouchableOpacity onPress={() => { setDialogueLoading(true); fetchDialogue(); }}>
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : dialogueStarted === 0 ? (
+              <View style={styles.conceptEmpty}>
+                <Ionicons name="chatbubbles-outline" size={22} color={Colors.text.muted} />
+                <Text style={styles.conceptEmptyText}>
+                  No dialogue activity yet. Progress appears here once {firstName} starts a session.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.conceptHeader}>
+                  <MasteryRing value={dialogueMastery} size={92} label="mastered" />
+                  <View style={styles.conceptStats}>
+                    <StatLine
+                      label="Mastered"
+                      value={`${dialogueTotals.mastered} / ${dialogueTotals.total}`}
+                    />
+                    <StatLine label="Started" value={String(dialogueStarted)} />
+                    <StatLine label="In progress" value={String(dialogueTotals.inProgress)} />
+                    <StatLine label="Needs work" value={String(dialogueTotals.needsWork)} />
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.categoryBlock}>
+                  {DIALOGUE_CATEGORIES.map((c) => {
+                    const rows = dialogueWords.filter((w) => w.category === c.key);
+                    if (rows.length === 0) return null;
+                    const mastered = rows.filter((w) => w.status === 'mastered').length;
+                    return (
+                      <StatLine
+                        key={c.key}
+                        label={c.label}
+                        value={`${mastered} / ${rows.length} mastered`}
+                      />
+                    );
+                  })}
+                </View>
+
+                <TouchableOpacity
+                  style={styles.reportLink}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('TrajectoryReport', { student })}
+                >
+                  <Text style={styles.reportLinkText}>View full report</Text>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.text.link} />
+                </TouchableOpacity>
+              </>
+            )
+          ) : activeModule !== 'concept' ? (
             <View style={styles.conceptEmpty}>
               <Ionicons name={activeMeta.icon} size={22} color={Colors.text.muted} />
               <Text style={styles.conceptEmptyText}>

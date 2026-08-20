@@ -105,9 +105,12 @@ function TeacherWorkspace() {
       <Stack.Screen name="TeacherHome"          component={TeacherDashboardScreen}   options={{ headerShown: false }} />
       <Stack.Screen name="TeacherStudentList"   component={TeacherStudentListScreen}  options={{ title: 'My Students' }} />
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
-      {/* Kept in this stack, not the root one, so the report keeps Colors theming
-          rather than the student-workspace chrome. */}
+      {/* Kept in this stack, not the root one, so the reports keep Colors theming
+          rather than the student-workspace chrome. TASK-43's trajectory report is
+          registered alongside for the same reason, and because both are opened
+          from TeacherStudentDetail, which lives here. */}
       <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
+      <Stack.Screen name="TrajectoryReport"     component={TrajectoryReportScreen}     options={{ title: 'Trajectory Report' }} />
     </Stack.Navigator>
   );
 }
@@ -138,17 +141,6 @@ export default function TeacherNavigator() {
       <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
       <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
-
-      {/* TASK-43 — reached from the third card on DialogueLanding, which lives
-          in this stack, so the report is registered here rather than in
-          TeacherWorkspace. This stack hides headers by default; the report needs
-          one because it titles itself with the student's name via setOptions. */}
-      <Stack.Screen
-        name="TrajectoryReport"
-        component={TrajectoryReportScreen}
-        options={{ ...stackOptions, headerShown: true, title: 'Trajectory Report' }}
-      />
-
       <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
       <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
       <Stack.Screen name="AnimatedWord"      component={AnimatedWordScreen} />
