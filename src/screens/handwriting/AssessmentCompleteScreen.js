@@ -314,7 +314,25 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
                   assessmentData, 'lowercase'
                 );
 
-                await storeLetterSequence(student.sid, letters);
+                // Uppercase progression fix — generate a REAL personalized
+                // uppercase sequence from the SAME assessmentData/motor-profile
+                // logic used for lowercase above (adaptiveSequencing.js itself
+                // is untouched — this just calls it a second time with
+                // caseType='uppercase'). calculateMotorProfile() is a pure,
+                // deterministic function of assessmentData alone, so this call
+                // produces the byte-identical categoryOrder/motorProfile as the
+                // lowercase call above — only `letters` differs (the uppercase
+                // taxonomy's own letters, in that same category order). Both
+                // sequences are concatenated into ONE stored array; each
+                // writing screen's own `letterSequence.filter(l => l.caseType
+                // === caseType)` (LetterWritingScreen.js / UppercaseWritingScreen.js)
+                // already separates them back out — that filtering logic
+                // pre-dates this fix and needed no change.
+                const { letters: uppercaseLetters } = generateAdaptiveSequence(
+                  assessmentData, 'uppercase'
+                );
+
+                await storeLetterSequence(student.sid, [...letters, ...uppercaseLetters]);
                 await storeMotorProfile(student.sid, motorProfile);
 
                 // Consolidation (shape-assessment scoring unification): this

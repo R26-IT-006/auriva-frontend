@@ -17,6 +17,7 @@ import * as Speech from 'expo-speech';
 import { storeLetterProgress } from '../../utils/storage';
 import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
 import { getAllLetters } from '../../constants/letterCategories';
+import { fetchMasteredLetters, filterUnmasteredSequence } from '../../utils/masteredLetterFiltering';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../utils/adaptiveSequencing';
 import { computeDTW, sampleSmoothPath, normalizeStrokes, computeMultiStrokeDTW } from '../../utils/dtw';
@@ -533,17 +534,54 @@ export default function LetterWritingScreen({ route, navigation }) {
     return filtered.length > 0 ? filtered : getAllLetters(caseType);
   }, [letterSequence, caseType]);
 
-  // Feature 5 Step 3 — `sequence` is the base (initial-ordering, Feature-4-
-  // unrelated) sequence UNLESS a spaced adaptive repetition has been
-  // inserted this mount, in which case `runtimeSequence` (the immutable
-  // result of insertSpacedRepetition()) takes over. Starts `null` — the
-  // vast majority of mounts never insert anything, so `sequence` is
-  // byte-identical to the pre-Feature-5 `baseSequence` unless/until an
-  // insertion actually happens (see handleNext's failure branch below).
-  const [runtimeSequence, setRuntimeSequence] = useState(null);
-  const sequence = runtimeSequence ?? baseSequence;
-
   const { show } = useToast();
+
+  // Feature 11B Phase 5 §2-§5 — normal-progression fix (NOT a Feature 11B
+  // adaptation change): skip already-mastered letters and resume at the
+  // first remaining unmastered one, using the backend's authoritative
+  // LetterProgress state (never frontend AsyncStorage). Collection mode is
+  // a fixed research protocol and must always present its exact
+  // predetermined sequence unfiltered — never skips anything.
+  //
+  // masteredSequenceReady starts false and gates the main render below
+  // (mirrors WelcomeScreen's checkingReturningStudent gate) so the child
+  // never sees a flash of an already-mastered letter's template before it
+  // gets swapped out — filtering must be decided before the first letter
+  // is ever shown, unlike the non-blocking recommendation fetches above.
+  const [effectiveSequence, setEffectiveSequence] = useState(null);
+  const [masteredSequenceReady, setMasteredSequenceReady] = useState(collectionMode);
+
+  useEffect(() => {
+    if (collectionMode) {
+      setEffectiveSequence(baseSequence);
+      setMasteredSequenceReady(true);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchMasteredLetters(student.sid).then(({ pairs }) => {
+      if (cancelled) return;
+      const filtered = filterUnmasteredSequence(baseSequence, pairs);
+      if (filtered.length === 0 && baseSequence.length > 0) {
+        // Every letter in this case is already mastered — nothing left to
+        // present. Reuse the existing goBack() destination the all-done
+        // celebration already uses, rather than rendering an empty screen.
+        show('All letters here are already mastered!', 'success');
+        navigation.goBack();
+        return;
+      }
+      setEffectiveSequence(filtered);
+      setMasteredSequenceReady(true);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.sid, baseSequence, collectionMode]);
+
+  // Feature 5 Step 3 — `sequence` is the mastery-filtered base sequence
+  // (Feature 11B Phase 5 above) UNLESS a spaced adaptive repetition has
+  // been inserted this mount, in which case `runtimeSequence` (the
+  // immutable result of insertSpacedRepetition()) takes over.
+  const [runtimeSequence, setRuntimeSequence] = useState(null);
+  const sequence = runtimeSequence ?? effectiveSequence ?? baseSequence;
 
   // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [letterIdx,    setLetterIdx]    = useState(0);
@@ -1324,6 +1362,14 @@ export default function LetterWritingScreen({ route, navigation }) {
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Render
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  // Feature 11B Phase 5 — blank gate until the mastery-filtered sequence
+  // is known, so the child never sees a flash of an already-mastered
+  // letter's template before it swaps out. Mirrors WelcomeScreen's
+  // checkingReturningStudent gate.
+  if (!masteredSequenceReady) {
+    return <SafeAreaView style={styles.safe} />;
+  }
 
   return (
     <LinearGradient

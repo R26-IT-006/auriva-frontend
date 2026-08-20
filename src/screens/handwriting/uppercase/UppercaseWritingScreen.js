@@ -17,6 +17,7 @@ import * as Speech from 'expo-speech';
 import { storeLetterProgress } from '../../../utils/storage';
 import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../../utils/touchPointSanitize';
 import { getAllLetters } from '../../../constants/letterCategories';
+import { fetchMasteredLetters, filterUnmasteredSequence } from '../../../utils/masteredLetterFiltering';
 import { DATA_COLLECTION_PROTOCOL } from '../../../constants/dataCollectionProtocol';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../../utils/adaptiveSequencing';
 import { computeDTW, sampleSmoothPath, normalizeStrokes, computeMultiStrokeDTW } from '../../../utils/dtw';
@@ -489,11 +490,45 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     return filtered.length > 0 ? filtered : getAllLetters(caseType);
   }, [letterSequence]);
 
+  const { show } = useToast();
+
+  // Feature 11B Phase 5 §2-§5 — see LetterWritingScreen.js's identical
+  // block for the full rationale: normal-progression fix (NOT a Feature
+  // 11B adaptation change), skips already-mastered letters using the
+  // backend's authoritative LetterProgress state, never frontend
+  // AsyncStorage. Collection mode always presents its exact predetermined
+  // sequence unfiltered.
+  const [effectiveSequence, setEffectiveSequence] = useState(null);
+  const [masteredSequenceReady, setMasteredSequenceReady] = useState(collectionMode);
+
+  useEffect(() => {
+    if (collectionMode) {
+      setEffectiveSequence(baseSequence);
+      setMasteredSequenceReady(true);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchMasteredLetters(student.sid).then(({ pairs }) => {
+      if (cancelled) return;
+      const filtered = filterUnmasteredSequence(baseSequence, pairs);
+      if (filtered.length === 0 && baseSequence.length > 0) {
+        show('All letters here are already mastered!', 'success');
+        navigation.goBack();
+        return;
+      }
+      setEffectiveSequence(filtered);
+      setMasteredSequenceReady(true);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.sid, baseSequence, collectionMode]);
+
   // Feature 5 Step 3 — see LetterWritingScreen.js's identical block for the
-  // full rationale: `sequence` is the base sequence unless/until a spaced
-  // adaptive repetition has been inserted this mount.
+  // full rationale: `sequence` is the mastery-filtered base sequence
+  // (Feature 11B Phase 5 above) unless/until a spaced adaptive repetition
+  // has been inserted this mount.
   const [runtimeSequence, setRuntimeSequence] = useState(null);
-  const sequence = runtimeSequence ?? baseSequence;
+  const sequence = runtimeSequence ?? effectiveSequence ?? baseSequence;
 
   const [letterIdx,    setLetterIdx]    = useState(0);
   const [attempt,      setAttempt]      = useState(1);
@@ -540,8 +575,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
 
   const celebScale   = useRef(new Animated.Value(0.5)).current;
   const celebOpacity = useRef(new Animated.Value(0)).current;
-
-  const { show } = useToast();
 
   const letterObj     = sequence[letterIdx];
   const letter        = letterObj?.letter ?? 'A';
@@ -1151,6 +1184,13 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       }
     }
   }, [celebration, collectionMode, collectionSessionId, navigation, student, theme, sequence, letterIdx, interactionId, caseType]);
+
+  // Feature 11B Phase 5 — blank gate until the mastery-filtered sequence
+  // is known — see LetterWritingScreen.js's identical gate for the
+  // rationale.
+  if (!masteredSequenceReady) {
+    return <SafeAreaView style={styles.safe} />;
+  }
 
   return (
     <LinearGradient

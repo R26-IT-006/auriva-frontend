@@ -45,6 +45,7 @@ import { ParentGateModal } from '../../components/common/ParentGateModal';
 // earlier motorBaseline.js-based fallback, which required a finalized
 // Feature 1 baseline that many real assessments never reach).
 import { fetchInitialAssessmentShapes } from '../../utils/initialAssessmentShapes';
+import { isWordsUnlocked } from '../../utils/wordUnlockGate';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -262,6 +263,7 @@ export default function LetterHomeScreen({ route, navigation }) {
   const [showSummary,       setShowSummary]       = useState(false);
   const [showWhyModal,      setShowWhyModal]       = useState(false);
   const [lowercaseProgress, setLowercaseProgress] = useState(0);
+  const [uppercaseProgress, setUppercaseProgress] = useState(0);
   const [motorProfile,      setMotorProfile]      = useState(passedProfile);
   const [adaptiveSequence,  setAdaptiveSequence]  = useState([]);
   // Parent-verification gate (same ParentGateModal used on back navigation
@@ -295,7 +297,10 @@ export default function LetterHomeScreen({ route, navigation }) {
   useFocusEffect(
     useCallback(() => {
       client.get(ENDPOINTS.LETTER_PROGRESS(student.sid))
-        .then(res => setLowercaseProgress(res.data.lowercase_completed ?? 0))
+        .then(res => {
+          setLowercaseProgress(res.data.lowercase_completed ?? 0);
+          setUppercaseProgress(res.data.uppercase_completed ?? 0);
+        })
         .catch(() => {});
 
       getLetterSequence(student.sid)
@@ -329,7 +334,12 @@ export default function LetterHomeScreen({ route, navigation }) {
   );
 
   const progressPercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
-  const wordsUnlocked   = true;
+  // Pre-device P0 fix — previously hardcoded `true`, meaning Words was
+  // never actually gated regardless of letter progress. See
+  // utils/wordUnlockGate.js for the full audit of which unlock rule
+  // applies and why (lowercase AND uppercase, both authoritatively
+  // mastered — never AsyncStorage, never a local/client-only flag).
+  const wordsUnlocked   = isWordsUnlocked(lowercaseProgress, uppercaseProgress);
 
   // Assessment Summary modal's shape data — the just-completed session's
   // in-memory assessmentData when available, otherwise the same per-shape
@@ -555,11 +565,17 @@ export default function LetterHomeScreen({ route, navigation }) {
                 </View>
               </TouchableOpacity>
 
-              {/* Words card — locked until all lowercase completed */}
+              {/* Words card — locked until all 26 lowercase AND all 26
+                  uppercase letters are authoritatively mastered (backend
+                  LetterProgress-derived counts — see wordsUnlocked above).
+                  Pre-device P0 fix: onPress itself is now gated, not just
+                  the visual dimming — previously the card was cosmetically
+                  "locked" but still navigated on every tap regardless of
+                  wordsUnlocked. */}
               <TouchableOpacity
                 style={styles.wordsCard}
                 activeOpacity={wordsUnlocked ? 0.9 : 0.5}
-                onPress={() => navigation.navigate('WordLetterSelect', { student, theme })}
+                onPress={() => wordsUnlocked && navigation.navigate('WordLetterSelect', { student, theme })}
               >
                 <LinearGradient
                   colors={wordsUnlocked ? ['#F6EEFC', '#E8D6F5'] : ['#F2F2F2', '#E6E6E6']}

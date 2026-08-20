@@ -37,6 +37,10 @@ export const ENDPOINTS = {
   // session). Never duplicates the scoring formula — this is a straight
   // read of what motorBaselineService.js already persisted.
   MOTOR_BASELINE:             (studentId) => `/handwriting/motor-baseline/${studentId}`,
+  // Feature 11A pilot model — read-only INITIAL motor-cluster prediction
+  // (motor_cluster_v1), computed from the SAME baseline MOTOR_BASELINE
+  // exposes. TeacherReportScreen's "Initial Shape Motor Profile" section.
+  MOTOR_CLUSTER:              (studentId) => `/handwriting/motor-cluster/${studentId}`,
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
   PRE_WRITING_ACTIVITY:       '/handwriting/pre-writing-activity',
   HANDWRITING_FINALIZE:       (id)       => `/handwriting/assessment/${id}/finalize`,
@@ -44,6 +48,15 @@ export const ENDPOINTS = {
   LETTER_COMPLETE:            '/handwriting/letter-complete',
   LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
   LETTER_PROGRESS_REPORT:     (studentId) => `/handwriting/letter-progress-report/${studentId}`,
+  // Feature 11B Phase 5 — normal-progression fix, NOT a Feature 11B
+  // adaptation change: the authoritative (backend LetterProgress) list of
+  // every (letter, caseType) pair this student has mastered, used to skip
+  // already-mastered letters and resume at the first remaining one.
+  MASTERED_LETTERS:           (studentId) => `/handwriting/mastered-letters/${studentId}`,
+  // Feature 11B Phase 5 — read-only mastery-based Letter Motor State.
+  LETTER_MOTOR_STATE_LATEST:  (studentId) => `/handwriting/letter-motor-state/latest/${studentId}`,
+  LETTER_MOTOR_STATE_HISTORY: (studentId) => `/handwriting/letter-motor-state/history/${studentId}`,
+  LETTER_MOTOR_EVIDENCE_TREND: (studentId) => `/handwriting/letter-motor-evidence-trend/${studentId}`,
   WORD_ATTEMPT:               '/handwriting/word-attempt',
   WORD_ACTIVITY:              '/handwriting/word-activity',
   WORD_PROGRESS:              (studentId) => `/handwriting/word-progress/${studentId}`,

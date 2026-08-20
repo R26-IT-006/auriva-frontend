@@ -53,6 +53,14 @@ import ActivityPreview from '../../../components/handwriting/ActivityPreview';
 // same "one UUID per user action" pattern (collectionSession.js,
 // preWritingSessionGuard.js) — no new dependency added.
 import { generateUuidV4 } from '../../../utils/uuid';
+// Feature 11 Phase 6 — Teacher Report presentation for Feature 11A (Initial
+// Shape Motor Profile) and Feature 11B (Letter Motor Development). Both are
+// strictly read-only, independently loaded/failed (spec §15) — see each
+// util's own header for the full research-safe-terminology contract.
+import { fetchMotorClusterProfile } from '../../../utils/motorClusterProfile';
+import {
+  fetchLatestLetterMotorState, fetchLetterMotorStateHistory, fetchLetterMotorEvidenceTrend, METRIC_LABELS,
+} from '../../../utils/letterMotorState';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -443,6 +451,57 @@ export default function TeacherReportScreen({ route, navigation }) {
     }, [student])
   );
 
+  // ── Feature 11A — Initial Shape Motor Profile ─────────────────────────────
+  // Completely independent of the main report load and of Feature 11B below
+  // (spec §15: "One Feature failing must not hide the other") — its own
+  // state, its own loading indicator, same stale-response `active` guard.
+  // Strictly read-only: fetchMotorClusterProfile only ever GETs.
+  const [motorClusterProfile, setMotorClusterProfile] = useState({ status: 'loading', profile: null, debug: null });
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setMotorClusterProfile({ status: 'loading', profile: null, debug: null });
+      fetchMotorClusterProfile(student?.sid).then((result) => {
+        if (active) setMotorClusterProfile(result);
+      });
+      return () => { active = false; };
+    }, [student])
+  );
+
+  // ── Feature 11B — Letter Motor Development ────────────────────────────────
+  // 3 independent read-only fetches (latest state, state history,
+  // mastery-evidence trend) — none of them ever POSTs or triggers a
+  // milestone check/prediction (spec §16; see the read-only guarantee
+  // tests). Fetched together per screen-focus, same stale-response guard.
+  const emptyLatest  = { status: 'loading', state: null };
+  const emptyHistory = { status: 'loading', history: [] };
+  const emptyTrend   = { status: 'loading', coverageN: 0, meanSmoothness: null, meanDtw: null, meanSpeedCv: null };
+  const [letterMotorLatest,  setLetterMotorLatest]  = useState(emptyLatest);
+  const [letterMotorHistory, setLetterMotorHistory] = useState(emptyHistory);
+  const [letterMotorTrend,   setLetterMotorTrend]   = useState(emptyTrend);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setLetterMotorLatest(emptyLatest);
+      setLetterMotorHistory(emptyHistory);
+      setLetterMotorTrend(emptyTrend);
+      Promise.all([
+        fetchLatestLetterMotorState(student?.sid),
+        fetchLetterMotorStateHistory(student?.sid),
+        fetchLetterMotorEvidenceTrend(student?.sid),
+      ]).then(([latest, history, trend]) => {
+        if (!active) return;
+        setLetterMotorLatest(latest);
+        setLetterMotorHistory(history);
+        setLetterMotorTrend(trend);
+      });
+      return () => { active = false; };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [student])
+  );
+
   async function handleShare() {
     if (!report) return;
     const { motorScore, wordMastery, summary } = report;
@@ -603,6 +662,16 @@ export default function TeacherReportScreen({ route, navigation }) {
                 <Empty message="Complete letter practice to see motor pattern progress" />
               )}
             </SectionCard>
+
+            {/* ══ Feature 11A — Initial Shape Motor Profile ════════════════ */}
+            <MotorClusterProfileCard result={motorClusterProfile} />
+
+            {/* ══ Feature 11B — Letter Motor Development ═══════════════════ */}
+            <LetterMotorDevelopmentCard
+              latest={letterMotorLatest}
+              history={letterMotorHistory}
+              trend={letterMotorTrend}
+            />
 
             {/* ══ 5. Letters Mastery ══════════════════════════════════════ */}
             <SectionCard title="Letters Mastery" icon="text" accentColor="#059669">
@@ -1603,6 +1672,231 @@ const mda = StyleSheet.create({
   exText:     { flex: 1, fontSize: 12, color: TEXT_1, fontWeight: '500', lineHeight: 18 },
   exPill:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
   exPillText: { fontSize: 10, fontWeight: '800' },
+});
+
+// ─── Feature 11A — Initial Shape Motor Profile ─────────────────────────────
+//
+// Read-only presentation of GET /handwriting/motor-cluster/:studentId
+// (motor_cluster_v1). Shows only display_name/description — never a raw
+// cluster ID in the main card (spec §5) — behind an optional WhyPanel
+// technical-details toggle, the same expand/collapse pattern already used
+// by MotorDifficultyCard's exercises above. Never renamed to
+// good/bad/high/low language (spec §5) — display_name/description are
+// rendered verbatim from the backend.
+
+function buildMotorClusterDebugText(profile, debug) {
+  if (!profile && !debug) return null;
+  const lines = [];
+  if (profile?.profileCode)  lines.push(`Profile code: ${profile.profileCode}`);
+  if (profile?.modelVersion) lines.push(`Model version: ${profile.modelVersion}`);
+  if (debug?.clusterId != null) lines.push(`Cluster ID: ${debug.clusterId}`);
+  if (debug?.nearestDistance != null) lines.push(`Nearest centroid distance: ${debug.nearestDistance.toFixed(3)}`);
+  if (debug?.secondNearestDistance != null) lines.push(`Second-nearest centroid distance: ${debug.secondNearestDistance.toFixed(3)}`);
+  if (debug?.separationMargin != null) lines.push(`Separation margin: ${debug.separationMargin.toFixed(3)}`);
+  lines.push('These are geometric distances in the model\'s feature space — not a confidence, accuracy, or probability score.');
+  return lines.join('\n');
+}
+
+function MotorClusterProfileCard({ result }) {
+  const { status, profile, debug } = result;
+  return (
+    <SectionCard title="Initial Shape Motor Profile" icon="body" accentColor="#7C3AED">
+      {status === 'loading' ? (
+        <View style={f11.loadingRow}>
+          <ActivityIndicator size="small" color="#7C3AED" />
+          <Text style={f11.loadingText}>Loading initial shape profile…</Text>
+        </View>
+      ) : status === 'not_found' ? (
+        <Empty message="Complete the initial shape assessment to see the motor profile" />
+      ) : status === 'unavailable' ? (
+        <Empty message="Motor profile is temporarily unavailable" />
+      ) : (
+        <View style={{ gap: 4 }}>
+          <View style={[mda.banner, { backgroundColor: '#F5F3FF', borderColor: '#7C3AED40' }]}>
+            <View style={[mda.bannerIcon, { backgroundColor: '#7C3AED20' }]}>
+              <Ionicons name="body-outline" size={20} color="#7C3AED" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[mda.bannerTitle, { color: '#7C3AED' }]}>{profile.displayName}</Text>
+              <Text style={mda.bannerDesc}>{profile.description}</Text>
+            </View>
+          </View>
+          <WhyPanel label="Technical details" explanation={buildMotorClusterDebugText(profile, debug)} />
+        </View>
+      )}
+    </SectionCard>
+  );
+}
+
+// ─── Feature 11B — Letter Motor Development ────────────────────────────────
+//
+// Read-only presentation of the 3 Phase 5 endpoints (latest state, state
+// history, mastery-evidence trend). Before the first eligible 14/20
+// milestone this shows evidence-accumulation trends only — NEVER a
+// State A/B (spec §1/§8). After 14/20, shows the current persisted state
+// plus a compact chronological history. State A/B is rendered exactly as
+// the backend's own display_name — never translated to good/bad/high/low
+// (spec §6). DTW/speed_cv captions clarify "lower = better match/more
+// consistent" as informational text only, never a red/green color (spec
+// §11). Coverage is shown as an evidence count, never a fabricated
+// "confidence %" (spec §12). nearest/second-nearest/separation are never
+// shown in the main card (spec §13).
+
+function CoverageBadge({ coverageN }) {
+  return (
+    <View style={f11.coverageBadge}>
+      <Text style={f11.coverageNum}>{coverageN ?? 0}</Text>
+      <Text style={f11.coverageDenom}>/ 20 reference letters</Text>
+    </View>
+  );
+}
+
+function LetterMotorMetricTiles({ smoothness, dtw, speedCv }) {
+  const fmt = (v) => (typeof v === 'number' ? v.toFixed(1) : '—');
+  return (
+    <View>
+      <View style={s.metricsRow}>
+        <MetricTile icon="analytics-outline"  label={METRIC_LABELS.smoothness.label} value={fmt(smoothness)} />
+        <MetricTile icon="git-compare-outline" label={METRIC_LABELS.dtw.label}        value={fmt(dtw)} />
+        <MetricTile icon="speedometer-outline" label={METRIC_LABELS.speedCv.label}    value={fmt(speedCv)} />
+      </View>
+      <Text style={f11.metricCaption}>{METRIC_LABELS.dtw.caption} · {METRIC_LABELS.speedCv.caption}</Text>
+    </View>
+  );
+}
+
+function LetterMotorHistoryList({ history }) {
+  if (!history || history.length === 0) return null;
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={mda.sectionLabel}>Milestone History</Text>
+      {history.map(row => (
+        <View key={row.id ?? row.milestone} style={f11.historyRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={f11.historyMilestone}>{row.milestoneLabel}</Text>
+            <Text style={f11.historyMeta}>{row.coverageN} / 20 · {row.displayName}</Text>
+          </View>
+          <Text style={f11.historyDate}>{formatReviewDate(row.observedAt) || '—'}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function LetterMotorDevelopmentCard({ latest, history, trend }) {
+  const anyLoading = latest.status === 'loading' || history.status === 'loading' || trend.status === 'loading';
+
+  if (anyLoading) {
+    return (
+      <SectionCard title="Letter Motor Development" icon="trending-up" accentColor="#0891B2">
+        <View style={f11.loadingRow}>
+          <ActivityIndicator size="small" color="#0891B2" />
+          <Text style={f11.loadingText}>Loading letter motor development…</Text>
+        </View>
+      </SectionCard>
+    );
+  }
+
+  if (latest.status === 'unavailable') {
+    return (
+      <SectionCard title="Letter Motor Development" icon="trending-up" accentColor="#0891B2">
+        <Empty message="Letter motor development data is temporarily unavailable" />
+      </SectionCard>
+    );
+  }
+
+  // latest.status === 'found' — a persisted state exists (14/20 or later).
+  if (latest.status === 'found') {
+    const currentState = latest.state;
+    return (
+      <SectionCard title="Letter Motor Development" icon="trending-up" accentColor="#0891B2">
+        <View style={{ gap: 14 }}>
+          <View style={[mda.banner, { backgroundColor: '#ECFEFF', borderColor: '#0891B240' }]}>
+            <View style={[mda.bannerIcon, { backgroundColor: '#0891B220' }]}>
+              <Ionicons name="trending-up-outline" size={20} color="#0891B2" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={f11.currentLabel}>Current Letter Motor State</Text>
+              <Text style={[mda.bannerTitle, { color: '#0891B2' }]}>{currentState.displayName}</Text>
+              <Text style={mda.bannerDesc}>
+                Milestone: {currentState.milestoneLabel} · Last updated {formatReviewDate(currentState.observedAt) || '—'}
+              </Text>
+            </View>
+          </View>
+
+          <CoverageBadge coverageN={currentState.coverageN} />
+
+          <View>
+            <Text style={mda.sectionLabel}>Supporting Measurements</Text>
+            <LetterMotorMetricTiles smoothness={currentState.smoothnessScore} dtw={currentState.dtwDistance} speedCv={currentState.speedCv} />
+          </View>
+
+          <LetterMotorHistoryList history={history.history} />
+
+          <WhyPanel
+            label="Technical details"
+            explanation={buildMotorClusterDebugText(
+              { profileCode: null, modelVersion: currentState.modelVersion },
+              currentState.debug
+            )}
+          />
+        </View>
+      </SectionCard>
+    );
+  }
+
+  // latest.status === 'not_found' — evidence is still accumulating (3/7/10,
+  // or nothing yet). NEVER shows State A/B here.
+  return (
+    <SectionCard title="Letter Motor Development" icon="trending-up" accentColor="#0891B2">
+      <View style={{ gap: 14 }}>
+        <View style={f11.accumulatingBanner}>
+          <Ionicons name="hourglass-outline" size={18} color="#0891B2" />
+          <Text style={f11.accumulatingText}>
+            Motor evidence is still being collected as the student masters letters.
+          </Text>
+        </View>
+
+        <CoverageBadge coverageN={trend.coverageN} />
+
+        {trend.coverageN > 0 && (
+          <View>
+            <Text style={mda.sectionLabel}>Current Cumulative Trends</Text>
+            <LetterMotorMetricTiles smoothness={trend.meanSmoothness} dtw={trend.meanDtw} speedCv={trend.meanSpeedCv} />
+          </View>
+        )}
+
+        <LetterMotorHistoryList history={history.history} />
+      </View>
+    </SectionCard>
+  );
+}
+
+const f11 = StyleSheet.create({
+  loadingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  loadingText: { fontSize: 12, color: TEXT_3, fontWeight: '600' },
+
+  coverageBadge: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  coverageNum:   { fontSize: 22, fontWeight: '900', color: TEXT_1 },
+  coverageDenom: { fontSize: 12, color: TEXT_2, fontWeight: '600' },
+
+  metricCaption: { fontSize: 10, color: TEXT_3, marginTop: 6, textAlign: 'center' },
+
+  currentLabel: { fontSize: 10, fontWeight: '800', color: '#0891B2', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+
+  accumulatingBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#ECFEFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#0891B230',
+  },
+  accumulatingText: { flex: 1, fontSize: 12.5, color: '#0E7490', lineHeight: 18, fontWeight: '600' },
+
+  historyRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+  },
+  historyMilestone: { fontSize: 12.5, fontWeight: '800', color: TEXT_1 },
+  historyMeta:       { fontSize: 11, color: TEXT_2, marginTop: 1 },
+  historyDate:       { fontSize: 11, color: TEXT_3, fontWeight: '600' },
 });
 
 // ─── Motor Pattern Progress row ──────────────────────────────────────────────

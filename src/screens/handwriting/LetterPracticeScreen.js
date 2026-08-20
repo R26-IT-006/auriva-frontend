@@ -114,7 +114,17 @@ export default function LetterPracticeScreen({ route, navigation }) {
     }, [student.sid])
   );
 
-  const lowercaseDone    = true;
+  // Uppercase progression fix — previously hardcoded `true`, meaning
+  // uppercase was never actually gated regardless of lowercase progress.
+  // lowercaseProgress is itself already the authoritative backend count
+  // (LETTER_PROGRESS's lowercase_completed = LetterProgress.count({case_type:
+  // 'lowercase'}) — see handwritingController.getProgress) — never derived
+  // from frontend AsyncStorage. Mirrors ProgressReportScreen.js's own
+  // identical `lowercase >= 26` gate, so both screens agree on what "done"
+  // means. LetterProgress's own unique(student_id, letter, case_type) index
+  // guarantees this count can never exceed 26, so >= and === are equivalent
+  // here; >= is used defensively, matching the sibling screen's convention.
+  const lowercaseDone    = lowercaseProgress >= 26;
   const lowercasePercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
 
   return (

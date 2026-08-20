@@ -306,9 +306,9 @@ describe('36. no global preview state', () => {
 });
 
 describe('37. no new useFocusEffect', () => {
-  it('useFocusEffect count is unchanged from Feature 9 Step 5 (3 total)', () => {
+  it('useFocusEffect count was unchanged from Feature 9 Step 5 by Feature 10 specifically (3 total at that point). Feature 11 Phase 6 later added 2 more of its own (Feature 11A + Feature 11B, each independently loaded) — see teacherReportFeature11.test.js.', () => {
     const occurrences = readScreen().match(/useFocusEffect\(/g) ?? [];
-    expect(occurrences).toHaveLength(3);
+    expect(occurrences).toHaveLength(5);
   });
 });
 
