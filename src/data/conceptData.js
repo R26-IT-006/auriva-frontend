@@ -23,7 +23,7 @@ export const CONCEPT_CATEGORIES = {
         animated:    require('../../assets/concepts/categories/Fruits/Apple/Apple_Animated.png'),
         introAudio:  require('../../assets/concepts/audio/Fruits/Apple/AppleIntro.m4a'),
         t1Audio:     require('../../assets/concepts/audio/Fruits/Apple/AppleT1Qestion.m4a'),
-        tier3Video:  require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating apple.mp4'),
+        tier3Video:  require('../../assets/concepts/Tier3_videos/Fruits/Apple.mp4'),
         coloring:    require('../../assets/concepts/categories/Fruits/Apple/Apple_Coloring.png'),
       },
       {
@@ -37,7 +37,7 @@ export const CONCEPT_CATEGORIES = {
         animated:   require('../../assets/concepts/categories/Fruits/Banana/Banana_Animated.png'),
         introAudio: require('../../assets/concepts/audio/Fruits/Banana/BananaIntro.m4a'),
         t1Audio:    require('../../assets/concepts/audio/Fruits/Banana/BananaT1Question.m4a'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating banana.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Banana.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Banana/Banana_Coloring.png'),
       },
       {
@@ -49,7 +49,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Cherry/Cherry_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Cherry/Cherry_IO.jpg'),
         animated:   require('../../assets/concepts/categories/Fruits/Cherry/Cherry_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating cherry.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Cherry.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Cherry/Cherries_Coloring.png'),
       },
       {
@@ -61,7 +61,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Grapes/Grapes_IO.png'),
         animated:   require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating grapes.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Grapes.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Coloring.png'),
       },
       {
@@ -72,7 +72,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Guava/Guava_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Guava/Guava_IO.png'),
         animated:   require('../../assets/concepts/categories/Fruits/Guava/Guava_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating guava.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Guava.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Guava/Guava_Coloring.png'),
       },
       {
@@ -83,7 +83,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Mango/Mango_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Mango/Mango_IO.png'),
         animated:   require('../../assets/concepts/categories/Fruits/Mango/Mango_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating mango.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Mango.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Mango/Mango_Coloring.png'),
       },
       {
@@ -94,7 +94,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Orange/Orange_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Orange/Orange_IO.png'),
         animated:   require('../../assets/concepts/categories/Fruits/Orange/Orange_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating orange.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Orange.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Orange/Orange_Coloring.png'),
       },
       {
@@ -105,7 +105,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Papaya/Papaya_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Papaya/Papaya_IO.png'),
         animated:   require('../../assets/concepts/categories/Fruits/Papaya/Papaya_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating papaya.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Papaya.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Papaya/Papaya_Coloring.png'),
       },
       {
@@ -116,7 +116,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Passion/Passion_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Passion/Passion_IO.png'),
         animated:   require('../../assets/concepts/categories/Fruits/Passion/Passion_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating passion.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Passion.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Passion/Passion_Coloring.png'),
       },
       {
@@ -127,7 +127,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_IO.png'),
         animated:   require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating pineapple.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Pineapple.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Coloring.png'),
       },
       {
@@ -138,7 +138,7 @@ export const CONCEPT_CATEGORIES = {
         real:     require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_IO.png'),
         animated:   require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_Animated.png'),
-        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Anjali eating watermelon.mp4'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Watermelon.mp4'),
         coloring:   require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_Coloring.png'),
       },
     ],
