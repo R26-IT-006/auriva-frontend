@@ -235,17 +235,6 @@ export default function InstructionScreen({ route, navigation }) {
                   Begin Assessment
                 </Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.skipBtn, { borderColor: theme.button + '66' }]}
-                onPress={() => navigation.navigate('LetterHome', { student, theme })}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.skipBtnText, { color: theme.button }]}>
-                  Skip Assessment
-                </Text>
-                <Ionicons name="arrow-forward-outline" size={16} color={theme.button} />
-              </TouchableOpacity>
             </Animated.View>
 
           </View>
@@ -505,20 +494,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  skipBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 11,
-    paddingHorizontal: 24,
-    borderRadius: 50,
-    borderWidth: 1.5,
-  },
-  skipBtnText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-
   // ── Avatar — landscape (side column) ─────────────────────────────────────
   avatarCol: {
     width: '36%',

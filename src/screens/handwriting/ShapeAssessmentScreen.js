@@ -43,6 +43,13 @@ const CANVAS_HEIGHT = SCREEN_HEIGHT * 0.55;
 const CANVAS_CX     = CANVAS_WIDTH  / 2;
 const CANVAS_CY     = CANVAS_HEIGHT / 2;
 
+// TEMPORARY RESEARCH/DEBUG INSTRUMENTATION — remove after canvas-dimension
+// investigation is done. No formula/layout/scoring/DB-write change.
+console.log(`WINDOW_WIDTH=${SCREEN_WIDTH}`);
+console.log(`WINDOW_HEIGHT=${SCREEN_HEIGHT}`);
+console.log(`CANVAS_WIDTH=${CANVAS_WIDTH}`);
+console.log(`CANVAS_HEIGHT=${CANVAS_HEIGHT}`);
+
 const POINTER_SIZE = 14;
 const POINTER_HALF = POINTER_SIZE / 2;
 const N_POINTS     = 100;
