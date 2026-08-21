@@ -111,6 +111,7 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
       roundNumber:        currentRound + 1,
       wasCorrect,
       timeTakenMs,
+      optionKeys:         (rounds[currentRound]?.pair || []).map((o) => o.key),
     }).catch(() => {});
 
     setTappedKey(option.key);

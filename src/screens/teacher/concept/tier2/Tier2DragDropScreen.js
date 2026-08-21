@@ -185,6 +185,11 @@ export default function Tier2DragDropScreen({ route, navigation }) {
         was_correct:    wasCorrect,
         time_taken_ms:  timeTakenMs,
         hint_shown:     hintKey !== null,
+        // What the child was shown. Note this screen builds its own options
+        // locally via buildOptions() — always the next two in sequence — so it
+        // never consults the distractor policy at all.
+        option_keys:       (baseOptions.current || []).map((o) => o.key),
+        distractor_source: 'client_sequential',
       },
     }).catch(() => {});
 

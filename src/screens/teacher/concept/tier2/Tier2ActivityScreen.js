@@ -181,7 +181,15 @@ export default function Tier2ActivityScreen({ route, navigation }) {
       conceptKey,
       tier:        2,
       eventType:   'name_match_attempt',
-      eventData:   { attempt_number: currentAttempt, selected_key: option.key, was_correct: wasCorrect, time_taken_ms: timeTakenMs },
+      eventData:   {
+        attempt_number: currentAttempt,
+        selected_key: option.key,
+        was_correct: wasCorrect,
+        time_taken_ms: timeTakenMs,
+        // What the child was shown. Without it the log cannot distinguish a real
+        // confusion from the distractor policy's own choice.
+        option_keys: (optionsRef.current || []).map((o) => o.key),
+      },
     }).catch(() => {});
 
     if (currentAttempt < 3) {

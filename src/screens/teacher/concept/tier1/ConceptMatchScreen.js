@@ -85,6 +85,9 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
   // Stable options list (set once after distractor fetch; reshuffled between attempts)
   const optionsRef = useRef(null);
+  // Which fallback tier chose the distractors — logged with each attempt so the
+  // offline evaluation can tell a real confusion from an artefact of the policy.
+  const distractorSource = useRef(null);
 
   function buildSequentialOptions() {
     const idx  = allItems.findIndex((it) => it.key === conceptKey);
@@ -140,16 +143,22 @@ export default function ConceptMatchScreen({ route, navigation }) {
         const keys = res?.distractors || [];
         const d1 = keys[0] ? allItems.find((it) => it.key === keys[0]) : null;
         const d2 = keys[1] ? allItems.find((it) => it.key === keys[1]) : null;
-        const opts = (d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey)
-          ? [concept, d1, d2]
-          : buildSequentialOptions();
+        const usedServerKeys = !!(d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey);
+        const opts = usedServerKeys ? [concept, d1, d2] : buildSequentialOptions();
         optionsRef.current = opts;
+        // Which source actually chose these, for the attempt log. When the server
+        // keys are unusable we fall back locally, so the server's own label would
+        // be wrong.
+        distractorSource.current = usedServerKeys
+          ? (res?.distractor_source || 'gkb')
+          : 'client_sequential';
         setDisplayOrder(shuffle(opts));
       })
       .catch(() => {
         if (cancelled) return;
         const opts = buildSequentialOptions();
         optionsRef.current = opts;
+        distractorSource.current = 'client_sequential';
         setDisplayOrder(shuffle(opts));
       });
     return () => { cancelled = true; };
@@ -188,6 +197,9 @@ export default function ConceptMatchScreen({ route, navigation }) {
       correctKey:    conceptKey,
       timeTakenMs,
       wasCorrect,
+      // Everything the child could have picked, not just what they did pick.
+      optionKeys:       (optionsRef.current || []).map((o) => o.key),
+      distractorSource: distractorSource.current,
     }).catch(() => {});
 
     if (currentAttempt < 3) {

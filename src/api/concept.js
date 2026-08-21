@@ -31,7 +31,7 @@ export const conceptApi = {
     return data;
   },
 
-  async logMatchAttempt({ studentId, sessionId, categoryKey, conceptKey, attemptNumber, selectedKey, correctKey, timeTakenMs, wasCorrect }) {
+  async logMatchAttempt({ studentId, sessionId, categoryKey, conceptKey, attemptNumber, selectedKey, correctKey, timeTakenMs, wasCorrect, optionKeys, distractorSource }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_TIER1_ATTEMPT, {
       student_id:     studentId,
       session_id:     sessionId    || null,
@@ -42,6 +42,11 @@ export const conceptApi = {
       correct_key:    correctKey,
       time_taken_ms:  timeTakenMs  || null,
       was_correct:    wasCorrect,
+      // The options actually presented. A picked option is only ever one the
+      // policy offered, so without this the logs cannot distinguish a genuine
+      // confusion from the distractor policy's own choice.
+      ...(optionKeys ? { option_keys: optionKeys } : {}),
+      ...(distractorSource ? { distractor_source: distractorSource } : {}),
     });
     return data;
   },
@@ -59,7 +64,7 @@ export const conceptApi = {
     return data;
   },
 
-  async logAdaptiveAttempt({ studentId, sessionId, categoryKey, conceptKey, confusedConceptKey, roundNumber, wasCorrect, timeTakenMs }) {
+  async logAdaptiveAttempt({ studentId, sessionId, categoryKey, conceptKey, confusedConceptKey, roundNumber, wasCorrect, timeTakenMs, optionKeys }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_ADAPTIVE_ATTEMPT, {
       student_id:           studentId,
       session_id:           sessionId           || null,
@@ -69,6 +74,10 @@ export const conceptApi = {
       round_number:         roundNumber,
       was_correct:          wasCorrect,
       time_taken_ms:        timeTakenMs         || null,
+      // The adaptive round is always a forced choice between the target and one
+      // confused concept, but log it explicitly rather than leaving the analysis
+      // to infer the pair.
+      ...(optionKeys ? { option_keys: optionKeys } : {}),
     });
     return data;
   },
