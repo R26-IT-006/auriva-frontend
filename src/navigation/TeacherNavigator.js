@@ -19,6 +19,7 @@ import PronunciationMouthShapeScreen from '../screens/teacher/students/modules/p
 import PronunciationSpeakWordScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationSpeakWordScreen';
 import PronunciationResultScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationResultScreen';
 import PronunciationResultsHistoryScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationResultsHistoryScreen';
+import PronunciationReviewQueueScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationReviewQueueScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -43,6 +44,7 @@ function TeacherWorkspace() {
       <Stack.Screen name="TeacherHome"          component={TeacherDashboardScreen}   options={{ headerShown: false }} />
       <Stack.Screen name="TeacherStudentList"   component={TeacherStudentListScreen}  options={{ title: 'My Students' }} />
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
+      <Stack.Screen name="PronunciationReviewQueue" component={PronunciationReviewQueueScreen} options={{ title: 'Review Queue' }} />
     </Stack.Navigator>
   );
 }

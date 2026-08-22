@@ -280,6 +280,14 @@ export default function TeacherDashboardScreen({ navigation }) {
               bg="#D6F0F4"
               onPress={() => navigation.navigate('TeacherStudentList')}
             />
+            <ActionCard
+              icon="checkmark-done-outline"
+              label="Review Queue"
+              sub="Confirm AI scores to improve future accuracy"
+              color="#B8860B"
+              bg="#FDF3D7"
+              onPress={() => navigation.navigate('PronunciationReviewQueue')}
+            />
           </View>
 
           {/* ── Recent activity ── */}

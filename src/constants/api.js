@@ -59,6 +59,9 @@ export const ENDPOINTS = {
     `/teacher/students/${id}/pronunciation-results`,
   TEACHER_PRONUNCIATION_RESULT_AUDIO: (id) =>
     `/teacher/pronunciation-results/${id}/audio`,
+  TEACHER_PRONUNCIATION_REVIEW_QUEUE: "/teacher/pronunciation-review-queue",
+  TEACHER_PRONUNCIATION_REVIEW: (resultId) =>
+    `/teacher/pronunciation-results/${resultId}/review`,
 
   // Handwriting
   HANDWRITING_ASSESSMENT: "/handwriting/assessment",

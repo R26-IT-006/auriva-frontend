@@ -74,4 +74,19 @@ export const teacherApi = {
     );
     return data;
   },
+
+  async getPronunciationReviewQueue(limit) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_PRONUNCIATION_REVIEW_QUEUE, {
+      params: limit ? { limit } : undefined,
+    });
+    return data;
+  },
+
+  async submitPronunciationReview(resultId, teacherReviewedScore) {
+    const { data } = await client.patch(
+      ENDPOINTS.TEACHER_PRONUNCIATION_REVIEW(resultId),
+      { teacher_reviewed_score: teacherReviewedScore }
+    );
+    return data;
+  },
 };
