@@ -36,10 +36,10 @@ const WORD_DISPLAY = {
 };
 
 const AVATAR_IMAGES = {
-  lily:     require('../../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
-  boba:     require('../../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
+  lily:     require('../../../../../assets/avatar-images/LilyCongratulations.png'),
+  megatron: require('../../../../../assets/avatar-images/MegatronCongratulations.png'),
+  boba:     require('../../../../../assets/avatar-images/BobaCongratulations.png'),
+  glitter:  require('../../../../../assets/avatar-images/GlitterCongratulations.png'),
 };
 
 // Per-scenario images and captions (static require — React Native bundle constraint)
@@ -234,6 +234,7 @@ export default function Phase3ContextualScreen({ route, navigation }) {
   const soundRef     = useRef(null);
   const activeRef    = useRef(true);
   const settingsFade = useRef(new Animated.Value(0)).current;
+  const avatarPop    = useRef(new Animated.Value(0)).current;
   const [gatePurpose, setGatePurpose] = useState('settings');
 
   // ── RC2 feature capture refs ──────────────────────────────────────────
@@ -385,7 +386,18 @@ export default function Phase3ContextualScreen({ route, navigation }) {
       setSelectedId(null);
       setSettled(false);
       setCloudText('');
+      avatarPop.setValue(0);
     }, 1600);
+  }
+
+  function popAvatar() {
+    avatarPop.setValue(0);
+    Animated.spring(avatarPop, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 10,
+    }).start();
   }
 
   // ── Image tap handler ─────────────────────────────────────────────────────
@@ -410,9 +422,11 @@ export default function Phase3ContextualScreen({ route, navigation }) {
     const chosen = imageItems.find(i => i.id === selectedId);
     if (chosen?.isCorrect) {
       setCloudText('Great job!');
+      popAvatar();
       await playSound(AUDIO_GOOD_JOB).catch(() => {});
     } else {
       setCloudText("Let's try the next one!");
+      popAvatar();
     }
 
     const selectionChangeCount = Math.min(selectionChangeCountRef.current, 2);
@@ -620,7 +634,22 @@ export default function Phase3ContextualScreen({ route, navigation }) {
                   <View style={[styles.bubbleTail, { borderTopColor: '#FFFFFF' }]} />
                 </View>
               ) : null}
-              <Image source={avatarImg} style={styles.avatarImg} resizeMode="contain" />
+              {cloudText ? (
+                <Animated.Image
+                  source={avatarImg}
+                  resizeMode="contain"
+                  style={[
+                    styles.avatarImg,
+                    {
+                      opacity: avatarPop,
+                      transform: [
+                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) },
+                        { translateY: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+                      ],
+                    },
+                  ]}
+                />
+              ) : null}
             </View>
 
           </View>
@@ -792,15 +821,15 @@ const styles = StyleSheet.create({
 
   /* Avatar */
   avatarRow: {
-    flexDirection:  'row',
-    justifyContent: 'flex-end',
-    alignItems:     'flex-end',
-    marginTop:      Layout.spacing.md,
+    flexDirection: 'column',
+    alignItems:    'flex-end',
+    marginTop:     Layout.spacing.md,
   },
   bubbleWrap: {
-    alignItems:   'flex-end',
-    marginBottom: 6,
-    marginRight:  -4,
+    width:       145,
+    alignItems:  'center',
+    alignSelf:   'flex-end',
+    marginBottom: 2,
   },
   speechBubble: {
     backgroundColor:   '#FFFFFF',
@@ -820,8 +849,8 @@ const styles = StyleSheet.create({
     textAlign:  'center',
   },
   bubbleTail: {
-    alignSelf:        'flex-end',
-    marginRight:      24,
+    alignSelf:        'center',
+    marginTop:        -1,
     width:            0,
     height:           0,
     borderLeftWidth:  8,
@@ -831,8 +860,8 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
   },
   avatarImg: {
-    width:  115,
-    height: 135,
+    width:  145,
+    height: 170,
   },
 
   /* Settings */

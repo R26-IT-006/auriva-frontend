@@ -45,10 +45,10 @@ const WORD_DISPLAY = {
 };
 
 const AVATAR_IMAGES = {
-  lily:     require('../../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
-  boba:     require('../../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
+  lily:     require('../../../../../assets/avatar-images/LilyCongratulations.png'),
+  megatron: require('../../../../../assets/avatar-images/MegatronCongratulations.png'),
+  boba:     require('../../../../../assets/avatar-images/BobaCongratulations.png'),
+  glitter:  require('../../../../../assets/avatar-images/GlitterCongratulations.png'),
 };
 
 // hello — 4 correct context images + 4 wrong images
@@ -413,6 +413,7 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
   const soundRef     = useRef(null);
   const activeRef    = useRef(true);
   const settingsFade = useRef(new Animated.Value(0)).current;
+  const avatarPop    = useRef(new Animated.Value(0)).current;
 
   // ── RC2 feature capture refs ──────────────────────────────────────────
   const renderTimestampRef      = useRef(Date.now());
@@ -557,7 +558,18 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
       setSelectedId(null);
       setSettled(false);
       setCloudText('');
+      avatarPop.setValue(0);
     }, 1600);
+  }
+
+  function popAvatar() {
+    avatarPop.setValue(0);
+    Animated.spring(avatarPop, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 10,
+    }).start();
   }
 
   function handleImageTap(item) {
@@ -580,9 +592,11 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
     const chosen = imageItems.find(i => i.id === selectedId);
     if (chosen?.isCorrect) {
       setCloudText('Great job!');
+      popAvatar();
       await playSound(AUDIO_GOOD_JOB).catch(() => {});
     } else {
       setCloudText("Let's try the next one!");
+      popAvatar();
     }
 
     const selectionChangeCount = Math.min(selectionChangeCountRef.current, 2);
@@ -737,7 +751,22 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
                   <View style={[styles.bubbleTail, { borderTopColor: '#FFFFFF' }]} />
                 </View>
               ) : null}
-              <Image source={avatarImg} style={styles.avatarImg} resizeMode="contain" />
+              {cloudText ? (
+                <Animated.Image
+                  source={avatarImg}
+                  resizeMode="contain"
+                  style={[
+                    styles.avatarImg,
+                    {
+                      opacity: avatarPop,
+                      transform: [
+                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) },
+                        { translateY: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+                      ],
+                    },
+                  ]}
+                />
+              ) : null}
             </View>
 
           </View>
@@ -850,8 +879,8 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
 
-  avatarRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: Layout.spacing.md },
-  bubbleWrap: { alignItems: 'flex-end', marginBottom: 6, marginRight: -4 },
+  avatarRow: { flexDirection: 'column', alignItems: 'flex-end', marginTop: Layout.spacing.md },
+  bubbleWrap: { width: 145, alignItems: 'center', alignSelf: 'flex-end', marginBottom: 2 },
   speechBubble: {
     backgroundColor: '#FFFFFF',
     borderRadius: Layout.radius.lg,
@@ -866,8 +895,8 @@ const styles = StyleSheet.create({
   },
   speechText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, textAlign: 'center' },
   bubbleTail: {
-    alignSelf: 'flex-end',
-    marginRight: 24,
+    alignSelf: 'center',
+    marginTop: -1,
     width: 0,
     height: 0,
     borderLeftWidth: 8,
@@ -876,7 +905,7 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   },
-  avatarImg: { width: 115, height: 135 },
+  avatarImg: { width: 145, height: 170 },
 
   settingsOverlay: {
     ...StyleSheet.absoluteFillObject,
