@@ -16,6 +16,7 @@ import {
 } from "./pronunciationSessionStore.js";
 import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
+import { AvatarIdentityBadge, EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
 
 const PRONUNCIATION_MODE_OPTIONS = [
   {
@@ -34,29 +35,31 @@ const PRONUNCIATION_MODE_OPTIONS = [
   },
 ];
 
-function CategoryCard({ item, selected, onPress, cardWidth, theme }) {
+function CategoryCard({ item, index, selected, onPress, cardWidth, theme }) {
   return (
-    <ButtonFeedback
-      activeOpacity={0.85}
-      onPress={onPress}
-      style={[
-        styles.categoryCard,
-        { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
-        selected && styles.categoryCardSelected,
-      ]}
-    >
-      <View
-        style={[styles.categoryVisual, { backgroundColor: item.panelColor }]}
+    <EntranceItem index={index}>
+      <ButtonFeedback
+        activeOpacity={0.85}
+        onPress={onPress}
+        style={[
+          styles.categoryCard,
+          { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
+          selected && styles.categoryCardSelected,
+        ]}
       >
-        <Ionicons name={item.icon} size={30} color={Colors.text.primary} />
-      </View>
-      <View style={styles.categoryBody}>
-        <Text style={styles.categoryTitle}>{item.title}</Text>
-        <Text style={styles.categorySubtitle} numberOfLines={2}>
-          {item.subtitle}
-        </Text>
-      </View>
-    </ButtonFeedback>
+        <View
+          style={[styles.categoryVisual, { backgroundColor: item.panelColor }]}
+        >
+          <Ionicons name={item.icon} size={30} color={Colors.text.primary} />
+        </View>
+        <View style={styles.categoryBody}>
+          <Text style={styles.categoryTitle}>{item.title}</Text>
+          <Text style={styles.categorySubtitle} numberOfLines={2}>
+            {item.subtitle}
+          </Text>
+        </View>
+      </ButtonFeedback>
+    </EntranceItem>
   );
 }
 
@@ -184,6 +187,8 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               {student?.full_name ? ` for ${student.full_name}` : ""}
             </Text>
           </View>
+
+          <AvatarIdentityBadge avatarKey={student?.avatar_key} theme={theme} size={44} style={styles.headerAvatar} />
         </View>
 
         <PronunciationStepIndicator currentStep={2} theme={theme} />
@@ -192,10 +197,11 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
           <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Mode</Text>
 
           <View style={styles.cardsRow}>
-            {PRONUNCIATION_MODE_OPTIONS.map((item) => (
+            {PRONUNCIATION_MODE_OPTIONS.map((item, index) => (
               <CategoryCard
                 key={item.id}
                 item={item}
+                index={index}
                 selected={selectedMode === item.id}
                 onPress={() => {
                   setSelectedMode(item.id);
@@ -218,10 +224,11 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               </Text>
 
               <View style={styles.cardsRow}>
-                {SESSION_CATEGORIES.map((item) => (
+                {SESSION_CATEGORIES.map((item, index) => (
                   <CategoryCard
                     key={item.id}
                     item={item}
+                    index={index}
                     selected={selectedCategory === item.id}
                     onPress={() => {
                       setSelectedCategory(item.id);
@@ -267,12 +274,8 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
             <ButtonFeedback
               activeOpacity={0.85}
               style={[
-                styles.continueBtn,
-                { backgroundColor: theme.button },
+                styles.continueBtnWrap,
                 isCompact && styles.continueBtnCompact,
-                (!selectedMode ||
-                  (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory)) &&
-                  styles.continueBtnDisabled,
               ]}
               disabled={
                 !selectedMode ||
@@ -280,8 +283,18 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               }
               onPress={handleContinue}
             >
-              <Text style={styles.continueText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              {!selectedMode ||
+              (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory) ? (
+                <View style={[styles.continueBtn, styles.continueBtnDisabled]}>
+                  <Text style={styles.continueText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                </View>
+              ) : (
+                <ThemedGradientFill theme={theme} style={styles.continueBtn}>
+                  <Text style={styles.continueText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                </ThemedGradientFill>
+              )}
             </ButtonFeedback>
           </View>
         </View>
@@ -324,16 +337,20 @@ const styles = StyleSheet.create({
   headerCopy: {
     flex: 1,
   },
+  headerAvatar: {
+    marginTop: 2,
+  },
   title: {
     fontSize: Layout.fontSize.xxxl,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     letterSpacing: -0.4,
   },
   subtitle: {
     marginTop: 2,
     fontSize: Layout.fontSize.sm,
     color: Colors.text.secondary,
+    fontFamily: Layout.fonts.semibold,
   },
   panel: {
     width: "100%",
@@ -348,7 +365,7 @@ const styles = StyleSheet.create({
   },
   panelTitle: {
     fontSize: 30,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: Colors.text.primary,
     marginBottom: Layout.spacing.md,
   },
@@ -385,7 +402,7 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     color: Colors.text.primary,
   },
   categorySubtitle: {
@@ -415,7 +432,7 @@ const styles = StyleSheet.create({
   },
   sensoryTitle: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     color: Colors.text.primary,
   },
   sensorySubtitle: {
@@ -443,14 +460,17 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     color: Colors.text.secondary,
   },
+  continueBtnWrap: {
+    borderRadius: 10,
+    overflow: "hidden",
+  },
   continueBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 10,
   },
   continueBtnCompact: {
     justifyContent: "center",
@@ -461,6 +481,6 @@ const styles = StyleSheet.create({
   continueText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
 });

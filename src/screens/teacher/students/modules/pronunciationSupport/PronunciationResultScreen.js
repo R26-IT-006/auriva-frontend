@@ -27,6 +27,7 @@ import {
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
 import { buildPronunciationResultPayload } from "./pronunciationPayloads.js";
+import { AvatarIdentityBadge, ThemedGradientFill } from "./pronunciationDesignKit.js";
 
 const EXPECTED_PRONUNCIATION_SCORE = 80;
 const WELL_DONE_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/well-done-female.mp3");
@@ -468,7 +469,12 @@ export default function PronunciationResultScreen({ navigation, route }) {
       >
         <View style={[styles.topBar, isCompact && styles.topBarCompact, { borderColor: theme.cardOutline }]}>
           <View style={styles.studentWrap}>
-            <View style={[styles.avatarDot, { backgroundColor: theme.background, borderColor: theme.cardOutline }]} />
+            <AvatarIdentityBadge
+              avatarKey={student?.avatar_key}
+              theme={theme}
+              size={40}
+              style={styles.avatarDot}
+            />
             <View style={styles.studentTitleWrap}>
               <Text style={[styles.studentText, isCompact && styles.studentTextCompact, { color: theme.headingText }]}>
                 {student?.full_name || "Leo M."}'s Result
@@ -625,14 +631,16 @@ export default function PronunciationResultScreen({ navigation, route }) {
             </FeedbackButton>
 
             <FeedbackButton
-              style={[styles.nextWordBtn, { backgroundColor: theme.button }]}
+              style={styles.nextWordBtnWrap}
               activeOpacity={0.9}
               onPress={handleNextWord}
             >
-              <Text style={styles.nextWordBtnText}>
-                {isAlphabetMode ? "Next Letter" : "Next Word"}
-              </Text>
-              <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+              <ThemedGradientFill theme={theme} style={styles.nextWordBtn}>
+                <Text style={styles.nextWordBtnText}>
+                  {isAlphabetMode ? "Next Letter" : "Next Word"}
+                </Text>
+                <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+              </ThemedGradientFill>
             </FeedbackButton>
           </View>
         </View>
@@ -695,7 +703,7 @@ const styles = StyleSheet.create({
   studentText: {
     fontSize: 34,
     color: "#1F2F49",
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
   },
   studentTextCompact: {
     fontSize: 24,
@@ -734,7 +742,7 @@ const styles = StyleSheet.create({
   },
   btnText: {
     color: "#5D6D87",
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
     fontSize: 14,
   },
   completedPill: {
@@ -754,7 +762,7 @@ const styles = StyleSheet.create({
   completedPillText: {
     color: Colors.status.success,
     fontSize: 11,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   reviewPill: {
     alignSelf: "center",
@@ -773,11 +781,11 @@ const styles = StyleSheet.create({
   reviewPillText: {
     color: "#8A6D1D",
     fontSize: 11,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   dashboardText: {
     color: "#5D6D87",
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
     fontSize: 14,
   },
   contentRow: {
@@ -836,14 +844,14 @@ const styles = StyleSheet.create({
   studentResultTitle: {
     fontSize: 58,
     lineHeight: 68,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     textAlign: "center",
   },
   studentResultTitleSinhala: {
     marginTop: -8,
     fontSize: 34,
     lineHeight: 42,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     textAlign: "center",
     opacity: 0.82,
   },
@@ -904,7 +912,7 @@ const styles = StyleSheet.create({
   },
   scoreText: {
     fontSize: 38,
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
     color: "#3A4A63",
   },
   summaryWrap: {
@@ -912,7 +920,7 @@ const styles = StyleSheet.create({
   },
   feedbackTitle: {
     fontSize: 43,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#27354D",
   },
   feedbackTitleCompact: {
@@ -938,14 +946,14 @@ const styles = StyleSheet.create({
   responseChipText: {
     color: "#667A95",
     fontSize: 12,
-    fontWeight: "600",
+    fontFamily: Layout.fonts.semibold,
   },
   breakdownTitle: {
     marginTop: 16,
     marginBottom: 10,
     fontSize: 16,
     color: "#2E3E56",
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
   },
   rightPanel: {
     width: 260,
@@ -975,7 +983,7 @@ const styles = StyleSheet.create({
   },
   suggestionTitle: {
     fontSize: 14,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#2F3F58",
   },
   suggestionCopy: {
@@ -994,12 +1002,12 @@ const styles = StyleSheet.create({
   nextWordHint: {
     fontSize: 11,
     color: "#8C9AB0",
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
   },
   nextWordText: {
     fontSize: 18,
     color: "#1E2E47",
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
     marginTop: 2,
     textTransform: "lowercase",
   },
@@ -1015,23 +1023,26 @@ const styles = StyleSheet.create({
   tryAgainText: {
     color: "#37475F",
     fontSize: 17,
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
   },
-  nextWordBtn: {
-    backgroundColor: "#4A99C8",
+  nextWordBtnWrap: {
     borderRadius: 24,
     height: 50,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.9)",
+    overflow: "hidden",
+    ...Layout.shadow.md,
+  },
+  nextWordBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.9)",
-    ...Layout.shadow.md,
   },
   nextWordBtnText: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
 });

@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   stepNumber: {
     fontSize: Layout.fontSize.xs,
     color: "#6E7D92",
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   stepNumberActive: {
     color: "#FFFFFF",

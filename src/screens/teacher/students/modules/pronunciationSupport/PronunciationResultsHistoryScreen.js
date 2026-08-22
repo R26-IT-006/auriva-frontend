@@ -910,14 +910,14 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.secondary,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
     textTransform: "uppercase",
   },
   title: {
     marginTop: 4,
     fontSize: Layout.fontSize.xl,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   countBadge: {
     width: 46,
@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
   countText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   summaryPanel: {
     borderWidth: 1,
@@ -950,7 +950,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   summaryScoreBadge: {
     width: 72,
@@ -962,12 +962,12 @@ const styles = StyleSheet.create({
   },
   summaryScoreText: {
     fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   summaryScoreLabel: {
     color: Colors.text.secondary,
     fontSize: 10,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "uppercase",
   },
   summaryGrid: {
@@ -996,13 +996,13 @@ const styles = StyleSheet.create({
   summaryMetricLabel: {
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   summaryMetricValue: {
     marginTop: 3,
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   weakSummary: {
     marginTop: Layout.spacing.lg,
@@ -1013,7 +1013,7 @@ const styles = StyleSheet.create({
   weakSummaryTitle: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   weakChipRow: {
     marginTop: Layout.spacing.sm,
@@ -1033,7 +1033,7 @@ const styles = StyleSheet.create({
   weakChipSound: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   weakChipMeta: {
     marginTop: 2,
@@ -1049,12 +1049,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   detailSectionTitle: {
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     marginBottom: Layout.spacing.sm,
   },
   sectionHeader: {
@@ -1068,7 +1068,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
     textAlign: "right",
   },
   emptyCard: {
@@ -1085,7 +1085,7 @@ const styles = StyleSheet.create({
     marginTop: Layout.spacing.sm,
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   emptyCopy: {
     marginTop: 4,
@@ -1119,14 +1119,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: Layout.fontSize.sm,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   sessionTitleActive: { color: Colors.primary },
   sessionWord: {
     marginTop: Layout.spacing.sm,
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "capitalize",
   },
   sessionMeta: {
@@ -1151,7 +1151,7 @@ const styles = StyleSheet.create({
   completedPillText: {
     color: Colors.status.success,
     fontSize: 11,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   scorePill: {
     minWidth: 50,
@@ -1164,7 +1164,7 @@ const styles = StyleSheet.create({
   scorePillText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   detailCard: {
     borderWidth: 1,
@@ -1182,13 +1182,13 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.secondary,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   wordText: {
     marginTop: 4,
     fontSize: 34,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "capitalize",
   },
   scoreCircle: {
@@ -1201,7 +1201,7 @@ const styles = StyleSheet.create({
   },
   scoreCircleText: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   metricsGrid: {
     marginTop: Layout.spacing.lg,
@@ -1218,13 +1218,13 @@ const styles = StyleSheet.create({
   metricLabel: {
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   metricValue: {
     marginTop: 4,
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "capitalize",
   },
   reviewMetricBox: {
@@ -1262,14 +1262,14 @@ const styles = StyleSheet.create({
   verificationTitle: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "capitalize",
   },
   verificationMeta: {
     marginTop: 2,
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   confidenceChip: {
     minHeight: 26,
@@ -1287,7 +1287,7 @@ const styles = StyleSheet.create({
   },
   confidenceChipText: {
     fontSize: 11,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     color: Colors.status.success,
     textTransform: "capitalize",
   },
@@ -1321,7 +1321,7 @@ const styles = StyleSheet.create({
   comparisonTitle: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   comparisonMeta: {
     marginTop: 2,
@@ -1335,12 +1335,12 @@ const styles = StyleSheet.create({
   previousScoreText: {
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   deltaText: {
     marginTop: 2,
     fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   deltaChipRow: {
     marginTop: Layout.spacing.md,
@@ -1362,11 +1362,11 @@ const styles = StyleSheet.create({
   deltaChipSound: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   deltaChipValue: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   audioAnalysisBox: {
     marginTop: Layout.spacing.lg,
@@ -1392,7 +1392,7 @@ const styles = StyleSheet.create({
   audioAnalysisTitle: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   audioAnalysisMeta: {
     marginTop: 2,
@@ -1410,7 +1410,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
     lineHeight: 19,
   },
   activitiesSection: {
@@ -1446,13 +1446,13 @@ const styles = StyleSheet.create({
   activitiesTitle: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   activitiesSubtitle: {
     marginTop: 2,
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   activitiesBody: {
     borderTopWidth: 1,
@@ -1491,7 +1491,7 @@ const styles = StyleSheet.create({
   listenChooseTitle: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   listenChooseMeta: {
     marginTop: 2,
@@ -1518,7 +1518,7 @@ const styles = StyleSheet.create({
   },
   listenChooseStatusText: {
     fontSize: 11,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   listenChooseStats: {
     marginTop: Layout.spacing.sm,
@@ -1527,7 +1527,7 @@ const styles = StyleSheet.create({
   listenChooseStatText: {
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   audioInfo: {
     flexDirection: "row",
@@ -1545,7 +1545,7 @@ const styles = StyleSheet.create({
   audioTitle: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   audioMeta: {
     marginTop: 3,
@@ -1571,14 +1571,14 @@ const styles = StyleSheet.create({
   playButtonText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   breakdownTitle: {
     marginTop: Layout.spacing.lg,
     marginBottom: Layout.spacing.sm,
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   phonemeRow: {
     flexDirection: "row",
@@ -1593,7 +1593,7 @@ const styles = StyleSheet.create({
   realizedText: {
     color: Colors.status.warning,
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   phonemeTag: {
     width: 44,
@@ -1606,7 +1606,7 @@ const styles = StyleSheet.create({
   phonemeText: {
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   progressTrack: {
     flex: 1,
@@ -1621,7 +1621,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
     color: Colors.text.primary,
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   recommendationBox: {
     marginTop: Layout.spacing.md,
@@ -1656,14 +1656,14 @@ const styles = StyleSheet.create({
   candidateLabel: {
     color: Colors.text.secondary,
     fontSize: 10,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "uppercase",
   },
   candidateValue: {
     marginTop: 2,
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "capitalize",
   },
   candidateReason: {

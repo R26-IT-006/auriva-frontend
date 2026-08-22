@@ -29,6 +29,7 @@ import {
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
+import { EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
 
 const MIN_FIELD_SIZE = 2;
 const MAX_FIELD_SIZE = 4;
@@ -141,45 +142,47 @@ function buildChoices(categoryId, targetWord, fieldSize = MAX_FIELD_SIZE) {
   return shuffle(picked);
 }
 
-function ChoiceCard({ item, state, onPress, width, disabled }) {
+function ChoiceCard({ item, index, state, onPress, width, disabled }) {
   const isCorrect = state === "correct";
   const isWrong = state === "wrong";
   const imageSource = getWordImageSource(item);
 
   return (
-    <ButtonFeedback
-      activeOpacity={0.88}
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        styles.choiceCard,
-        { width },
-        disabled && styles.choiceCardDisabled,
-        isCorrect && styles.choiceCardCorrect,
-        isWrong && styles.choiceCardWrong,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={`Choose ${item.word}`}
-    >
-      <View style={[styles.choiceImageWrap, { backgroundColor: item.color || "#E8EDF4" }]}>
-        {imageSource ? (
-          <Image source={imageSource} resizeMode="cover" style={styles.choiceImage} />
-        ) : (
-          <Ionicons name="image-outline" size={36} color="#6D7890" />
-        )}
-      </View>
-      <Text style={styles.choiceLabel}>{item.word}</Text>
-      {isCorrect ? (
-        <View style={styles.resultBadge}>
-          <Ionicons name="checkmark" size={15} color="#FFFFFF" />
+    <EntranceItem index={index}>
+      <ButtonFeedback
+        activeOpacity={0.88}
+        onPress={onPress}
+        disabled={disabled}
+        style={[
+          styles.choiceCard,
+          { width },
+          disabled && styles.choiceCardDisabled,
+          isCorrect && styles.choiceCardCorrect,
+          isWrong && styles.choiceCardWrong,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Choose ${item.word}`}
+      >
+        <View style={[styles.choiceImageWrap, { backgroundColor: item.color || "#E8EDF4" }]}>
+          {imageSource ? (
+            <Image source={imageSource} resizeMode="cover" style={styles.choiceImage} />
+          ) : (
+            <Ionicons name="image-outline" size={36} color="#6D7890" />
+          )}
         </View>
-      ) : null}
-      {isWrong ? (
-        <View style={[styles.resultBadge, styles.resultBadgeWrong]}>
-          <Ionicons name="close" size={15} color="#FFFFFF" />
-        </View>
-      ) : null}
-    </ButtonFeedback>
+        <Text style={styles.choiceLabel}>{item.word}</Text>
+        {isCorrect ? (
+          <View style={styles.resultBadge}>
+            <Ionicons name="checkmark" size={15} color="#FFFFFF" />
+          </View>
+        ) : null}
+        {isWrong ? (
+          <View style={[styles.resultBadge, styles.resultBadgeWrong]}>
+            <Ionicons name="close" size={15} color="#FFFFFF" />
+          </View>
+        ) : null}
+      </ButtonFeedback>
+    </EntranceItem>
   );
 }
 
@@ -390,7 +393,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
             </View>
 
             <View style={styles.choicesGrid}>
-              {choices.map((item) => {
+              {choices.map((item, index) => {
                 const state = selectedId === item.id
                   ? item.id === targetWord?.id
                     ? "correct"
@@ -401,6 +404,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
                   <ChoiceCard
                     key={item.id}
                     item={item}
+                    index={index}
                     state={state}
                     width={cardWidth}
                     disabled={!hasHeardTarget || isPlaying}
@@ -445,13 +449,14 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
                 disabled={!selectedId}
                 onPress={handleNext}
                 style={[
-                  styles.primaryBtn,
-                  { backgroundColor: theme.button },
+                  styles.primaryBtnWrap,
                   !selectedId && styles.primaryBtnDisabled,
                 ]}
               >
-                <Text style={styles.primaryBtnText}>Next</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                <ThemedGradientFill theme={theme} style={styles.primaryBtn}>
+                  <Text style={styles.primaryBtnText}>Next</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                </ThemedGradientFill>
               </ButtonFeedback>
 
               {activityWords.length > 1 ? (
@@ -510,20 +515,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.xxxl,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     letterSpacing: 0,
   },
   titleSinhala: {
     marginTop: 2,
     fontSize: Layout.fontSize.xl,
     lineHeight: 28,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     letterSpacing: 0,
     opacity: 0.82,
   },
   subtitle: {
     marginTop: 2,
     fontSize: Layout.fontSize.sm,
+    fontFamily: Layout.fonts.semibold,
   },
   panel: {
     width: "100%",
@@ -550,14 +556,14 @@ const styles = StyleSheet.create({
   promptTitle: {
     fontSize: 34,
     lineHeight: 40,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     letterSpacing: 0,
   },
   promptTitleSinhala: {
     marginTop: 4,
     fontSize: 24,
     lineHeight: 32,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     letterSpacing: 0,
     opacity: 0.82,
   },
@@ -586,7 +592,7 @@ const styles = StyleSheet.create({
   playBtnText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.lg,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
   choicesGrid: {
     marginTop: Layout.spacing.xl,
@@ -631,7 +637,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xl,
     lineHeight: 26,
     color: Colors.text.primary,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     textAlign: "center",
     textTransform: "lowercase",
   },
@@ -674,7 +680,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
     lineHeight: 21,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   actionsRow: {
     marginTop: Layout.spacing.lg,
@@ -703,18 +709,23 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
-  primaryBtn: {
+  primaryBtnWrap: {
     minHeight: 52,
     borderRadius: 26,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.85)",
+    overflow: "hidden",
+  },
+  primaryBtn: {
+    flex: 1,
+    minHeight: 48,
     paddingHorizontal: 22,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.85)",
   },
   primaryBtnDisabled: {
     backgroundColor: "#DDE5EF",
@@ -722,6 +733,6 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.md,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
 });

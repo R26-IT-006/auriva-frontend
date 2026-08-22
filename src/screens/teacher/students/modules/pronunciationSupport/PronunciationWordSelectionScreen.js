@@ -19,34 +19,38 @@ import {
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
 import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
+import { AvatarIdentityBadge, EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
 
-function MoreWordCard({ item, selected, onPress, width, theme }) {
+function MoreWordCard({ item, index, selected, onPress, width, theme }) {
   return (
-    <ButtonFeedback
-      activeOpacity={0.86}
-      onPress={onPress}
-      style={[
-        styles.moreWordCard,
-        { width, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
-        selected && styles.moreWordCardSelected,
-      ]}
-    >
-      <View style={[styles.moreWordBadge, { backgroundColor: item.color }]}>
-        <Ionicons name="paw-outline" size={18} color="#5F6E83" />
-      </View>
-      <Text style={styles.moreWordText}>{item.word}</Text>
-      {item.completed ? (
-        <View style={styles.completedPill}>
-          <Ionicons name="checkmark-circle" size={13} color={Colors.status.success} />
-          <Text style={styles.completedPillText}>Completed</Text>
+    <EntranceItem index={index}>
+      <ButtonFeedback
+        activeOpacity={0.86}
+        onPress={onPress}
+        style={[
+          styles.moreWordCard,
+          { width, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
+          selected && styles.moreWordCardSelected,
+        ]}
+      >
+        <View style={[styles.moreWordBadge, { backgroundColor: item.color }]}>
+          <Ionicons name="paw-outline" size={18} color="#5F6E83" />
         </View>
-      ) : null}
-    </ButtonFeedback>
+        <Text style={styles.moreWordText}>{item.word}</Text>
+        {item.completed ? (
+          <View style={styles.completedPill}>
+            <Ionicons name="checkmark-circle" size={13} color={Colors.status.success} />
+            <Text style={styles.completedPillText}>Completed</Text>
+          </View>
+        ) : null}
+      </ButtonFeedback>
+    </EntranceItem>
   );
 }
 
 function WordCard({
   item,
+  index,
   selected,
   onToggleExpand,
   expanded,
@@ -59,6 +63,7 @@ function WordCard({
   const imageSource = getWordImageSource(item);
 
   return (
+    <EntranceItem index={index}>
     <View
       ref={refCallback}
       style={[styles.wordCard, { width, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline }, selected && styles.wordCardSelected]}
@@ -102,6 +107,7 @@ function WordCard({
         </View>
       )}
     </View>
+    </EntranceItem>
   );
 }
 
@@ -285,13 +291,17 @@ export default function PronunciationWordSelectionScreen({
           </ButtonFeedback>
 
           <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: theme.headingText }]}>New Session Setup</Text>
+            <Text style={[styles.title, { color: theme.headingText }]}>
+              {isAlphabetMode ? "Choose a Letter" : "Choose a Word"}
+            </Text>
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               {isAlphabetMode
                 ? "Choose a starting letter"
                 : "Configure the learning environment"}
             </Text>
           </View>
+
+          <AvatarIdentityBadge avatarKey={student?.avatar_key} theme={theme} size={44} style={styles.headerAvatar} />
         </View>
 
         <PronunciationStepIndicator currentStep={3} theme={theme} />
@@ -305,21 +315,21 @@ export default function PronunciationWordSelectionScreen({
               activeOpacity={0.86}
               onPress={handleStartSession}
               disabled={!selectedWord}
-              style={[
-                styles.startBtn,
-                { backgroundColor: theme.button },
-                isCompact && styles.startBtnCompact,
-                !selectedWord && styles.startBtnDisabled,
-              ]}
+              style={[styles.startBtnWrap, isCompact && styles.startBtnCompact]}
             >
-              <Text
-                style={[
-                  styles.startBtnText,
-                  !selectedWord && styles.startBtnTextDisabled,
-                ]}
-              >
-                {isAlphabetMode ? "Start Alphabet" : "Start Session"}
-              </Text>
+              {selectedWord ? (
+                <ThemedGradientFill theme={theme} style={styles.startBtn}>
+                  <Text style={styles.startBtnText}>
+                    {isAlphabetMode ? "Start Alphabet" : "Start Session"}
+                  </Text>
+                </ThemedGradientFill>
+              ) : (
+                <View style={[styles.startBtn, styles.startBtnDisabled]}>
+                  <Text style={styles.startBtnTextDisabled}>
+                    {isAlphabetMode ? "Start Alphabet" : "Start Session"}
+                  </Text>
+                </View>
+              )}
             </ButtonFeedback>
           </View>
 
@@ -332,12 +342,13 @@ export default function PronunciationWordSelectionScreen({
           </Text>
 
           <View style={styles.wordGrid}>
-            {words.map((item) => {
+            {words.map((item, index) => {
               const key = `${isAlphabetMode ? "alphabet" : categoryId || "cat"}-${item.id}`;
               return (
                 <WordCard
                   key={key}
                   item={item}
+                  index={index}
                   width={cardWidth}
                   selected={selectedWord?.id === item.id}
                   expanded={expandedWordKey === key}
@@ -375,10 +386,11 @@ export default function PronunciationWordSelectionScreen({
 
             {moreOpen && (
               <View style={styles.moreWordGrid}>
-                {moreWords.map((item) => (
+                {moreWords.map((item, index) => (
                   <MoreWordCard
                     key={item.id}
                     item={item}
+                    index={index}
                     width={moreCardWidth}
                     selected={selectedWord?.id === item.id}
                     onPress={() => {
@@ -433,16 +445,20 @@ const styles = StyleSheet.create({
   headerCopy: {
     flex: 1,
   },
+  headerAvatar: {
+    marginTop: 2,
+  },
   title: {
     fontSize: Layout.fontSize.xxxl,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     letterSpacing: -0.4,
   },
   subtitle: {
     marginTop: 2,
     fontSize: Layout.fontSize.sm,
     color: Colors.text.secondary,
+    fontFamily: Layout.fonts.semibold,
   },
   panel: {
     width: "100%",
@@ -467,12 +483,15 @@ const styles = StyleSheet.create({
   },
   panelTitle: {
     fontSize: 36,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: Colors.text.primary,
     flexShrink: 1,
   },
+  startBtnWrap: {
+    borderRadius: 11,
+    overflow: "hidden",
+  },
   startBtn: {
-    backgroundColor: Colors.primary,
     borderRadius: 11,
     minWidth: 140,
     paddingHorizontal: 14,
@@ -489,10 +508,12 @@ const styles = StyleSheet.create({
   startBtnText: {
     fontSize: Layout.fontSize.sm,
     color: "#FFFFFF",
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   startBtnTextDisabled: {
+    fontSize: Layout.fontSize.sm,
     color: "#90A0B5",
+    fontFamily: Layout.fonts.bold,
   },
   contextText: {
     marginTop: 6,
@@ -515,7 +536,7 @@ const styles = StyleSheet.create({
   },
   moreWordsTitle: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: Colors.text.primary,
   },
   moreWordsSubtitle: {
@@ -563,7 +584,7 @@ const styles = StyleSheet.create({
   wordText: {
     fontSize: 31,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "lowercase",
     lineHeight: 36,
   },
@@ -574,7 +595,7 @@ const styles = StyleSheet.create({
     fontSize: 86,
     lineHeight: 94,
     color: "#263752",
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
   wordHeader: {
     flexDirection: "row",
@@ -634,7 +655,7 @@ const styles = StyleSheet.create({
   moreWordText: {
     fontSize: 15,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     textTransform: "lowercase",
     textAlign: "center",
   },
@@ -654,6 +675,6 @@ const styles = StyleSheet.create({
   completedPillText: {
     color: Colors.status.success,
     fontSize: 11,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
 });

@@ -22,6 +22,7 @@ import {
   readAudioClip,
 } from "./pronunciationRecording.js";
 import { buildPronunciationScoringPayload } from "./pronunciationPayloads.js";
+import { ThemedGradientFill } from "./pronunciationDesignKit.js";
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
@@ -457,20 +458,21 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             disabled={!canContinue}
             onPress={handleNext}
             style={[
-              styles.nextBtn,
+              styles.nextBtnWrap,
               isCompact && styles.nextBtnCompact,
-              { backgroundColor: theme.button },
               !canContinue && styles.nextBtnDisabled,
             ]}
           >
-            <Text style={styles.nextText}>
-              {isScoring ? "Scoring" : "Next"}
-            </Text>
-            {isScoring ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-            )}
+            <ThemedGradientFill theme={theme} style={styles.nextBtn}>
+              <Text style={styles.nextText}>
+                {isScoring ? "Scoring" : "Next"}
+              </Text>
+              {isScoring ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+              )}
+            </ThemedGradientFill>
           </ButtonFeedback>
         </View>
       </ScrollView>
@@ -499,7 +501,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#2C5878",
     marginBottom: 4,
     textAlign: "center",
@@ -512,7 +514,7 @@ const styles = StyleSheet.create({
   titleSinhala: {
     fontSize: 24,
     lineHeight: 30,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#2C5878",
     marginBottom: 26,
     textAlign: "center",
@@ -569,7 +571,7 @@ const styles = StyleSheet.create({
     fontSize: 112,
     lineHeight: 120,
     color: "#263752",
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
   voiceCard: {
     width: "44%",
@@ -605,7 +607,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   helperText: {
     marginTop: 18,
@@ -618,7 +620,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: Layout.fontSize.xs,
     color: Colors.text.link,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   scoringIndicator: {
     marginTop: 8,
@@ -660,7 +662,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
   },
-  nextBtn: {
+  nextBtnWrap: {
     position: "absolute",
     right: 14,
     top: "50%",
@@ -668,14 +670,17 @@ const styles = StyleSheet.create({
     minWidth: 146,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#A8D79A",
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.9)",
+    overflow: "hidden",
+    ...Layout.shadow.md,
+  },
+  nextBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    ...Layout.shadow.md,
   },
   nextBtnCompact: {
     position: "relative",
@@ -705,6 +710,6 @@ const styles = StyleSheet.create({
   nextText: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
 });

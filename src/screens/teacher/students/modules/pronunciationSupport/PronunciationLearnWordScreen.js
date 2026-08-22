@@ -32,6 +32,7 @@ import {
   setPronunciationPlaybackMode,
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
+import { ThemedGradientFill } from "./pronunciationDesignKit.js";
 
 const CAT_FLASHCARD_VIDEO = require("../../../../../../assets/pronunciation-videos/whiskers_cat.mp4");
 const CAT_MEOW_AUDIO = require("../../../../../../assets/pronunciation-audios/cat_meow.wav");
@@ -307,14 +308,16 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                 activeOpacity={0.88}
                 onPress={handleHearSounds}
                 soundEnabled={false}
-                style={[styles.hearBtn, { backgroundColor: theme.button }, isPlaying && styles.hearBtnActive]}
+                style={[styles.hearBtnWrap, isPlaying && styles.hearBtnActive]}
               >
-                <Ionicons
-                  name="volume-high-outline"
-                  size={18}
-                  color="#FFFFFF"
-                />
-                <Text style={styles.hearBtnText}>Hear Sounds</Text>
+                <ThemedGradientFill theme={theme} style={styles.hearBtn}>
+                  <Ionicons
+                    name="volume-high-outline"
+                    size={18}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.hearBtnText}>Hear Sounds</Text>
+                </ThemedGradientFill>
               </ButtonFeedback>
 
               {sinhalaTranslation ? (
@@ -374,10 +377,12 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           <ButtonFeedback
             activeOpacity={0.9}
             onPress={handleNext}
-            style={[styles.nextBtn, isCompact && styles.nextBtnCompact, { backgroundColor: theme.button }]}
+            style={[styles.nextBtnWrap, isCompact && styles.nextBtnCompact]}
           >
-            <Text style={styles.nextText}>Next</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            <ThemedGradientFill theme={theme} style={styles.nextBtn}>
+              <Text style={styles.nextText}>Next</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            </ThemedGradientFill>
           </ButtonFeedback>
         </View>
       </ScrollView>
@@ -402,7 +407,6 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           >
             <View style={styles.flashcardHeader}>
               <View>
-                <Text style={styles.flashcardEyebrow}>Flashcard</Text>
                 <Text style={styles.flashcardTitle}>cat</Text>
                 {sinhalaTranslation ? (
                   <Text style={styles.flashcardTranslation}>{sinhalaTranslation}</Text>
@@ -479,7 +483,7 @@ const styles = StyleSheet.create({
   },
   headline: {
     fontSize: 46,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#1F4C66",
     letterSpacing: 0,
     marginBottom: 6,
@@ -493,7 +497,7 @@ const styles = StyleSheet.create({
   headlineSinhala: {
     fontSize: 28,
     lineHeight: 36,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     letterSpacing: 0,
     marginBottom: 26,
     textAlign: "center",
@@ -544,7 +548,7 @@ const styles = StyleSheet.create({
   },
   soundText: {
     fontSize: 34,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#3A4A61",
     lineHeight: 38,
   },
@@ -554,26 +558,27 @@ const styles = StyleSheet.create({
     color: "#A2A9B4",
     textTransform: "lowercase",
   },
+  hearBtnWrap: {
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.9)",
+    overflow: "hidden",
+    ...Layout.shadow.md,
+  },
   hearBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#5E98C0",
-    borderRadius: 18,
     paddingHorizontal: 18,
     paddingVertical: 12,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.9)",
-    ...Layout.shadow.md,
   },
   hearBtnActive: {
-    backgroundColor: "#4E88B4",
     transform: [{ scale: 0.98 }],
   },
   hearBtnText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   translationBox: {
     minWidth: 160,
@@ -588,7 +593,7 @@ const styles = StyleSheet.create({
   },
   translationLabel: {
     fontSize: 11,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#6C7A8E",
     textTransform: "uppercase",
   },
@@ -596,7 +601,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#263752",
     textAlign: "center",
   },
@@ -646,7 +651,7 @@ const styles = StyleSheet.create({
     fontSize: 116,
     lineHeight: 124,
     color: "#263752",
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
   wordPane: {
     flex: 1,
@@ -658,7 +663,7 @@ const styles = StyleSheet.create({
     fontSize: 98,
     lineHeight: 102,
     color: "#1F2C46",
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     textTransform: "lowercase",
   },
   studentName: {
@@ -689,7 +694,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
   },
-  nextBtn: {
+  nextBtnWrap: {
     position: "absolute",
     right: 18,
     top: "50%",
@@ -697,14 +702,17 @@ const styles = StyleSheet.create({
     minWidth: 158,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#9ACB99",
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.85)",
+    overflow: "hidden",
+    ...Layout.shadow.md,
+  },
+  nextBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    ...Layout.shadow.md,
   },
   nextBtnCompact: {
     position: "relative",
@@ -731,7 +739,7 @@ const styles = StyleSheet.create({
   nextText: {
     color: "#FFFFFF",
     fontSize: 30,
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
   },
   flashcardModal: {
     flex: 1,
@@ -770,24 +778,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 12,
   },
-  flashcardEyebrow: {
-    color: "#2E9E78",
-    fontSize: 13,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
   flashcardTitle: {
     color: "#263752",
     fontSize: 42,
     lineHeight: 46,
-    fontWeight: "900",
+    fontFamily: Layout.fonts.black,
   },
   flashcardTranslation: {
     marginTop: 2,
     color: "#526276",
     fontSize: 24,
     lineHeight: 30,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
   flashcardClose: {
     width: 48,
