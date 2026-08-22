@@ -28,6 +28,12 @@ export const Colors = {
     warningLight: '#FFFBEB',
     info: '#6B8EE8',
     infoLight: '#EEF2FF',
+    // "Needs teacher review" amber — a distinct semantic from warning
+    // (low-confidence AI scoring flagged for a human, not an error state).
+    // Was hand-copied as raw hex across 3 pronunciationSupport files.
+    review: '#8A6D1D',
+    reviewLight: '#FDF3D7',
+    reviewBorder: '#EAD9A0',
   },
 
   icon: {

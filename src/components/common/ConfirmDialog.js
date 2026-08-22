@@ -55,6 +55,7 @@ export function ConfirmDialog({
       transparent
       animationType="fade"
       statusBarTranslucent
+      supportedOrientations={["portrait", "landscape", "landscape-left", "landscape-right"]}
       onRequestClose={onCancel}
     >
       <TouchableWithoutFeedback onPress={onCancel}>

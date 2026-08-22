@@ -23,6 +23,8 @@ import {
 } from "./pronunciationRecording.js";
 import { buildPronunciationScoringPayload } from "./pronunciationPayloads.js";
 import { ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { useExitSessionGuard } from "./useExitSessionGuard.js";
+import { ConfirmDialog } from "../../../../../components/common/ConfirmDialog";
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
@@ -55,7 +57,13 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const submitScoredAttempt = usePronunciationSessionStore(
     (state) => state.submitScoredAttempt,
   );
+  const heardReferenceAudio = usePronunciationSessionStore(
+    (state) => state.heardReferenceAudio,
+  );
+  const { isExitConfirmVisible, confirmExit, cancelExit } =
+    useExitSessionGuard(navigation);
   const recordingRef = useRef(null);
+  const lastScoringResultRef = useRef(null);
   const promptShownAtRef = useRef(Date.now());
   const preRecordDelayRef = useRef(null);
   const pulseLoopRef = useRef(null);
@@ -268,9 +276,11 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           attemptNumber: numberOfAttempts + 1,
           audioData: savedAudioData,
           preRecordDelaySeconds: preRecordDelayRef.current,
+          heardReferenceAudio,
         }),
       );
 
+      lastScoringResultRef.current = scoringResult;
       submitScoredAttempt(scoringResult, {
         recordingUri: savedRecordingUri,
         responseDuration,
@@ -296,12 +306,25 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     }
 
     if (!isAlphabetMode) {
+      // Same sound has now been the weakest one across 2+ saved attempts:
+      // insert a listening-discrimination round on that exact sound before
+      // the next speaking attempt, instead of the normal listen-and-choose
+      // round. Reuses the backend's own repeat-failure count rather than
+      // recomputing it here, so this can never disagree with the teacher's
+      // "recurring weakness" evidence shown elsewhere.
+      const targetPhoneme =
+        lastScoringResultRef.current?.weak_phoneme &&
+        Number(lastScoringResultRef.current?.recurring_weak_phoneme_count) >= 2
+          ? lastScoringResultRef.current.weak_phoneme
+          : null;
+
       navigation.navigate("PronunciationListenChoose", {
         student,
         mode,
         categoryId,
         wordId: word?.id || "cat",
         word,
+        targetPhoneme,
       });
       return;
     }
@@ -358,7 +381,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             <View style={[styles.imageFrame, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
               {isAlphabetMode ? (
                 <View style={[styles.image, styles.letterImage, { backgroundColor: word?.color || theme.cardSurface }]}>
-                  <Text style={styles.letterImageText}>
+                  <Text style={[styles.letterImageText, { color: theme.headingText }]}>
                     {word?.letter || word?.word || "A"}
                   </Text>
                 </View>
@@ -476,6 +499,18 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           </ButtonFeedback>
         </View>
       </ScrollView>
+
+      <ConfirmDialog
+        visible={isExitConfirmVisible}
+        title="Leave this activity?"
+        message="This word's progress hasn't been saved yet. Are you sure you want to go back?"
+        confirmLabel="Leave"
+        cancelLabel="Stay"
+        icon="log-out-outline"
+        danger
+        onConfirm={confirmExit}
+        onCancel={cancelExit}
+      />
     </SafeAreaView>
     </LinearGradient>
   );

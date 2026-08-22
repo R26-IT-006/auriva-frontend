@@ -11,13 +11,16 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { useFocusEffect } from "@react-navigation/native";
 import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
+import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { getStudentIdentifier } from "./studentIdentity.js";
+import { AvatarIdentityBadge } from "./pronunciationDesignKit.js";
 import {
   buildGopPhonemeComparison,
   buildMfccDtwPhonemeComparison,
@@ -293,6 +296,7 @@ function SessionTab({ result, isSelected, onPress }) {
 export default function PronunciationResultsHistoryScreen({ route }) {
   const student = route.params?.student;
   const studentId = getStudentIdentifier(student);
+  const theme = getAvatarTheme(student?.avatar_key);
   const [results, setResults] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -457,6 +461,7 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   if (!student) return null;
 
   return (
+    <LinearGradient colors={theme.backgroundGradient} style={styles.safeOuter}>
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -472,9 +477,15 @@ export default function PronunciationResultsHistoryScreen({ route }) {
         }
       >
         <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>Pronunciation Support</Text>
-            <Text style={styles.title}>{student.full_name}</Text>
+          <View style={styles.headerIdentity}>
+            <AvatarIdentityBadge
+              avatarKey={student?.avatar_key}
+              theme={theme}
+              size={44}
+            />
+            <Text style={[styles.title, { color: theme.headingText }]}>
+              {student.full_name}
+            </Text>
           </View>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{results.length}</Text>
@@ -665,6 +676,14 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                         {selectedResult.attempt_number}
                       </Text>
                     </View>
+                    <View style={styles.metricBox}>
+                      <Text style={styles.metricLabel}>Speech Type</Text>
+                      <Text style={styles.metricValue}>
+                        {selectedResult.heard_reference_audio
+                          ? "Imitated"
+                          : "Independent"}
+                      </Text>
+                    </View>
                     {!!selectedResult.recommendation_details?.needs_teacher_review && (
                       <View style={[styles.metricBox, styles.reviewMetricBox]}>
                         <Text style={[styles.metricLabel, styles.reviewMetricLabel]}>Review</Text>
@@ -770,7 +789,9 @@ export default function PronunciationResultsHistoryScreen({ route }) {
                               </View>
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.listenChooseTitle}>
-                                  Listen and Choose
+                                  {selectedResult.listen_choose_data.activity_type === "sound_focus_listen_choose"
+                                    ? `Sound Focus: /${selectedResult.listen_choose_data.target_phoneme}/`
+                                    : "Listen and Choose"}
                                 </Text>
                                 <Text style={styles.listenChooseMeta}>
                                   Heard "{selectedResult.listen_choose_data.target_word_label || selectedResult.word_label}"
@@ -895,11 +916,13 @@ export default function PronunciationResultsHistoryScreen({ route }) {
         )}
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  safeOuter: { flex: 1 },
+  safe: { flex: 1 },
   scroll: { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl },
   header: {
     flexDirection: "row",
@@ -907,16 +930,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: Layout.spacing.lg,
   },
-  eyebrow: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.secondary,
-    fontFamily: Layout.fonts.semibold,
-    textTransform: "uppercase",
+  headerIdentity: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Layout.spacing.sm,
   },
   title: {
-    marginTop: 4,
     fontSize: Layout.fontSize.xl,
-    color: Colors.text.primary,
     fontFamily: Layout.fonts.bold,
   },
   countBadge: {
@@ -1228,15 +1248,15 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   reviewMetricBox: {
-    backgroundColor: "#FDF3D7",
+    backgroundColor: Colors.status.reviewLight,
     borderWidth: 1,
-    borderColor: "#EAD9A0",
+    borderColor: Colors.status.reviewBorder,
   },
   reviewMetricLabel: {
-    color: "#8A6D1D",
+    color: Colors.status.review,
   },
   reviewMetricValue: {
-    color: "#8A6D1D",
+    color: Colors.status.review,
   },
   verificationBox: {
     marginTop: Layout.spacing.lg,
@@ -1292,7 +1312,7 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   confidenceChipTextLow: {
-    color: "#8A6D1D",
+    color: Colors.status.review,
   },
   comparisonBox: {
     marginTop: Layout.spacing.lg,

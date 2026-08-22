@@ -26,6 +26,46 @@ const PHONEME_SUPPORT_CUES = {
   "ʃ": "Round the lips slightly and push quiet air.",
   "tʃ": "Start with a tongue tap, then release air.",
   "dʒ": "Start with a tongue tap, then release with voice.",
+  n: "Lift the tongue tip behind the teeth and hum through the nose.",
+  j: "Lift the tongue toward the roof of the mouth for a soft /y/ glide.",
+  e: "Smile gently for the short /e/ sound.",
+  i: "Smile softly for the short /i/ sound.",
+  a: "Open the mouth for the short /a/ sound.",
+  "ə": "Relax the mouth for the soft, unstressed \"uh\" sound.",
+  "ŋ": "Lift the back of the tongue and hum through the nose.",
+  "aɪ": "Start with an open /a/ and glide up to /i/.",
+  "aʊ": "Start with an open /a/ and round toward /oo/.",
+  "eə": "Start with /e/ and relax into a soft \"uh\".",
+  "ɪə": "Start with a small /i/ and relax into a soft \"uh\".",
+  "əʊ": "Start relaxed, then round the lips toward /oh/.",
+  "ɑː": "Open the mouth wide for the long, deep \"ah\" sound.",
+  "ʊ": "Round the lips gently for the short /oo/ sound.",
+  // The remaining keys are multi-sound blends this word bank groups as one
+  // unit rather than true single IPA phonemes — the cue walks through the
+  // blend so the teacher still has something concrete to say.
+  "gwɪn": "Round the lips for /g w/, then finish with a small smile and a nose hum for /n/.",
+  sk: "Blend a hissing /s/ straight into a back-of-tongue /k/.",
+  "təʊ": "Tap the tongue for /t/, then round the lips toward /oh/.",
+  "əd": "Relax into a soft \"uh\", then tap the tongue for /d/.",
+  "ŋg": "Hum through the nose for /ng/, then lift the tongue back for /g/.",
+  "ruː": "Curl the tongue for /r/, then round the lips and hold /oo/.",
+  "ɪʃ": "Small smile for /i/, then round the lips softly for /sh/.",
+  ks: "Lift the tongue back for /k/, then send air forward for /s/.",
+  "əl": "Relax into a soft \"uh\", then lift the tongue tip for /l/.",
+  "flaɪ": "Blow air for /f/, lift the tongue for /l/, then glide from /a/ to /i/.",
+  "ləʊ": "Lift the tongue tip for /l/, then round the lips toward /oh/.",
+  "ŋgəʊ": "Hum through the nose, lift the tongue back for /g/, then round the lips toward /oh/.",
+  "ndʒ": "Hum through the nose, then tap and release with voice for /j/.",
+  "ən": "Relax into a soft \"uh\", then hum through the nose for /n/.",
+  "ənt": "Relax into a soft \"uh\", hum for /n/, then tap the tongue for /t/.",
+  gr: "Lift the tongue back for /g/, then curl the tongue for /r/.",
+  gw: "Lift the tongue back for /g/, then round the lips for /w/.",
+  mp: "Hum through closed lips for /m/, then release with a soft pop for /p/.",
+  dr: "Tap the tongue for /d/, then curl the tongue for /r/.",
+  sl: "Send air forward for /s/, then lift the tongue tip for /l/.",
+  kl: "Lift the tongue back for /k/, then lift the tongue tip for /l/.",
+  "ŋk": "Hum through the nose, then lift the tongue back for /k/.",
+  "gə": "Lift the tongue back for /g/, then relax into a soft \"uh\".",
 };
 
 const WORD_IMAGE_ASSETS = {
@@ -700,7 +740,10 @@ const RAW_WORD_BANK = {
       id: "pen",
       word: "pen",
       color: "#F8E0DA",
-      imageAsset: WORD_IMAGE_ASSETS.pen,
+      // pen.jpg is a photo of a hypodermic needle, not a writing pen — wrong
+      // asset, pulled until a correct photo replaces it. Falls back to the
+      // neutral placeholder icon rather than showing the wrong picture.
+      imageAsset: null,
       phonemeCount: 3,
       sounds: [
         { text: "p", type: "consonant" },
@@ -713,7 +756,10 @@ const RAW_WORD_BANK = {
       id: "pencil",
       word: "pencil",
       color: "#F4EFD8",
-      imageAsset: WORD_IMAGE_ASSETS.pencil,
+      // pencil.jpg is a photo of a garden hand-rake, not a pencil — wrong
+      // asset, pulled until a correct photo replaces it. Falls back to the
+      // neutral placeholder icon rather than showing the wrong picture.
+      imageAsset: null,
       phonemeCount: 5,
       sounds: [
         { text: "p", type: "consonant" },

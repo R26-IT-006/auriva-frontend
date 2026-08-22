@@ -572,15 +572,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  wordMeta: {
-    paddingTop: 10,
-    paddingBottom: 8,
-    paddingHorizontal: 10,
-    borderTopWidth: 2,
-    borderTopColor: "#4F607A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   wordText: {
     fontSize: 31,
     color: Colors.text.primary,

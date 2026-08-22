@@ -11,6 +11,7 @@ export function buildPronunciationScoringPayload({
   attemptNumber,
   audioData,
   preRecordDelaySeconds,
+  heardReferenceAudio,
 }) {
   return {
     mode,
@@ -22,6 +23,7 @@ export function buildPronunciationScoringPayload({
     response_duration: responseDuration,
     attempt_number: attemptNumber,
     pre_record_delay_seconds: preRecordDelaySeconds ?? null,
+    heard_reference_audio: Boolean(heardReferenceAudio),
     raw_audio_base64: audioData.rawAudioBase64,
     raw_audio_mime_type: audioData.rawAudioMimeType,
     raw_audio_size: audioData.rawAudioSize,
@@ -64,6 +66,7 @@ export function buildPronunciationResultPayload({
   speechVerification,
   confidenceLevel,
   needsTeacherReview,
+  heardReferenceAudio,
 }) {
   return {
     mode,
@@ -82,6 +85,7 @@ export function buildPronunciationResultPayload({
     speech_verification: speechVerification || null,
     confidence_level: confidenceLevel || null,
     needs_teacher_review: Boolean(needsTeacherReview),
+    heard_reference_audio: Boolean(heardReferenceAudio),
     next_word_id: nextWord?.id || null,
     attempt_number: Math.max(1, numberOfAttempts || 1),
     workflow_completed: true,

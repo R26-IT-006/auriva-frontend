@@ -109,6 +109,9 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const confidenceLevel = usePronunciationSessionStore(
     (state) => state.confidenceLevel,
   );
+  const heardReferenceAudio = usePronunciationSessionStore(
+    (state) => state.heardReferenceAudio,
+  );
   const recommendation = usePronunciationSessionStore(
     (state) => state.adaptiveRecommendation,
   );
@@ -232,6 +235,10 @@ export default function PronunciationResultScreen({ navigation, route }) {
   }, [currentWord?.id, recommendation?.word, words]);
 
   const sounds = phonemeScores || currentWord?.sounds || [];
+  const weakSoundText = recommendation?.weakPhoneme
+    ? `/${recommendation.weakPhoneme}/`
+    : null;
+  const weakSoundCue = recommendation?.weakPhonemeCue || null;
 
   async function unloadCelebrationSounds() {
     const soundsToUnload = celebrationSoundsRef.current;
@@ -323,6 +330,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
       speechVerification,
       confidenceLevel,
       needsTeacherReview,
+      heardReferenceAudio,
     });
 
     teacherApi.savePronunciationResult(studentId, payload).catch((error) => {
@@ -335,6 +343,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
     currentWord?.letter,
     currentWord?.word,
     displayScore,
+    heardReferenceAudio,
     hesitationTime,
     isAlphabetMode,
     savedListenChooseData,
@@ -550,7 +559,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
                   එකට උත්සාහ කරමු
                 </Text>
                 <View style={styles.reviewPill}>
-                  <Ionicons name="eye-outline" size={13} color="#8A6D1D" />
+                  <Ionicons name="eye-outline" size={13} color={Colors.status.review} />
                   <Text style={styles.reviewPillText}>Flagged for teacher review</Text>
                 </View>
               </View>
@@ -596,7 +605,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
                 ]}
               >
                 <View style={styles.lowScoreIconWrap}>
-                  <Ionicons name="refresh-circle" size={52} color="#FF4D6D" />
+                  <Ionicons name="refresh-circle" size={52} color={Colors.status.error} />
                 </View>
                 <Text
                   style={[
@@ -616,6 +625,15 @@ export default function PronunciationResultScreen({ navigation, route }) {
                 >
                   තව පුහුණු වෙමු
                 </Text>
+                {weakSoundText ? (
+                  <View style={styles.soundFocusCard}>
+                    <Text style={styles.soundFocusLabel}>Sound to practice</Text>
+                    <Text style={styles.soundFocusSound}>{weakSoundText}</Text>
+                    {weakSoundCue ? (
+                      <Text style={styles.soundFocusCue}>{weakSoundCue}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
               </Animated.View>
             )}
           </View>
@@ -769,9 +787,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     minHeight: 24,
     borderRadius: 12,
-    backgroundColor: "#FDF3D7",
+    backgroundColor: Colors.status.reviewLight,
     borderWidth: 1,
-    borderColor: "#EAD9A0",
+    borderColor: Colors.status.reviewBorder,
     paddingHorizontal: 10,
     flexDirection: "row",
     alignItems: "center",
@@ -779,7 +797,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reviewPillText: {
-    color: "#8A6D1D",
+    color: Colors.status.review,
     fontSize: 11,
     fontFamily: Layout.fonts.bold,
   },
@@ -865,7 +883,39 @@ const styles = StyleSheet.create({
     lineHeight: 34,
   },
   lowScoreTitle: {
-    color: "#FF4D6D",
+    color: Colors.status.error,
+  },
+  soundFocusCard: {
+    marginTop: 4,
+    maxWidth: 420,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#FFD3DC",
+    backgroundColor: "#FFF5F7",
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    alignItems: "center",
+  },
+  soundFocusLabel: {
+    fontSize: 12,
+    fontFamily: Layout.fonts.bold,
+    color: "#B23A57",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  soundFocusSound: {
+    marginTop: 4,
+    fontSize: 30,
+    fontFamily: Layout.fonts.extrabold,
+    color: "#7A1F35",
+  },
+  soundFocusCue: {
+    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: Layout.fonts.semibold,
+    color: "#5C3541",
+    textAlign: "center",
   },
   studentActions: {
     width: "100%",

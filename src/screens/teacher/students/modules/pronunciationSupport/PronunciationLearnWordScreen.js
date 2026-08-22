@@ -32,7 +32,9 @@ import {
   setPronunciationPlaybackMode,
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
-import { ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { AvatarIdentityBadge, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { useExitSessionGuard } from "./useExitSessionGuard.js";
+import { ConfirmDialog } from "../../../../../components/common/ConfirmDialog";
 
 const CAT_FLASHCARD_VIDEO = require("../../../../../../assets/pronunciation-videos/whiskers_cat.mp4");
 const CAT_MEOW_AUDIO = require("../../../../../../assets/pronunciation-audios/cat_meow.wav");
@@ -58,6 +60,11 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
   );
+  const setHeardReferenceAudio = usePronunciationSessionStore(
+    (state) => state.setHeardReferenceAudio,
+  );
+  const { isExitConfirmVisible, confirmExit, cancelExit } =
+    useExitSessionGuard(navigation);
 
   const words = WORD_BANK[categoryId] || [];
   const selectedWord =
@@ -120,6 +127,11 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
 
   React.useEffect(() => {
     setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
+    // Every visit to the Listen step (including a "Try Again" retry) starts
+    // a fresh attempt: whether the child replays the reference audio this
+    // time is what determines imitation vs. independent speech, not whether
+    // they did on a previous attempt.
+    setHeardReferenceAudio(false);
 
     return () => {
       if (pronunciationSoundRef.current) {
@@ -131,7 +143,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
         catMeowSoundRef.current = null;
       }
     };
-  }, [setCurrentActivityStep]);
+  }, [setCurrentActivityStep, setHeardReferenceAudio]);
 
   React.useEffect(() => {
     if (!isCatFlashcardVisible) return undefined;
@@ -263,6 +275,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
         }
       });
       await sound.replayAsync();
+      setHeardReferenceAudio(true);
     } catch (error) {
       console.log("Pronunciation audio playback error:", error);
       setIsPlaying(false);
@@ -299,7 +312,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
             <View style={styles.soundStage}>
               {sounds.map((sound, index) => (
                 <View key={`${sound.text}-${index}`} style={styles.soundBlock}>
-                  <Text style={styles.soundText}>{sound.text}</Text>
+                  <Text style={[styles.soundText, { color: theme.headingText }]}>{sound.text}</Text>
                   <Text style={styles.soundType}>{sound.type}</Text>
                 </View>
               ))}
@@ -323,7 +336,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
               {sinhalaTranslation ? (
                 <View style={styles.translationBox}>
                   <Text style={styles.translationLabel}>Sinhala meaning</Text>
-                  <Text style={styles.translationText}>{sinhalaTranslation}</Text>
+                  <Text style={[styles.translationText, { color: theme.headingText }]}>{sinhalaTranslation}</Text>
                 </View>
               ) : null}
             </View>
@@ -331,7 +344,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
             <View style={[styles.imagePane, !isWideTablet && styles.imagePaneCompact]}>
               {isAlphabetMode ? (
                 <View style={[styles.wordImage, styles.letterPane, { backgroundColor: selectedWord?.color || theme.cardSurface }]}>
-                  <Text style={styles.letterPaneText}>
+                  <Text style={[styles.letterPaneText, { color: theme.headingText }]}>
                     {selectedWord?.letter || selectedWord?.word || "A"}
                   </Text>
                 </View>
@@ -446,6 +459,18 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           </Animated.View>
         </View>
       </Modal>
+
+      <ConfirmDialog
+        visible={isExitConfirmVisible}
+        title="Leave this activity?"
+        message="This word's progress hasn't been saved yet. Are you sure you want to go back?"
+        confirmLabel="Leave"
+        cancelLabel="Stay"
+        icon="log-out-outline"
+        danger
+        onConfirm={confirmExit}
+        onCancel={cancelExit}
+      />
     </SafeAreaView>
     </LinearGradient>
   );
@@ -540,11 +565,7 @@ const styles = StyleSheet.create({
     borderColor: "#E1E7EF",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    ...Layout.shadow.sm,
   },
   soundText: {
     fontSize: 34,
@@ -759,7 +780,7 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.95)",
-    shadowColor: "#000",
+    shadowColor: "#6478C8",
     shadowOffset: { width: 0, height: 18 },
     shadowOpacity: 0.24,
     shadowRadius: 30,
