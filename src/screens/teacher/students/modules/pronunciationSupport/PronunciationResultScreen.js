@@ -467,24 +467,39 @@ export default function PronunciationResultScreen({ navigation, route }) {
 
   function handleTryAgain() {
     setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
-    navigation.navigate("PronunciationLearnWord", {
-      student,
-      mode,
-      categoryId: navigationCategoryId,
-      wordId: currentWord?.id,
-      word: currentWord,
-    });
+    // { pop: true } collapses the stack back to the existing LearnWord entry
+    // instead of just moving it to the top — without it, this word's Tap
+    // Sounds/Speak/Result screens were left behind as a hidden back-stack
+    // instead of being discarded, which is what produced the "screen was
+    // removed natively but didn't get removed from JS state" error: those
+    // stale guarded screens could still get force-removed later (e.g. by
+    // Home's reset) while genuinely mid-transition.
+    navigation.navigate(
+      "PronunciationLearnWord",
+      {
+        student,
+        mode,
+        categoryId: navigationCategoryId,
+        wordId: currentWord?.id,
+        word: currentWord,
+      },
+      { pop: true }
+    );
   }
 
   function handleNextWord() {
     setSelectedWord(nextWord);
-    navigation.navigate("PronunciationLearnWord", {
-      student,
-      mode,
-      categoryId: navigationCategoryId,
-      wordId: nextWord?.id,
-      word: nextWord,
-    });
+    navigation.navigate(
+      "PronunciationLearnWord",
+      {
+        student,
+        mode,
+        categoryId: navigationCategoryId,
+        wordId: nextWord?.id,
+        word: nextWord,
+      },
+      { pop: true }
+    );
   }
 
   return (

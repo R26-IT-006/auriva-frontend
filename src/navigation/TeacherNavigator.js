@@ -14,6 +14,7 @@ import HandwritingNavigator from './HandwritingNavigator';
 import PronunciationSessionSetupScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationSessionSetupScreen';
 import PronunciationWordSelectionScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationWordSelectionScreen';
 import PronunciationLearnWordScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationLearnWordScreen';
+import PronunciationTapSoundsScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationTapSoundsScreen';
 import PronunciationListenChooseScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationListenChooseScreen';
 import PronunciationMouthShapeScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationMouthShapeScreen';
 import PronunciationSpeakWordScreen from '../screens/teacher/students/modules/pronunciationSupport/PronunciationSpeakWordScreen';
@@ -75,6 +76,10 @@ export default function TeacherNavigator() {
       <Stack.Screen
         name="PronunciationLearnWord"
         component={PronunciationLearnWordScreen}
+      />
+      <Stack.Screen
+        name="PronunciationTapSounds"
+        component={PronunciationTapSoundsScreen}
       />
       <Stack.Screen
         name="PronunciationListenChoose"

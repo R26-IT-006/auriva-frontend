@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -15,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import { useFocusEffect } from "@react-navigation/native";
 import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
@@ -101,10 +103,113 @@ function QueueCard({ item, onReview }) {
   );
 }
 
+function ReplayAudioButton({ resultId, hasRawAudio }) {
+  const soundRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function stopAudio() {
+    if (!soundRef.current) return;
+    await soundRef.current.unloadAsync().catch(() => {});
+    soundRef.current = null;
+    setIsPlaying(false);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+      }
+    };
+  }, [resultId]);
+
+  if (!hasRawAudio) {
+    return (
+      <View style={styles.audioRow}>
+        <Ionicons name="mic-off-outline" size={16} color={Colors.text.secondary} />
+        <Text style={styles.audioUnavailableText}>No recording saved for this attempt</Text>
+      </View>
+    );
+  }
+
+  async function handlePress() {
+    if (isPlaying) {
+      await stopAudio();
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await stopAudio();
+      const audio = await teacherApi.getPronunciationResultAudio(resultId);
+      const audioBase64 = audio?.raw_audio_base64;
+      const audioMimeType = audio?.raw_audio_mime_type || "audio/mp4";
+
+      if (!audioBase64) {
+        throw new Error("No saved audio was returned for this attempt.");
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:${audioMimeType};base64,${audioBase64}` },
+        { shouldPlay: true },
+      );
+
+      soundRef.current = sound;
+      setIsPlaying(true);
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
+          if (soundRef.current === sound) {
+            soundRef.current = null;
+            setIsPlaying(false);
+          }
+        }
+      });
+    } catch (error) {
+      Alert.alert("Playback error", error.message || "Unable to play this recording right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <TouchableOpacity
+      style={styles.audioRow}
+      onPress={handlePress}
+      activeOpacity={0.8}
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <ActivityIndicator size="small" color={Colors.primary} />
+      ) : (
+        <Ionicons
+          name={isPlaying ? "pause-circle" : "play-circle"}
+          size={22}
+          color={Colors.primary}
+        />
+      )}
+      <Text style={styles.audioRowText}>
+        {isPlaying ? "Playing…" : "Play the student's recording"}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 function ReviewScoreModal({ item, onCancel, onSubmit, submitting }) {
   const [scoreText, setScoreText] = useState(
     item ? String(item.overall_score ?? "") : ""
   );
+
+  useEffect(() => {
+    setScoreText(item ? String(item.overall_score ?? "") : "");
+  }, [item?.id]);
 
   const parsedScore = Number(scoreText);
   const isValid =
@@ -138,6 +243,14 @@ function ReviewScoreModal({ item, onCancel, onSubmit, submitting }) {
             the correct score to be — this becomes the labeled ground truth used to
             calibrate future scoring for this student's population.
           </Text>
+
+          {item ? (
+            <ReplayAudioButton
+              key={item.id}
+              resultId={item.id}
+              hasRawAudio={Boolean(item.has_raw_audio)}
+            />
+          ) : null}
 
           <TextInput
             style={styles.scoreInput}
@@ -455,6 +568,27 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     lineHeight: 17,
     textAlign: "center",
+  },
+  audioRow: {
+    marginTop: Layout.spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "center",
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: 20,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: 8,
+  },
+  audioRowText: {
+    color: Colors.primary,
+    fontSize: Layout.fontSize.sm,
+    fontFamily: Layout.fonts.semibold,
+  },
+  audioUnavailableText: {
+    color: Colors.text.secondary,
+    fontSize: Layout.fontSize.xs,
   },
   scoreInput: {
     marginTop: Layout.spacing.lg,

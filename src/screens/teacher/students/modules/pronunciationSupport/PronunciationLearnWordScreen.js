@@ -115,14 +115,30 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
 
   async function handleNext() {
     await releaseLearningAudio();
-    setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
-    navigation.navigate("PronunciationSpeakWord", {
+
+    const nextParams = {
       student,
       mode,
       categoryId,
       wordId: selectedWord?.id,
       word: selectedWord,
-    });
+    };
+
+    // Tap the Sounds is a segmentation warm-up: hear the word, then tap its
+    // sounds in the order they occur. Needs 2+ sounds to be a real ordering
+    // task and full-word audio to listen to first, so it only applies to
+    // word mode (alphabet letters are single sounds) with a reference clip.
+    if (
+      !isAlphabetMode &&
+      (selectedWord?.sounds?.length || 0) >= 2 &&
+      WORD_AUDIO_ASSETS[selectedWord?.id]
+    ) {
+      navigation.navigate("PronunciationTapSounds", nextParams);
+      return;
+    }
+
+    setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
+    navigation.navigate("PronunciationSpeakWord", nextParams);
   }
 
   React.useEffect(() => {
