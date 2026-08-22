@@ -266,6 +266,9 @@ const initialSessionState = {
   rawAudioSize: null,
   mockWordScore: null,
   mockPhonemeScores: [],
+  // DB row id the backend created when it scored (and persisted) the attempt;
+  // the result screen finishes that row instead of re-uploading everything.
+  scoredResultId: null,
   responseDuration: null,
   hesitationTime: null,
   confidenceLevel: null,
@@ -349,6 +352,7 @@ export const usePronunciationSessionStore = create((set, get) => ({
       rawAudioSize: null,
       mockWordScore: null,
       mockPhonemeScores: [],
+      scoredResultId: null,
       responseDuration: null,
       hesitationTime: null,
       scoringMethod: null,
@@ -425,6 +429,7 @@ export const usePronunciationSessionStore = create((set, get) => ({
       recordingUri: recordingUri || state.recordingUri,
       mockWordScore: score,
       mockPhonemeScores: scoringResult?.phoneme_scores || [],
+      scoredResultId: scoringResult?.result_id ?? null,
       responseDuration: scoringResult?.response_duration ?? responseDuration ?? state.responseDuration,
       hesitationTime: scoringResult?.hesitation_time ?? null,
       confidenceLevel: scoringResult?.confidence_level ?? null,

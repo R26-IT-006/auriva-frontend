@@ -22,6 +22,14 @@ export function useExitSessionGuard(navigation, { enabled = true } = {}) {
 
     return navigation.addListener("beforeRemove", (e) => {
       if (allowLeaveRef.current) return;
+      // Only intercept user-initiated back (back button, hardware back,
+      // swipe gesture) — those arrive as GO_BACK/POP. Programmatic
+      // transitions (navigate popping intermediate screens, session reset,
+      // popTo) must be allowed through: preventing them leaves this screen
+      // in JS state after the native stack already dropped it ("The screen
+      // was removed natively but didn't get removed from JS state").
+      const actionType = e.data?.action?.type;
+      if (actionType !== "GO_BACK" && actionType !== "POP") return;
       e.preventDefault();
       pendingActionRef.current = e.data.action;
       setExitConfirmVisible(true);

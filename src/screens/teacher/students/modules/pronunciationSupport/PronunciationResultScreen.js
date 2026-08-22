@@ -130,6 +130,9 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const listenChooseData = usePronunciationSessionStore(
     (state) => state.listenChooseData,
   );
+  const scoredResultId = usePronunciationSessionStore(
+    (state) => state.scoredResultId,
+  );
   const routeListenChooseData = route.params?.listenChooseData;
   const savedListenChooseData = routeListenChooseData || listenChooseData || null;
   const celebrationSoundsRef = useRef([]);
@@ -158,7 +161,11 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const displayScore = mockWordScore ?? 69;
   // Low scoring confidence suppresses evaluative feedback entirely: the child
   // sees a calm neutral screen instead of praise or "keep practicing".
-  const isNeutralFeedback = Boolean(needsTeacherReview);
+  // Neutral only when the model itself is unsure of the score. An attempt can
+  // be flagged needs_teacher_review for other reasons (e.g. ASR could not
+  // verify the word) while the phoneme evidence is strong — the child still
+  // earned the celebration; the flag lives on in the teacher's review queue.
+  const isNeutralFeedback = confidenceLevel === "low";
   const isHighScore = !isNeutralFeedback && displayScore >= EXPECTED_PRONUNCIATION_SCORE;
   // Sensory sensitivity varies hugely per ASD child — confetti/vibration/
   // sound that motivates one kid can overwhelm another. Teacher-set per
@@ -308,7 +315,17 @@ export default function PronunciationResultScreen({ navigation, route }) {
 
     hasSavedResultRef.current = true;
 
-    const payload = buildPronunciationResultPayload({
+    // Scoring already persisted the attempt server-side; finish that row with
+    // the client-only workflow fields instead of re-uploading audio and
+    // echoing scores back (the server ignores scoring fields on this path).
+    const payload = scoredResultId
+      ? {
+          result_id: scoredResultId,
+          listen_choose_data: savedListenChooseData,
+          recording_uri: recordingUri || null,
+          workflow_completed: true,
+        }
+      : buildPronunciationResultPayload({
       mode,
       categoryId,
       isAlphabetMode,
@@ -358,6 +375,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
     rawAudioSize,
     recordingUri,
     responseDuration,
+    scoredResultId,
     sounds,
     studentId,
   ]);
