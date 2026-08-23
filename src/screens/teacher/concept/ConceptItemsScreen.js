@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItemsForCategory } from '../../../data/conceptData';
+import { getConclusionForCategory } from '../../../data/conceptConclusions';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
@@ -270,6 +271,47 @@ export default function ConceptItemsScreen({ route, navigation }) {
     );
   }
 
+  // The end-of-category send-off, offered once every concept here is mastered
+  // (tier 1 and tier 2 — `fully_mastered` comes from the same predicate the
+  // dashboard and analytics count with). Like the activity banner above it, this
+  // waits to be tapped rather than auto-navigating.
+  function renderConclusionBanner() {
+    const conclusion = getConclusionForCategory(category.key);
+    if (!conclusion || !activityStatus?.fully_mastered) return null;
+
+    return (
+      <TouchableOpacity
+        style={[styles.activityBanner, styles.conclusionBanner]}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate(conclusion.screen, { student, category })}
+      >
+        <View style={styles.activityBannerIcon}>
+          <Ionicons name="trophy" size={26} color="#C77800" />
+        </View>
+
+        <View style={styles.activityBannerText}>
+          <Text style={[styles.activityBannerTitle, { color: '#4A2E00' }]}>
+            {conclusion.title} 🏆
+          </Text>
+          <Text style={[styles.activityBannerSub, { color: '#4A2E00' }]}>
+            You finished {category.label}! {conclusion.subtitle}
+          </Text>
+        </View>
+
+        <Ionicons name="chevron-forward" size={22} color="#4A2E00" />
+      </TouchableOpacity>
+    );
+  }
+
+  function renderHeader() {
+    return (
+      <>
+        {renderConclusionBanner()}
+        {renderActivityBanner()}
+      </>
+    );
+  }
+
   function renderReviewSection() {
     if (weakConcepts.length === 0) return null;
     return (
@@ -347,7 +389,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
             contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD }]}
             columnWrapperStyle={{ gap: GAP }}
             ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
-            ListHeaderComponent={renderActivityBanner}
+            ListHeaderComponent={renderHeader}
             ListFooterComponent={renderReviewSection}
             showsVerticalScrollIndicator={false}
           />
@@ -494,6 +536,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 6,
+  },
+  // Gold rather than the avatar theme's button colour, so finishing a category
+  // does not look like one more practice prompt.
+  conclusionBanner: {
+    backgroundColor: '#FFC93C',
+    borderWidth: 3,
+    borderColor: '#E0A100',
   },
   activityBannerIcon: {
     width: 46,

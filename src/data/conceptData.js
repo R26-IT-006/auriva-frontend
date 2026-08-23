@@ -17,6 +17,7 @@ export const CONCEPT_CATEGORIES = {
         key:         'apple',
         label:       'Apple',
         labelSi:     'ඇපල්',
+        sortColor:   'red',
         icon:        require('../../assets/concepts/categories/Fruits/Fruits_Icons/apple.png'),
         real:        require('../../assets/concepts/categories/Fruits/Apple/Apple_Real.png'),
         io:          require('../../assets/concepts/categories/Fruits/Apple/Apple_IO.png'),
@@ -30,6 +31,7 @@ export const CONCEPT_CATEGORIES = {
         key:        'banana',
         label:      'Bananas',
         labelSi:    'කෙසෙල්',
+        sortColor:  'yellow',
         plural:     true,
         icon:       require('../../assets/concepts/categories/Fruits/Fruits_Icons/banana.png'),
         real:       require('../../assets/concepts/categories/Fruits/Banana/Banana_Real.png'),
@@ -44,6 +46,7 @@ export const CONCEPT_CATEGORIES = {
         key:      'cherry',
         label:    'Cherries',
         labelSi:  'චෙරි',
+        sortColor: 'red',
         plural:   true,
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/cherries.png'),
         real:     require('../../assets/concepts/categories/Fruits/Cherry/Cherry_Real.png'),
@@ -56,6 +59,8 @@ export const CONCEPT_CATEGORIES = {
         key:      'grapes',
         label:    'Grapes',
         labelSi:  'මිදි',
+        // Red grapes in Grapes_Real, not purple ones.
+        sortColor: 'red',
         plural:   true,
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/grape.png'),
         real:     require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Real.png'),
@@ -68,6 +73,7 @@ export const CONCEPT_CATEGORIES = {
         key:      'guava',
         label:    'Guava',
         labelSi:  'පේර',
+        sortColor: 'green',
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/guava.png'),
         real:     require('../../assets/concepts/categories/Fruits/Guava/Guava_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Guava/Guava_IO.png'),
@@ -79,6 +85,9 @@ export const CONCEPT_CATEGORIES = {
         key:      'mango',
         label:    'Mango',
         labelSi:  'අඹ',
+        // No sortColor: Mango_Real is a red-to-yellow gradient with neither
+        // colour dominant, so there is no answer a child could reliably give.
+        // Omitting the field keeps it out of the basket-sort pool.
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/mango.png'),
         real:     require('../../assets/concepts/categories/Fruits/Mango/Mango_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Mango/Mango_IO.png'),
@@ -90,6 +99,7 @@ export const CONCEPT_CATEGORIES = {
         key:      'orange',
         label:    'Orange',
         labelSi:  'දොඩම්',
+        sortColor: 'orange',
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/orange.png'),
         real:     require('../../assets/concepts/categories/Fruits/Orange/Orange_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Orange/Orange_IO.png'),
@@ -101,6 +111,8 @@ export const CONCEPT_CATEGORIES = {
         key:      'papaya',
         label:    'Papaya',
         labelSi:  'පැපොල්',
+        // No sortColor: Papaya_Real ripens orange at one end and stays green at
+        // the other. See the mango note above.
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/papaya.png'),
         real:     require('../../assets/concepts/categories/Fruits/Papaya/Papaya_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Papaya/Papaya_IO.png'),
@@ -112,6 +124,8 @@ export const CONCEPT_CATEGORIES = {
         key:      'passion',
         label:    'Passion Fruit',
         labelSi:  'පැෂන් ෆ්‍රූට්',
+        // The yellow passion fruit variety, which is what Passion_Real shows.
+        sortColor: 'yellow',
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/passion.png'),
         real:     require('../../assets/concepts/categories/Fruits/Passion/Passion_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Passion/Passion_IO.png'),
@@ -123,6 +137,7 @@ export const CONCEPT_CATEGORIES = {
         key:      'pineapple',
         label:    'Pineapple',
         labelSi:  'අන්නාස්',
+        sortColor: 'yellow',
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/pineapple.png'),
         real:     require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_IO.png'),
@@ -134,6 +149,7 @@ export const CONCEPT_CATEGORIES = {
         key:      'watermelon',
         label:    'Watermelon',
         labelSi:  'කොමඩු',
+        sortColor: 'green',
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/watermelon.png'),
         real:     require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_Real.png'),
         io:       require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_IO.png'),

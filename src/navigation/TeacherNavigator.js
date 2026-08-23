@@ -24,6 +24,7 @@ import Tier2DragDropScreen           from '../screens/teacher/concept/tier2/Tier
 import Tier3VideoScreen              from '../screens/teacher/concept/tier3/Tier3VideoScreen';
 import ConceptColoringScreen              from '../screens/teacher/concept/tier3/ConceptColoringScreen';
 import ConceptActivityScreen              from '../screens/teacher/concept/tier1/ConceptActivityScreen';
+import ConceptBasketSortScreen            from '../screens/teacher/concept/conclusion/ConceptBasketSortScreen';
 import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
 
 const Stack = createNativeStackNavigator();
@@ -79,6 +80,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />
       <Stack.Screen name="ConceptColoring"          component={ConceptColoringScreen} />
       <Stack.Screen name="ConceptActivity"          component={ConceptActivityScreen} />
+      <Stack.Screen name="ConceptBasketSort"        component={ConceptBasketSortScreen} />
       <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
       <Stack.Screen name="StudentSession"    component={TeacherStudentDetailScreen} />
     </Stack.Navigator>

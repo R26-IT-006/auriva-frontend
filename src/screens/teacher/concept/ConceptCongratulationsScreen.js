@@ -81,7 +81,7 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
     correctCount = 3,
     totalCount   = 3,
     completedTier = 1,
-    mode = 'tier',        // 'tier' | 'activity'
+    mode = 'tier',        // 'tier' | 'activity' | 'conclusion'
   } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
@@ -146,7 +146,12 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
     setTimeout(() => {
       Speech.speak(
-        `Well done! You got ${correctCount} out of ${totalCount}!`,
+        // A conclusion is the end of a whole category, so it gets a line about
+        // finishing rather than a score read-out — the number here counts
+        // first-try placements, which isn't what the child was playing for.
+        mode === 'conclusion'
+          ? `You finished all the ${category.label.toLowerCase()}! Amazing work!`
+          : `Well done! You got ${correctCount} out of ${totalCount}!`,
         { language: 'en-US', rate: 0.8 },
       );
     }, 600);
@@ -163,8 +168,9 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
   function handleContinue() {
     Speech.stop();
-    // Activities are no-fail and don't feed the tier ladder — always back to the grid.
-    if (mode === 'activity') {
+    // Activities and conclusions are no-fail and don't feed the tier ladder —
+    // always back to the grid.
+    if (mode === 'activity' || mode === 'conclusion') {
       navigation.navigate('ConceptItems', { student, category });
       return;
     }
@@ -254,6 +260,12 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
             {mode === 'activity' ? (
               <Text style={[styles.conceptName, { color: theme.button }]}>Practice Activity</Text>
+            ) : mode === 'conclusion' ? (
+              // No conceptKey is passed for a conclusion — it closes out the whole
+              // category, so the category is what gets named here.
+              <Text style={[styles.conceptName, { color: theme.button }]}>
+                {category.label} Complete!
+              </Text>
             ) : concept ? (
               <Text style={[styles.conceptName, { color: theme.button }]}>{concept.label}</Text>
             ) : null}
