@@ -45,11 +45,27 @@ const MODULES = [
 function buildHub(width, height) {
   const cx  = width / 2;
   const cy  = height / 2;
-  const hubR   = Math.max(70, Math.min(115, Math.min(width, height) * 0.19));
-  const cardW  = Math.max(130, Math.min(225, width * 0.23));
-  const cardH  = Math.max(110, Math.min(170, cardW * 0.74));
-  const dx     = Math.max(cardW / 2 + hubR * 0.55, width * 0.27);
-  const dy     = Math.max(cardH / 2 + 6, height * 0.27);
+  // Sized from the space actually available rather than fixed pixel caps. The
+  // old caps (hub 115, card 225×170, spread at 27% of the box) were tuned for a
+  // phone, so on a tablet they drew small cards that stopped ~170dp short of
+  // each edge and left the screen mostly empty.
+  const gutter = 10;
+
+  // Two cards sit side by side and stacked, so neither dimension may exceed half
+  // the box. This cap is applied last so it always beats the preferred floor —
+  // a short landscape phone gets a shorter card rather than one that overflows.
+  const cardW = Math.min(width  / 2 - gutter * 1.5, Math.max(150, Math.min(340, width  * 0.40)));
+  const cardH = Math.min(height / 2 - gutter * 1.5, Math.max(130, Math.min(260, height * 0.34)));
+
+  // Park each card fully into its corner, leaving only the gutter.
+  const dx = width  / 2 - cardW / 2 - gutter;
+  const dy = height / 2 - cardH / 2 - gutter;
+
+  // The cards are placed first, so the hub takes whatever the middle leaves. It
+  // clears the corner cards as long as its box starts inboard of them on either
+  // axis — hence the max() of the two clearances, not the min().
+  const hubRoom = Math.max(cx - cardW - gutter * 2, cy - cardH - gutter * 2);
+  const hubR = Math.min(hubRoom, Math.max(80, Math.min(190, Math.min(width, height) * 0.22)));
 
   const offsets = { tl: [-1, -1], tr: [1, -1], bl: [-1, 1], br: [1, 1] };
   const cards = MODULES.map((m) => {
@@ -57,11 +73,16 @@ function buildHub(width, height) {
     return { ...m, x: cx + sx * dx, y: cy + sy * dy };
   });
 
-  return { cx, cy, hubR, cardW, cardH, cards };
+  // Contents scale with the card, so a larger card is actually more readable
+  // rather than the same 66px icon floating in more padding.
+  const iconSize  = Math.round(Math.min(cardW * 0.34, cardH * 0.46));
+  const labelSize = Math.round(Math.max(13, Math.min(22, cardW * 0.075)));
+
+  return { cx, cy, hubR, cardW, cardH, cards, iconSize, labelSize };
 }
 
 // ── A module card ─────────────────────────────────────────────────────────────
-function ModuleCard({ item, index, w, h, theme, onPress }) {
+function ModuleCard({ item, index, w, h, iconSize, labelSize, theme, onPress }) {
   const enter = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(1)).current;
 
@@ -97,8 +118,17 @@ function ModuleCard({ item, index, w, h, theme, onPress }) {
         onPressOut={pressOut}
         style={[styles.card, { borderColor: theme.cardOutline }]}
       >
-        <Image source={item.image} style={styles.cardIcon} resizeMode="contain" />
-        <Text style={styles.cardLabel} numberOfLines={2}>{item.label}</Text>
+        <Image
+          source={item.image}
+          style={{ width: iconSize, height: iconSize }}
+          resizeMode="contain"
+        />
+        <Text
+          style={[styles.cardLabel, { fontSize: labelSize, lineHeight: Math.round(labelSize * 1.3) }]}
+          numberOfLines={2}
+        >
+          {item.label}
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -194,6 +224,8 @@ function ModuleHub({ student, theme, onModulePress }) {
               index={i}
               w={hub.cardW}
               h={hub.cardH}
+              iconSize={hub.iconSize}
+              labelSize={hub.labelSize}
               theme={theme}
               onPress={() => onModulePress(c.key)}
             />
@@ -244,7 +276,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
           onPress={() => setGateVisible(true)}
           activeOpacity={0.75}
         >
-          <Ionicons name="arrow-back" size={20} color="#1A2E3B" />
+          <Ionicons name="arrow-back" size={24} color="#1A2E3B" />
         </TouchableOpacity>
 
         <View style={styles.greeting}>
@@ -263,7 +295,7 @@ export default function StudentDashboardScreen({ route, navigation }) {
           onPress={() => setLogoutVisible(true)}
           activeOpacity={0.75}
         >
-          <Ionicons name="exit-outline" size={20} color="#1A2E3B" />
+          <Ionicons name="exit-outline" size={24} color="#1A2E3B" />
         </TouchableOpacity>
       </View>
 
@@ -301,24 +333,24 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   iconBtn: {
-    width: 42, height: 42, borderRadius: 21,
+    width: 50, height: 50, borderRadius: 25,
     backgroundColor: '#FFFFFF',
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
   },
-  greeting: { alignItems: 'center', gap: 4 },
+  greeting: { alignItems: 'center', gap: 5 },
   greetingText: {
-    fontSize: 22, fontFamily: 'Nunito_900Black', color: '#1A2E3B',
+    fontSize: 27, fontFamily: 'Nunito_900Black', color: '#1A2E3B',
   },
   avatarPill: {
     borderWidth: 1.5, borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 2,
+    paddingHorizontal: 14, paddingVertical: 3,
   },
-  avatarPillText: { fontSize: 12, fontFamily: 'Nunito_600SemiBold' },
+  avatarPillText: { fontSize: 14, fontFamily: 'Nunito_600SemiBold' },
 
   prompt: {
-    fontSize: 14, fontFamily: 'Nunito_600SemiBold',
+    fontSize: 17, fontFamily: 'Nunito_600SemiBold',
     color: '#7A8A9A', textAlign: 'center', marginTop: 2,
   },
 
@@ -349,17 +381,18 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 26,
     borderWidth: 2.5,
     alignItems: 'center', justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 10, paddingVertical: 12,
+    gap: 10,
+    paddingHorizontal: 14, paddingVertical: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
   },
-  cardIcon: { width: 66, height: 66 },
+  // fontSize / lineHeight are set per-card from buildHub so the label tracks the
+  // card size; everything else is fixed.
   cardLabel: {
-    fontSize: 13, fontFamily: 'Nunito_800ExtraBold',
-    color: '#1A2E3B', textAlign: 'center', lineHeight: 17,
+    fontFamily: 'Nunito_800ExtraBold',
+    color: '#1A2E3B', textAlign: 'center',
   },
 });
