@@ -25,7 +25,7 @@ const STRUGGLING_EXTRA_LOOP_MS = 1800;
 // Receives word/image/audio via route params — no hardcoded words.
 export default function AnimatedWordScreen({ route, navigation }) {
   const {
-    student, wordText, wordImage, wordAudio, wordId,
+    student, wordText, wordImage, boldWordImage, wordAudio, wordId,
     trackExposure = false, nextScreen, nextParams, adaptiveDwell,
   } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
@@ -105,8 +105,8 @@ export default function AnimatedWordScreen({ route, navigation }) {
 
   function goNext() {
     navigation.navigate('BoldWord', {
-      student, wordText, wordImage, wordAudio, wordId, trackExposure, nextScreen, nextParams,
-      adaptiveDwell,
+      student, wordText, wordImage: boldWordImage ?? wordImage, wordAudio, wordId, trackExposure,
+      nextScreen, nextParams, adaptiveDwell,
     });
   }
 

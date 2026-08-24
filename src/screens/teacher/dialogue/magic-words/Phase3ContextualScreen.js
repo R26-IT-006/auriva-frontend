@@ -44,8 +44,6 @@ const AVATAR_IMAGES = {
 };
 
 // Per-scenario images and captions (static require — React Native bundle constraint)
-// im_sorry, youre_welcome, please_excuse_me use thank_you images as placeholders;
-// swap each source for the real asset file once artwork is added.
 const PHASE3_SCENARIOS = {
   thank_you: {
     A: {
@@ -82,10 +80,15 @@ const PHASE3_SCENARIOS = {
     },
   },
 
+  // im_sorry — real assets uploaded 2026-08-24: `correct` now uses im_sorry's
+  // own correct_context1-4 (one per scene, matching thank_you's convention).
+  // wrong1/wrong2 stay on thank_you's context_wrong images — those are
+  // generic decoy photos (not tied to thank_you's own correct scenario), so
+  // reusing them here is intentional, not a placeholder leftover.
   im_sorry: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context1.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
@@ -93,7 +96,7 @@ const PHASE3_SCENARIOS = {
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context2.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
@@ -101,7 +104,7 @@ const PHASE3_SCENARIOS = {
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context3.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
@@ -109,7 +112,7 @@ const PHASE3_SCENARIOS = {
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context4.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
@@ -153,10 +156,11 @@ const PHASE3_SCENARIOS = {
     },
   },
 
+  // excuse_me — same treatment as im_sorry above.
   excuse_me: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context1.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
@@ -164,7 +168,7 @@ const PHASE3_SCENARIOS = {
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context2.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
@@ -172,7 +176,7 @@ const PHASE3_SCENARIOS = {
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context3.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
@@ -180,7 +184,7 @@ const PHASE3_SCENARIOS = {
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context4.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },

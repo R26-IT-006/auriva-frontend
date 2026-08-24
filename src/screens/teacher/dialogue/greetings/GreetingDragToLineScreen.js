@@ -111,13 +111,13 @@ const ACTIVITIES = {
   good_afternoon: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/correct_context3.jpg'),
       prompt: 'It is the afternoon.\nYou see your neighbour.\nYou should say...',
       cards:  [{ label: 'Good Afternoon', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/correct_context3.jpg'),
       prompt: 'It is the afternoon.\nYou see your neighbour.\nYou should say...',
       cards:  [
         { label: 'Good Afternoon', correct: true  },
@@ -126,7 +126,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/correct_context4.jpg'),
       prompt: 'You meet your teacher\nafter lunch. You should say...',
       cards:  [
         { label: 'Good Afternoon', correct: true  },
@@ -138,13 +138,13 @@ const ACTIVITIES = {
   good_night: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_night/correct_context3.jpg'),
       prompt: 'It is bedtime.\nYou should say...',
       cards:  [{ label: 'Good Night', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_night/correct_context3.jpg'),
       prompt: 'It is bedtime.\nYou should say...',
       cards:  [
         { label: 'Good Night', correct: true  },
@@ -153,7 +153,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_night/correct_context4.jpg'),
       prompt: 'You are going to sleep.\nYou should say...',
       cards:  [
         { label: 'Good Night',     correct: true  },
@@ -165,13 +165,13 @@ const ACTIVITIES = {
   happy_birthday: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/correct_context3.jpg'),
       prompt: 'It is your friend\'s birthday.\nYou should say...',
       cards:  [{ label: 'Happy Birthday', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/correct_context3.jpg'),
       prompt: 'It is your friend\'s birthday.\nYou should say...',
       cards:  [
         { label: 'Happy Birthday', correct: true  },
@@ -180,7 +180,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/correct_context4.jpg'),
       prompt: 'Your friend is celebrating.\nYou should say...',
       cards:  [
         { label: 'Happy Birthday', correct: true  },
@@ -192,13 +192,13 @@ const ACTIVITIES = {
   how_are_you: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/correct_context3.jpg'),
       prompt: 'You want to know how\nyour friend feels.\nYou should say...',
       cards:  [{ label: 'How Are You?', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/correct_context3.jpg'),
       prompt: 'You want to know how\nyour friend feels.\nYou should say...',
       cards:  [
         { label: 'How Are You?', correct: true  },
@@ -207,7 +207,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/correct_context4.jpg'),
       prompt: 'You see a friend\nyou haven\'t seen in a while.\nYou should say...',
       cards:  [
         { label: 'How Are You?', correct: true  },
@@ -219,13 +219,13 @@ const ACTIVITIES = {
   im_fine: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/correct_context3.jpg'),
       prompt: 'Someone asks how you are.\nYou should say...',
       cards:  [{ label: "I'm Fine", correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/correct_context3.jpg'),
       prompt: 'Someone asks how you are.\nYou should say...',
       cards:  [
         { label: "I'm Fine",    correct: true  },
@@ -234,7 +234,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/correct_context4.jpg'),
       prompt: 'Your teacher asks\nhow you are feeling.\nYou should say...',
       cards:  [
         { label: "I'm Fine", correct: true  },
@@ -246,13 +246,13 @@ const ACTIVITIES = {
   happy_new_year: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/correct_context3.jpg'),
       prompt: 'It is the new year!\nYou should say...',
       cards:  [{ label: 'Happy New Year', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/correct_context3.jpg'),
       prompt: 'It is the new year!\nYou should say...',
       cards:  [
         { label: 'Happy New Year', correct: true  },
@@ -261,7 +261,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/correct_context4.jpg'),
       prompt: 'Everyone is celebrating\nthe new year. You should say...',
       cards:  [
         { label: 'Happy New Year', correct: true  },

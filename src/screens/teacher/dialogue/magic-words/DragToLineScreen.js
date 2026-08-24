@@ -58,13 +58,13 @@ const ACTIVITIES = {
   im_sorry: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context3.jpg'),
       prompt: 'Saman bumps into Anjalie.\nHe should say...',
       cards:  [{ label: "I'm Sorry", correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context3.jpg'),
       prompt: 'Saman bumps into Anjalie.\nHe should say...',
       cards:  [
         { label: "I'm Sorry", correct: true  },
@@ -73,7 +73,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context4.jpg'),
       prompt: 'Anjalie spills Saman\'s juice.\nShe should say...',
       cards:  [
         { label: "I'm Sorry", correct: true  },
@@ -112,13 +112,13 @@ const ACTIVITIES = {
   excuse_me: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context3.jpg'),
       prompt: 'Saman needs to pass by Anjalie.\nHe should say...',
       cards:  [{ label: 'Excuse Me', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context3.jpg'),
       prompt: 'Saman needs to pass by Anjalie.\nHe should say...',
       cards:  [
         { label: 'Excuse Me',  correct: true  },
@@ -127,7 +127,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context4.jpg'),
       prompt: 'Anjalie needs to walk through\na crowd. She should say...',
       cards:  [
         { label: 'Excuse Me',  correct: true  },

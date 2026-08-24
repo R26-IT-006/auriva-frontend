@@ -188,6 +188,7 @@ export default function Phase1VideoScreen({ route, navigation }) {
         student,
         wordText: WORD_LABELS[wordKey] ?? wordKey.replace(/_/g, ' '),
         wordImage: DIALOGUE_WORD_ASSETS[wordKey]?.scene,
+        boldWordImage: DIALOGUE_WORD_ASSETS[wordKey]?.boldScene,
         wordAudio: WORD_AUDIO[wordKey],
         wordId,
         trackExposure: true,
