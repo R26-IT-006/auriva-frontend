@@ -27,6 +27,7 @@ import { DEFAULT_N_POINTS, selectPreWritingActivities } from '../../constants/pr
 import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -148,6 +149,12 @@ function GuideActivity({ activity, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function PreWritingActivityScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const {
     student, theme,
     activities:    activitiesParam,

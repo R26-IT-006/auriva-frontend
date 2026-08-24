@@ -19,6 +19,8 @@ import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../const
 import {
   createPreWritingInteractionId, markWarmupHandled, buildPreWritingNavigationParams, PRE_WRITING_REASON,
 } from '../../utils/preWritingSessionGuard';
+import { useLockLandscape } from '../../utils/useOrientationLock';
+import ScreenBackButton from '../../components/handwriting/ScreenBackButton';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -28,6 +30,12 @@ const AVATAR_MAP = {
 };
 
 export default function LetterPracticeScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme, letterSequence = [], motorProfile = null } = route.params;
   const { width } = useWindowDimensions();
 
@@ -152,7 +160,17 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
+          {/* Ungated: this is a chooser/hub, not an activity in progress, so
+              leaving it loses nothing. Screens that DO hold in-progress work
+              (ShapeAssessment, PreWritingActivity) must route back through
+              ParentGateModal instead — see ScreenBackButton's own header. */}
           <View style={styles.nameRow}>
+            <ScreenBackButton
+              onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LetterHome', { student, theme }))}
+              tint={theme.button}
+              color={theme.button}
+              style={{ marginRight: 12 }}
+            />
             <View style={[styles.avatarRing, { borderColor: theme.button + '40' }]}>
               <Image
                 source={AVATAR_MAP[student?.avatar_key]}

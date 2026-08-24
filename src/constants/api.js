@@ -3,7 +3,7 @@
 // For physical device: use your machine's local IP
 // Physical device on same WiFi → use machine's LAN IP
 // Android emulator → 10.0.2.2 maps to host machine's localhost
-export const API_BASE_URL = "http://192.168.1.4:3000/api";
+export const API_BASE_URL = "http://192.168.1.5:3000/api";
 
 export const ENDPOINTS = {
   // Auth
@@ -37,9 +37,24 @@ export const ENDPOINTS = {
   // session). Never duplicates the scoring formula — this is a straight
   // read of what motorBaselineService.js already persisted.
   MOTOR_BASELINE:             (studentId) => `/handwriting/motor-baseline/${studentId}`,
+  // Read-only explanation of the CURRENT progression decision per movement
+  // family — the rule, the evidence window, teacher-override protection and a
+  // rule-derived counterfactual. Explanation only: it changes no decision and
+  // writes nothing. Teacher-facing only.
+  THRESHOLD_TRACE:            (studentId) => `/handwriting/threshold-trace/${studentId}`,
+  // Legacy experimental L2 shape-motor clustering. Retained for
+  // research/reference compatibility only. It is not used by the current
+  // teacher-facing baseline summary and does not influence adaptive
+  // progression.
+  //
+  // TeacherReportScreen's former "Initial Shape Motor Profile" section is now
+  // the "Initial Motor Baseline Summary", served by MOTOR_BASELINE above.
+  // This constant is kept so the legacy endpoint stays reachable for
+  // research/legacy inspection; no active screen references it.
+  //
   // Feature 11A pilot model — read-only INITIAL motor-cluster prediction
   // (motor_cluster_v1), computed from the SAME baseline MOTOR_BASELINE
-  // exposes. TeacherReportScreen's "Initial Shape Motor Profile" section.
+  // exposes.
   MOTOR_CLUSTER:              (studentId) => `/handwriting/motor-cluster/${studentId}`,
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
   PRE_WRITING_ACTIVITY:       '/handwriting/pre-writing-activity',

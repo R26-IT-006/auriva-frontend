@@ -35,6 +35,7 @@ import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol
 import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../utils/collectionSession';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -311,6 +312,12 @@ function GuideShape({ shapeId, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ShapeAssessmentScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme, collectionMode = false, collectionSessionId = null } = route.params;
 
   const [currentShapeIndex, setCurrentShapeIndex] = useState(0);

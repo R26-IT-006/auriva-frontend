@@ -54,6 +54,7 @@ import {
   calculateTotalDistance, calculateAverageSpeed, calculateSpeedStats, calculatePauseMetrics,
   calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
 } from '../../utils/trajectoryFeatures';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 
 // Shapes occupy task_order 0-5 in the collection protocol; lowercase
 // letters continue from 6, matching DATA_COLLECTION_PROTOCOL's fixed order.
@@ -514,6 +515,12 @@ const NEXT_CATEGORY_LABEL = {
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function LetterWritingScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const {
     student,
     theme,

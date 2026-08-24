@@ -16,6 +16,7 @@ import { ENDPOINTS } from '../../constants/api';
 import {
   generateCollectionSessionId, getDeviceMetadata, PROTOCOL_VERSION,
 } from '../../utils/collectionSession';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -25,6 +26,12 @@ const AVATAR_MAP = {
 };
 
 export default function WelcomeScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme } = route.params;
   const { width, height } = useWindowDimensions();
   const mascot = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.megatron;

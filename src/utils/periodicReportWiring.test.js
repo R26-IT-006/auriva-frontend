@@ -74,8 +74,27 @@ describe('PeriodSelector presets and custom-range validation wiring', () => {
   });
 
   it('PeriodicReportSection validates a custom range via validateCustomRange before applying it', () => {
-    expect(sectionSource).toContain('validateCustomRange(candidate.startDate, candidate.endDate)');
+    expect(sectionSource).toMatch(/validateCustomRange\(candidate\.startDate, candidate\.endDate/);
     expect(sectionSource).toMatch(/if \(!validation\.ok\)/);
+  });
+
+  it('the validator is given the same registration lower bound the picker enforces', () => {
+    // Defence in depth: the native picker makes out-of-range days
+    // unselectable, but the validator must reject them too — a stored or
+    // programmatically-supplied range never passes through the picker.
+    expect(sectionSource).toMatch(/validateCustomRange\([^)]*registeredOn\)/);
+  });
+
+  it('custom date bounds are derived from the student registration date and today', () => {
+    expect(sectionSource).toMatch(/const registeredOn = parseDateOnly\(toDateOnly\(student\?\.created_at\)\)/);
+    expect(sectionSource).toMatch(/const today = startOfTodayUtc\(\)/);
+    expect(sectionSource).toMatch(/minDate=\{registeredOn\}/);
+    expect(sectionSource).toMatch(/maxDate=\{today\}/);
+  });
+
+  it('the custom fields are bounded pickers, not free-typed text', () => {
+    expect(selectorSource).toContain('ReportDateField');
+    expect(selectorSource).not.toMatch(/<TextInput/);
   });
 });
 

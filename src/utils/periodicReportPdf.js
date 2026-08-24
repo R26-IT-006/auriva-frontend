@@ -26,6 +26,10 @@
 
 'use strict';
 
+// Dependency-free import by design — letterMotorPatternLabels.js pulls in no
+// RN/api code, so buildReportHtml() below stays directly unit-testable.
+import { getLetterMotorPatternLabel, LETTER_MOTOR_PATTERN_CAPTION } from './letterMotorPatternLabels';
+
 function escapeHtml(value) {
   if (value == null) return '';
   return String(value)
@@ -63,34 +67,52 @@ function table(rows) {
   return `<table class="kv">${trs}</table>`;
 }
 
+// A print-safe progress bar: plain divs with a solid fill, no gradient, so it
+// rasterizes cleanly in the PDF and stays legible in greyscale.
+function progressBarHtml(label, value, total) {
+  const safeTotal = typeof total === 'number' && total > 0 ? total : null;
+  const safeValue = typeof value === 'number' && value >= 0 ? value : 0;
+  const pct = safeTotal ? Math.round(Math.min(1, safeValue / safeTotal) * 100) : 0;
+  const counts = safeTotal ? `${safeValue} / ${safeTotal}` : String(safeValue);
+  return `
+    <div class="bar-row">
+      <div class="bar-head"><span>${escapeHtml(label)}</span><strong>${escapeHtml(counts)}</strong></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div class="bar-pct">${pct}%</div>
+    </div>`;
+}
+
 function buildLearningProgressHtml(learning) {
-  return table([
-    ['Lowercase letters mastered during period', learning.lowercase_mastered_during_period],
-    ['Uppercase letters mastered during period', learning.uppercase_mastered_during_period],
-    ['Cumulative lowercase mastered (as of end date)', learning.cumulative_lowercase_mastered_by_end_date],
-    ['Cumulative uppercase mastered (as of end date)', learning.cumulative_uppercase_mastered_by_end_date],
-    ['Current progression stage', learning.current_progression_stage],
-  ]);
+  return `
+    ${progressBarHtml('Lowercase Letters', learning.cumulative_lowercase_mastered_by_end_date, learning.lowercase_total)}
+    ${progressBarHtml('Uppercase Letters', learning.cumulative_uppercase_mastered_by_end_date, learning.uppercase_total)}
+    ${table([
+      ['Lowercase Letters Mastered', learning.lowercase_mastered_during_period],
+      ['Uppercase Letters Mastered', learning.uppercase_mastered_during_period],
+      ['Total Lowercase Letters Mastered', learning.cumulative_lowercase_mastered_by_end_date],
+      ['Total Uppercase Letters Mastered', learning.cumulative_uppercase_mastered_by_end_date],
+      ['Current Practice Level', learning.current_progression_stage],
+    ])}`;
 }
 
 function buildMotorPerformanceHtml(motor) {
   return table([
-    ['Attempts in period', motor.attempts_in_period],
-    ['Mean motor score', fmtNum(motor.mean_motor_score, ' / 100')],
-    ['Median motor score', fmtNum(motor.median_motor_score, ' / 100')],
-    ['Mean smoothness score', fmtNum(motor.mean_smoothness_score, ' / 100')],
-    ['Mean trajectory similarity (DTW distance)', fmtNum(motor.mean_trajectory_dtw_distance)],
-    ['Mean speed consistency (speed CV)', fmtNum(motor.mean_speed_cv)],
-    ['Mean attempt duration', motor.mean_duration_ms != null ? `${Math.round(motor.mean_duration_ms / 100) / 10}s` : 'Not available'],
+    ['Practice Attempts', motor.attempts_in_period],
+    ['Average Motor Performance Score', fmtNum(motor.mean_motor_score, ' / 100')],
+    ['Median Motor Performance Score', fmtNum(motor.median_motor_score, ' / 100')],
+    ['Average Writing Smoothness', fmtNum(motor.mean_smoothness_score, ' / 100')],
+    ['Average Trajectory Similarity', fmtNum(motor.mean_trajectory_dtw_distance)],
+    ['Average Speed Consistency', fmtNum(motor.mean_speed_cv)],
+    ['Average Attempt Duration', motor.mean_duration_ms != null ? `${Math.round(motor.mean_duration_ms / 100) / 10}s` : 'Not available'],
   ]);
 }
 
 function buildInitialProfileHtml(profile) {
   if (!profile?.available) {
-    return `<p class="note">No initial motor baseline is recorded for this student.</p>`;
+    return `<p class="note">Initial handwriting assessment not yet available.</p>`;
   }
   return `
-    <p class="note">Baseline/initial context — recorded ${escapeHtml(fmtDate(profile.recorded_at))}. This profile may predate the selected reporting period.</p>
+    <p class="note">Baseline/initial context — recorded ${escapeHtml(fmtDate(profile.recorded_at))}. This baseline summary may predate the selected reporting period.</p>
     ${table([
       ['Straight-line control', fmtNum(profile.scores?.straight, ' / 100')],
       ['Curved-line control', fmtNum(profile.scores?.curved, ' / 100')],
@@ -99,33 +121,85 @@ function buildInitialProfileHtml(profile) {
     ])}`;
 }
 
-function buildLetterMotorDevelopmentHtml(dev) {
-  const asOf = dev.state_as_of_end_date;
-  const asOfHtml = asOf
-    ? table([
-        ['Milestone', asOf.milestone],
-        ['Letter Motor State', asOf.display_name],
-        ['Observed', fmtDate(asOf.observed_at)],
-      ])
-    : `<p class="note">No Letter Motor State milestone has been observed as of the end of this period.</p>`;
+// Inline SVG trend chart for the printed report. Inline (not an <img>) so it
+// rasterizes at full resolution in the PDF with no external asset to load.
+// Same rules as the on-screen chart: one line, straight segments between real
+// points (no smoothing), Y pinned to 0-100, and days without practice absent
+// rather than plotted as zero.
+function buildMotorTrendSvg(points) {
+  const usable = (points ?? []).filter(
+    (p) => typeof p?.mean_motor_score === 'number' && Number.isFinite(p.mean_motor_score)
+  );
+  if (usable.length < 2) {
+    return `<p class="note">Not enough session data to show a trend yet.</p>`;
+  }
 
-  const rows = dev.milestones_during_period ?? [];
-  const historyHtml = rows.length
-    ? `<table class="grid"><thead><tr><th>Milestone</th><th>Letter Motor State</th><th>Observed</th></tr></thead><tbody>${
-        rows.map((m) => `<tr><td>${escapeHtml(m.milestone)}</td><td>${escapeHtml(m.display_name)}</td><td>${escapeHtml(fmtDate(m.observed_at))}</td></tr>`).join('')
-      }</tbody></table>`
-    : `<p class="note">No new milestones were observed during this period.</p>`;
+  const W = 520, H = 180, padL = 34, padR = 12, padT = 12, padB = 28;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const x = (i) => padL + (i / (usable.length - 1)) * plotW;
+  const y = (v) => padT + (1 - Math.max(0, Math.min(100, v)) / 100) * plotH;
 
-  return `<p class="subhead">State as of end of period</p>${asOfHtml}<p class="subhead">Milestones observed during this period</p>${historyHtml}`;
+  const line = usable.map((p, i) => `${x(i)},${y(p.mean_motor_score)}`).join(' ');
+  const dots = usable
+    .map((p, i) => `<circle cx="${x(i)}" cy="${y(p.mean_motor_score)}" r="3" fill="#FFFFFF" stroke="#4338CA" stroke-width="2"/>`)
+    .join('');
+  const grid = [0, 50, 100]
+    .map((v) => `<line x1="${padL}" y1="${y(v)}" x2="${padL + plotW}" y2="${y(v)}" stroke="#E2E6F0" stroke-width="1"/>`
+      + `<text x="${padL - 6}" y="${y(v) + 4}" font-size="10" fill="#6B7280" text-anchor="end">${v}</text>`)
+    .join('');
+
+  const step = usable.length <= 5 ? 1 : Math.ceil(usable.length / 5);
+  const ticks = usable
+    .map((p, i) => (i % step === 0 || i === usable.length - 1
+      ? `<text x="${x(i)}" y="${H - 8}" font-size="10" fill="#6B7280" text-anchor="middle">${escapeHtml(String(p.date).slice(5))}</text>`
+      : ''))
+    .join('');
+
+  return `
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      ${grid}
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#9CA3AF" stroke-width="1"/>
+      <polyline points="${line}" fill="none" stroke="#4338CA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+      ${ticks}
+    </svg>
+    <p class="note">Motor performance score (0-100) per practice day.</p>`;
+}
+
+// Writing Pattern Summary — a descriptive card, never a chart, gauge,
+// percentage or ranking. Mirrors the on-screen three-state logic exactly.
+function buildWritingPatternHtml(dev) {
+  const asOf = dev?.state_as_of_end_date ?? null;
+  const rejected = asOf?.outside_reference_range === true;
+
+  const patternLabel = rejected
+    ? 'Not reported'
+    : (asOf ? getLetterMotorPatternLabel(asOf.state_code) : 'Not yet observed');
+  const referenceStatus = rejected
+    ? 'Outside represented reference range'
+    : (asOf ? 'Within represented reference range' : 'Not yet observed');
+
+  return `
+    ${table([
+      ['Current Writing Pattern', patternLabel],
+      ['Pattern Updates', (dev?.milestones_during_period ?? []).length],
+      ['Reference Status', referenceStatus],
+    ])}
+    <p class="note">${escapeHtml(LETTER_MOTOR_PATTERN_CAPTION)}</p>`;
 }
 
 function buildWordWritingHtml(words) {
   return `
     ${table([
-      ['Words attempted during period', words.words_attempted_during_period],
-      ['Attempts during period', words.attempts_during_period],
-      ['Words completed during period', words.words_completed_during_period],
-      ['Mean word score', fmtNum(words.mean_word_score, ' / 100')],
+      ['Words Practiced', words.words_attempted_during_period],
+      ['Practice Attempts', words.attempts_during_period],
+      ['Words Completed', words.words_completed_during_period],
+      // Only shown when something was practised — 0 of 0 is not 0%.
+      words.words_attempted_during_period > 0
+        ? ['Completion', `${Math.round((words.words_completed_during_period / words.words_attempted_during_period) * 100)}%`]
+        : null,
+      ['Average Word Score', fmtNum(words.mean_word_score, ' / 100')],
     ])}
     <p class="note">${escapeHtml(words.size_spacing_feedback_note)}</p>`;
 }
@@ -175,6 +249,12 @@ export function buildReportHtml(report) {
   table.grid th { text-align: left; background: #F7F8FC; padding: 5px 6px; border-bottom: 1px solid #E2E6F0; }
   table.grid td { padding: 5px 6px; border-bottom: 1px solid #F0F2FA; }
   .summary { font-size: 13px; background: #F7F8FC; border-radius: 8px; padding: 12px 14px; margin-top: 8px; }
+  .bar-row { margin: 10px 0 14px 0; }
+  .bar-head { display: flex; justify-content: space-between; font-size: 12.5px; color: #1A1A2E; margin-bottom: 4px; }
+  .bar-track { height: 10px; background: #EDF0F7; border-radius: 5px; overflow: hidden; }
+  .bar-fill { height: 10px; background: #4338CA; border-radius: 5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar-pct { font-size: 11px; color: #5A5F7A; text-align: right; margin-top: 2px; }
+  svg { display: block; margin: 6px auto; max-width: 100%; }
   .footer { margin-top: 28px; font-size: 10px; color: #9B9FB0; }
 </style>
 </head>
@@ -191,12 +271,13 @@ export function buildReportHtml(report) {
     ])}
   </div>
 
-  ${section(1, 'Learning Progress', buildLearningProgressHtml(report.learning_progress ?? {}))}
-  ${section(2, 'Motor Performance', buildMotorPerformanceHtml(report.motor_performance ?? {}))}
-  ${section(3, 'Initial Shape Motor Profile', buildInitialProfileHtml(report.initial_shape_motor_profile ?? {}))}
-  ${section(4, 'Letter Motor Development', buildLetterMotorDevelopmentHtml(report.letter_motor_development ?? {}))}
-  ${section(5, 'Word Writing', buildWordWritingHtml(report.word_writing ?? {}))}
-  ${section(6, 'Recommendations / Teacher Notes', buildRecommendationsHtml(report.adaptive_support ?? {}))}
+  ${section(1, 'Letter Learning Progress', buildLearningProgressHtml(report.learning_progress ?? {}))}
+  ${section(2, 'Handwriting Performance', buildMotorPerformanceHtml(report.motor_performance ?? {}))}
+  ${section(3, 'Motor Performance Over Time', buildMotorTrendSvg(report.motor_performance?.daily_series))}
+  ${section(4, 'Initial Handwriting Skills Summary', buildInitialProfileHtml(report.initial_shape_motor_profile ?? {}))}
+  ${section(5, 'Writing Pattern Summary', buildWritingPatternHtml(report.letter_motor_development ?? {}))}
+  ${section(6, 'Word Writing Progress', buildWordWritingHtml(report.word_writing ?? {}))}
+  ${section(7, 'Recommendations / Teacher Notes', buildRecommendationsHtml(report.adaptive_support ?? {}))}
 
   <div class="summary">${escapeHtml(report.summary_text)}</div>
 
@@ -247,7 +328,14 @@ export async function exportAndSharePeriodicReportPdf({ report, studentName, sta
     // native module registry) without crashing on import.
     const Print = require('expo-print');
     const Sharing = require('expo-sharing');
-    const FileSystem = require('expo-file-system');
+    // expo-file-system v19 (Expo SDK 54) moved the old filesystem API behind
+    // `expo-file-system/legacy`. On the main entry point `cacheDirectory` is
+    // no longer exported (so it reads as `undefined`) and `copyAsync` THROWS
+    // a deprecation Error at runtime — which this function's own catch turned
+    // into a generic "Could not generate the PDF" with no other symptom.
+    // Migrated to the supported File/Paths API rather than importing the
+    // deprecated entry point, which is slated for removal.
+    const { File, Paths } = require('expo-file-system');
 
     const html = buildReportHtml(report);
     const { uri } = await Print.printToFileAsync({ html, base64: false });
@@ -256,8 +344,15 @@ export async function exportAndSharePeriodicReportPdf({ report, studentName, sta
     // predictable, sanitized name (spec §20) before sharing, so the
     // filename the parent/therapist actually sees is meaningful.
     const filename = buildReportFilename({ studentName, startDate, endDate });
-    const targetUri = `${FileSystem.cacheDirectory}${filename}`;
-    await FileSystem.copyAsync({ from: uri, to: targetUri });
+    const target = new File(Paths.cache, filename);
+
+    // `File.copy()` throws if the destination already exists, whereas the
+    // previous `copyAsync` overwrote it. Exporting the same student+range
+    // twice in one session is entirely normal, so clear a stale copy first.
+    if (target.exists) target.delete();
+
+    new File(uri).copy(target);
+    const targetUri = target.uri;
 
     const available = await Sharing.isAvailableAsync();
     if (!available) {

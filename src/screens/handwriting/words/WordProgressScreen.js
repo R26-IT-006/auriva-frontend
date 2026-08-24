@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchWordProgress } from '../../../utils/wordApi';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
 
 const ALPHABET  = 'abcdefghijklmnopqrstuvwxyz'.split('');
 const EXERCISES = ['A', 'B', 'C', 'D', 'E'];
@@ -49,6 +50,12 @@ function scoreColor(correct, total) {
 }
 
 export default function WordProgressScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme } = route.params;
 
   const [progress,       setProgress]       = useState({});

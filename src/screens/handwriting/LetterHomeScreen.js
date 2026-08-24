@@ -46,6 +46,7 @@ import { ParentGateModal } from '../../components/common/ParentGateModal';
 // Feature 1 baseline that many real assessments never reach).
 import { fetchInitialAssessmentShapes } from '../../utils/initialAssessmentShapes';
 import { isWordsUnlocked } from '../../utils/wordUnlockGate';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -251,6 +252,12 @@ function CardLandscape({ variant }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function LetterHomeScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const {
     student,
     theme,
@@ -272,7 +279,7 @@ export default function LetterHomeScreen({ route, navigation }) {
   // modal instance can dispatch the right action once the code is entered,
   // rather than needing three separate gate/modal pairs.
   const [gateVisible,       setGateVisible]       = useState(false);
-  const [pendingGateAction, setPendingGateAction] = useState(null); // 'why' | 'assessment' | 'progress'
+  const [pendingGateAction, setPendingGateAction] = useState(null); // 'why' | 'assessment' | 'progress' | 'back'
   // Screen-consistency fix: fallback authoritative source for the
   // Assessment Summary modal, fetched only when there's no in-memory
   // assessmentData to show (see effect below) — never fetched, and never
@@ -379,6 +386,13 @@ export default function LetterHomeScreen({ route, navigation }) {
     if (pendingGateAction === 'why') setShowWhyModal(true);
     else if (pendingGateAction === 'assessment') setShowSummary(true);
     else if (pendingGateAction === 'progress') navigation.navigate('TeacherReport', { student, theme });
+    else if (pendingGateAction === 'back') {
+      // goBack() when the stack has somewhere to return to; otherwise exit
+      // the writing module. See the back button's own comment for why both
+      // branches are needed.
+      if (navigation.canGoBack()) navigation.goBack();
+      else navigation.navigate('TeacherMain');
+    }
     setPendingGateAction(null);
   }
 
@@ -412,14 +426,40 @@ export default function LetterHomeScreen({ route, navigation }) {
 
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
-          {/* Avatar moved out of the top bar — it now appears large, once,
-              in the side column above "Your Progress" (see below), rather
-              than being shown small here as well. */}
-          <View style={styles.nameRow}>
+          {/* Back out of the writing module. Gated by ParentGateModal for the
+              same reason the Concept screens gate their own back button
+              (Tier2ActivityScreen.js, ConceptItemsScreen.js): leaving a
+              learning session is an adult decision, and a child tapping it
+              mid-activity would otherwise drop straight out.
+
+              Target: goBack() when there is somewhere to go back to, else
+              TeacherMain. WelcomeScreen reaches this screen with
+              navigation.replace(), which removes itself from the stack, so
+              goBack() is not always available — the fallback keeps the button
+              working regardless of how the child got here. */}
+          <View style={styles.leftGroup}>
+            <TouchableOpacity
+              style={[styles.backBtn, {
+                backgroundColor: theme.button + '14',
+                borderColor: theme.button + '40',
+              }]}
+              onPress={() => requestGatedAction('back')}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Back — needs a grown-up code"
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.button} />
+            </TouchableOpacity>
+
+            {/* Avatar moved out of the top bar — it now appears large, once,
+                in the side column above "Your Progress" (see below), rather
+                than being shown small here as well. */}
+            <View style={styles.nameRow}>
             <Text style={[styles.studentName, { color: theme.headingText }]}>
               {student?.full_name}
             </Text>
-            <Text style={styles.studentSubLabel}>Letter Writing</Text>
+              <Text style={styles.studentSubLabel}>Letter Writing</Text>
+            </View>
           </View>
 
           <View style={styles.topBtnGroup}>
@@ -857,6 +897,19 @@ const styles = StyleSheet.create({
   },
   // Column now — no avatar to sit alongside since it moved to the side
   // column (see sideAvatarCard below).
+  leftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
   nameRow: {
     flexDirection: 'column',
   },

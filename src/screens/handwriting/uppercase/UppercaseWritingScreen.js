@@ -54,6 +54,7 @@ import {
   calculateTotalDistance, calculateAverageSpeed, calculateSpeedStats, calculatePauseMetrics,
   calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
 } from '../../../utils/trajectoryFeatures';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
 
 // Shapes occupy 0-5, lowercase letters occupy 6-15 — uppercase continues from 16.
 const UPPERCASE_TASK_ORDER_OFFSET = 16;
@@ -473,6 +474,12 @@ const NEXT_CATEGORY_LABEL = {
 };
 
 export default function UppercaseWritingScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const {
     student,
     theme,

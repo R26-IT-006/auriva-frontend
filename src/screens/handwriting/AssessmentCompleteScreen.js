@@ -17,6 +17,7 @@ import { storeLetterSequence, storeMotorProfile } from '../../utils/storage';
 import { attemptFinalization } from '../../utils/finalizeSync';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import { useToast } from '../../context/ToastContext';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 
 const SHAPE_LABELS = {
   horizontal_line: 'Horizontal Line',
@@ -76,6 +77,12 @@ function getScoreColor(score) {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function AssessmentCompleteScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme, assessmentData = [], assessmentId, collectionMode = false, collectionSessionId = null } = route.params;
   const { width } = useWindowDimensions();
   const { show } = useToast();

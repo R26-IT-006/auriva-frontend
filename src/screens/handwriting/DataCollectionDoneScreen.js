@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 
 const RATING_DIMENSIONS = [
   { key: 'teacher_straight_rating', label: 'Straight lines' },
@@ -17,6 +18,12 @@ const RATING_DIMENSIONS = [
 const RATING_LABELS = { 1: 'Weak', 2: 'Moderate', 3: 'Good' };
 
 export default function DataCollectionDoneScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme, collectionSessionId = null } = route.params;
 
   const [warnings, setWarnings] = useState([]);

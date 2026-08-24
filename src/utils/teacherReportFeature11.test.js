@@ -7,7 +7,7 @@ import path from 'path';
 // technique teacherReportLoadGuard.test.js already uses for this exact
 // file. Behavioral coverage for the underlying pure logic (state
 // transitions, label content, direction semantics, error/empty handling)
-// lives in motorClusterProfile.test.js and letterMotorState.test.js — this
+// lives in motorBaseline.test.js and letterMotorState.test.js — this
 // file covers the SCREEN-level integration properties: independence,
 // read-only guarantee, terminology separation, and rendering wiring.
 
@@ -39,16 +39,16 @@ function slice(source, startMarker, endMarker) {
 // 1. Feature 11A renders independently
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Feature 11A section renders independently', () => {
+describe('Initial Motor Baseline Summary section renders independently', () => {
   it('has its own state and its own useFocusEffect, not gated on the main report/loading flags', () => {
-    const fn = slice(screen, 'const [motorClusterProfile, setMotorClusterProfile]', 'const [letterMotorLatest');
+    const fn = slice(screen, 'const [motorBaseline, setMotorBaseline]', 'const [letterMotorLatest');
     expect(fn).toContain('useFocusEffect');
-    expect(fn).toContain('fetchMotorClusterProfile(student?.sid)');
+    expect(fn).toContain('fetchMotorBaseline({ studentId: student?.sid })');
     expect(fn).not.toMatch(/if \(loading\)|if \(!report\)/);
   });
 
-  it('MotorClusterProfileCard is rendered unconditionally in the main scroll body (not behind a Feature 11B check)', () => {
-    expect(screen).toContain('<MotorClusterProfileCard result={motorClusterProfile} />');
+  it('InitialMotorBaselineSummaryCard is rendered unconditionally in the main scroll body (not behind a Feature 11B check)', () => {
+    expect(screen).toContain('<InitialMotorBaselineSummaryCard result={motorBaseline} />');
   });
 });
 
@@ -61,8 +61,10 @@ describe('State A/B is only ever rendered from the found branch, gated strictly 
 
   it('the "found" branch (persisted state, only ever created at 14/17/20 server-side) is the only place displayName/state is shown as the current state', () => {
     const foundBranch = slice(cardFn, "if (latest.status === 'found') {", "// latest.status === 'not_found'");
-    expect(foundBranch).toContain('Current Letter Motor State');
-    expect(foundBranch).toContain('currentState.displayName');
+    expect(foundBranch).toContain('Current Letter Motor Pattern');
+    expect(foundBranch).toContain('currentState.patternLabel');
+    // The persisted display_name must never be rendered.
+    expect(foundBranch).not.toContain('currentState.displayName');
   });
 
   it('the not_found branch (evidence still accumulating — covers 3/7/10, and any coverage below the first milestone) never renders "Current Letter Motor State" or a state displayName', () => {
@@ -98,8 +100,8 @@ describe('State A/B is never mapped to good/bad/high/low severity language', () 
     expect(lower).not.toMatch(/\b(good|bad|high ability|low ability|strong|weak|impaired|normal|mild asd|severe asd|diagnostic)\b/);
   });
 
-  it('Feature 11A card never uses good/bad/diagnostic severity language either (not counting explanatory comments)', () => {
-    const fullBlock = slice(screen, '// ─── Feature 11A — Initial Shape Motor Profile', '// ─── Feature 11B');
+  it('the baseline summary card never uses good/bad/diagnostic severity language either (not counting explanatory comments)', () => {
+    const fullBlock = slice(screen, '// ─── Initial Motor Baseline Summary', '// ─── Feature 11B');
     const lower = stripComments(fullBlock).toLowerCase();
     expect(lower).not.toMatch(/\b(good|bad|high ability|low ability|mild asd|severe asd|diagnostic subtype)\b/);
   });
@@ -158,9 +160,9 @@ describe('DTW and Speed CV direction semantics are represented correctly', () =>
 
 describe('Feature 11A and Feature 11B are visually and textually distinct', () => {
   it('use different SectionCard titles and different accent colors', () => {
-    expect(screen).toContain('title="Initial Shape Motor Profile"');
-    expect(screen).toContain('title="Letter Motor Development"');
-    expect(screen).toContain('accentColor="#7C3AED"'); // Feature 11A
+    expect(screen).toContain('title="Initial Handwriting Skills Summary"');
+    expect(screen).toContain('title="Letter Motor Patterns"');
+    expect(screen).toContain('accentColor="#7C3AED"'); // Initial Motor Baseline Summary
     expect(screen).toContain('accentColor="#0891B2"'); // Feature 11B
   });
 });
@@ -175,7 +177,7 @@ describe('Feature 11A and Feature 11B results are never cross-compared', () => {
     // which live elsewhere in the file) — proves the two are two
     // independent, side-by-side JSX elements, never one conditioned on or
     // interpolated with the other's data.
-    const tag1 = '<MotorClusterProfileCard result={motorClusterProfile} />';
+    const tag1 = '<InitialMotorBaselineSummaryCard result={motorBaseline} />';
     const tag2Start = '<LetterMotorDevelopmentCard';
     const start = screen.indexOf(tag1);
     expect(start).toBeGreaterThan(-1);
@@ -187,7 +189,7 @@ describe('Feature 11A and Feature 11B results are never cross-compared', () => {
   });
 
   it('no string in either component literally says "changed to" / "improved from" / "Cluster X to Y" style comparison text', () => {
-    const fullBlock = slice(screen, '// ─── Feature 11A — Initial Shape Motor Profile', 'const f11 = StyleSheet.create');
+    const fullBlock = slice(screen, '// ─── Initial Motor Baseline Summary', 'const f11 = StyleSheet.create');
     expect(fullBlock).not.toMatch(/changed to|improved from|cluster \d+ to/i);
   });
 });
@@ -208,23 +210,24 @@ describe('Empty history is handled gracefully', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('API failure is handled distinctly from empty/loading states', () => {
-  it('Feature 11A renders a distinct message for status "unavailable"', () => {
-    const fn = slice(screen, 'function MotorClusterProfileCard(', '// ─── Feature 11B');
-    expect(fn).toContain("status === 'unavailable'");
-    expect(fn).toContain('Motor profile is temporarily unavailable');
+  it('the baseline summary renders distinct messages for "baseline_not_found" and for a read failure', () => {
+    const fn = slice(screen, 'function InitialMotorBaselineSummaryCard(', 'const imb = StyleSheet.create');
+    expect(fn).toContain("status === 'baseline_not_found'");
+    expect(fn).toContain('Complete the initial motor assessment to see the baseline summary');
+    expect(fn).toContain('Initial motor baseline is temporarily unavailable');
   });
 
   it('Feature 11B renders a distinct message for latest.status "unavailable"', () => {
     const fn = slice(screen, 'function LetterMotorDevelopmentCard(', 'const f11 = StyleSheet.create');
     expect(fn).toContain("latest.status === 'unavailable'");
-    expect(fn).toContain('Letter motor development data is temporarily unavailable');
+    expect(fn).toContain('Letter motor pattern data is temporarily unavailable');
   });
 
-  it('one feature failing does not gate the other — Feature 11A card has no dependency on letterMotor* state, and vice versa', () => {
-    const motorClusterFn = slice(screen, 'function MotorClusterProfileCard(', '// ─── Feature 11B');
-    expect(motorClusterFn).not.toMatch(/letterMotor/i);
+  it('one feature failing does not gate the other — the baseline summary card has no dependency on letterMotor* state, and vice versa', () => {
+    const summaryFn = slice(screen, 'function InitialMotorBaselineSummaryCard(', 'const imb = StyleSheet.create');
+    expect(summaryFn).not.toMatch(/letterMotor/i);
     const letterMotorFn = slice(screen, 'function LetterMotorDevelopmentCard(', 'const f11 = StyleSheet.create');
-    expect(letterMotorFn).not.toMatch(/motorClusterProfile/);
+    expect(letterMotorFn).not.toMatch(/motorBaseline/);
   });
 });
 
@@ -249,14 +252,14 @@ describe('Read-only guarantee — opening/refreshing TeacherReport never mutates
     }
   });
 
-  it('the TeacherReportScreen Feature 11 sections never call client.post/put/patch/delete', () => {
-    const fullBlock = slice(screen, '// ─── Feature 11A — Initial Shape Motor Profile', 'const f11 = StyleSheet.create');
+  it('the TeacherReportScreen baseline-summary + Feature 11B sections never call client.post/put/patch/delete', () => {
+    const fullBlock = slice(screen, '// ─── Initial Motor Baseline Summary', 'const f11 = StyleSheet.create');
     expect(fullBlock).not.toMatch(/client\.(post|put|patch|delete)\(/);
   });
 
   it('the Feature 11 fetch effects only ever call the 4 read (fetchX) wrappers, never a mutation', () => {
-    const effectsBlock = slice(screen, '// ── Feature 11A — Initial Shape Motor Profile', 'async function handleShare()');
-    expect(effectsBlock).toContain('fetchMotorClusterProfile(');
+    const effectsBlock = slice(screen, '// ── Initial Motor Baseline Summary', 'async function handleShare()');
+    expect(effectsBlock).toContain('fetchMotorBaseline(');
     expect(effectsBlock).toContain('fetchLatestLetterMotorState(');
     expect(effectsBlock).toContain('fetchLetterMotorStateHistory(');
     expect(effectsBlock).toContain('fetchLetterMotorEvidenceTrend(');
@@ -274,8 +277,199 @@ describe('Collection mode is never referenced by the Feature 11 report code', ()
     expect(letterMotorUtil).not.toMatch(/collection_mode|collectionMode/);
   });
 
-  it('the Feature 11 sections of TeacherReportScreen.js never reference collection_mode/collectionMode', () => {
-    const fullBlock = slice(screen, '// ─── Feature 11A — Initial Shape Motor Profile', 'const f11 = StyleSheet.create');
+  it('the baseline-summary + Feature 11B sections of TeacherReportScreen.js never reference collection_mode/collectionMode', () => {
+    const fullBlock = slice(screen, '// ─── Initial Motor Baseline Summary', 'const f11 = StyleSheet.create');
     expect(fullBlock).not.toMatch(/collection_mode|collectionMode/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 21. Legacy experimental L2 shape-motor clustering is RETAINED but INACTIVE
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('legacy experimental L2 shape-motor clustering is retained but inactive', () => {
+  it('the L2 util file still exists and its prediction wrapper is unchanged', () => {
+    expect(fs.existsSync(path.resolve(__dirname, './motorClusterProfile.js'))).toBe(true);
+    expect(motorClusterUtil).toMatch(/export function normalizeMotorClusterResponse/);
+    expect(motorClusterUtil).toMatch(/export async function fetchMotorClusterProfile/);
+    expect(motorClusterUtil).toMatch(/ENDPOINTS\.MOTOR_CLUSTER\(studentId\)/);
+  });
+
+  it('the L2 endpoint constant is still defined, so the legacy route stays reachable', () => {
+    const api = fs.readFileSync(path.resolve(__dirname, '../constants/api.js'), 'utf8');
+    expect(api).toMatch(/MOTOR_CLUSTER:\s*\(studentId\)\s*=>\s*`\/handwriting\/motor-cluster\/\$\{studentId\}`/);
+  });
+
+  it('the retained L2 integration points carry the exact legacy-experimental marker', () => {
+    // Normalizes comment leaders (`//`, ` * `) and line wrapping so the
+    // marker can be asserted verbatim regardless of how it is wrapped.
+    const normalize = (src) => src.replace(/^\s*(\/\/|\*)\s?/gm, '').replace(/\s+/g, ' ');
+    const MARKER = 'Legacy experimental L2 shape-motor clustering. Retained for research/reference '
+      + 'compatibility only. It is not used by the current teacher-facing baseline summary and does '
+      + 'not influence adaptive progression.';
+
+    for (const source of [
+      motorClusterUtil,
+      fs.readFileSync(path.resolve(__dirname, '../constants/api.js'), 'utf8'),
+    ]) {
+      expect(normalize(source)).toContain(MARKER);
+    }
+  });
+
+  // The core of this refactor: retained in the repo, not wired into the
+  // active teacher-facing flow.
+  it('TeacherReportScreen never imports, calls, or renders the L2 prediction', () => {
+    const code = stripComments(screen);
+    expect(code).not.toMatch(/fetchMotorClusterProfile/);
+    expect(code).not.toMatch(/MotorClusterProfileCard/);
+    expect(code).not.toMatch(/from '\.\.\/\.\.\/\.\.\/utils\/motorClusterProfile'/);
+    expect(code).not.toMatch(/ENDPOINTS\.MOTOR_CLUSTER/);
+  });
+
+  it('TeacherReportScreen fetches the baseline endpoint instead', () => {
+    const code = stripComments(screen);
+    expect(code).toMatch(/import \{ fetchMotorBaseline \} from '\.\.\/\.\.\/\.\.\/utils\/motorBaseline'/);
+    expect(code).toMatch(/fetchMotorBaseline\(\{ studentId: student\?\.sid \}\)/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 22. No cluster/profile terminology reaches the teacher report
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('teacher report shows no L2 profile output', () => {
+  it('the rendered screen code contains no Profile A / Profile B / Distinct Motor Profile label', () => {
+    const code = stripComments(screen);
+    expect(code).not.toMatch(/Profile A|Profile B|Distinct Motor Profile|PROFILE_/);
+  });
+
+  it('the baseline summary card renders no cluster id, centroid distance, confidence or probability', () => {
+    const fn = stripComments(slice(screen, 'function InitialMotorBaselineSummaryCard(', 'const imb = StyleSheet.create'));
+    expect(fn).not.toMatch(/clusterId|cluster_id|centroid|separationMargin|nearestDistance|confidence|probability/i);
+  });
+
+  it('the baseline summary card renders the four measured values and the required disclosure', () => {
+    const fn = slice(screen, 'function InitialMotorBaselineSummaryCard(', 'const imb = StyleSheet.create');
+    expect(fn).toContain('Overall Motor Score');
+    expect(fn).toContain('Movement-family baseline');
+    expect(fn).toContain('FAMILY_ROW_LABELS.map('); // family rows are data-driven
+    expect(screen).toContain("['straight', 'Straight']");
+    expect(screen).toContain("['curved',   'Curved']");
+    expect(screen).toContain("['complex',  'Complex']");
+    expect(fn).toContain('summary?.description');
+    expect(fn).toMatch(/not diagnostic or ASD-severity measures/);
+  });
+
+  it('the periodic report presentation uses the baseline-summary heading, not cluster terminology', () => {
+    const section = fs.readFileSync(
+      path.resolve(__dirname, '../components/handwriting/reports/PeriodicReportSection.js'), 'utf8');
+    const pdf = fs.readFileSync(path.resolve(__dirname, './periodicReportPdf.js'), 'utf8');
+    expect(section).toContain('title="Initial Handwriting Skills Summary"');
+    expect(pdf).toContain("'Initial Handwriting Skills Summary'"); // renamed in the Periodic Report redesign
+    for (const source of [stripComments(section), stripComments(pdf)]) {
+      expect(source).not.toMatch(/Profile A|Profile B|Distinct Motor Profile/);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 23. Child-facing screens carry no L2 output and no baseline summary
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 24. Pattern labels: state_code is the sole source; display_name is never shown
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('teacher-facing pattern labels come only from state_code', () => {
+  const pdf = fs.readFileSync(path.resolve(__dirname, './periodicReportPdf.js'), 'utf8');
+  const section = fs.readFileSync(
+    path.resolve(__dirname, '../components/handwriting/reports/PeriodicReportSection.js'), 'utf8');
+  const surfaces = { 'TeacherReportScreen.js': screen, 'periodicReportPdf.js': pdf, 'PeriodicReportSection.js': section };
+
+  it.each(Object.keys(surfaces))('%s never renders the persisted display_name', (name) => {
+    const code = stripComments(surfaces[name]);
+    expect(code).not.toMatch(/display_name/);
+    expect(code).not.toMatch(/\.displayName/);
+  });
+
+  it('all three code surfaces derive the label through getLetterMotorPatternLabel', () => {
+    expect(stripComments(pdf)).toMatch(/getLetterMotorPatternLabel\(/);
+    expect(stripComments(section)).toMatch(/getLetterMotorPatternLabel\(/);
+    // The screen consumes the already-mapped `patternLabel` from the normalizer.
+    expect(stripComments(screen)).toMatch(/patternLabel/);
+    expect(stripComments(letterMotorUtil)).toMatch(/getLetterMotorPatternLabel\(row\.state_code\)/);
+  });
+
+  it('no teacher-facing surface contains the legacy "Letter Motor State A/B" wording', () => {
+    for (const [name, source] of Object.entries(surfaces)) {
+      expect(stripComments(source)).not.toMatch(/Letter Motor State [AB]/);
+    }
+  });
+
+  it('no teacher-facing surface contains the old "Letter Motor Development" heading', () => {
+    for (const source of Object.values(surfaces)) {
+      expect(stripComments(source)).not.toMatch(/Letter Motor Development/);
+    }
+  });
+
+  it('no raw internal state code can be rendered', () => {
+    for (const source of Object.values(surfaces)) {
+      expect(stripComments(source)).not.toMatch(/['"`]LETTER_STATE_[AB]['"`]/);
+    }
+  });
+
+  it('the nominal-label caption accompanies the pattern label on every surface that shows one', () => {
+    expect(stripComments(screen)).toMatch(/LETTER_MOTOR_PATTERN_CAPTION/);
+    expect(stripComments(pdf)).toMatch(/LETTER_MOTOR_PATTERN_CAPTION/);
+    expect(stripComments(section)).toMatch(/LETTER_MOTOR_PATTERN_CAPTION/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 25. Outside-reference-range wording, and scoped banned-vocabulary checks
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('outside-reference-range presentation', () => {
+  const cardFn = slice(screen, 'function LetterMotorDevelopmentCard(', 'const f11 = StyleSheet.create');
+
+  it('renders the approved heading and supporting text', () => {
+    expect(cardFn).toContain('Letter motor pattern not reported');
+    expect(cardFn).toMatch(/falls outside the range represented by the/);
+    expect(cardFn).toMatch(/so the system did not assign a motor pattern/);
+  });
+
+  it('never shows a pattern label in the not-reported branch', () => {
+    const branch = slice(cardFn, 'if (fullCoverageWithoutPattern) {', 'return (\n    <SectionCard title="Letter Motor Patterns"');
+    expect(stripComments(branch)).not.toMatch(/patternLabel|Pattern A|Pattern B/);
+  });
+
+  // Scoped deliberately: model status is permitted in metadata and in the
+  // collapsible technical-details panel, but never in main teacher-facing text.
+  it('main teacher-facing strings carry no banned vocabulary', () => {
+    const visible = (stripComments(cardFn).match(/(?:>|["'`])\s*[A-Z][^<>{}"'`]{12,}/g) ?? []).join(' ');
+    expect(visible).not.toMatch(/\b(experimental|pilot|abnormal|anomaly|impaired|severe|risk|confidence|probability)\b/i);
+  });
+
+  it('technical details remain available for model status', () => {
+    expect(cardFn).toContain('Technical details');
+  });
+});
+
+describe('child-facing screens never display L2 output or the baseline summary', () => {
+  const childScreens = [
+    '../screens/handwriting/LetterHomeScreen.js',
+    '../screens/handwriting/AssessmentCompleteScreen.js',
+  ];
+
+  it.each(childScreens)('%s contains no cluster/profile/baseline-summary output', (relPath) => {
+    const abs = path.resolve(__dirname, relPath);
+    if (!fs.existsSync(abs)) return; // never assert against a file that does not exist
+    const code = stripComments(fs.readFileSync(abs, 'utf8'));
+    expect(code).not.toMatch(/motorClusterProfile|fetchMotorClusterProfile|MOTOR_CLUSTER/);
+    expect(code).not.toMatch(/Profile A|Profile B|Distinct Motor Profile|PROFILE_/);
+    expect(code).not.toMatch(/InitialMotorBaselineSummaryCard|Initial Motor Baseline Summary|Initial Handwriting Skills Summary/);
+    expect(code).not.toMatch(/relative_summary|tie_groups/);
+    // No letter-motor pattern information may reach a child screen either.
+    expect(code).not.toMatch(/Letter Motor Pattern|patternLabel|LETTER_STATE_|outside_reference_range|not reported/);
   });
 });

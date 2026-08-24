@@ -6,31 +6,68 @@
  * letter-motor-evidence-trend). Mirrors this project's established "thin,
  * impure fetch wrapper + pure normalization + never throws" contract.
  *
- * Also the single source of research-safe teacher-facing labels (spec
- * §6/§9/§10/§11/§12) — MILESTONE_LABELS and METRIC_LABELS — so
- * TeacherReportScreen.js never hardcodes a milestone/metric string inline,
- * and a label can never silently drift out of sync between the coverage
- * card and the history list.
+ * Also the single source of research-safe teacher-facing labels —
+ * LETTER_MOTOR_PATTERN_LABELS, MILESTONE_LABELS and METRIC_LABELS — so
+ * TeacherReportScreen.js never hardcodes a pattern/milestone/metric string
+ * inline, and a label can never silently drift out of sync between the
+ * current-pattern banner, the history list and the exported report.
  *
- * State A/B is never translated to good/bad/high/low anywhere in this
- * file — the backend's own state_code/display_name pass through verbatim.
+ * A pattern label is never translated to good/bad/high/low anywhere in this
+ * file. Visible labels are derived from `state_code` only; the persisted
+ * `display_name` is never surfaced (historical rows carry legacy values that
+ * are intentionally left unmodified).
  */
 
 'use strict';
 
 import client from '../api/client';
 import { ENDPOINTS } from '../constants/api';
+import { getLetterMotorPatternLabel } from './letterMotorPatternLabels';
 
-// ─── Research-safe labels (spec §6/§9/§10) ─────────────────────────────────
-// State A and State B represent different observed handwriting-performance
-// patterns in the pilot model, NOT a ranked severity scale — never map
-// state_code to good/bad/high/low here or anywhere downstream.
+// ─── Teacher-facing pattern labels ─────────────────────────────────────────
+//
+// THE SINGLE SOURCE of every visible A/B pattern label. Teacher-facing
+// surfaces map from `state_code` through getLetterMotorPatternLabel() and
+// must NEVER render the persisted `display_name`: historical rows legitimately
+// contain legacy values ("Letter Motor State A"/"B") which are left untouched
+// by design, so rendering them directly would show two different names for
+// the same thing.
+//
+// Pattern A and Pattern B are nominal categories describing different
+// observed handwriting-performance patterns. Neither represents
+// better/worse, earlier/later, severity, development, progression, or a
+// diagnostic category — never map a state_code to any such language here or
+// anywhere downstream.
+
+// Defined in letterMotorPatternLabels.js — a dependency-free module so the
+// pure PDF builder can share the exact same mapping without importing any
+// RN/api code. Re-exported here so existing callers keep one import site.
+export {
+  LETTER_MOTOR_PATTERN_LABELS,
+  LETTER_MOTOR_PATTERN_FALLBACK,
+  LETTER_MOTOR_PATTERN_CAPTION,
+  getLetterMotorPatternLabel,
+} from './letterMotorPatternLabels';
+
+// ─── Milestone labels ──────────────────────────────────────────────────────
+// Factual curriculum-coverage names only. They describe WHICH reference
+// letters had been mastered when the observation was taken — never a stage
+// the learner has reached, and never an implication that a later milestone
+// is a better result than an earlier one.
 
 export const MILESTONE_LABELS = Object.freeze({
   UPPERCASE_STRAIGHT_14: 'Uppercase Straight',
   UPPERCASE_CURVED_17:   'Uppercase Curved',
   FULL_REFERENCE_20:     'Full Reference',
 });
+
+// Size of the complete reference-letter set. Used ONLY as a presentation
+// signal: at full coverage every milestone's required letters exist, so a
+// still-missing pattern means one could not be assigned rather than that
+// evidence is still being collected. Mirrors the backend's own 20-letter
+// reference set (config/letterMotorReferenceLetters.js) — this constant
+// never drives a milestone decision, which stays entirely server-side.
+export const FULL_REFERENCE_COVERAGE = 20;
 
 export function formatMilestoneLabel(milestone) {
   return MILESTONE_LABELS[milestone] ?? milestone ?? 'Unknown milestone';
@@ -59,7 +96,9 @@ function normalizeStateRow(row) {
     coverageN:         typeof row.coverage_n === 'number' ? row.coverage_n : null,
     observedAt:        row.observed_at ?? null,
     stateCode:         row.state_code ?? null,
-    displayName:       typeof row.display_name === 'string' ? row.display_name : (row.state_code ?? 'Unknown state'),
+    // Visible label derived from state_code ONLY. The persisted
+    // display_name is deliberately not exposed here — see the header.
+    patternLabel:      getLetterMotorPatternLabel(row.state_code),
     smoothnessScore:   typeof row.smoothness_score === 'number' ? row.smoothness_score : null,
     dtwDistance:       typeof row.dtw_distance === 'number' ? row.dtw_distance : null,
     speedCv:           typeof row.speed_cv === 'number' ? row.speed_cv : null,

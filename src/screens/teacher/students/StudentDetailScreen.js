@@ -25,6 +25,10 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 // Teacher Dashboard integration fix — Feature 2's own current family
 // thresholds, never the legacy student.personal_thresholds field.
 import { fetchFamilyThresholds } from '../../../utils/familyThresholds';
+// Read-only EXPLANATION of the current progression decision. Server-derived
+// rule trace is authoritative; when it is unavailable the panel simply does
+// not render. It changes no decision and writes nothing.
+import { fetchThresholdTrace } from '../../../utils/thresholdTrace';
 // Proposal FR-16, Phase 7B — compact "Live Handwriting Session" card, only
 // rendered while the Writing tab is open (spec §14: "most appropriate
 // teacher/student screen", "do not redesign TeacherReport completely").
@@ -56,7 +60,7 @@ function InfoRow({ icon, label, value }) {
 const FAMILY_LABELS = { straight: 'Straight', curved: 'Curved', complex: 'Complex' };
 const FAMILY_ORDER = ['straight', 'curved', 'complex'];
 
-function ThresholdCard({ status, families }) {
+function ThresholdCard({ status, families, trace }) {
   if (status === 'loading') {
     return (
       <Card style={styles.infoCard}>
@@ -108,7 +112,93 @@ function ThresholdCard({ status, families }) {
       <Text style={styles.thresholdHint}>
         Each motor family's target adjusts automatically as the student practices.
       </Text>
+
+      {/* Explanation only — collapsed by default, and absent entirely when the
+          server trace is unavailable. */}
+      {trace?.status === 'found' && <ThresholdWhyPanel families={trace.families} />}
     </Card>
+  );
+}
+
+// ─── "Why this target?" ─────────────────────────────────────────────────────
+//
+// Collapsed by default. Shows only teacher-useful information: the current
+// target, each recent eligible attempt and whether it met the target, the
+// decision, the rule that produced it, and what would satisfy the progression
+// condition. Every string comes from the backend trace verbatim — no wording,
+// decision or counterfactual is re-derived here.
+//
+// Internal identifiers (attempt ids, evidence fingerprints, ThresholdHistory
+// row ids, rule ids) are not present in the payload and are never rendered.
+
+function ThresholdWhyPanel({ families }) {
+  const [open, setOpen] = useState(false);
+  const entries = FAMILY_ORDER.map((f) => [f, families?.[f]]).filter(([, t]) => !!t);
+  if (entries.length === 0) return null;
+
+  return (
+    <View style={styles.whyWrap}>
+      <TouchableOpacity onPress={() => setOpen((o) => !o)} style={styles.whyBtn} activeOpacity={0.7}>
+        <Ionicons name="information-circle" size={15} color={Colors.primary} />
+        <Text style={styles.whyBtnLabel}>Why this target?</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color={Colors.primary} />
+      </TouchableOpacity>
+
+      {open && (
+        <View style={styles.whyPanel}>
+          {entries.map(([family, t]) => (
+            <View key={family} style={styles.whyFamily}>
+              <Text style={styles.whyFamilyTitle}>{FAMILY_LABELS[family]}</Text>
+
+              {t.teacher_override?.protected && (
+                <View style={styles.whyProtected}>
+                  <Ionicons name="lock-closed-outline" size={13} color="#92400E" />
+                  <Text style={styles.whyProtectedText}>
+                    {t.persistence?.note
+                      ?? 'Automatic updating was not applied because the current target is protected by a teacher-defined setting.'}
+                  </Text>
+                </View>
+              )}
+
+              {typeof t.target?.current === 'number' && (
+                <Text style={styles.whyLine}>Current target: {t.target.current}</Text>
+              )}
+
+              {t.evidence_window?.attempts?.length > 0 && (
+                <View style={styles.whyAttempts}>
+                  <Text style={styles.whySubLabel}>Recent eligible attempts</Text>
+                  {t.evidence_window.attempts.map((a, i) => (
+                    <View key={`${family}-${i}`} style={styles.whyAttemptRow}>
+                      <Text style={styles.whyAttemptScore}>{a.score}</Text>
+                      <Text style={a.met_target ? styles.whyMet : styles.whyNotMet}>
+                        {a.met_target ? 'Met target' : 'Did not meet target'}
+                      </Text>
+                    </View>
+                  ))}
+                  <Text style={styles.whyLine}>
+                    {t.evidence_window.met_target_count} of {t.evidence_window.required_count} met the target.
+                  </Text>
+                </View>
+              )}
+
+              {t.explanation?.summary && (
+                <>
+                  <Text style={styles.whySubLabel}>Why</Text>
+                  <Text style={styles.whyLine}>{t.explanation.summary}</Text>
+                </>
+              )}
+
+              {t.explanation?.counterfactual && (
+                <>
+                  <Text style={styles.whySubLabel}>What would satisfy the progression condition</Text>
+                  <Text style={styles.whyLine}>{t.explanation.counterfactual}</Text>
+                </>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -175,6 +265,9 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   // are deliberately distinct so a slow network never flashes "not
   // available yet" before the real values arrive.
   const [familyThresholds, setFamilyThresholds] = useState({ status: 'loading', families: null });
+  // Independent of the threshold load: an explanation failure must never
+  // hide the targets themselves.
+  const [thresholdTrace, setThresholdTrace] = useState({ status: 'loading', families: null });
 
   const fetch = useCallback(async () => {
     if (!initialStudent?.sid) { setRefreshing(false); return; }
@@ -366,7 +459,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
             {/* Writing Standard — Feature 2's current per-family adaptive
                 targets, never the legacy personal_thresholds field. */}
             <SectionHeader icon="speedometer-outline" title="Writing Standard" />
-            <ThresholdCard status={familyThresholds.status} families={familyThresholds.families} />
+            <ThresholdCard status={familyThresholds.status} families={familyThresholds.families} trace={thresholdTrace} />
 
             {/* Handwriting Report */}
             <SectionHeader icon="document-text-outline" title="Handwriting Report" />
@@ -630,6 +723,28 @@ const styles = StyleSheet.create({
   thresholdFamilyValueUnavailable: {
     fontSize: Layout.fontSize.xs, color: Colors.text.muted, fontStyle: 'italic',
   },
+  whyWrap:     { marginTop: 10 },
+  whyBtn:      { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
+  whyBtnLabel: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
+  whyPanel: {
+    marginTop: 8, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12,
+    borderLeftWidth: 3, borderLeftColor: Colors.primary, gap: 12,
+  },
+  whyFamily:      { gap: 3 },
+  whyFamilyTitle: { fontSize: 12, fontWeight: '800', color: Colors.text.primary },
+  whySubLabel:    { fontSize: 9.5, fontWeight: '800', color: Colors.text.muted, textTransform: 'uppercase', marginTop: 4 },
+  whyLine:        { fontSize: 11.5, color: Colors.text.secondary, lineHeight: 17 },
+  whyAttempts:    { gap: 2, marginTop: 2 },
+  whyAttemptRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  whyAttemptScore:{ fontSize: 11.5, fontWeight: '800', color: Colors.text.primary, minWidth: 26 },
+  whyMet:         { fontSize: 11.5, color: Colors.text.primary },
+  whyNotMet:      { fontSize: 11.5, color: Colors.text.muted },
+  whyProtected: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: '#FEF3C7',
+    borderRadius: 10, padding: 9, marginTop: 2, marginBottom: 2,
+  },
+  whyProtectedText: { flex: 1, fontSize: 11, color: '#92400E', lineHeight: 16, fontWeight: '600' },
+
   thresholdHint: {
     fontSize: Layout.fontSize.xs, color: Colors.text.muted,
     paddingHorizontal: Layout.spacing.md, paddingBottom: Layout.spacing.md,

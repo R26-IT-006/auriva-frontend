@@ -46,11 +46,13 @@ describe('research-safe labels', () => {
 });
 
 describe('normalizeLatestStateResponse', () => {
-  it('returns found + fully normalized state, state_code/display_name passed through verbatim', () => {
+  it('returns found + fully normalized state, with the visible label derived from state_code', () => {
     const result = normalizeLatestStateResponse({ status: 'found', result: stateRow() });
     expect(result.status).toBe('found');
     expect(result.state.stateCode).toBe('LETTER_STATE_B');
-    expect(result.state.displayName).toBe('Letter Motor State B');
+    // Visible label comes from state_code, never the persisted display_name.
+    expect(result.state.patternLabel).toBe('Letter Motor Pattern B');
+    expect(result.state.displayName).toBeUndefined();
     expect(result.state.milestoneLabel).toBe('Uppercase Straight');
     expect(result.state.coverageN).toBe(14);
     expect(result.state.smoothnessScore).toBe(72.5);

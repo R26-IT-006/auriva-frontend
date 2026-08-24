@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { fetchWordProgress } from '../../../utils/wordApi';
 import { buildWordRouteParams, getSelectedWords } from '../../../utils/wordWorkflow';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,12 @@ function computeUnlocked() {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function WordLetterSelectScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme } = route.params;
 
   const [wordProgress, setWordProgress] = useState({});

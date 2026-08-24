@@ -40,6 +40,7 @@ import ExerciseB_CircleImage from '../../../components/word/ExerciseB_CircleImag
 import ExerciseC_FillBlank   from '../../../components/word/ExerciseC_FillBlank';
 import ExerciseD_SpellWord   from '../../../components/word/ExerciseD_SpellWord';
 import ExerciseE_WriteWord   from '../../../components/word/ExerciseE_WriteWord';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -70,6 +71,12 @@ const BLANK_STATUS = { A: 'pending', B: 'pending', C: 'pending', D: 'pending', E
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function WordActivityScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme } = route.params;
   const { selectedLetter: letter, selectedWords: letterWords, currentWordIndex: wordIdx, currentWord } = resolveWordSession(route.params);
 

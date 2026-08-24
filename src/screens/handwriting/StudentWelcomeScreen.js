@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/handwriting-avatars/Boba.png'),
@@ -20,6 +21,12 @@ const AVATAR_MAP = {
 };
 
 export default function StudentWelcomeScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme } = route.params;
   const { width, height } = useWindowDimensions();
 

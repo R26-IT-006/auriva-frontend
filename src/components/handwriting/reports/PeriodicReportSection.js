@@ -27,9 +27,17 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import PeriodSelector from './PeriodSelector';
 import { DEFAULT_REPORT_PRESET_KEY } from '../../../constants/reportPeriodPolicy';
-import { resolvePeriodRange, formatPeriodLabel, validateCustomRange } from '../../../utils/reportPeriod';
+import {
+  resolvePeriodRange, formatPeriodLabel, validateCustomRange, startOfTodayUtc, toDateOnly, parseDateOnly,
+} from '../../../utils/reportPeriod';
 import { fetchPeriodicReport } from '../../../api/periodicReport';
 import { exportAndSharePeriodicReportPdf } from '../../../utils/periodicReportPdf';
+import { getLetterMotorPatternLabel, LETTER_MOTOR_PATTERN_CAPTION } from '../../../utils/letterMotorPatternLabels';
+// Plain SVG charts + progress bar, built on react-native-svg (already a
+// dependency, already used by the components/charts modules). No charting
+// library is introduced.
+import { MotorTrendChart, PracticeActivityChart, ProgressBarRow } from './ReportCharts';
+import { buildPeriodSummaryText } from '../../../utils/periodSummaryText';
 
 // Mirrors TeacherReportScreen.js's own tokens for visual consistency —
 // that file does not export them, so they are restated here rather than
@@ -77,8 +85,67 @@ export default function PeriodicReportSection({ student, theme }) {
   // result is ever applied to state.
   const requestIdRef = useRef(0);
 
+  // Custom-range bounds. The earliest selectable day is the day the student
+  // was registered — there is no data before that, so a range starting
+  // earlier can only ever be misleading. The latest is today: the report
+  // describes what has happened, never a future window.
+  //
+  // The student's created_at is present on the object the teacher flow passes
+  // in (teacherService.getOwnStudentById returns the full row). The child-side
+  // flow can reach this screen with a lighter object, so a missing value
+  // falls back to NO lower bound rather than blocking the teacher outright.
+  const registeredOn = parseDateOnly(toDateOnly(student?.created_at));
+  const today = startOfTodayUtc();
+
   const range = resolvePeriodRange(presetKey, customRange);
   const periodLabel = formatPeriodLabel(presetKey, range);
+
+  // Charts size to the card rather than a fixed width, so the section reads
+  // correctly on a tablet in both portrait and landscape. The fallback is only
+  // used for the first frame before onLayout reports a real width.
+  const [chartWidth, setChartWidth] = useState(320);
+  const handleChartLayout = useCallback((event) => {
+    const width = Math.round(event?.nativeEvent?.layout?.width ?? 0);
+    if (width > 0 && width !== chartWidth) setChartWidth(width);
+  }, [chartWidth]);
+
+  // Per-day points behind both charts. Absent on an older server, in which
+  // case each chart renders its own empty state rather than breaking.
+  const dailySeries = report?.motor_performance?.daily_series ?? [];
+
+  // ── Writing Pattern Summary values ──────────────────────────────────────
+  // Three distinct states, deliberately NOT collapsed into two:
+  //   a persisted pattern            -> the mapped Pattern A/B label
+  //   no pattern yet                 -> "Not yet observed"
+  //   evidence rejected by the guard -> "Not reported"
+  // A/B is never forced when the reference-range guard declined to assign one.
+  //
+  // LIMITATION: an outside-reference-range observation is not persisted (the
+  // history table's pattern columns are NOT NULL by design), so the report API
+  // cannot currently distinguish "guard rejected the evidence" from "no
+  // milestone reached yet". This screen therefore reports the honest,
+  // observable state and never guesses. Surfacing the rejected case here needs
+  // the additive ood_* columns described in the OOD guard design.
+  const patternState = report?.letter_motor_development?.state_as_of_end_date ?? null;
+  const patternRejected = patternState?.outside_reference_range === true;
+
+  const patternLabel = patternRejected
+    ? 'Not reported'
+    : (patternState ? getLetterMotorPatternLabel(patternState.state_code) : 'Not yet observed');
+
+  const referenceStatus = patternRejected
+    ? 'Outside represented reference range'
+    : (patternState ? 'Within represented reference range' : 'Not yet observed');
+
+  // Optional completion figure, computed only from values already in the
+  // report — never shown when nothing was practised (0/0 is not 0%).
+  const wordsPractised = report?.word_writing?.words_attempted_during_period ?? 0;
+  const wordsCompleted = report?.word_writing?.words_completed_during_period ?? 0;
+  const wordCompletionPct = wordsPractised > 0
+    ? Math.round((wordsCompleted / wordsPractised) * 100)
+    : null;
+
+  const periodSummary = report ? buildPeriodSummaryText(report) : '';
 
   const loadReport = useCallback(async (studentId, r) => {
     if (!studentId || !r) {
@@ -108,7 +175,7 @@ export default function PeriodicReportSection({ student, theme }) {
   }
 
   function handleApplyCustomRange(candidate) {
-    const validation = validateCustomRange(candidate.startDate, candidate.endDate);
+    const validation = validateCustomRange(candidate.startDate, candidate.endDate, undefined, registeredOn);
     if (!validation.ok) {
       setCustomError(validation.error);
       return;
@@ -151,6 +218,8 @@ export default function PeriodicReportSection({ student, theme }) {
         customRange={customRange}
         onApplyCustomRange={handleApplyCustomRange}
         customError={customError}
+        minDate={registeredOn}
+        maxDate={today}
       />
 
       <Text style={styles.periodLabel}>{periodLabel}</Text>
@@ -176,45 +245,95 @@ export default function PeriodicReportSection({ student, theme }) {
             <Text style={styles.emptyNote}>No handwriting activity was recorded during this period.</Text>
           )}
 
-          <SubCard title="Learning Progress">
-            <KeyValueRow label="Lowercase mastered (this period)" value={report.learning_progress.lowercase_mastered_during_period} />
-            <KeyValueRow label="Uppercase mastered (this period)" value={report.learning_progress.uppercase_mastered_during_period} />
-            <KeyValueRow label="Cumulative lowercase (as of end date)" value={report.learning_progress.cumulative_lowercase_mastered_by_end_date} />
-            <KeyValueRow label="Cumulative uppercase (as of end date)" value={report.learning_progress.cumulative_uppercase_mastered_by_end_date} />
-            <KeyValueRow label="Current stage" value={report.learning_progress.current_progression_stage} />
+          {/* -- 2. Letter Learning Progress -- */}
+          {/* Counts against the alphabet size the backend already uses for the
+              practice-level label (learning_progress.lowercase_total /
+              uppercase_total) -- never a second hardcoded 26 here. The bars are
+              a count against a known total and carry no evaluative colouring at
+              any level. */}
+          <SubCard title="Letter Learning Progress">
+            <ProgressBarRow
+              label="Lowercase Letters"
+              value={report.learning_progress.cumulative_lowercase_mastered_by_end_date}
+              total={report.learning_progress.lowercase_total}
+              color={ACCENT}
+            />
+            <ProgressBarRow
+              label="Uppercase Letters"
+              value={report.learning_progress.cumulative_uppercase_mastered_by_end_date}
+              total={report.learning_progress.uppercase_total}
+              color={ACCENT}
+            />
+            <KeyValueRow label="Lowercase Letters Mastered" value={report.learning_progress.lowercase_mastered_during_period} />
+            <KeyValueRow label="Uppercase Letters Mastered" value={report.learning_progress.uppercase_mastered_during_period} />
+            <KeyValueRow label="Total Lowercase Letters Mastered" value={report.learning_progress.cumulative_lowercase_mastered_by_end_date} />
+            <KeyValueRow label="Total Uppercase Letters Mastered" value={report.learning_progress.cumulative_uppercase_mastered_by_end_date} />
+            <KeyValueRow label="Current Practice Level" value={report.learning_progress.current_progression_stage} />
           </SubCard>
 
-          <SubCard title="Motor Performance">
-            <KeyValueRow label="Attempts in period" value={report.motor_performance.attempts_in_period} />
-            <KeyValueRow label="Mean motor score" value={report.motor_performance.mean_motor_score ?? 'Not available'} />
-            <KeyValueRow label="Mean smoothness" value={report.motor_performance.mean_smoothness_score ?? 'Not available'} />
+          {/* -- 3. Handwriting Performance -- */}
+          <SubCard title="Handwriting Performance">
+            <KeyValueRow label="Practice Attempts" value={report.motor_performance.attempts_in_period} />
+            <KeyValueRow label="Average Motor Performance Score" value={report.motor_performance.mean_motor_score ?? 'Not available'} />
+            <KeyValueRow label="Average Writing Smoothness" value={report.motor_performance.mean_smoothness_score ?? 'Not available'} />
           </SubCard>
 
+          {/* -- 4. Motor Performance Over Time -- */}
+          {/* Uses motor_performance.daily_series: a per-day regrouping of the
+              same attempts the averages above are computed from. Days without
+              practice are absent rather than plotted as zero. */}
+          <SubCard title="Motor Performance Over Time">
+            <View onLayout={handleChartLayout}>
+              <MotorTrendChart points={dailySeries} width={chartWidth} color={ACCENT} />
+            </View>
+          </SubCard>
+
+          {/* -- 5. Practice Activity -- */}
+          <SubCard title="Practice Activity">
+            <PracticeActivityChart points={dailySeries} width={chartWidth} color="#0891B2" />
+          </SubCard>
+
+          {/* -- 6. Initial Handwriting Skills Summary -- */}
+          {/* Visible terminology only: the initial_shape_motor_profile response
+              key is deliberately unchanged so the periodic-report JSON contract
+              is not broken. The data source is, and always was,
+              StudentMotorBaseline directly (no ML call). */}
           <SubCard
-            title="Initial Shape Motor Profile"
+            title="Initial Handwriting Skills Summary"
             note={report.initial_shape_motor_profile.available ? 'Baseline context — may predate this period.' : null}
           >
             {report.initial_shape_motor_profile.available ? (
               <KeyValueRow label="Overall score" value={report.initial_shape_motor_profile.scores.overall} />
             ) : (
-              <Text style={styles.note}>No initial motor baseline is recorded.</Text>
+              <Text style={styles.note}>Initial handwriting assessment not yet available.</Text>
             )}
           </SubCard>
 
-          <SubCard title="Letter Motor Development">
-            <KeyValueRow
-              label="State as of end date"
-              value={report.letter_motor_development.state_as_of_end_date?.display_name ?? 'Not yet observed'}
-            />
-            <KeyValueRow label="Milestones during period" value={report.letter_motor_development.milestones_during_period.length} />
+          {/* -- 7. Writing Pattern Summary -- */}
+          {/* Descriptive card ONLY: never a graph, gauge, percentage, bar,
+              ranking or score. The visible label comes from state_code via the
+              shared presentation mapping, never the persisted display_name
+              (legacy values on historical rows are left unmodified). */}
+          <SubCard title="Writing Pattern Summary">
+            <KeyValueRow label="Current Writing Pattern" value={patternLabel} />
+            <KeyValueRow label="Pattern Updates" value={report.letter_motor_development.milestones_during_period.length} />
+            <KeyValueRow label="Reference Status" value={referenceStatus} />
+            <Text style={styles.note}>{LETTER_MOTOR_PATTERN_CAPTION}</Text>
           </SubCard>
 
-          <SubCard title="Word Writing">
-            <KeyValueRow label="Words attempted (this period)" value={report.word_writing.words_attempted_during_period} />
-            <KeyValueRow label="Words completed (this period)" value={report.word_writing.words_completed_during_period} />
+          {/* -- 8. Word Writing Progress -- */}
+          <SubCard title="Word Writing Progress">
+            <KeyValueRow label="Words Practiced" value={report.word_writing.words_attempted_during_period} />
+            <KeyValueRow label="Words Completed" value={report.word_writing.words_completed_during_period} />
+            {wordCompletionPct != null && (
+              <KeyValueRow label="Completion" value={`${wordCompletionPct}%`} />
+            )}
           </SubCard>
 
-          <Text style={styles.summaryText}>{report.summary_text}</Text>
+          {/* -- 9. Period Summary -- */}
+          <SubCard title="Period Summary">
+            <Text style={styles.summaryText}>{periodSummary}</Text>
+          </SubCard>
 
           <TouchableOpacity
             style={styles.exportBtn}

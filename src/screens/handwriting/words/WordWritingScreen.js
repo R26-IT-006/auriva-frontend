@@ -36,6 +36,7 @@ import { useLearningSessionActivity } from '../../../context/LearningSessionCont
 import { LIVE_ACTIVITY_TYPES } from '../../../constants/liveSessionPolicy';
 import { buildProgressPatch, buildScorePatch } from '../../../utils/liveSessionSnapshot';
 import BreakPromptModal from '../../../components/handwriting/BreakPromptModal';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
@@ -137,6 +138,12 @@ const TRACER_PX_PER_MS = 0.16;
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function WordWritingScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme } = route.params;
   const { selectedLetter, selectedWords, currentWordIndex, currentWord: wordEntry } = resolveWordSession(route.params);
 

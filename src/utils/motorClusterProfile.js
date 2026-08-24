@@ -1,6 +1,16 @@
 /**
  * motorClusterProfile.js
  *
+ * Legacy experimental L2 shape-motor clustering. Retained for
+ * research/reference compatibility only. It is not used by the current
+ * teacher-facing baseline summary and does not influence adaptive
+ * progression.
+ *
+ * NO ACTIVE CALLER: TeacherReportScreen now renders the deterministic
+ * Initial Motor Baseline Summary from utils/motorBaseline.js instead. This
+ * module and its endpoint are left in place, unchanged, so the legacy
+ * prediction stays available for research/legacy inspection.
+ *
  * Feature 11 Phase 6 — fetch wrapper for Feature 11A's INITIAL motor-cluster
  * prediction (GET /handwriting/motor-cluster/:studentId, motor_cluster_v1).
  * Mirrors this project's established "thin, impure fetch wrapper + pure

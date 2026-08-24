@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+// Locks this screen to portrait while focused; releases on blur.
+import { useLockPortrait } from '../../../utils/useOrientationLock';
 import Svg, { Path, Line, Circle, Polyline, Text as SvgText, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { getSessionProgress, getAssessmentSnapshot, getSessionDurationMinutes } from '../../../constants/sessionProgress';
@@ -53,13 +55,24 @@ import ActivityPreview from '../../../components/handwriting/ActivityPreview';
 // same "one UUID per user action" pattern (collectionSession.js,
 // preWritingSessionGuard.js) — no new dependency added.
 import { generateUuidV4 } from '../../../utils/uuid';
-// Feature 11 Phase 6 — Teacher Report presentation for Feature 11A (Initial
-// Shape Motor Profile) and Feature 11B (Letter Motor Development). Both are
-// strictly read-only, independently loaded/failed (spec §15) — see each
-// util's own header for the full research-safe-terminology contract.
-import { fetchMotorClusterProfile } from '../../../utils/motorClusterProfile';
+// Initial Motor Baseline Summary — deterministic, no ML. Reads the existing
+// persisted Feature 1 baseline endpoint and renders the backend's summary of
+// the four authoritative scores.
+//
+// The legacy experimental L2 shape-motor clustering
+// (utils/motorClusterProfile.js -> GET /handwriting/motor-cluster/:studentId)
+// is retained in the repository for research/reference compatibility only.
+// It is not used by the current teacher-facing baseline summary and does not
+// influence adaptive progression — this screen deliberately does not import
+// or call it.
+import { fetchMotorBaseline } from '../../../utils/motorBaseline';
+// Feature 11 Phase 6 — Teacher Report presentation for Feature 11B (Letter
+// Motor Development). Strictly read-only, independently loaded/failed
+// (spec §15) — see the util's own header for the full research-safe-
+// terminology contract.
 import {
   fetchLatestLetterMotorState, fetchLetterMotorStateHistory, fetchLetterMotorEvidenceTrend, METRIC_LABELS,
+  LETTER_MOTOR_PATTERN_CAPTION, FULL_REFERENCE_COVERAGE,
 } from '../../../utils/letterMotorState';
 // Proposal FR-19/FR-20, Phase 7C/7D — periodic report (flexible date
 // ranges) + real PDF export/share. Additive section only — every existing
@@ -288,6 +301,14 @@ const em = StyleSheet.create({
 export default function TeacherReportScreen({ route, navigation }) {
   const { student, theme } = route.params;
 
+  // The child-facing writing activities are used in landscape; this report is
+  // a long, dense, scrolling document that reads far better in portrait.
+  // Locked on focus and released on blur, so no other screen is affected —
+  // see utils/useLockPortrait.js for the release semantics. Applied here in
+  // the SCREEN rather than in a navigator because this component is
+  // registered under two different route names in two different navigators.
+  useLockPortrait();
+
   const [loading,  setLoading]  = useState(true);
   const [report,   setReport]   = useState(null);
   const [duration, setDuration] = useState(0);
@@ -456,19 +477,26 @@ export default function TeacherReportScreen({ route, navigation }) {
     }, [student])
   );
 
-  // ── Feature 11A — Initial Shape Motor Profile ─────────────────────────────
+  // ── Initial Motor Baseline Summary ────────────────────────────────────────
+  // Reads the SAME persisted Feature 1 baseline endpoint the app already
+  // uses (GET /handwriting/motor-baseline/:studentId) and renders the
+  // backend's deterministic summary of the four authoritative scores. No ML
+  // call, no clustering: the legacy experimental L2 shape-motor clustering
+  // is retained in the repository for research/reference compatibility only
+  // and is deliberately NOT fetched here.
+  //
   // Completely independent of the main report load and of Feature 11B below
   // (spec §15: "One Feature failing must not hide the other") — its own
   // state, its own loading indicator, same stale-response `active` guard.
-  // Strictly read-only: fetchMotorClusterProfile only ever GETs.
-  const [motorClusterProfile, setMotorClusterProfile] = useState({ status: 'loading', profile: null, debug: null });
+  // Strictly read-only: fetchMotorBaseline only ever GETs.
+  const [motorBaseline, setMotorBaseline] = useState({ status: 'loading', baseline: null, summary: null });
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setMotorClusterProfile({ status: 'loading', profile: null, debug: null });
-      fetchMotorClusterProfile(student?.sid).then((result) => {
-        if (active) setMotorClusterProfile(result);
+      setMotorBaseline({ status: 'loading', baseline: null, summary: null });
+      fetchMotorBaseline({ studentId: student?.sid }).then((result) => {
+        if (active) setMotorBaseline(result);
       });
       return () => { active = false; };
     }, [student])
@@ -683,8 +711,8 @@ export default function TeacherReportScreen({ route, navigation }) {
               )}
             </SectionCard>
 
-            {/* ══ Feature 11A — Initial Shape Motor Profile ════════════════ */}
-            <MotorClusterProfileCard result={motorClusterProfile} />
+            {/* ══ Initial Motor Baseline Summary ═══════════════════════════ */}
+            <InitialMotorBaselineSummaryCard result={motorBaseline} />
 
             {/* ══ Feature 11B — Letter Motor Development ═══════════════════ */}
             <LetterMotorDevelopmentCard
@@ -1569,10 +1597,15 @@ function MotorDifficultyCard({ analysis }) {
               <Text style={[mda.bannerTitle, { color }]}>{analysis.difficulty}</Text>
               <Text style={mda.bannerDesc}>{analysis.description}</Text>
             </View>
+            {/* This number is a weighted sum of how far the configured rule
+                conditions were exceeded — NOT a probability, a likelihood or
+                a percentage of anything. It is therefore shown as a bare
+                value with an "Activation" label: never a "%" and never the
+                word "match" or "confidence". */}
             {analysis.confidence != null && (
               <View style={[mda.confBadge, { backgroundColor: color + '18' }]}>
-                <Text style={[mda.confNum, { color }]}>{analysis.confidence}%</Text>
-                <Text style={[mda.confLabel, { color }]}>match</Text>
+                <Text style={[mda.confNum, { color }]}>{analysis.confidence}</Text>
+                <Text style={[mda.confLabel, { color }]}>Activation</Text>
               </View>
             )}
           </View>
@@ -1582,7 +1615,7 @@ function MotorDifficultyCard({ analysis }) {
             <View style={mda.secondary}>
               <Ionicons name="git-branch-outline" size={12} color={TEXT_3} />
               <Text style={mda.secondaryText}>
-                Also present: {analysis.secondaryDifficulty.label} ({analysis.secondaryDifficulty.confidence}%)
+                Also present: {analysis.secondaryDifficulty.label} (rule activation {analysis.secondaryDifficulty.confidence})
               </Text>
             </View>
           )}
@@ -1606,6 +1639,14 @@ function MotorDifficultyCard({ analysis }) {
                 </View>
               ))}
             </View>
+          )}
+
+          {/* Rule condition trace — server-derived, collapsed by default.
+              Renders ONLY when the backend supplied conditionTraces; the
+              local offline engine does not produce them (see thresholdTrace.js
+              header), in which case the panel is simply absent. */}
+          {analysis.conditionTraces?.length > 0 && (
+            <ConditionTracePanel traces={analysis.conditionTraces} />
           )}
 
           {/* Letter focus */}
@@ -1664,7 +1705,7 @@ const mda = StyleSheet.create({
   bannerIcon:  { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   bannerTitle: { fontSize: 15, fontWeight: '900', marginBottom: 3 },
   bannerDesc:  { fontSize: 12, color: TEXT_2, lineHeight: 18 },
-  confBadge:   { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minWidth: 52 },
+  confBadge:   { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minWidth: 62 },
   confNum:     { fontSize: 20, fontWeight: '900' },
   confLabel:   { fontSize: 9, fontWeight: '700', opacity: 0.8 },
 
@@ -1694,16 +1735,204 @@ const mda = StyleSheet.create({
   exPillText: { fontSize: 10, fontWeight: '800' },
 });
 
-// ─── Feature 11A — Initial Shape Motor Profile ─────────────────────────────
+// ─── Rule condition trace ("Why this recommendation?") ─────────────────────
 //
-// Read-only presentation of GET /handwriting/motor-cluster/:studentId
-// (motor_cluster_v1). Shows only display_name/description — never a raw
-// cluster ID in the main card (spec §5) — behind an optional WhyPanel
-// technical-details toggle, the same expand/collapse pattern already used
-// by MotorDifficultyCard's exercises above. Never renamed to
-// good/bad/high/low language (spec §5) — display_name/description are
-// rendered verbatim from the backend.
+// Collapsed by default; the concise "Why was this detected?" list above stays
+// the primary explanation. Shows the rule's own conditions — satisfied AND
+// unsatisfied — with the observed value and the threshold each one compares
+// against, so a teacher can see exactly why a factor did or did not count.
+//
+// Server-derived rule trace is authoritative. Internal identifiers
+// (condition_id, rule_id) are deliberately NOT rendered. No ML/XAI attribution
+// terminology, no probability or confidence wording.
 
+function ConditionTracePanel({ traces }) {
+  const [open, setOpen] = useState(false);
+  if (!traces || traces.length === 0) return null;
+
+  return (
+    <View style={ct.wrap}>
+      <TouchableOpacity onPress={() => setOpen(o => !o)} style={ct.btn} activeOpacity={0.7}>
+        <Ionicons name="information-circle" size={15} color="#6366F1" />
+        <Text style={ct.btnLabel}>Why this recommendation?</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color="#6366F1" />
+      </TouchableOpacity>
+
+      {open && (
+        <View style={ct.panel}>
+          <View style={[ct.row, ct.headRow]}>
+            <Text style={[ct.cellFactor, ct.headText]}>Factor</Text>
+            <Text style={[ct.cellNum, ct.headText]}>Observed</Text>
+            <Text style={[ct.cellNum, ct.headText]}>Rule threshold</Text>
+            <Text style={[ct.cellMet, ct.headText]}>Condition met?</Text>
+          </View>
+
+          {traces.map(t => (
+            <View key={t.condition_id ?? t.feature} style={ct.row}>
+              <Text style={ct.cellFactor}>{t.feature_label}</Text>
+              <Text style={ct.cellNum}>{t.observed_value ?? '—'}</Text>
+              <Text style={ct.cellNum}>Above {t.threshold}</Text>
+              <Text style={[ct.cellMet, t.satisfied ? ct.metYes : ct.metNo]}>
+                {t.satisfied ? 'Yes' : 'No'}
+              </Text>
+            </View>
+          ))}
+
+          {traces.filter(t => !t.satisfied).map(t => (
+            <Text key={`x-${t.condition_id ?? t.feature}`} style={ct.note}>
+              {t.feature_label} was {t.observed_value ?? '—'}. This rule condition contributes only
+              when the value is above {t.threshold}.
+            </Text>
+          ))}
+
+          <Text style={ct.disclosure}>
+            This summarizes how strongly the configured rule conditions were activated.
+            It is not a probability.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const ct = StyleSheet.create({
+  wrap:     { marginTop: 4 },
+  btn:      { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
+  btnLabel: { fontSize: 12, color: '#6366F1', fontWeight: '700' },
+  panel: {
+    marginTop: 8, backgroundColor: '#EEF2FF', borderRadius: 12,
+    padding: 12, borderLeftWidth: 3, borderLeftColor: '#6366F1', gap: 6,
+  },
+  row:        { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headRow:    { borderBottomWidth: 1, borderBottomColor: '#C7D2FE', paddingBottom: 5, marginBottom: 2 },
+  headText:   { fontSize: 9.5, fontWeight: '800', color: '#4338CA', textTransform: 'uppercase' },
+  cellFactor: { flex: 2.2, fontSize: 11.5, color: TEXT_1, fontWeight: '600' },
+  cellNum:    { flex: 1.3, fontSize: 11.5, color: TEXT_2, textAlign: 'right' },
+  cellMet:    { flex: 1.2, fontSize: 11.5, textAlign: 'right', fontWeight: '700' },
+  metYes:     { color: TEXT_1 },
+  metNo:      { color: TEXT_3 },
+  note:       { fontSize: 11, color: TEXT_2, lineHeight: 16, marginTop: 2 },
+  disclosure: { fontSize: 10, color: TEXT_3, lineHeight: 14, fontStyle: 'italic', marginTop: 4 },
+});
+
+// ─── Initial Motor Baseline Summary ────────────────────────────────────────
+//
+// Read-only presentation of GET /handwriting/motor-baseline/:studentId. The
+// card prioritises the actual measured values — overall score first, then
+// the three movement-family scores — followed by the backend's neutral,
+// deterministic within-learner summary sentence and its disclosure.
+//
+// No ML and no clustering is involved: the legacy experimental L2
+// shape-motor clustering is retained in the repository for
+// research/reference compatibility only, is not used here, and does not
+// influence adaptive progression. Nothing on this card may show a cluster
+// id, centroid distance, Profile A/B, "Distinct Motor Profile", a
+// probability, or a confidence figure.
+//
+// `description`/`disclosure` are rendered verbatim from the backend so the
+// in-app wording and the exported report can never drift apart, and so the
+// neutral-language rules live in exactly one place
+// (auriva-backend/src/utils/initialMotorBaselineSummary.js).
+
+const FAMILY_ROW_LABELS = [
+  ['straight', 'Straight'],
+  ['curved',   'Curved'],
+  ['complex',  'Complex'],
+];
+
+function formatScore(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : '—';
+}
+
+function InitialMotorBaselineSummaryCard({ result }) {
+  const { status, baseline, summary } = result;
+
+  // Visible title only — aligned with the Periodic Report's own "Initial
+  // Handwriting Skills Summary" card so the same screen does not show two
+  // different names for baseline data. The component name, state, endpoint,
+  // response keys and the internal Motor Score vocabulary are deliberately
+  // unchanged.
+  return (
+    <SectionCard title="Initial Handwriting Skills Summary" icon="body" accentColor="#7C3AED">
+      {status === 'loading' ? (
+        <View style={f11.loadingRow}>
+          <ActivityIndicator size="small" color="#7C3AED" />
+          <Text style={f11.loadingText}>Loading initial motor baseline…</Text>
+        </View>
+      ) : status === 'baseline_not_found' ? (
+        <Empty message="Complete the initial motor assessment to see the baseline summary" />
+      ) : status !== 'found' || !baseline ? (
+        <Empty message="Initial motor baseline is temporarily unavailable" />
+      ) : (
+        <View style={{ gap: 14 }}>
+          <View style={imb.overallRow}>
+            <Text style={imb.overallLabel}>Overall Motor Score</Text>
+            <Text style={imb.overallValue}>{formatScore(baseline.overall)}</Text>
+          </View>
+
+          <View>
+            <Text style={mda.sectionLabel}>Movement-family baseline</Text>
+            <View style={{ gap: 6 }}>
+              {FAMILY_ROW_LABELS.map(([key, label]) => (
+                <View key={key} style={imb.familyRow}>
+                  <Text style={imb.familyLabel}>{label}</Text>
+                  <Text style={imb.familyValue}>{formatScore(baseline[key])}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {summary?.description ? (
+            <View>
+              <Text style={mda.sectionLabel}>Summary</Text>
+              <Text style={imb.summaryText}>{summary.description}</Text>
+            </View>
+          ) : null}
+
+          <Text style={imb.disclosure}>
+            {summary?.disclosure
+              ?? 'These values summarize performance during the initial motor assessment and are '
+                 + 'intended for educational monitoring. They are not diagnostic or ASD-severity measures.'}
+          </Text>
+        </View>
+      )}
+    </SectionCard>
+  );
+}
+
+const imb = StyleSheet.create({
+  overallRow: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+    backgroundColor: '#F5F3FF', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: '#7C3AED30',
+  },
+  overallLabel: { fontSize: 12.5, fontWeight: '800', color: '#5B21B6' },
+  overallValue: { fontSize: 24, fontWeight: '900', color: '#5B21B6' },
+
+  familyRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9,
+  },
+  familyLabel: { fontSize: 12.5, fontWeight: '700', color: TEXT_1 },
+  familyValue: { fontSize: 15, fontWeight: '800', color: TEXT_1 },
+
+  summaryText: { fontSize: 12.5, color: TEXT_2, lineHeight: 19 },
+  disclosure:  { fontSize: 10.5, color: TEXT_3, lineHeight: 15, fontStyle: 'italic' },
+});
+
+// ─── Feature 11B technical-details helper ──────────────────────────────────
+//
+// Technical-details text for the Feature 11B (L3) letter-motor state card.
+// Kept UNCHANGED — it was originally written for the retired Feature 11A
+// card and is shared by Feature 11B, which is explicitly out of scope for
+// the baseline-summary change. Feature 11B still passes its own
+// modelVersion + geometric debug values through it; the profileCode branch
+// is simply never taken from that call site.
+//
+// Deliberately defined ABOVE the Feature 11B section header below so the
+// existing Feature 11B source-text guarantees (which assert that the 11B
+// card's own code never contains the word "confidence") keep measuring the
+// card itself, exactly as they did before this refactor.
 function buildMotorClusterDebugText(profile, debug) {
   if (!profile && !debug) return null;
   const lines = [];
@@ -1715,37 +1944,6 @@ function buildMotorClusterDebugText(profile, debug) {
   if (debug?.separationMargin != null) lines.push(`Separation margin: ${debug.separationMargin.toFixed(3)}`);
   lines.push('These are geometric distances in the model\'s feature space — not a confidence, accuracy, or probability score.');
   return lines.join('\n');
-}
-
-function MotorClusterProfileCard({ result }) {
-  const { status, profile, debug } = result;
-  return (
-    <SectionCard title="Initial Shape Motor Profile" icon="body" accentColor="#7C3AED">
-      {status === 'loading' ? (
-        <View style={f11.loadingRow}>
-          <ActivityIndicator size="small" color="#7C3AED" />
-          <Text style={f11.loadingText}>Loading initial shape profile…</Text>
-        </View>
-      ) : status === 'not_found' ? (
-        <Empty message="Complete the initial shape assessment to see the motor profile" />
-      ) : status === 'unavailable' ? (
-        <Empty message="Motor profile is temporarily unavailable" />
-      ) : (
-        <View style={{ gap: 4 }}>
-          <View style={[mda.banner, { backgroundColor: '#F5F3FF', borderColor: '#7C3AED40' }]}>
-            <View style={[mda.bannerIcon, { backgroundColor: '#7C3AED20' }]}>
-              <Ionicons name="body-outline" size={20} color="#7C3AED" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[mda.bannerTitle, { color: '#7C3AED' }]}>{profile.displayName}</Text>
-              <Text style={mda.bannerDesc}>{profile.description}</Text>
-            </View>
-          </View>
-          <WhyPanel label="Technical details" explanation={buildMotorClusterDebugText(profile, debug)} />
-        </View>
-      )}
-    </SectionCard>
-  );
 }
 
 // ─── Feature 11B — Letter Motor Development ────────────────────────────────
@@ -1794,7 +1992,7 @@ function LetterMotorHistoryList({ history }) {
         <View key={row.id ?? row.milestone} style={f11.historyRow}>
           <View style={{ flex: 1 }}>
             <Text style={f11.historyMilestone}>{row.milestoneLabel}</Text>
-            <Text style={f11.historyMeta}>{row.coverageN} / 20 · {row.displayName}</Text>
+            <Text style={f11.historyMeta}>{row.coverageN} / 20 · {row.patternLabel}</Text>
           </View>
           <Text style={f11.historyDate}>{formatReviewDate(row.observedAt) || '—'}</Text>
         </View>
@@ -1808,10 +2006,10 @@ function LetterMotorDevelopmentCard({ latest, history, trend }) {
 
   if (anyLoading) {
     return (
-      <SectionCard title="Letter Motor Development" icon="trending-up" accentColor="#0891B2">
+      <SectionCard title="Letter Motor Patterns" icon="trending-up" accentColor="#0891B2">
         <View style={f11.loadingRow}>
           <ActivityIndicator size="small" color="#0891B2" />
-          <Text style={f11.loadingText}>Loading letter motor development…</Text>
+          <Text style={f11.loadingText}>Loading letter motor patterns…</Text>
         </View>
       </SectionCard>
     );
@@ -1819,8 +2017,8 @@ function LetterMotorDevelopmentCard({ latest, history, trend }) {
 
   if (latest.status === 'unavailable') {
     return (
-      <SectionCard title="Letter Motor Development" icon="trending-up" accentColor="#0891B2">
-        <Empty message="Letter motor development data is temporarily unavailable" />
+      <SectionCard title="Letter Motor Patterns" icon="trending-up" accentColor="#0891B2">
+        <Empty message="Letter motor pattern data is temporarily unavailable" />
       </SectionCard>
     );
   }
@@ -1829,20 +2027,24 @@ function LetterMotorDevelopmentCard({ latest, history, trend }) {
   if (latest.status === 'found') {
     const currentState = latest.state;
     return (
-      <SectionCard title="Letter Motor Development" icon="trending-up" accentColor="#0891B2">
+      <SectionCard title="Letter Motor Patterns" icon="trending-up" accentColor="#0891B2">
         <View style={{ gap: 14 }}>
           <View style={[mda.banner, { backgroundColor: '#ECFEFF', borderColor: '#0891B240' }]}>
             <View style={[mda.bannerIcon, { backgroundColor: '#0891B220' }]}>
               <Ionicons name="trending-up-outline" size={20} color="#0891B2" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={f11.currentLabel}>Current Letter Motor State</Text>
-              <Text style={[mda.bannerTitle, { color: '#0891B2' }]}>{currentState.displayName}</Text>
+              <Text style={f11.currentLabel}>Current Letter Motor Pattern</Text>
+              <Text style={[mda.bannerTitle, { color: '#0891B2' }]}>{currentState.patternLabel}</Text>
               <Text style={mda.bannerDesc}>
                 Milestone: {currentState.milestoneLabel} · Last updated {formatReviewDate(currentState.observedAt) || '—'}
               </Text>
             </View>
           </View>
+
+          {/* Always rendered next to a pattern label so the label can never
+              be read as a ranking, a severity level or a stage. */}
+          <Text style={f11.patternCaption}>{LETTER_MOTOR_PATTERN_CAPTION}</Text>
 
           <CoverageBadge coverageN={currentState.coverageN} />
 
@@ -1865,10 +2067,55 @@ function LetterMotorDevelopmentCard({ latest, history, trend }) {
     );
   }
 
-  // latest.status === 'not_found' — evidence is still accumulating (3/7/10,
-  // or nothing yet). NEVER shows State A/B here.
+  // latest.status === 'not_found' — no pattern is persisted. Two distinct
+  // situations, distinguished ONLY by evidence coverage (no new column, no
+  // migration):
+  //
+  //   coverage < 20  -> evidence is still accumulating (3/7/10/14/17). This
+  //                     is the normal pre-milestone state.
+  //   coverage = 20  -> the full reference set is complete, so every
+  //                     milestone's required letters exist, yet no pattern
+  //                     was recorded. The reference-range guard declined to
+  //                     assign one.
+  //
+  // The 20/20 trigger is deliberately conservative: below it, a missing
+  // pattern could simply mean the specific required letters for a milestone
+  // are not all present yet, so claiming "outside the reference range"
+  // there would be wrong.
+  //
+  // NEVER shows a pattern label in either branch.
+  const fullCoverageWithoutPattern = (trend.coverageN ?? 0) >= FULL_REFERENCE_COVERAGE;
+
+  if (fullCoverageWithoutPattern) {
+    return (
+      <SectionCard title="Letter Motor Patterns" icon="trending-up" accentColor="#0891B2">
+        <View style={{ gap: 14 }}>
+          <View style={f11.notReportedBanner}>
+            <Ionicons name="remove-circle-outline" size={18} color={TEXT_3} />
+            <View style={{ flex: 1 }}>
+              <Text style={f11.notReportedTitle}>Letter motor pattern not reported</Text>
+              <Text style={f11.notReportedText}>
+                The current handwriting evidence falls outside the range represented by the
+                reference data, so the system did not assign a motor pattern.
+              </Text>
+            </View>
+          </View>
+
+          <CoverageBadge coverageN={trend.coverageN} />
+
+          <View>
+            <Text style={mda.sectionLabel}>Current Cumulative Trends</Text>
+            <LetterMotorMetricTiles smoothness={trend.meanSmoothness} dtw={trend.meanDtw} speedCv={trend.meanSpeedCv} />
+          </View>
+
+          <LetterMotorHistoryList history={history.history} />
+        </View>
+      </SectionCard>
+    );
+  }
+
   return (
-    <SectionCard title="Letter Motor Development" icon="trending-up" accentColor="#0891B2">
+    <SectionCard title="Letter Motor Patterns" icon="trending-up" accentColor="#0891B2">
       <View style={{ gap: 14 }}>
         <View style={f11.accumulatingBanner}>
           <Ionicons name="hourglass-outline" size={18} color="#0891B2" />
@@ -1917,6 +2164,15 @@ const f11 = StyleSheet.create({
   historyMilestone: { fontSize: 12.5, fontWeight: '800', color: TEXT_1 },
   historyMeta:       { fontSize: 11, color: TEXT_2, marginTop: 1 },
   historyDate:       { fontSize: 11, color: TEXT_3, fontWeight: '600' },
+
+  patternCaption: { fontSize: 10.5, color: TEXT_3, lineHeight: 15, fontStyle: 'italic' },
+
+  notReportedBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#CBD5E1',
+  },
+  notReportedTitle: { fontSize: 13, fontWeight: '800', color: TEXT_1 },
+  notReportedText:  { fontSize: 12, color: TEXT_2, lineHeight: 18, marginTop: 2 },
 });
 
 // ─── Motor Pattern Progress row ──────────────────────────────────────────────

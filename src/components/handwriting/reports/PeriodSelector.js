@@ -2,20 +2,31 @@
  * PeriodSelector.js
  *
  * Proposal FR-19, Phase 7C — teacher-facing period selector (spec §14).
- * Plain TextInput fields for Custom (YYYY-MM-DD) — no third-party
- * date-picker dependency, matching this project's existing "simple,
- * reliable, project-convention" preference.
+ *
+ * The Custom fields open a native date picker (ReportDateField) rather than
+ * accepting free-typed text, and are bounded: the earliest selectable day is
+ * the student's registration date and the latest is today. Out-of-range days
+ * are unselectable in the picker itself, so a teacher cannot construct a
+ * range covering days before the student existed or days in the future.
+ *
+ * The bounds are a UI affordance, not the authority — utils/reportPeriod.js
+ * re-validates them, and the server remains the sole authority (spec §3).
  */
 
 'use strict';
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { REPORT_PERIOD_PRESETS } from '../../../constants/reportPeriodPolicy';
+import ReportDateField from './ReportDateField';
+import { parseDateOnly } from '../../../utils/reportPeriod';
 
 const ACCENT = '#6366F1';
 
-export default function PeriodSelector({ presetKey, onSelectPreset, customRange, onApplyCustomRange, customError }) {
+export default function PeriodSelector({
+  presetKey, onSelectPreset, customRange, onApplyCustomRange, customError,
+  minDate, maxDate,
+}) {
   const [draftStart, setDraftStart] = useState(customRange?.startDate ?? '');
   const [draftEnd, setDraftEnd] = useState(customRange?.endDate ?? '');
 
@@ -43,30 +54,25 @@ export default function PeriodSelector({ presetKey, onSelectPreset, customRange,
       {presetKey === 'custom' && (
         <View style={styles.customBlock}>
           <View style={styles.customRow}>
-            <View style={styles.customField}>
-              <Text style={styles.customLabel}>Start Date</Text>
-              <TextInput
-                style={styles.customInput}
-                value={draftStart}
-                onChangeText={setDraftStart}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#B8BCC8"
-                autoCapitalize="none"
-                accessibilityLabel="Custom period start date"
-              />
-            </View>
-            <View style={styles.customField}>
-              <Text style={styles.customLabel}>End Date</Text>
-              <TextInput
-                style={styles.customInput}
-                value={draftEnd}
-                onChangeText={setDraftEnd}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#B8BCC8"
-                autoCapitalize="none"
-                accessibilityLabel="Custom period end date"
-              />
-            </View>
+            <ReportDateField
+              label="Start Date"
+              value={draftStart}
+              onChange={setDraftStart}
+              minDate={minDate}
+              // The start day can never be after the end day, so the end date
+              // (when already chosen) tightens the start field's own ceiling.
+              maxDate={parseDateOnly(draftEnd) ?? maxDate}
+              accessibilityLabel="Custom period start date"
+            />
+            <ReportDateField
+              label="End Date"
+              value={draftEnd}
+              onChange={setDraftEnd}
+              // Symmetrically, the chosen start day raises the end field's floor.
+              minDate={parseDateOnly(draftStart) ?? minDate}
+              maxDate={maxDate}
+              accessibilityLabel="Custom period end date"
+            />
           </View>
           <TouchableOpacity
             style={styles.applyBtn}
@@ -96,11 +102,6 @@ const styles = StyleSheet.create({
   customBlock: { marginTop: 12 },
   customRow: { flexDirection: 'row', gap: 10 },
   customField: { flex: 1 },
-  customLabel: { fontSize: 11, color: '#5A5F7A', marginBottom: 4, fontWeight: '600' },
-  customInput: {
-    borderWidth: 1, borderColor: '#E2E6F0', borderRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#1A1A2E', backgroundColor: '#FFFFFF',
-  },
   applyBtn: {
     marginTop: 10, alignSelf: 'flex-start', backgroundColor: ACCENT,
     paddingHorizontal: 18, paddingVertical: 9, borderRadius: 10,
