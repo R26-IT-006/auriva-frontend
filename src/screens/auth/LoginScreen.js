@@ -26,6 +26,7 @@ const GREEN_LIGHT = '#E3F5F7';
 
 export default function LoginScreen({ navigation }) {
   const slideAnim    = useRef(new Animated.Value(0)).current;
+  const btnScale     = useRef(new Animated.Value(1)).current;
   const [selectorW, setSelectorW] = useState(0);
   const [role, setRole]           = useState('teacher');
   const [identifier, setIdentifier] = useState('');
@@ -55,6 +56,13 @@ export default function LoginScreen({ navigation }) {
     if (!password) e.password = 'Password cannot be empty.';
     setErrors(e);
     return Object.keys(e).length === 0;
+  }
+
+  function btnPressIn() {
+    Animated.spring(btnScale, { toValue: 0.97, speed: 40, bounciness: 4, useNativeDriver: true }).start();
+  }
+  function btnPressOut() {
+    Animated.spring(btnScale, { toValue: 1, speed: 20, bounciness: 8, useNativeDriver: true }).start();
   }
 
   async function handleLogin() {
@@ -169,25 +177,45 @@ export default function LoginScreen({ navigation }) {
                 </Pressable>
               )}
 
-              {/* Login button */}
-              <TouchableOpacity
-                onPress={handleLogin}
-                disabled={loading}
-                activeOpacity={0.85}
-                style={[styles.loginBtn, loading && { opacity: 0.75 }]}
+              {/* Sign in button — the one primary action on the screen, so it
+                  carries a lift and a press response the other controls don't. */}
+              <Animated.View
+                style={[
+                  styles.loginBtnWrap,
+                  { transform: [{ scale: btnScale }] },
+                  loading && styles.loginBtnWrapBusy,
+                ]}
               >
-                <LinearGradient
-                  colors={GREEN_GRAD}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.loginBtnGradient}
+                <Pressable
+                  onPress={handleLogin}
+                  onPressIn={btnPressIn}
+                  onPressOut={btnPressOut}
+                  disabled={loading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sign in"
+                  accessibilityState={{ disabled: loading, busy: loading }}
+                  style={styles.loginBtn}
                 >
-                  {loading
-                    ? <ActivityIndicator color="#FFF" size="small" />
-                    : <Text style={styles.loginBtnText}>Login</Text>
-                  }
-                </LinearGradient>
-              </TouchableOpacity>
+                  <LinearGradient
+                    colors={GREEN_GRAD}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.loginBtnGradient}
+                  >
+                    {loading ? (
+                      <View style={styles.loginBtnRow}>
+                        <ActivityIndicator color="#FFF" size="small" />
+                        <Text style={styles.loginBtnText}>Signing in…</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.loginBtnRow}>
+                        <Text style={styles.loginBtnText}>Sign In</Text>
+                        <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                      </View>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+              </Animated.View>
             </View>
 
             <Text style={styles.footer}>AURIVA 2026</Text>
@@ -318,15 +346,35 @@ const styles = StyleSheet.create({
   },
 
   // ── Login button ──────────────────────────────────────────────────────────
-  loginBtn: {
-    borderRadius: 14,
-    overflow: 'hidden',
+  // The lift sits on the wrapper: the button itself clips its gradient, and a
+  // shadow on a clipping view is cut off with the corners.
+  loginBtnWrap: {
     marginTop: 4,
+    borderRadius: 16,
+    shadowColor: GREEN,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.30,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  loginBtnWrapBusy: {
+    opacity: 0.75,
+    shadowOpacity: 0.12,
+    elevation: 2,
+  },
+  loginBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   loginBtnGradient: {
-    height: 54,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loginBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   loginBtnText: {
     color: '#FFF',

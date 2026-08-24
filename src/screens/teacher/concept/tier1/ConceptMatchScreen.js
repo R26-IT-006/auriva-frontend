@@ -115,9 +115,9 @@ export default function ConceptMatchScreen({ route, navigation }) {
     Animated.timing(feedbackSlide, { toValue: 250, useNativeDriver: true, duration: 250 }).start(() => cb());
   }
 
-  const CARD_GAP = 12;
+  const CARD_GAP = 28;
   const H_PAD    = Layout.spacing.md;
-  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
+  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.60;
   const CARD_H   = CARD_W;
   const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
 

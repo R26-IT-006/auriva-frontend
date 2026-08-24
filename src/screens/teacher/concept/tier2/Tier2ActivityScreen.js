@@ -109,7 +109,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
   const feedbackSlide  = useRef(new Animated.Value(250)).current;
   const attemptStart   = useRef(Date.now());
 
-  const imgSize = Math.min(width, height) * 0.42;
+  const imgSize = Math.min(width, height) * 0.54;
 
   function showFeedback() {
     Animated.spring(feedbackSlide, { toValue: 0, useNativeDriver: true, friction: 6, tension: 80 }).start();
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   },
 
   questionSi: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   question: {
-    fontSize: 24,
+    fontSize: 27,
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   labelText: {
-    fontSize: 22,
+    fontSize: 27,
     fontFamily: 'DMSans_900Black',
     letterSpacing: 0.2,
   },

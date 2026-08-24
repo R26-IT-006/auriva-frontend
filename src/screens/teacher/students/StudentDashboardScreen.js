@@ -21,8 +21,6 @@ const AVATAR_VIDEOS = {
   megatron: require('../../../../assets/avatar-videos/MegatronGreeting.mp4'),
 };
 
-const AVATAR_NAMES = { boba: 'Boba', glitter: 'Glitter', lily: 'Lily', megatron: 'Megatron' };
-
 const MODULE_ICONS = {
   concept:       require('../../../../assets/modules/Icons/Concept Learning Icon.png'),
   writing:       require('../../../../assets/modules/Icons/Writing Module Icon.png'),
@@ -73,9 +71,12 @@ function buildHub(width, height) {
 
   // Corner-most position, then drawn back toward the centre so the four cards
   // read as one cluster around the child rather than four things pushed apart.
-  const pullIn = 0.82;
-  const dx = (width  / 2 - cardW / 2 - gutter) * pullIn;
-  const dy = (height / 2 - cardH / 2 - gutter) * pullIn;
+  // Vertically they are pulled in less, which opens up the gap between the two
+  // cards stacked on each side.
+  const pullInX = 0.82;
+  const pullInY = 0.96;
+  const dx = (width  / 2 - cardW / 2 - gutter) * pullInX;
+  const dy = (height / 2 - cardH / 2 - gutter) * pullInY;
 
   // The cards are placed first, so the hub takes whatever the middle leaves. It
   // clears the corner cards as long as its box starts inboard of them on either
@@ -300,9 +301,8 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
   if (!student) return null;
 
-  const theme      = getAvatarTheme(student.avatar_key);
-  const avatarName = AVATAR_NAMES[student.avatar_key] ?? '';
-  const firstName  = student.full_name?.trim().split(/\s+/)[0] ?? '';
+  const theme     = getAvatarTheme(student.avatar_key);
+  const firstName = student.full_name?.trim().split(/\s+/)[0] ?? '';
 
   function handleModulePress(key) {
     if (key === 'concept') navigation.navigate('ConceptCategories', { student });
@@ -314,35 +314,31 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
+        {/* Both take the child's own accent, the way the cards and the hub do */}
         <TouchableOpacity
-          style={styles.iconBtn}
+          style={[styles.iconBtn, { borderColor: tint(theme.cardOutline, 0.55) }]}
           onPress={() => setGateVisible(true)}
           activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Back to student list"
         >
-          <Ionicons name="arrow-back" size={24} color="#1A2E3B" />
+          <Ionicons name="arrow-back" size={24} color={theme.button} />
         </TouchableOpacity>
 
         <View style={styles.greeting}>
           <Text style={styles.greetingText}>Hi, {firstName}! 👋</Text>
-          {avatarName ? (
-            <View style={[styles.avatarPill, { borderColor: theme.cardOutline }]}>
-              <Text style={[styles.avatarPillText, { color: theme.button }]}>
-                with {avatarName}
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         <TouchableOpacity
-          style={styles.iconBtn}
+          style={[styles.iconBtn, { borderColor: tint(theme.cardOutline, 0.55) }]}
           onPress={() => setLogoutVisible(true)}
           activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
         >
-          <Ionicons name="exit-outline" size={24} color="#1A2E3B" />
+          <Ionicons name="exit-outline" size={24} color={theme.button} />
         </TouchableOpacity>
       </View>
-
-      <Text style={styles.prompt}>What shall we play today?</Text>
 
       <ModuleHub student={student} theme={theme} onModulePress={handleModulePress} />
 
@@ -378,25 +374,18 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 50, height: 50, borderRadius: 25,
     backgroundColor: '#FFFFFF',
+    // borderColor is set per button — accent for back, red for sign out.
+    borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
   },
-  greeting: { alignItems: 'center', gap: 5 },
+  // Sits a little below the two icon buttons it shares the row with, rather than
+  // centred against them.
+  greeting: { alignItems: 'center', gap: 5, marginTop: 28 },
   greetingText: {
     fontSize: 27, fontFamily: 'DMSans_900Black', color: '#1A2E3B',
   },
-  avatarPill: {
-    borderWidth: 1.5, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 3,
-  },
-  avatarPillText: { fontSize: 14, fontFamily: 'DMSans_600SemiBold' },
-
-  prompt: {
-    fontSize: 17, fontFamily: 'DMSans_600SemiBold',
-    color: '#7A8A9A', textAlign: 'center', marginTop: 2,
-  },
-
   // ── Hub ───────────────────────────────────────────────────────────────────
   hubArea: { flex: 1, marginHorizontal: 16, marginBottom: 12 },
 

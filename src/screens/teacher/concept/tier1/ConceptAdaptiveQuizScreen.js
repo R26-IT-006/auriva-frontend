@@ -54,9 +54,9 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
   const roundResultsRef  = useRef([]);
   const roundStartRef    = useRef(Date.now());
 
-  const CARD_GAP = 12;
+  const CARD_GAP = 28;
   const H_PAD    = Layout.spacing.md;
-  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
+  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.60;
   const CARD_H   = CARD_W;
   const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
 
@@ -342,7 +342,9 @@ const styles = StyleSheet.create({
 
   questionBlock: {
     alignItems: 'center',
-    marginBottom: 32,
+    // Opens the gap to the cards: the pair is centred as one block, so a bigger
+    // gap lifts the question and drops the cards by about half of it each.
+    marginBottom: 72,
     paddingHorizontal: Layout.spacing.lg,
     gap: 4,
   },

@@ -230,12 +230,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   title: {
-    fontSize: 32,
+    fontSize: 34,
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 15,
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
@@ -261,13 +261,15 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '70%',
     height: '58%',
-    marginBottom: 8,
+    // Drops the label further below the artwork — the content block is centred,
+    // so the gap opens downward as much as upward.
+    marginBottom: 16,
   },
   cardLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 21,
     color: '#1A1A1A',
   },
 
@@ -295,7 +297,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   comingSoonText: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: 'DMSans_700Bold',
     color: '#8A8A8A',
   },

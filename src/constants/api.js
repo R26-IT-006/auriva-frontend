@@ -75,6 +75,8 @@ export const ENDPOINTS = {
   CONCEPT_TIER2_COMPLETE:     '/teacher/concepts/tier2/complete',
   CONCEPT_TIER3_START:        '/teacher/concepts/tier3/start',
   CONCEPT_TIER3_COMPLETE:     '/teacher/concepts/tier3/complete',
+  CONCEPT_COLORING_SAVE:      '/teacher/concepts/tier3/coloring',
+  CONCEPT_COLORING_LIST:      (studentId) => `/teacher/concepts/coloring/${studentId}`,
   CONCEPT_DISTRACTORS:        '/teacher/concepts/distractors',
 
   // Concept Learning – cross-concept activities

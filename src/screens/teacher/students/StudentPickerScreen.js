@@ -18,20 +18,25 @@ import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
 import { useToast } from '../../../context/ToastContext';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
+import { getInitials } from '../../../utils/formatters';
 
 const COLS     = 3;
 const H_PAD    = 40;
 const CARD_GAP = 24;
 // Upper bound so a one- or two-student roster doesn't stretch cards across the tablet.
-const MAX_CARD = 260;
+const MAX_CARD = 230;
 
 function StudentCard({ student, cardSize, onPress }) {
   const theme      = getAvatarTheme(student.avatar_key);
-  const initial    = (student.full_name || '?')[0].toUpperCase();
+  const initials   = getInitials(student.full_name);
   const circleSize = cardSize * 0.54;
-  const nameSize   = cardSize * 0.1;
+  const nameSize   = Math.max(11, Math.min(20, cardSize * 0.085));
   const ring       = Math.round(circleSize * 0.05);   // white ring around the avatar
   const innerSize  = circleSize - ring * 2;           // photo sits inside the ring
+  // Tapping a child with no buddy yet lands on avatar selection, not the
+  // dashboard — the card says so instead of letting the detour surprise you.
+  const needsAvatar = !student.avatar_key;
+  const badgeSize   = Math.max(18, Math.round(circleSize * 0.3));
   // Cards show only the first two names; longer full names wrap past two lines
   // and ellipsize mid-word.
   const displayName = (student.full_name || '').trim().split(/\s+/).slice(0, 2).join(' ');
@@ -51,6 +56,12 @@ function StudentCard({ student, cardSize, onPress }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={
+          needsAvatar
+            ? `${displayName}, no buddy chosen yet`
+            : `${displayName}, start session`
+        }
         style={[styles.card, {
           width: cardSize,
           height: cardSize * 1.1,
@@ -68,26 +79,44 @@ function StudentCard({ student, cardSize, onPress }) {
         />
 
         {/* Avatar — the white ring lifts it off the gradient it sits against */}
-        <View style={[styles.circle, {
-          width: circleSize,
-          height: circleSize,
-          borderRadius: circleSize / 2,
-          borderWidth: ring,
-          borderColor: '#FFFFFF',
-          backgroundColor: theme.cardOutline + '26',
-        }]}>
-          {student.profile_photo_url ? (
-            <Image
-              source={{ uri: student.profile_photo_url }}
-              // Inset by the ring, so the photo fills the opening instead of being
-              // clipped by the border box.
-              style={{ width: innerSize, height: innerSize, borderRadius: innerSize / 2 }}
-              resizeMode="cover"
-            />
-          ) : (
-            <Text style={[styles.initial, { fontSize: circleSize * 0.4, color: theme.button }]}>
-              {initial}
-            </Text>
+        <View style={{ width: circleSize, height: circleSize }}>
+          <View style={[styles.circle, {
+            width: circleSize,
+            height: circleSize,
+            borderRadius: circleSize / 2,
+            borderWidth: ring,
+            borderColor: '#FFFFFF',
+            backgroundColor: theme.cardOutline + '26',
+          }]}>
+            {student.profile_photo_url ? (
+              <Image
+                source={{ uri: student.profile_photo_url }}
+                // Inset by the ring, so the photo fills the opening instead of being
+                // clipped by the border box.
+                style={{ width: innerSize, height: innerSize, borderRadius: innerSize / 2 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={[styles.initial, { fontSize: circleSize * 0.36, color: theme.button }]}>
+                {initials}
+              </Text>
+            )}
+          </View>
+
+          {/* Corner badge rather than a pill under the name: the smallest card in
+              a 3-up phone grid has no vertical room left for another row. */}
+          {needsAvatar && (
+            <View
+              style={[
+                styles.pickBadge,
+                {
+                  width: badgeSize, height: badgeSize, borderRadius: badgeSize / 2,
+                  backgroundColor: theme.button,
+                },
+              ]}
+            >
+              <Ionicons name="add" size={Math.round(badgeSize * 0.62)} color="#FFFFFF" />
+            </View>
           )}
         </View>
 
@@ -119,7 +148,22 @@ export default function StudentPickerScreen({ navigation }) {
   const load = useCallback(async () => {
     try {
       const data = await teacherApi.getStudents();
-      setStudents(data);
+      // A buddy chosen before the API stored it lives only on this device, so
+      // fill those in here. Without it the card paints the fallback orange for a
+      // child who already has a colour, and then the dashboard shows their real
+      // one a tap later.
+      const missing = data.filter((s) => !s.avatar_key);
+      if (missing.length === 0) {
+        setStudents(data);
+        return;
+      }
+      const pairs  = await AsyncStorage.multiGet(missing.map((s) => `student_avatar_${s.sid}`));
+      const cached = Object.fromEntries(
+        pairs.map(([key, value]) => [key.replace('student_avatar_', ''), value]),
+      );
+      setStudents(data.map((s) => (
+        s.avatar_key ? s : { ...s, avatar_key: cached[String(s.sid)] ?? null }
+      )));
     } catch (err) {
       toast.show(err.message, 'error');
     } finally {
@@ -180,15 +224,12 @@ export default function StudentPickerScreen({ navigation }) {
               <StudentCard
                 student={item}
                 cardSize={cardSize}
-                onPress={async () => {
-                  const avatarKey = item.avatar_key
-                    ?? await AsyncStorage.getItem(`student_avatar_${item.sid}`);
-                  if (!avatarKey) {
-                    navigation.navigate('AvatarSelection', { student: item });
-                  } else {
-                    navigation.navigate('StudentDashboard', { student: { ...item, avatar_key: avatarKey } });
-                  }
-                }}
+                // avatar_key is already resolved against storage in load(), so the
+                // card's badge and this branch can never disagree.
+                onPress={() => navigation.navigate(
+                  item.avatar_key ? 'StudentDashboard' : 'AvatarSelection',
+                  { student: item },
+                )}
               />
             )}
           />
@@ -288,6 +329,20 @@ const styles = StyleSheet.create({
   initial: {
     fontFamily: 'DMSans_900Black',
   },
+  pickBadge: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
 
   // ── Name ──────────────────────────────────────────────────────────────────
   name: {
@@ -296,8 +351,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 10,
     // lineHeight is set alongside fontSize at render time — both scale with the
-    // card, and a fixed value here clipped the glyphs once the card grew.
-    marginTop: 10,
+    // card, and a fixed value here clipped the glyphs once the card grew. The
+    // card's own gap handles the space above, so no marginTop on top of it.
   },
 
   // ── Empty state ───────────────────────────────────────────────────────────

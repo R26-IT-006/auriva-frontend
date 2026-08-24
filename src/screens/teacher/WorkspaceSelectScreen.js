@@ -49,8 +49,11 @@ export default function WorkspaceSelectScreen({ navigation }) {
             style={styles.logoutBtn}
             onPress={() => setLogoutVisible(true)}
             activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+            hitSlop={8}
           >
-            <Ionicons name="log-out-outline" size={20} color="#555" />
+            <Ionicons name="log-out-outline" size={18} color="#4A6B62" />
             <Text style={styles.logoutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
@@ -93,7 +96,7 @@ export default function WorkspaceSelectScreen({ navigation }) {
           confirmLabel="Sign Out"
           cancelLabel="Cancel"
           icon="log-out-outline"
-          onConfirm={logout}
+          onConfirm={() => { setLogoutVisible(false); logout(); }}
           onCancel={() => setLogoutVisible(false)}
         />
 
@@ -114,26 +117,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingHorizontal: Layout.spacing.lg,
+    // SafeAreaView already pads the notch, so this is clearance below it.
     paddingTop: Layout.spacing.xl,
     zIndex: 10,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderRadius: 24,
+    minHeight: 44,          // 44dp is the smallest comfortable tap target
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.9)',
     paddingHorizontal: Layout.spacing.md,
     paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowColor: '#0F6E56',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   logoutText: {
     fontSize: Layout.fontSize.sm,
     fontFamily: 'DMSans_600SemiBold',
-    color: '#444',
+    color: '#3D5C54',
   },
 
   container: {
@@ -184,8 +193,8 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   iconImage: {
-    width: 88,
-    height: 88,
+    width: 62,
+    height: 62,
   },
   textWrap: {
     flex: 1,

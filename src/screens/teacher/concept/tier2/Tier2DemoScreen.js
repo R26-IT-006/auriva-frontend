@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import {
   getConceptItem,
@@ -19,6 +20,10 @@ import {
   NAMING_QUESTION_SI,
 } from '../../../../data/conceptData';
 import { Layout } from '../../../../constants/layout';
+
+// The same celebration the real rounds play, so the demo rehearses exactly what
+// the child will see when they answer correctly.
+const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
 
 // Mirrors ConceptDemoScreen (tier 1), but demonstrates the tier 2 task: the child
 // picks the correct *name* for the picture rather than the correct picture.
@@ -30,7 +35,7 @@ export default function Tier2DemoScreen({ route, navigation }) {
   const theme    = getAvatarTheme(student?.avatar_key);
 
   const { width, height } = useWindowDimensions();
-  const imgSize = Math.min(width, height) * 0.42;
+  const imgSize = Math.min(width, height) * 0.54;
 
   const [showGreen, setShowGreen] = useState(false);
 
@@ -202,20 +207,18 @@ export default function Tier2DemoScreen({ route, navigation }) {
 
         </View>
 
-        {/* Thumbs-up feedback bubble */}
+        {/* Correct-answer celebration */}
         <Animated.View
           style={[
-            styles.feedbackBubble,
+            styles.feedbackGif,
             {
-              opacity:         thumbsAnim,
-              transform:       [{ translateY: thumbsOffset }],
-              backgroundColor: '#4CAF50',
+              opacity:   thumbsAnim,
+              transform: [{ translateY: thumbsOffset }],
             },
           ]}
           pointerEvents="none"
         >
-          <Text style={styles.feedbackEmoji}>👍</Text>
-          <Text style={styles.feedbackText}>That's it!</Text>
+          <ExpoImage source={CORRECT_GIF} style={styles.feedbackGifImage} contentFit="contain" />
         </Animated.View>
 
       </SafeAreaView>
@@ -267,13 +270,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   questionEn: {
-    fontSize: 26,
+    fontSize: 28,
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -312,7 +315,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   labelText: {
-    fontSize: 22,
+    fontSize: 27,
     fontFamily: 'DMSans_900Black',
     letterSpacing: 0.2,
   },
@@ -334,25 +337,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  feedbackBubble: {
+  // Matches the popup the real round uses, so the celebration lands in the same
+  // place and at the same size the child will see it during play.
+  feedbackGif: {
     position: 'absolute',
-    bottom: 100,
-    flexDirection: 'row',
+    bottom: 20,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 8,
   },
-  feedbackEmoji: { fontSize: 26 },
-  feedbackText: {
-    fontSize: 17,
-    fontFamily: 'DMSans_800ExtraBold',
-    color: '#FFF',
+  feedbackGifImage: {
+    width: 200,
+    height: 200,
   },
 });

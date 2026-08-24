@@ -131,6 +131,34 @@ export const conceptApi = {
     return data;
   },
 
+  /**
+   * Upload a finished Tier 3 colouring. `uri` is a local file from view-shot;
+   * multipart rather than JSON so the PNG is not base64-inflated on the wire.
+   */
+  async saveColoring({ studentId, categoryKey, conceptKey, uri, strokeCount, timeSpentMs }) {
+    const form = new FormData();
+    form.append('image', { uri, name: 'coloring.png', type: 'image/png' });
+    form.append('student_id',   String(studentId));
+    form.append('category_key', categoryKey);
+    form.append('concept_key',  conceptKey);
+    if (strokeCount != null) form.append('stroke_count',  String(strokeCount));
+    if (timeSpentMs != null) form.append('time_spent_ms', String(timeSpentMs));
+
+    const { data } = await client.post(ENDPOINTS.CONCEPT_COLORING_SAVE, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // A picture takes longer than the default 15s on a slow classroom network.
+      timeout: 40000,
+    });
+    return data;
+  },
+
+  async listColoring({ studentId, categoryKey }) {
+    const { data } = await client.get(ENDPOINTS.CONCEPT_COLORING_LIST(studentId), {
+      params: categoryKey ? { category_key: categoryKey } : undefined,
+    });
+    return data;
+  },
+
   async completeAdaptive({ studentId, sessionId, categoryKey, conceptKey, confusedKeys, roundResults, allPassed }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_ADAPTIVE_COMPLETE, {
       student_id:    studentId,

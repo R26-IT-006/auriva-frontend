@@ -115,7 +115,9 @@ const styles = StyleSheet.create({
 
   questionBlock: {
     alignItems: 'center',
-    marginBottom: 28,
+    // Question and cards are centred as one block, so a wider gap lifts the
+    // question and settles the cards, rather than moving the pair together.
+    marginBottom: 60,
     paddingHorizontal: Layout.spacing.lg,
     gap: 4,
   },

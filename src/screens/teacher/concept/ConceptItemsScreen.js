@@ -168,7 +168,9 @@ export default function ConceptItemsScreen({ route, navigation }) {
     const s = serverMap[local.key];
     return {
       ...local,
-      is_unlocked:  s?.is_unlocked  ?? (local.key === localItems[0]?.key),
+      // Nothing is gated — the sequence is a recommendation, not a gate. Kept
+      // as a field so the server can reintroduce locking without a client change.
+      is_unlocked:  true,
       is_priority:  s?.is_priority  || false,
       tier1_status: s?.tier1_status || 'not_started',
       tier1_score:  s?.tier1_score  ?? null,
@@ -465,7 +467,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardImageBox: {
-    width: '72%',
+    width: '58%',
     aspectRatio: 1,
     borderRadius: 8,
     overflow: 'hidden',

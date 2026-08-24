@@ -71,6 +71,8 @@ export default function Tier2DragDropScreen({ route, navigation }) {
   const [zoneContent,    setZoneContent]    = useState(null); // { source, isCorrect }
   const [droppedKey,     setDroppedKey]     = useState(null); // card left in the box
 
+  // Horizontal offset for the feedback GIF: 250 parks it off the right edge
+  // (200 wide plus its 20 inset), 0 brings it on screen.
   const feedbackSlide  = useRef(new Animated.Value(250)).current;
   const dropZoneLayout = useRef(null);
   const dropZoneRef    = useRef(null);
@@ -413,7 +415,7 @@ export default function Tier2DragDropScreen({ route, navigation }) {
       {/* GIF feedback popup */}
       <Animated.View
         pointerEvents="none"
-        style={[styles.gifPopup, { transform: [{ translateY: feedbackSlide }] }]}
+        style={[styles.gifPopup, { transform: [{ translateX: feedbackSlide }] }]}
       >
         {feedbackResult && (
           <ExpoImage
@@ -504,12 +506,15 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
+  // Slides in from the right edge at mid-height rather than up from the bottom:
+  // the drop zone sits low on this screen, and the popup was landing on it.
+  // Full height with the content centred, so feedbackSlide can drive translateX.
   gifPopup: {
     position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+    top: 0,
+    bottom: 0,
+    right: 20,
+    justifyContent: 'center',
   },
   gifImage: {
     width: 200,

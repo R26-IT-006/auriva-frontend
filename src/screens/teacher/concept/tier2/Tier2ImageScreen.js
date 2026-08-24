@@ -146,7 +146,7 @@ export default function Tier2ImageScreen({ route, navigation }) {
 
   if (!concept) return null;
 
-  const imgSize = Math.min(width, height) * 0.48;
+  const imgSize = Math.min(width, height) * 0.56;
 
   return (
     <LinearGradient
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
 
   labelSi: {
-    fontSize: 22,
+    fontSize: 25,
     fontFamily: 'DMSans_700Bold',
     opacity: 0.7,
     textAlign: 'center',

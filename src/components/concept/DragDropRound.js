@@ -147,7 +147,9 @@ export default function DragDropRound({ round, concept, options, theme, locked, 
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 20 },
+  // gap widened from 20: the whole stack is centred, so it lifts the question
+  // away from the drop zone below it.
+  root: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 44 },
 
   question: {
     fontSize: 24,
