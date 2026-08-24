@@ -17,6 +17,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
@@ -488,20 +489,29 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
     await new Promise(r => setTimeout(r, 1800));
     if (!activeRef.current) return;
 
-    if (allWrong) {
+    // TASK-44 — same-sitting loop cap: only rewatch once. A second
+    // consecutive all-wrong result on this word, this sitting, breaks out
+    // to WordComplete (using the result already computed above) instead of
+    // looping back to the video again.
+    const alreadyRestarted = getRestartCount(student?.sid, wordId) >= MAX_SAME_SITTING_RESTARTS;
+
+    if (allWrong && !alreadyRestarted) {
+      incrementRestartCount(student?.sid, wordId);
       navigation.navigate('GreetingPhase1Video', { student, wordKey, wordId });
-    } else {
-      navigation.navigate('WordComplete', {
-        student,
-        wordKey,
-        wordId,
-        wordLabel,
-        category:      'greetings',
-        mastered:      result.mastered      ?? false,
-        sessionPassed: result.session_passed ?? false,
-        status:        result.status         ?? 'in_progress',
-      });
+      return;
     }
+
+    clearRestartCount(student?.sid, wordId);
+    navigation.navigate('WordComplete', {
+      student,
+      wordKey,
+      wordId,
+      wordLabel,
+      category:      'greetings',
+      mastered:      result.mastered      ?? false,
+      sessionPassed: result.session_passed ?? false,
+      status:        result.status         ?? 'in_progress',
+    });
   }
 
   function advanceFromScenario(

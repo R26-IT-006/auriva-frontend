@@ -18,6 +18,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import ProbeBanner from '../../../../components/common/ProbeBanner';
 import { dialogueApi } from '../../../../api/dialogue';
+import { clearRestartCount } from '../../../../utils/sessionRetryTracker';
 
 const WORD_LABELS = {
   hello:          'Hello',
@@ -122,11 +123,13 @@ export default function GreetingLandingScreen({ route, navigation }) {
   }
 
   function handleSkipWord() {
+    clearRestartCount(student?.sid, wordId);
     closeSettings();
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
 
   function handleExitSession() {
+    clearRestartCount(student?.sid, wordId);
     closeSettings();
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
@@ -195,9 +198,10 @@ export default function GreetingLandingScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.nextBtn, { backgroundColor: theme.button }]}
               activeOpacity={0.85}
-              onPress={() =>
-                navigation.navigate('GreetingPhase1Video', { student, wordKey, wordId, startIndex: 0 })
-              }
+              onPress={() => {
+                clearRestartCount(student?.sid, wordId);
+                navigation.navigate('GreetingPhase1Video', { student, wordKey, wordId, startIndex: 0 });
+              }}
             >
               <Text style={[styles.nextBtnText, { color: theme.buttonText }]}>Next</Text>
               <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />

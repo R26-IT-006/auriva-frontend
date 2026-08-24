@@ -17,6 +17,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
 
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
@@ -474,14 +475,36 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
 
   const handleWrongDrop = useCallback(() => {
     const isLastActivity = activityIdx === activities.length - 1;
-    if (isLastActivity) {
+    if (!isLastActivity) {
+      showFeedback("Oops! Try again! 😊", 'wrong');
+      return;
+    }
+
+    // TASK-44 — same-sitting loop cap: only rewatch the video once for a
+    // failed gate check.
+    const alreadyRestarted = getRestartCount(student?.sid, wordId) >= MAX_SAME_SITTING_RESTARTS;
+
+    if (!alreadyRestarted) {
+      incrementRestartCount(student?.sid, wordId);
       showFeedback("Let's watch again! 👀", 'wrong');
       setTimeout(() => {
         navigation.replace('GreetingPhase1Video', { student, wordKey, wordId, startIndex: 1 });
       }, 1800);
-    } else {
-      showFeedback("Oops! Try again! 😊", 'wrong');
+      return;
     }
+
+    // Loop cap hit: don't rewatch a second time. Record the honest
+    // gate-failed signal (previously never sent — see Objective) and let
+    // the child continue forward instead of looping again. No feedback
+    // banner here — Phase 1 is exposure, not a scored evaluation, and this
+    // path must not read as a right/wrong judgement to the child.
+    clearRestartCount(student?.sid, wordId);
+    if (wordId && student?.sid) {
+      dialogueApi.submitPhase1Gate(student.sid, wordId, false).catch(() => {});
+    }
+    setTimeout(() => {
+      navigation.navigate('GreetingPhase1Complete', { student, wordKey, wordId });
+    }, 1800);
   }, [activityIdx]);
 
   function openSettings() { setGatePurpose('settings'); setShowGate(true); }
