@@ -228,12 +228,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   title: {
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     fontSize: 24,
     color: '#1A3D2E',
   },
   subtitle: {
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     fontSize: 13,
     color: '#4A7A60',
   },
@@ -286,12 +286,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   initial: {
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
   },
 
   // ── Name ──────────────────────────────────────────────────────────────────
   name: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#1A2E26',
     textAlign: 'center',
     paddingHorizontal: 10,
@@ -317,12 +317,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: {
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     fontSize: 18,
     color: '#1A3D2E',
   },
   emptySub: {
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     fontSize: 14,
     color: '#2A5A48',
     textAlign: 'center',

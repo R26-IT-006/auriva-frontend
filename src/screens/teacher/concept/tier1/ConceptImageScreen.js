@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   },
   relearnText: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   imageContainer: {
     position: 'relative',
@@ -354,6 +354,6 @@ const styles = StyleSheet.create({
   },
   fwdBtnText: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 });

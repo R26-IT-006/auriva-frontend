@@ -433,12 +433,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: 1.5,
   },
   subtitle: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: 15,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
     color: '#1A1A1A',
   },
@@ -555,11 +555,11 @@ const styles = StyleSheet.create({
   activityBannerText: { flex: 1, gap: 2 },
   activityBannerTitle: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   activityBannerSub: {
     fontSize: 12,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.85,
   },
   activityBannerPreviews: {
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   },
   reviewHeading: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 0.3,
   },
   reviewRow: {
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
   },
   reviewLabel: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
     color: '#1A1A1A',
     marginBottom: 4,
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   },
   reviewScoreText: {
     fontSize: 12,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#E65100',
   },
 });

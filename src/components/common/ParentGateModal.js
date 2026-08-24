@@ -185,14 +185,14 @@ const styles = StyleSheet.create({
   },
 
   prompt: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
     fontSize: 13,
     color: '#999',
     marginBottom: 6,
   },
   codeWords: {
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
     fontSize: 18,
     color: ACCENT,
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF0F3',
   },
   boxText: {
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     fontSize: 22,
     color: '#222',
   },
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   padDigit: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     fontSize: 26,
     color: '#222',
   },

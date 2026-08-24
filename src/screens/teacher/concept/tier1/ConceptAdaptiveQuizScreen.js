@@ -112,6 +112,10 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
       wasCorrect,
       timeTakenMs,
       optionKeys:         (rounds[currentRound]?.pair || []).map((o) => o.key),
+      // Not getDistractors: this round is a forced choice against a concept the
+      // child has already been recorded confusing. Its own policy name, so the
+      // logs never let an adaptive round be mistaken for a distractor-policy pick.
+      distractorSource:   'adaptive_confusion',
     }).catch(() => {});
 
     setTappedKey(option.key);
@@ -314,7 +318,7 @@ const styles = StyleSheet.create({
   },
   roundText: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 
   roundDots: {
@@ -344,13 +348,13 @@ const styles = StyleSheet.create({
   },
   questionEn: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
     fontSize: 18,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
   },

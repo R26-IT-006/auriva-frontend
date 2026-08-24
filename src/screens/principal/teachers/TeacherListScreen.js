@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 22,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: TEXT,
   },
   countBadge: {
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontSize: 12,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: BLUE,
   },
   addBtn: {
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   },
   addBtnText: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: SURFACE,
   },
 
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: TEXT,
     paddingVertical: 0,
   },
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   },
   headerCell: {
     fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: 'rgba(255,255,255,0.70)',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -491,23 +491,23 @@ const styles = StyleSheet.create({
   },
   codeText: {
     fontSize: 11,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: BLUE,
     letterSpacing: 0.3,
   },
   nameText: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEXT,
   },
   emailText: {
     fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: MUTED,
   },
   capCount: {
     fontSize: 13,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   dotRow: { flexDirection: 'row', gap: 4 },
   dot: { width: 10, height: 10, borderRadius: 5 },
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 11, fontFamily: 'Nunito_700Bold' },
+  statusText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
 
   // ── Action buttons ────────────────────────────────────────────────────────
   actionBtn: {
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
   },
   pageInfo: {
     fontSize: 11,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: MUTED,
   },
   pageControls: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: BORDER,
   },
   pageBtnActive:    { backgroundColor: DARK, borderColor: DARK },
-  pageBtnTxt:       { fontSize: 12, fontFamily: 'Nunito_600SemiBold', color: MUTED },
+  pageBtnTxt:       { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: MUTED },
   pageBtnTxtActive: { color: SURFACE },
   pageEllipsis:     { fontSize: 12, color: MUTED, paddingHorizontal: 2 },
 });

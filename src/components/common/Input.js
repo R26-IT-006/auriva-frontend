@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.secondary,
     marginBottom: Layout.spacing.xs,
     letterSpacing: 0.2,

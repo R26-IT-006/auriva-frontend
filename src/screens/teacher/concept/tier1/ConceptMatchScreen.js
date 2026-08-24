@@ -412,13 +412,13 @@ const styles = StyleSheet.create({
   },
   questionEn: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
     fontSize: 18,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
   },

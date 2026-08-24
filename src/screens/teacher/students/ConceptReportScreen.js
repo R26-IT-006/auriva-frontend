@@ -315,12 +315,12 @@ const styles = StyleSheet.create({
   scroll:   { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm, padding: Layout.spacing.xl },
   errorText:{ fontSize: Layout.fontSize.sm, color: Colors.text.secondary, textAlign: 'center' },
-  retry:    { fontSize: Layout.fontSize.sm, color: Colors.text.link, fontFamily: 'Nunito_700Bold' },
+  retry:    { fontSize: Layout.fontSize.sm, color: Colors.text.link, fontFamily: 'DMSans_700Bold' },
 
   card:    { marginBottom: 0 },
   section: { marginTop: Layout.spacing.lg },
   sectionHead: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: Layout.spacing.sm },
-  sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
+  sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
   sectionSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
   padded:  { padding: Layout.spacing.md },
   muted:   { fontSize: Layout.fontSize.sm, color: Colors.text.muted },
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   overviewStats: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', rowGap: Layout.spacing.md },
 
   statCell:      { minWidth: 76, flexGrow: 1 },
-  statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'Nunito_800ExtraBold', color: Colors.text.primary },
+  statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
   statCellLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
 
   trendWrap:     { padding: Layout.spacing.md },
@@ -345,17 +345,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   conceptRow:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  conceptName: { flex: 1, fontSize: Layout.fontSize.xs, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
+  conceptName: { flex: 1, fontSize: Layout.fontSize.xs, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
   pills:       { flexDirection: 'row', gap: 3 },
   tierPill:    { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  conceptScore:{ width: 42, textAlign: 'right', fontSize: Layout.fontSize.xs, fontFamily: 'Nunito_700Bold' },
+  conceptScore:{ width: 42, textAlign: 'right', fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold' },
   conceptMeta: { width: 56, textAlign: 'right', fontSize: 10, color: Colors.text.muted },
 
   strugglingBlock: { padding: Layout.spacing.md, gap: Layout.spacing.md },
   strugglingRow:   { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  strugglingName:  { fontSize: Layout.fontSize.sm, fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
+  strugglingName:  { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
   strugglingMeta:  { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-  strugglingScore: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_800ExtraBold' },
+  strugglingScore: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold' },
 
   rtRow: { flexDirection: 'row', justifyContent: 'space-between' },
   hint: {
@@ -376,10 +376,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.status.infoLight,
     alignItems: 'center', justifyContent: 'center',
   },
-  activityNumText: { fontSize: Layout.fontSize.xs, fontFamily: 'Nunito_700Bold', color: Colors.text.link },
-  activityTitle:   { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
+  activityNumText: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold', color: Colors.text.link },
+  activityTitle:   { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
   activityMeta:    { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-  activityScore:   { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_800ExtraBold' },
+  activityScore:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold' },
 
   footnote: {
     fontSize: Layout.fontSize.xs,

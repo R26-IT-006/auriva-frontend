@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     width: 104,
     fontSize: Layout.fontSize.xs,
     color: Colors.text.secondary,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
   track: {
     flex: 1,
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
 
   legend:     { flexDirection: 'row', gap: Layout.spacing.md, marginTop: Layout.spacing.sm },

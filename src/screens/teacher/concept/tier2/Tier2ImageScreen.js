@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
 
   labelSi: {
     fontSize: 22,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.7,
     textAlign: 'center',
     marginBottom: 22,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   },
   letterText: {
     fontSize: 32,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
   },
 
   imageContainer: { position: 'relative' },
@@ -344,6 +344,6 @@ const styles = StyleSheet.create({
   },
   fwdBtnText: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 });

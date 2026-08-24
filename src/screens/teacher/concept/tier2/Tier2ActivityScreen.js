@@ -90,6 +90,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
   const { width, height } = useWindowDimensions();
 
   const optionsRef = useRef(null);
+  const distractorSource = useRef(null);
 
   function buildSequentialOptions() {
     const idx   = allItems.findIndex((it) => it.key === conceptKey);
@@ -138,16 +139,22 @@ export default function Tier2ActivityScreen({ route, navigation }) {
         const keys = res?.distractors || [];
         const d1 = keys[0] ? allItems.find((it) => it.key === keys[0]) : null;
         const d2 = keys[1] ? allItems.find((it) => it.key === keys[1]) : null;
-        const opts = (d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey)
-          ? [concept, d1, d2]
-          : buildSequentialOptions();
+        const usedServerKeys = !!(d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey);
+        const opts = usedServerKeys ? [concept, d1, d2] : buildSequentialOptions();
         optionsRef.current = opts;
+        // Which policy actually chose these, for the attempt log. When the server
+        // keys are unusable we fall back locally, so the server's own label would
+        // be wrong. Mirrors ConceptMatchScreen.
+        distractorSource.current = usedServerKeys
+          ? (res?.distractor_source || 'gkb')
+          : 'client_sequential';
         setDisplayLabels(shuffle(opts));
       })
       .catch(() => {
         if (cancelled) return;
         const opts = buildSequentialOptions();
         optionsRef.current = opts;
+        distractorSource.current = 'client_sequential';
         setDisplayLabels(shuffle(opts));
       });
     return () => { cancelled = true; };
@@ -189,6 +196,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
         // What the child was shown. Without it the log cannot distinguish a real
         // confusion from the distractor policy's own choice.
         option_keys: (optionsRef.current || []).map((o) => o.key),
+        distractor_source: distractorSource.current,
       },
     }).catch(() => {});
 
@@ -386,7 +394,7 @@ const styles = StyleSheet.create({
 
   questionSi: {
     fontSize: 18,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
     marginBottom: 8,
@@ -394,7 +402,7 @@ const styles = StyleSheet.create({
   },
   question: {
     fontSize: 24,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
     marginTop: 4,
@@ -447,7 +455,7 @@ const styles = StyleSheet.create({
   },
   labelText: {
     fontSize: 22,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: 0.2,
   },
 

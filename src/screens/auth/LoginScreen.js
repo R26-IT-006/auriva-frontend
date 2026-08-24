@@ -245,25 +245,25 @@ const styles = StyleSheet.create({
   logoLetter: {
     color: '#FFF',
     fontSize: 22,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   logoText: {
     fontSize: 24,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#1A1A2E',
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────
   cardTitle: {
     fontSize: 28,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
     textAlign: 'center',
     marginBottom: 6,
   },
   cardSubtitle: {
     fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
     textAlign: 'center',
     marginBottom: 28,
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   rolePillText: {
     fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#9B9FB0',
   },
   rolePillTextActive: {
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#4AABB8',
   },
 
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   loginBtnText: {
     color: '#FFF',
     fontSize: 16,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.4,
   },
 
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.8,
     color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
 
   // ── Error modal ───────────────────────────────────────────────────────────
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: Layout.fontSize.xl,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     color: '#1A1A2E',
     textAlign: 'center',
   },
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
   errorBtnText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.2,
   },
 });

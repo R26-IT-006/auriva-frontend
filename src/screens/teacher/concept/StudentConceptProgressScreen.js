@@ -318,15 +318,15 @@ const styles = StyleSheet.create({
   },
   headerAvatarText: {
     fontSize: 18,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
   },
   headerName: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   headerSub: {
     fontSize: 12,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     marginTop: 1,
   },
 
@@ -360,19 +360,19 @@ const styles = StyleSheet.create({
   },
   statCount: {
     fontSize: 24,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
   },
   statDenom: {
     fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
   statLabel: {
     fontSize: 12,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   statSublabel: {
     fontSize: 10,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#9E9E9E',
   },
   statTrack: {
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   statPct: {
     fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'right',
   },
 
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   },
   cardName: {
     fontSize: 12,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
   },
   pillRow: {
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
   },
   tierPillLabel: {
     fontSize: 10,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   lockedRow: {
     flexDirection: 'row',
@@ -458,11 +458,11 @@ const styles = StyleSheet.create({
   },
   lockedText: {
     fontSize: 11,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#BDBDBD',
   },
   scoreText: {
     fontSize: 12,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 });

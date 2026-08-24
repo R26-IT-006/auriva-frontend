@@ -3,7 +3,7 @@
 // For physical device: use your machine's local IP
 // Physical device on same WiFi → use machine's LAN IP e.g. http://172.28.8.184:3000/api
 // Android emulator → 10.0.2.2 maps to host machine's localhost
-export const API_BASE_URL = 'http://172.28.16.121:3000/api';
+export const API_BASE_URL = 'http://192.168.1.19:3000/api'; // Replace with your machine's LAN IP
 
 export const ENDPOINTS = {
   // Auth

@@ -466,13 +466,13 @@ const styles = StyleSheet.create({
   },
   breadcrumbParent: {
     fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: MUTED,
   },
   breadcrumbCurrent: {
     flex: 1,
     fontSize: 15,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: TEXT,
   },
 
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
   },
   heroName: {
     fontSize: 22,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: SURFACE,
     textAlign: 'center',
     marginTop: 4,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
   },
   codeTagText: {
     fontSize: 12,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: SURFACE,
     letterSpacing: 0.5,
   },
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
   },
   disabilityTagText: {
     fontSize: 12,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: AMBER,
   },
 
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     flex: 1,
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEXT,
   },
   cardDivider: {
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   assignedDot: { width: 6, height: 6, borderRadius: 3 },
-  assignedBadgeText: { fontSize: 11, fontFamily: 'Nunito_700Bold' },
+  assignedBadgeText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
 
   teacherRow: {
     flexDirection: 'row',
@@ -592,12 +592,12 @@ const styles = StyleSheet.create({
   teacherInfo: { flex: 1 },
   teacherName: {
     fontSize: 15,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEXT,
   },
   teacherCode: {
     fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: MUTED,
     marginTop: 2,
   },
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   },
   unassignBtnText: {
     fontSize: 12,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: CORAL,
   },
 
@@ -629,12 +629,12 @@ const styles = StyleSheet.create({
   },
   noTeacherTitle: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEXT,
   },
   noTeacherSub: {
     fontSize: 11,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: MUTED,
     marginTop: 2,
   },
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   },
   assignBtnText: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: SURFACE,
   },
 
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   infoText: { flex: 1 },
   infoLabel: {
     fontSize: 10,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: MUTED,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEXT,
   },
   rowDivider: {
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   },
   heroEditBtnText: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: SURFACE,
   },
   heroDeleteBtn: {
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   },
   heroDeleteBtnText: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: SURFACE,
   },
 
@@ -765,17 +765,17 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: SURFACE,
   },
   modalSub: {
     fontSize: 11,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: 'rgba(255,255,255,0.55)',
     marginTop: 1,
   },
   modalSubBold: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: 'rgba(255,255,255,0.90)',
   },
   modalCloseBtn: {
@@ -804,13 +804,13 @@ const styles = StyleSheet.create({
   modalSearchInput: {
     flex: 1,
     fontSize: 13,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: TEXT,
     paddingVertical: 0,
   },
   modalCountLabel: {
     fontSize: 11,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: MUTED,
     marginBottom: 10,
     letterSpacing: 0.2,
@@ -834,12 +834,12 @@ const styles = StyleSheet.create({
   teacherPickInfo: { flex: 1 },
   teacherPickName: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEXT,
   },
   teacherPickCode: {
     fontSize: 11,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: MUTED,
     marginTop: 2,
   },
@@ -854,7 +854,7 @@ const styles = StyleSheet.create({
   },
   slotLabel: {
     fontSize: 11,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     marginLeft: 2,
   },
   selectBtn: {
@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
   },
   selectBtnText: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: SURFACE,
   },
   emptyPick: {
@@ -882,12 +882,12 @@ const styles = StyleSheet.create({
   },
   emptyPickTitle: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEXT,
   },
   emptyPickSub: {
     fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: MUTED,
   },
 });

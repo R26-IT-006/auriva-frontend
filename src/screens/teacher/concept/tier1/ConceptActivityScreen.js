@@ -172,6 +172,8 @@ export default function ConceptActivityScreen({ route, navigation }) {
       wasCorrect,
       timeTakenMs,
       optionKeys:   round.options.map((o) => o.key),
+      // Echoed back from the server's frozen question_plan, like optionKeys.
+      distractorSource: round.distractor_source,
     }).catch(() => {});
 
     setFeedback({ selectedKey, result: wasCorrect ? 'correct' : 'wrong' });
@@ -377,7 +379,7 @@ const styles = StyleSheet.create({
   },
   roundText: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 
   roundDots: {
@@ -431,12 +433,12 @@ const styles = StyleSheet.create({
   },
   introTitle: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
   },
   introSub: {
     fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.7,
     textAlign: 'center',
     marginBottom: 8,
@@ -450,7 +452,7 @@ const styles = StyleSheet.create({
   },
   introBtnText: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 
   // Slides in from the right edge, vertically centred, so it never sits on top of

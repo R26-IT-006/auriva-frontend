@@ -7,25 +7,25 @@ import { Audio } from 'expo-av';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
-  Nunito_400Regular,
-  Nunito_600SemiBold,
-  Nunito_700Bold,
-  Nunito_800ExtraBold,
-  Nunito_900Black,
-} from '@expo-google-fonts/nunito';
+  DMSans_400Regular,
+  DMSans_600SemiBold,
+  DMSans_700Bold,
+  DMSans_800ExtraBold,
+  DMSans_900Black,
+} from '@expo-google-fonts/dm-sans';
 import AppNavigator from './src/navigation/AppNavigator';
 
-// Apply Nunito globally to every Text in the app
+// Apply DM Sans globally to every Text in the app
 Text.defaultProps = Text.defaultProps || {};
-Text.defaultProps.style = { fontFamily: 'Nunito_400Regular' };
+Text.defaultProps.style = { fontFamily: 'DMSans_400Regular' };
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Nunito_400Regular,
-    Nunito_600SemiBold,
-    Nunito_700Bold,
-    Nunito_800ExtraBold,
-    Nunito_900Black,
+    DMSans_400Regular,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+    DMSans_800ExtraBold,
+    DMSans_900Black,
   });
 
   // Configure the audio session once, for the whole app.

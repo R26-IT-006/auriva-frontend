@@ -300,13 +300,13 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 21,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 0.4,
     textAlign: 'center',
   },
   pillTextSi: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
     marginTop: 2,
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
 
   progress: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.6,
     textAlign: 'center',
     marginTop: 2,
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 20,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
   },
   continueBtn: {
@@ -354,6 +354,6 @@ const styles = StyleSheet.create({
   },
   continueBtnText: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 });

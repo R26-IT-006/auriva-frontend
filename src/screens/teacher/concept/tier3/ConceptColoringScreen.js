@@ -274,13 +274,13 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 22,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 0.5,
     textAlign: 'center',
   },
   pillTextSi: {
     fontSize: 15,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
     marginTop: 2,
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   },
   toolBtnText: {
     fontSize: 15,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 
   continueBtn: {
@@ -388,6 +388,6 @@ const styles = StyleSheet.create({
   },
   continueBtnText: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 });

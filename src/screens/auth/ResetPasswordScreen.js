@@ -225,20 +225,20 @@ const styles = StyleSheet.create({
   },
   backBtnText: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: TEAL,
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────
   cardTitle: {
     fontSize: 26,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
     marginBottom: 6,
   },
   cardSubtitle: {
     fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
     lineHeight: 22,
     marginBottom: 24,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   },
   reqTitle: {
     fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#9B9FB0',
     letterSpacing: 1.2,
     marginBottom: 10,
@@ -282,12 +282,12 @@ const styles = StyleSheet.create({
   },
   reqText: {
     fontSize: 13,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
   },
   reqTextMet: {
     color: '#1A1A2E',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
 
   // ── Reset button ──────────────────────────────────────────────────────────
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   btnText: {
     color: '#FFF',
     fontSize: 16,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.4,
   },
 
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: Layout.fontSize.xl,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     color: '#1A1A2E',
     textAlign: 'center',
   },
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   successBtnText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.2,
   },
 
@@ -378,6 +378,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.8,
     color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
 });

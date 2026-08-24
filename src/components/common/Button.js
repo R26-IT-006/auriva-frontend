@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   text: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.2,
   },
   row: {

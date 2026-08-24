@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     ...Layout.shadow.sm,
   },
   info: { flex: 1, marginLeft: Layout.spacing.md },
-  name: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
+  name: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
   code: { fontSize: Layout.fontSize.xs, color: Colors.text.link, marginTop: 2 },
   action: { paddingLeft: Layout.spacing.sm },
 });

@@ -614,8 +614,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   breadcrumb: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  breadcrumbParent:  { fontSize: 13, fontFamily: 'Nunito_600SemiBold', color: MUTED },
-  breadcrumbCurrent: { fontSize: 14, fontFamily: 'Nunito_800ExtraBold', color: TEXT },
+  breadcrumbParent:  { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: MUTED },
+  breadcrumbCurrent: { fontSize: 14, fontFamily: 'DMSans_800ExtraBold', color: TEXT },
 
   // ── Layout ────────────────────────────────────────────────────────────────
   scroll: { padding: 20, paddingBottom: 32, alignItems: 'center' },
@@ -631,10 +631,10 @@ const styles = StyleSheet.create({
   },
   stepCircleActive: { borderColor: PURPLE, backgroundColor: PURPLE },
   stepCircleDone:   { borderColor: GREEN,  backgroundColor: GREEN  },
-  stepNum:          { fontSize: 13, fontFamily: 'Nunito_700Bold', color: MUTED },
+  stepNum:          { fontSize: 13, fontFamily: 'DMSans_700Bold', color: MUTED },
   stepNumActive:    { color: SURFACE },
-  stepLabel:        { fontSize: 11, fontFamily: 'Nunito_600SemiBold', color: MUTED },
-  stepLabelActive:  { color: TEXT, fontFamily: 'Nunito_700Bold' },
+  stepLabel:        { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: MUTED },
+  stepLabelActive:  { color: TEXT, fontFamily: 'DMSans_700Bold' },
   stepLine:         { flex: 1, height: 2, backgroundColor: BORDER, marginHorizontal: 10, marginBottom: 16 },
   stepLineDone:     { backgroundColor: GREEN },
 
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: SURFACE,
   },
   profileInfo: { flex: 1, gap: 5 },
-  profileName: { fontSize: 15, fontFamily: 'Nunito_800ExtraBold', color: TEXT },
+  profileName: { fontSize: 15, fontFamily: 'DMSans_800ExtraBold', color: TEXT },
   profileTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   codePill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -672,23 +672,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 3,
     borderWidth: 1, borderColor: BORDER,
   },
-  codePillText: { fontSize: 10, fontFamily: 'Nunito_600SemiBold', color: MUTED },
+  codePillText: { fontSize: 10, fontFamily: 'DMSans_600SemiBold', color: MUTED },
   disabilityTag: {
     backgroundColor: AMBER_L, borderRadius: 20,
     paddingHorizontal: 9, paddingVertical: 3,
   },
-  disabilityTagText: { fontSize: 10, fontFamily: 'Nunito_700Bold', color: AMBER },
+  disabilityTagText: { fontSize: 10, fontFamily: 'DMSans_700Bold', color: AMBER },
   newBadge: {
     backgroundColor: GREEN + '20', borderRadius: 20,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  newBadgeText: { fontSize: 10, fontFamily: 'Nunito_700Bold', color: GREEN },
+  newBadgeText: { fontSize: 10, fontFamily: 'DMSans_700Bold', color: GREEN },
   photoBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: BLUE_L, borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 8, flexShrink: 0,
   },
-  photoBtnText: { fontSize: 12, fontFamily: 'Nunito_700Bold', color: BLUE },
+  photoBtnText: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: BLUE },
 
   // ── Section cards ─────────────────────────────────────────────────────────
   card: {
@@ -705,16 +705,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
   },
   cardIconBox: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  cardTitle:   { fontSize: 14, fontFamily: 'Nunito_700Bold', color: TEXT },
+  cardTitle:   { fontSize: 14, fontFamily: 'DMSans_700Bold', color: TEXT },
   cardDivider: { height: 1, backgroundColor: BORDER },
   cardBody:    { padding: 16, gap: 14 },
 
   // ── Fields ────────────────────────────────────────────────────────────────
   fieldRow:      { gap: 7 },
-  fieldLabel:    { fontSize: 11, fontFamily: 'Nunito_700Bold', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.6 },
+  fieldLabel:    { fontSize: 11, fontFamily: 'DMSans_700Bold', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.6 },
   fieldRequired: { color: CORAL },
   fieldErrorRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  fieldError:    { fontSize: 11, fontFamily: 'Nunito_600SemiBold', color: CORAL },
+  fieldError:    { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: CORAL },
   fieldDivider:  { height: 1, backgroundColor: BORDER },
   twoCol:        { flexDirection: 'row', gap: 12 },
 
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
   },
   inputText: {
     flex: 1, paddingHorizontal: 12, paddingVertical: 12,
-    fontSize: 13, fontFamily: 'Nunito_400Regular', color: TEXT,
+    fontSize: 13, fontFamily: 'DMSans_400Regular', color: TEXT,
   },
   inputTextNoIcon: { paddingHorizontal: 14 },
 
@@ -751,9 +751,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
   dropdownItemActive: { backgroundColor: PURPLE_L },
-  dropdownText:       { flex: 1, fontSize: 13, fontFamily: 'Nunito_400Regular', color: TEXT },
-  dropdownTextActive: { color: PURPLE, fontFamily: 'Nunito_700Bold' },
-  teacherMeta:        { fontSize: 11, fontFamily: 'Nunito_400Regular', color: MUTED, marginTop: 2 },
+  dropdownText:       { flex: 1, fontSize: 13, fontFamily: 'DMSans_400Regular', color: TEXT },
+  dropdownTextActive: { color: PURPLE, fontFamily: 'DMSans_700Bold' },
+  teacherMeta:        { fontSize: 11, fontFamily: 'DMSans_400Regular', color: MUTED, marginTop: 2 },
 
   // ── Step 2 ────────────────────────────────────────────────────────────────
   assignHeaderCard: {
@@ -766,14 +766,14 @@ const styles = StyleSheet.create({
     backgroundColor: PURPLE + '20',
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  assignTitle: { fontSize: 14, fontFamily: 'Nunito_800ExtraBold', color: TEXT, marginBottom: 3 },
-  assignSub:   { fontSize: 12, fontFamily: 'Nunito_400Regular', color: MUTED, lineHeight: 17 },
+  assignTitle: { fontSize: 14, fontFamily: 'DMSans_800ExtraBold', color: TEXT, marginBottom: 3 },
+  assignSub:   { fontSize: 12, fontFamily: 'DMSans_400Regular', color: MUTED, lineHeight: 17 },
 
   noTeachersBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: AMBER_L, borderRadius: 10, padding: 12,
   },
-  noTeachersText: { flex: 1, fontSize: 12, fontFamily: 'Nunito_600SemiBold', color: AMBER },
+  noTeachersText: { flex: 1, fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: AMBER },
 
   // ── Teacher cards ─────────────────────────────────────────────────────────
   teacherList: { gap: 10 },
@@ -792,19 +792,19 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: BORDER,
   },
-  teacherInitials: { fontSize: 15, fontFamily: 'Nunito_700Bold' },
-  teacherCardName: { fontSize: 14, fontFamily: 'Nunito_700Bold', color: TEXT, marginBottom: 4 },
+  teacherInitials: { fontSize: 15, fontFamily: 'DMSans_700Bold' },
+  teacherCardName: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: TEXT, marginBottom: 4 },
   teacherCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   teacherCodePill: {
     backgroundColor: SURFACE, borderRadius: 20,
     paddingHorizontal: 8, paddingVertical: 2,
     borderWidth: 1, borderColor: BORDER,
   },
-  teacherCodeText: { fontSize: 10, fontFamily: 'Nunito_700Bold', color: MUTED },
-  teacherSlotText: { fontSize: 11, fontFamily: 'Nunito_400Regular', color: MUTED },
+  teacherCodeText: { fontSize: 10, fontFamily: 'DMSans_700Bold', color: MUTED },
+  teacherSlotText: { fontSize: 11, fontFamily: 'DMSans_400Regular', color: MUTED },
   capacityDots: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   capacityDot: { width: 8, height: 8, borderRadius: 4 },
-  capacityLabel: { fontSize: 10, fontFamily: 'Nunito_600SemiBold', marginLeft: 2 },
+  capacityLabel: { fontSize: 10, fontFamily: 'DMSans_600SemiBold', marginLeft: 2 },
   radioOuter: {
     width: 22, height: 22, borderRadius: 11,
     borderWidth: 2, borderColor: BORDER,
@@ -821,8 +821,8 @@ const styles = StyleSheet.create({
     paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: BORDER,
   },
   summaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  summaryLabel:    { fontSize: 12, fontFamily: 'Nunito_600SemiBold', color: MUTED },
-  summaryValue:    { fontSize: 13, fontFamily: 'Nunito_700Bold', color: TEXT, flex: 1, textAlign: 'right' },
+  summaryLabel:    { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: MUTED },
+  summaryValue:    { fontSize: 13, fontFamily: 'DMSans_700Bold', color: TEXT, flex: 1, textAlign: 'right' },
 
   // ── Action buttons ────────────────────────────────────────────────────────
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
@@ -832,17 +832,17 @@ const styles = StyleSheet.create({
     shadowColor: GREEN, shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
-  primaryBtnText: { fontSize: 14, fontFamily: 'Nunito_800ExtraBold', color: SURFACE },
+  primaryBtnText: { fontSize: 14, fontFamily: 'DMSans_800ExtraBold', color: SURFACE },
   cancelBtn: {
     flex: 1, height: 46, borderRadius: 13,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
     backgroundColor: SURFACE, borderWidth: 1.5, borderColor: '#C5CDD8',
   },
-  cancelBtnText: { fontSize: 14, fontFamily: 'Nunito_700Bold', color: TEXT },
+  cancelBtnText: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: TEXT },
   skipBtn: {
     flex: 1, height: 46, borderRadius: 13,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: BODY_BG, borderWidth: 1.5, borderColor: '#C5CDD8',
   },
-  skipBtnText: { fontSize: 13, fontFamily: 'Nunito_700Bold', color: MUTED },
+  skipBtnText: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: MUTED },
 });

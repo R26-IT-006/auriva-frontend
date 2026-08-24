@@ -40,6 +40,14 @@ const MODULES = [
   { key: 'dialogue',      label: 'Dialogue Module',      image: MODULE_ICONS.dialogue,      corner: 'br' },
 ];
 
+// Theme colours are opaque hex; the card needs the accent at low alpha for the
+// icon plate and the surface wash, so it stays a tint rather than a second block
+// of colour competing with the icon.
+function tint(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
 // ── Geometry ──────────────────────────────────────────────────────────────────
 /** Avatar at the centre, one module parked in each corner — no implied order. */
 function buildHub(width, height) {
@@ -51,21 +59,29 @@ function buildHub(width, height) {
   // each edge and left the screen mostly empty.
   const gutter = 10;
 
-  // Two cards sit side by side and stacked, so neither dimension may exceed half
-  // the box. This cap is applied last so it always beats the preferred floor —
-  // a short landscape phone gets a shorter card rather than one that overflows.
-  const cardW = Math.min(width  / 2 - gutter * 1.5, Math.max(150, Math.min(340, width  * 0.40)));
-  const cardH = Math.min(height / 2 - gutter * 1.5, Math.max(130, Math.min(260, height * 0.34)));
+  // The cards are square, so one side length has to satisfy both axes. Two cards
+  // sit side by side and stacked, so it may not exceed half the box either way;
+  // those caps are applied last so they always beat the preferred size — a short
+  // landscape phone gets a smaller card rather than one that overflows.
+  const preferred = Math.max(160, Math.min(340, Math.min(width, height) * 0.40));
+  const cardSize  = Math.max(
+    100,
+    Math.min(preferred, width / 2 - gutter * 1.5, height / 2 - gutter * 1.5),
+  );
+  const cardW = cardSize;
+  const cardH = cardSize;
 
-  // Park each card fully into its corner, leaving only the gutter.
-  const dx = width  / 2 - cardW / 2 - gutter;
-  const dy = height / 2 - cardH / 2 - gutter;
+  // Corner-most position, then drawn back toward the centre so the four cards
+  // read as one cluster around the child rather than four things pushed apart.
+  const pullIn = 0.82;
+  const dx = (width  / 2 - cardW / 2 - gutter) * pullIn;
+  const dy = (height / 2 - cardH / 2 - gutter) * pullIn;
 
   // The cards are placed first, so the hub takes whatever the middle leaves. It
   // clears the corner cards as long as its box starts inboard of them on either
   // axis — hence the max() of the two clearances, not the min().
-  const hubRoom = Math.max(cx - cardW - gutter * 2, cy - cardH - gutter * 2);
-  const hubR = Math.min(hubRoom, Math.max(80, Math.min(190, Math.min(width, height) * 0.22)));
+  const hubRoom = Math.max(dx - cardW / 2 - gutter, dy - cardH / 2 - gutter);
+  const hubR = Math.max(60, Math.min(hubRoom, Math.max(80, Math.min(190, Math.min(width, height) * 0.22))));
 
   const offsets = { tl: [-1, -1], tr: [1, -1], bl: [-1, 1], br: [1, 1] };
   const cards = MODULES.map((m) => {
@@ -74,15 +90,19 @@ function buildHub(width, height) {
   });
 
   // Contents scale with the card, so a larger card is actually more readable
-  // rather than the same 66px icon floating in more padding.
-  const iconSize  = Math.round(Math.min(cardW * 0.34, cardH * 0.46));
-  const labelSize = Math.round(Math.max(13, Math.min(22, cardW * 0.075)));
+  // rather than the same 66px icon floating in more padding. The plate, its gap
+  // and two lines of label have to clear the card height on the smallest card,
+  // which is what holds the icon down at a third of the side.
+  const iconSize   = Math.round(cardSize * 0.34);
+  const plateSize  = Math.round(iconSize * 1.44);
+  const labelSize  = Math.round(Math.max(12, Math.min(18, cardSize * 0.072)));
+  const cardRadius = Math.round(Math.max(22, Math.min(34, cardSize * 0.19)));
 
-  return { cx, cy, hubR, cardW, cardH, cards, iconSize, labelSize };
+  return { cx, cy, hubR, cardW, cardH, cards, iconSize, plateSize, labelSize, cardRadius };
 }
 
 // ── A module card ─────────────────────────────────────────────────────────────
-function ModuleCard({ item, index, w, h, iconSize, labelSize, theme, onPress }) {
+function ModuleCard({ item, index, w, h, iconSize, plateSize, labelSize, radius, theme, onPress }) {
   const enter = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(1)).current;
 
@@ -116,19 +136,40 @@ function ModuleCard({ item, index, w, h, iconSize, labelSize, theme, onPress }) 
         onPress={onPress}
         onPressIn={pressIn}
         onPressOut={pressOut}
-        style={[styles.card, { borderColor: theme.cardOutline }]}
+        accessibilityRole="button"
+        accessibilityLabel={item.label}
+        style={[styles.cardPress, { borderRadius: radius }]}
       >
-        <Image
-          source={item.image}
-          style={{ width: iconSize, height: iconSize }}
-          resizeMode="contain"
-        />
-        <Text
-          style={[styles.cardLabel, { fontSize: labelSize, lineHeight: Math.round(labelSize * 1.3) }]}
-          numberOfLines={2}
-        >
-          {item.label}
-        </Text>
+        <View style={[styles.card, { borderRadius: radius, borderColor: theme.cardOutline }]}>
+          {/* The plate gives every icon the same footprint, so four artworks of
+              different weight and aspect stop looking randomly sized. */}
+          <View
+            style={[
+              styles.iconPlate,
+              {
+                width: plateSize, height: plateSize,
+                borderRadius: Math.round(plateSize * 0.32),
+                backgroundColor: tint(theme.cardOutline, 0.16),
+              },
+            ]}
+          >
+            <Image
+              source={item.image}
+              style={{ width: iconSize, height: iconSize }}
+              resizeMode="contain"
+            />
+          </View>
+
+          <Text
+            style={[
+              styles.cardLabel,
+              { fontSize: labelSize, lineHeight: Math.round(labelSize * 1.25), color: theme.headingText },
+            ]}
+            numberOfLines={2}
+          >
+            {item.label}
+          </Text>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -225,7 +266,9 @@ function ModuleHub({ student, theme, onModulePress }) {
               w={hub.cardW}
               h={hub.cardH}
               iconSize={hub.iconSize}
+              plateSize={hub.plateSize}
               labelSize={hub.labelSize}
+              radius={hub.cardRadius}
               theme={theme}
               onPress={() => onModulePress(c.key)}
             />
@@ -341,16 +384,16 @@ const styles = StyleSheet.create({
   },
   greeting: { alignItems: 'center', gap: 5 },
   greetingText: {
-    fontSize: 27, fontFamily: 'Nunito_900Black', color: '#1A2E3B',
+    fontSize: 27, fontFamily: 'DMSans_900Black', color: '#1A2E3B',
   },
   avatarPill: {
     borderWidth: 1.5, borderRadius: 20,
     paddingHorizontal: 14, paddingVertical: 3,
   },
-  avatarPillText: { fontSize: 14, fontFamily: 'Nunito_600SemiBold' },
+  avatarPillText: { fontSize: 14, fontFamily: 'DMSans_600SemiBold' },
 
   prompt: {
-    fontSize: 17, fontFamily: 'Nunito_600SemiBold',
+    fontSize: 17, fontFamily: 'DMSans_600SemiBold',
     color: '#7A8A9A', textAlign: 'center', marginTop: 2,
   },
 
@@ -378,21 +421,31 @@ const styles = StyleSheet.create({
 
   // ── Module cards ──────────────────────────────────────────────────────────
   cardWrap: { position: 'absolute' },
-  card: {
+  // The shadow and the fill live on the Pressable, the border on the view inside
+  // it: a shadow on the clipping view would be cut off with the corners.
+  cardPress: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 26,
+    shadowColor: '#1A2E3B', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.13, shadowRadius: 16, elevation: 5,
+  },
+  card: {
+    flex: 1,
+    overflow: 'hidden',
     borderWidth: 2.5,
     alignItems: 'center', justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 14, paddingVertical: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+    gap: 9,
+    paddingHorizontal: 12, paddingVertical: 12,
+  },
+  iconPlate: {
+    alignItems: 'center', justifyContent: 'center',
   },
   // fontSize / lineHeight are set per-card from buildHub so the label tracks the
   // card size; everything else is fixed.
   cardLabel: {
-    fontFamily: 'Nunito_800ExtraBold',
+    // Slight negative tracking — DM Sans Bold is a touch loose at display size.
+    fontFamily: 'DMSans_700Bold',
     color: '#1A2E3B', textAlign: 'center',
+    letterSpacing: -0.2,
   },
 });

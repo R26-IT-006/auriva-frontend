@@ -42,11 +42,11 @@ export const Layout = {
   },
 
   fonts: {
-    regular:   'Nunito_400Regular',
-    semibold:  'Nunito_600SemiBold',
-    bold:      'Nunito_700Bold',
-    extrabold: 'Nunito_800ExtraBold',
-    black:     'Nunito_900Black',
+    regular:   'DMSans_400Regular',
+    semibold:  'DMSans_600SemiBold',
+    bold:      'DMSans_700Bold',
+    extrabold: 'DMSans_800ExtraBold',
+    black:     'DMSans_900Black',
   },
 
   shadow: {

@@ -64,7 +64,7 @@ export const conceptApi = {
     return data;
   },
 
-  async logAdaptiveAttempt({ studentId, sessionId, categoryKey, conceptKey, confusedConceptKey, roundNumber, wasCorrect, timeTakenMs, optionKeys }) {
+  async logAdaptiveAttempt({ studentId, sessionId, categoryKey, conceptKey, confusedConceptKey, roundNumber, wasCorrect, timeTakenMs, optionKeys, distractorSource }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_ADAPTIVE_ATTEMPT, {
       student_id:           studentId,
       session_id:           sessionId           || null,
@@ -78,6 +78,7 @@ export const conceptApi = {
       // confused concept, but log it explicitly rather than leaving the analysis
       // to infer the pair.
       ...(optionKeys ? { option_keys: optionKeys } : {}),
+      ...(distractorSource ? { distractor_source: distractorSource } : {}),
     });
     return data;
   },
@@ -161,7 +162,7 @@ export const conceptApi = {
     return data;
   },
 
-  async logActivityAttempt({ studentId, sessionId, activityId, categoryKey, conceptKey, roundNumber, questionType, selectedKey, wasCorrect, timeTakenMs, optionKeys }) {
+  async logActivityAttempt({ studentId, sessionId, activityId, categoryKey, conceptKey, roundNumber, questionType, selectedKey, wasCorrect, timeTakenMs, optionKeys, distractorSource }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_ACTIVITY_ATTEMPT, {
       student_id:    studentId,
       session_id:    sessionId  || null,
@@ -174,6 +175,7 @@ export const conceptApi = {
       was_correct:   wasCorrect,
       time_taken_ms: timeTakenMs || 0,
       option_keys:   optionKeys  || [],
+      ...(distractorSource ? { distractor_source: distractorSource } : {}),
     });
     return data;
   },

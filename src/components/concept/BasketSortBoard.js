@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   basketLabel: {
     fontSize: 16,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   basketBody: {
     flex: 1,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   basketOverflow: {
     fontSize: 15,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 
   tray: {

@@ -67,11 +67,11 @@ export function MasteryRing({
 const styles = StyleSheet.create({
   wrap:   { alignItems: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  value:  { fontFamily: 'Nunito_800ExtraBold' },
+  value:  { fontFamily: 'DMSans_800ExtraBold' },
   label:  {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     marginTop: 1,
   },
   sublabel: {

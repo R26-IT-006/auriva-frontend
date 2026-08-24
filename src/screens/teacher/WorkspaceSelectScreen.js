@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#444',
   },
 
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 36,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     color: '#1A3028',
     textAlign: 'center',
     letterSpacing: 0,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: Layout.fontSize.xl,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#1A2E26',
   },
   cardSub: {

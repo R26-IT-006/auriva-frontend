@@ -386,12 +386,12 @@ const styles = StyleSheet.create({
 
   heading: {
     fontSize: 30,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.5,
   },
   conceptName: {
     fontSize: 20,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 
   scorePill: {
@@ -409,18 +409,18 @@ const styles = StyleSheet.create({
   },
   pillCount: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     marginLeft: 4,
   },
   pillLabel: {
     fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.65,
   },
 
   encouragement: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
     marginTop: 8,
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   },
   continueBtnText: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 
   fallingStar: {

@@ -67,7 +67,7 @@ export function TrendSparkline({ points = [], width = 280, height = 64 }) {
         <Text style={styles.caption}>
           {usable.length === 1 ? usable[0].date : `${usable[0].date} → ${last.date}`}
         </Text>
-        <Text style={[styles.caption, { color: stroke, fontFamily: 'Nunito_700Bold' }]}>
+        <Text style={[styles.caption, { color: stroke, fontFamily: 'DMSans_700Bold' }]}>
           {Math.round(last.accuracy * 100)}% latest
         </Text>
       </View>

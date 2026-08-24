@@ -399,12 +399,12 @@ const styles = StyleSheet.create({
   topBarLeft: { gap: 1 },
   topGreeting: {
     fontSize: 13,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#4A7A60',
   },
   topName: {
     fontSize: 22,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     color: '#1A3D2E',
   },
   topBarRight: { flexDirection: 'row', gap: 10 },
@@ -439,13 +439,13 @@ const styles = StyleSheet.create({
   profileMeta: { flex: 1, gap: 4 },
   profileName: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
   },
   profileCodeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   profileCode: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: TEAL,
   },
   profileBadge: {
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   },
   profileBadgeText: {
     fontSize: 11,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEAL,
   },
 
@@ -495,12 +495,12 @@ const styles = StyleSheet.create({
   },
   kpiValue: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     color: '#FFF',
   },
   kpiLabel: {
     fontSize: 11,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: 'rgba(255,255,255,0.85)',
   },
 
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   studentName: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
   },
 
@@ -554,13 +554,13 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#1A3D2E',
     marginBottom: 4,
   },
   emptySub: {
     fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
     textAlign: 'center',
     lineHeight: 18,
@@ -575,13 +575,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 15,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
     marginTop: 4,
   },
   sectionLink: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEAL,
     marginTop: 4,
   },
@@ -612,12 +612,12 @@ const styles = StyleSheet.create({
   actionText: { flex: 1, gap: 2 },
   actionLabel: {
     fontSize: 15,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#1A3D2E',
   },
   actionSub: {
     fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
   },
   actionChevron: {
@@ -658,17 +658,17 @@ const styles = StyleSheet.create({
   activityText: { flex: 1, gap: 1 },
   activityTitle: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#1A3D2E',
   },
   activitySubtitle: {
     fontSize: 11,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
   },
   activityTime: {
     fontSize: 11,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#9BAFA8',
     flexShrink: 0,
   },
@@ -693,12 +693,12 @@ const styles = StyleSheet.create({
   bannerLeft: { flex: 1, gap: 5 },
   bannerTitle: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#FFF',
   },
   bannerSub: {
     fontSize: 13,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: 'rgba(255,255,255,0.82)',
     lineHeight: 20,
   },

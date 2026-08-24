@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   heroMeta:  { flex: 1, marginLeft: Layout.spacing.lg },
   heroName:  {
     fontSize: Layout.fontSize.xl,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#FFFFFF',
     lineHeight: Layout.fontSize.xl * 1.25,
   },
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   heroChipText: {
     fontSize: Layout.fontSize.xs,
     color: '#FFFFFF',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     maxWidth: 150,
   },
 
@@ -374,20 +374,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     flex: 1,
     fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.primary,
   },
   sectionAction: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.link,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   infoCard: { marginBottom: Layout.spacing.md },
   infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Layout.spacing.sm, paddingHorizontal: Layout.spacing.md },
   infoIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.status.infoLight, alignItems: 'center', justifyContent: 'center', marginRight: Layout.spacing.sm },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
-  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
+  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
   divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 58 },
 
   // ── Module selector ───────────────────────────────────────────────────────
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   },
   moduleTabText: {
     fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.secondary,
   },
   moduleTabTextActive: { color: '#FFFFFF' },
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: Layout.fontSize.sm,
     color: Colors.text.link,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   conceptHeader: {
     flexDirection: 'row',
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: Layout.fontSize.sm,
     color: Colors.text.primary,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   categoryBlock: {
     paddingHorizontal: Layout.spacing.md,
@@ -467,6 +467,6 @@ const styles = StyleSheet.create({
   reportLinkText: {
     fontSize: Layout.fontSize.sm,
     color: Colors.text.link,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 });

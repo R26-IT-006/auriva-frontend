@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   watchEmoji: { fontSize: 15 },
   watchText: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   skipBtn: {
     paddingHorizontal: 16,
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.7,
   },
 
@@ -270,13 +270,13 @@ const styles = StyleSheet.create({
   },
   questionEn: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
     fontSize: 18,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
   },
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   feedbackEmoji: { fontSize: 26 },
   feedbackText: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#FFF',
   },
 

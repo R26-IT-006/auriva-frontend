@@ -119,16 +119,16 @@ const styles = StyleSheet.create({
   crumbText: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     flexShrink: 1,
   },
   crumbTextLink: {
     color: K.purple,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
   crumbTextActive: {
     color: Colors.text.primary,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   right: {
     marginLeft: Layout.spacing.sm,
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.xl,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
     marginTop: 4,
   },
