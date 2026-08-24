@@ -129,6 +129,11 @@ export default function BasketSortBoard({ baskets, items, placed, theme, locked,
         onStartShouldSetPanResponder: () => !locked,
         onMoveShouldSetPanResponder:  () => !locked,
         onPanResponderTerminationRequest: () => false,
+        // Re-measure as the drag starts. onLayout alone leaves the rects stale
+        // whenever the board moves without re-laying out its baskets — a card
+        // leaving the tray reflows the row above them, and the measurement that
+        // matters is the one taken immediately before the drop.
+        onPanResponderGrant: measureBaskets,
         onPanResponderMove: Animated.event(
           [null, { dx: panFor(item.key).x, dy: panFor(item.key).y }],
           { useNativeDriver: false },
@@ -177,6 +182,10 @@ export default function BasketSortBoard({ baskets, items, placed, theme, locked,
             <View
               key={basket.colorKey}
               ref={(r) => { basketRefs.current[i] = r; }}
+              // Android flattens plain layout-only views out of the native tree,
+              // and a flattened node measures as 0×0 — which reads here as "no
+              // drop zone anywhere" and makes every drop snap back.
+              collapsable={false}
               onLayout={measureBaskets}
               style={{ width: BASKET_W, height: BASKET_H }}
             >
@@ -277,7 +286,15 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 26,
+    // Reversed so the pictures sit above the baskets. Done here rather than by
+    // reordering the JSX: the basket row has to stay the node that measures its
+    // own drop rects, and leaving the markup alone keeps that wiring obvious.
+    flexDirection: 'column-reverse',
+    // Gap and bottom padding move together: the wider gap lifts the pictures off
+    // the baskets, and the matching padding shifts the centred pair back up so
+    // the baskets stay put while the pictures rise.
+    gap: 78,
+    paddingBottom: 52,
   },
 
   basketRow: {

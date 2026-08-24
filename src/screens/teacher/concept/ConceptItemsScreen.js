@@ -15,9 +15,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
+import { ActivityPickerModal } from '../../../components/concept/ActivityPickerModal';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItemsForCategory } from '../../../data/conceptData';
 import { getConclusionForCategory } from '../../../data/conceptConclusions';
+import { getPairableItems } from '../../../data/conceptPairMatch';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
@@ -119,6 +121,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
   const [loading,        setLoading]        = useState(true);
   const [gateVisible,    setGateVisible]    = useState(false);
   const [activityStatus, setActivityStatus] = useState(null);
+  const [pickerVisible,  setPickerVisible]  = useState(false);
 
   const theme    = getAvatarTheme(student?.avatar_key);
   const H_PAD    = Layout.spacing.md;
@@ -187,6 +190,12 @@ export default function ConceptItemsScreen({ route, navigation }) {
   // Category complete when every concept has passed tier 1
   const allTier1Passed = !loading && merged.length > 0 && merged.every((i) => i.tier1_status === 'passed');
 
+  // Same predicate the server counts mastery with — tier 1 and tier 2 passed,
+  // tier 3 excluded because it is a video watch with no assessment.
+  const masteredCount = merged.filter(
+    (i) => i.tier1_status === 'passed' && i.tier2_status === 'passed',
+  ).length;
+
   // Bottom 3 by tier1_score for the review section (only when all passed)
   const weakConcepts = allTier1Passed
     ? [...merged]
@@ -225,6 +234,72 @@ export default function ConceptItemsScreen({ route, navigation }) {
         }}
       />
     );
+  }
+
+  // What the Activities button offers for this category. Everything is listed
+  // whether or not it is available yet — a locked row explains what opens it,
+  // which is friendlier than a menu that silently changes length as a child
+  // progresses.
+  const conclusion    = getConclusionForCategory(category.key);
+  const coloringItems = localItems.filter((i) => i.coloring);
+  const pairableItems = getPairableItems(category.key);
+  const masteredKeys  = merged
+    .filter((i) => i.tier1_status === 'passed' && i.tier2_status === 'passed')
+    .map((i) => i.key);
+
+  // The mixed practice activity is not listed here — it has its own banner at
+  // the top of the list, which announces itself when it becomes available.
+  const activities = [
+    ...(conclusion ? [{
+      key:            'conclusion',
+      screen:         conclusion.screen,
+      icon:           conclusion.icon,
+      title:          conclusion.title,
+      subtitle:       conclusion.subtitle,
+      // Open from the first mastered concept rather than at full mastery: the
+      // sort game works with whatever the child knows, and holding it back to
+      // the end of a category made it unreachable for most of the module.
+      disabledReason: masteredCount >= 1
+        ? null
+        : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
+    }] : []),
+    ...(pairableItems.length >= 3 ? [{
+      key:      'pairmatch',
+      screen:   'ConceptPairMatch',
+      icon:     'git-compare',
+      title:    'Photo & Picture Match',
+      subtitle: 'Match each photo to its drawing.',
+      // Mastered concepts are preferred in the deal but not required, so this
+      // opens as soon as the child has learned one.
+      params:   { masteredKeys },
+      disabledReason: masteredCount >= 1
+        ? null
+        : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
+    }] : []),
+    ...(pairableItems.length >= 3 ? [{
+      key:      'memory',
+      screen:   'ConceptMemory',
+      icon:     'grid',
+      title:    'Memory Game',
+      subtitle: 'Turn the cards over and find the pairs.',
+      params:   { masteredKeys },
+      disabledReason: masteredCount >= 1
+        ? null
+        : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
+    }] : []),
+    ...(coloringItems.length > 0 ? [{
+      key:      'coloring',
+      icon:     'color-palette',
+      title:    'Colouring',
+      subtitle: `Colour any of the ${coloringItems.length} pictures.`,
+      // No lock: colouring is free play, and there is nothing to get wrong.
+      disabledReason: null,
+    }] : []),
+  ];
+
+  function handlePickActivity(screen, params) {
+    setPickerVisible(false);
+    navigation.navigate(screen, { student, category, sessionId: null, ...params });
   }
 
   // Deliberately a banner and not an auto-navigate: dropping a child straight into
@@ -278,7 +353,6 @@ export default function ConceptItemsScreen({ route, navigation }) {
   // dashboard and analytics count with). Like the activity banner above it, this
   // waits to be tapped rather than auto-navigating.
   function renderConclusionBanner() {
-    const conclusion = getConclusionForCategory(category.key);
     if (!conclusion || !activityStatus?.fully_mastered) return null;
 
     return (
@@ -354,25 +428,37 @@ export default function ConceptItemsScreen({ route, navigation }) {
 
         {/* Top bar */}
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={() => navigation.navigate('ConceptCategories', { student })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
-          </TouchableOpacity>
+          {/* Left and right take equal space, so the title lands on the screen's
+              centre line rather than being pushed off it by the wider right
+              group. */}
+          <View style={styles.topBarSide}>
+            <TouchableOpacity
+              style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+              onPress={() => navigation.navigate('ConceptCategories', { student })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.titleRow}>
             <Text style={[styles.title, { color: theme.headingText }]}>{category.label.toUpperCase()}</Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={() => setGateVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="school" size={20} color={theme.headingText} />
-          </TouchableOpacity>
+          <View style={styles.topBarRight}>
+            <TouchableOpacity
+              style={[styles.activitiesBtn, { backgroundColor: theme.button }]}
+              onPress={() => setPickerVisible(true)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Choose an activity"
+            >
+              <Ionicons name="game-controller" size={18} color={theme.buttonText} />
+              <Text style={[styles.activitiesBtnText, { color: theme.buttonText }]}>
+                Activities
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -397,6 +483,15 @@ export default function ConceptItemsScreen({ route, navigation }) {
           />
         )}
       </SafeAreaView>
+
+      <ActivityPickerModal
+        visible={pickerVisible}
+        theme={theme}
+        activities={activities}
+        coloringItems={coloringItems}
+        onPick={handlePickActivity}
+        onClose={() => setPickerVisible(false)}
+      />
 
       <ParentGateModal
         visible={gateVisible}
@@ -428,9 +523,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  topBarSide: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  topBarRight: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  activitiesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  activitiesBtnText: {
+    fontSize: 15,
+    fontFamily: 'DMSans_700Bold',
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    // Shrinks rather than pushing the buttons apart when a category name is long.
+    flexShrink: 1,
     gap: 6,
   },
   title: {

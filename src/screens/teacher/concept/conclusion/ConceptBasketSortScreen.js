@@ -4,9 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Animated,
 } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,9 +16,6 @@ import { buildBasketSortGame, getConclusionForCategory } from '../../../../data/
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
 
-const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
-
-const FEEDBACK_OFFSCREEN = 280;
 const FINISH_DELAY_MS    = 1600;
 
 /**
@@ -52,9 +47,7 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
   const [remaining, setRemaining] = useState(() => game?.items ?? []);
   const [placed,    setPlaced]    = useState({});
   const [locked,    setLocked]    = useState(false);
-  const [finished,  setFinished]  = useState(false);
 
-  const feedbackSlide = useRef(new Animated.Value(FEEDBACK_OFFSCREEN)).current;
   const sessionStart  = useRef(Date.now());
   const missed        = useRef(new Set());   // concepts that took more than one try
   const attempts      = useRef(0);
@@ -80,12 +73,9 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
 
   function finish(finalPlaced) {
     setLocked(true);
-    setFinished(true);
 
     const total          = game.items.length;
     const correctFirstTry = total - missed.current.size;
-
-    Animated.spring(feedbackSlide, { toValue: 0, useNativeDriver: true, friction: 6, tension: 80 }).start();
 
     Speech.stop();
     Speech.speak('You sorted them all! Well done!', { language: 'en-US', rate: 0.8 });
@@ -251,16 +241,6 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
           onDrop={handleDrop}
         />
 
-        {/* One celebration at the end rather than a full-screen GIF after each of
-            six drops, which would interrupt the flow the sorting depends on. */}
-        {finished && (
-          <Animated.View
-            style={[styles.feedback, { transform: [{ translateX: feedbackSlide }] }]}
-            pointerEvents="none"
-          >
-            <ExpoImage source={CORRECT_GIF} style={styles.feedbackGif} contentFit="contain" />
-          </Animated.View>
-        )}
 
       </SafeAreaView>
     </LinearGradient>
@@ -289,6 +269,9 @@ const styles = StyleSheet.create({
 
   pill: {
     flexShrink: 1,
+    // Sits below the two icon buttons it shares the row with, rather than
+    // centred against them.
+    marginTop: 22,
     paddingHorizontal: 28,
     paddingVertical: 10,
     borderRadius: 24,
@@ -320,15 +303,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  feedback: {
-    position: 'absolute',
-    right: 18,
-    top: '38%',
-  },
-  feedbackGif: {
-    width: 190,
-    height: 190,
-  },
 
   emptySafe: {
     flex: 1,
