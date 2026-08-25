@@ -117,7 +117,7 @@ export default function Cat3LandingScreen({ route, navigation }) {
   const isStandalone = wordKey === 'cat3_yes' || wordKey === 'cat3_no';
   const wordDisplay  = isStandalone
     ? `"${wordLabel}"`
-    : `Can you ${wordLabel}?`;
+    : `${wordLabel}`;
 
   return (
     <View style={styles.root}>

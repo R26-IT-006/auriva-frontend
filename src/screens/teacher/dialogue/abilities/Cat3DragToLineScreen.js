@@ -184,6 +184,7 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
   const settingsFade  = useRef(new Animated.Value(0)).current;
   const feedbackOp    = useRef(new Animated.Value(0)).current;
   const dropGlow      = useRef(new Animated.Value(0)).current;
+  const videoRef      = useRef(null);
 
   function goBackSmart() {
     if (navigation.canGoBack()) {
@@ -199,7 +200,14 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
       goBackSmart();
       return true;
     });
-    return () => { activeRef.current = false; sub.remove(); };
+    return () => {
+      activeRef.current = false;
+      sub.remove();
+      // Stop the scene video on blur — otherwise its audio keeps playing in
+      // the background after the student navigates away (expo-av Video
+      // doesn't auto-stop just because the screen loses focus).
+      videoRef.current?.pauseAsync().catch(() => {});
+    };
   }, []));
 
   function measureDropZone() {
@@ -316,6 +324,7 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
             {sceneVideo ? (
               <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
                 <Video
+                  ref={videoRef}
                   source={sceneVideo}
                   style={styles.sceneImg}
                   resizeMode={ResizeMode.COVER}

@@ -97,6 +97,7 @@ export default function ProbeProductionScreen({ route, navigation }) {
   const wordAudio = isAbilities ? CAT3_WORD_AUDIO[assetKey] : DIALOGUE_WORD_AUDIO[assetKey];
 
   const soundRef  = useRef(null);
+  const videoRef  = useRef(null);
   const activeRef = useRef(true);
   const [cloudText, setCloudText] = useState(`Can you say "${wordLabel}"?`);
   const [phase, setPhase] = useState('idle'); // idle | processing | done
@@ -107,6 +108,9 @@ export default function ProbeProductionScreen({ route, navigation }) {
       activeRef.current = false;
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
+      // Stop the scene video on blur — otherwise its audio keeps playing in
+      // the background after the student navigates away.
+      videoRef.current?.pauseAsync().catch(() => {});
     };
   }, []));
 
@@ -181,6 +185,7 @@ export default function ProbeProductionScreen({ route, navigation }) {
             {wordVideo && (
               <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
                 <Video
+                  ref={videoRef}
                   source={wordVideo}
                   style={styles.image}
                   resizeMode={ResizeMode.COVER}

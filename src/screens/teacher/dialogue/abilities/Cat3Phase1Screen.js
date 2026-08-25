@@ -139,6 +139,12 @@ function VideoAvatar({ source }) {
     setPlaying(true);
   }
 
+  // Stop on blur — otherwise a tapped video kept playing (with audio) after
+  // the student navigated away before it finished.
+  useFocusEffect(useCallback(() => () => {
+    videoRef.current?.pauseAsync().catch(() => {});
+  }, []));
+
   return (
     <TouchableOpacity onPress={doPlay} activeOpacity={1} style={styles.avatarTouchable}>
       <Video

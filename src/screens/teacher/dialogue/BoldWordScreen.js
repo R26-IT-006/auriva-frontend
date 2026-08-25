@@ -30,7 +30,21 @@ export default function BoldWordScreen({ route, navigation }) {
   } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const imageSize = Math.min(screenWidth * 0.42, screenHeight * 0.42, 380);
+  // Local require()'d images resolve synchronously to their real bundled
+  // dimensions (no waiting on onLoad, which is unreliable for local assets
+  // on some platforms and was causing the box to fall back to the 4:3
+  // default — visible as letterbox bars). The box is then bounded by BOTH a
+  // width budget and a height budget, whichever is stricter, so a near-
+  // square photo can't blow past a sensible height and push the Next button
+  // down off-comfortable.
+  const resolvedSize = wordImage ? Image.resolveAssetSource(wordImage) : null;
+  const imageAspectRatio = resolvedSize?.width && resolvedSize?.height
+    ? resolvedSize.width / resolvedSize.height
+    : 4 / 3;
+  const maxImageWidth  = Math.min(screenWidth * 0.58, 480);
+  const maxImageHeight = screenHeight * 0.42;
+  const imageWidth  = Math.min(maxImageWidth, maxImageHeight * imageAspectRatio);
+  const imageHeight = Math.round(imageWidth / imageAspectRatio);
 
   const [showGate, setShowGate] = useState(false);
   const soundRef = useRef(null);
@@ -128,8 +142,8 @@ export default function BoldWordScreen({ route, navigation }) {
           <View style={styles.body}>
 
             {wordImage && (
-              <View style={[styles.imageWrap, { width: imageSize, height: imageSize, backgroundColor: theme.cardSurface }]}>
-                <Image source={wordImage} style={styles.image} resizeMode="cover" />
+              <View style={[styles.imageWrap, { width: imageWidth, height: imageHeight, backgroundColor: theme.cardSurface }]}>
+                <Image source={wordImage} style={styles.image} resizeMode="contain" />
               </View>
             )}
 
@@ -200,7 +214,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.md,
+    paddingTop: Layout.spacing.xxl,
     paddingBottom: Layout.spacing.lg,
     gap: 20,
   },

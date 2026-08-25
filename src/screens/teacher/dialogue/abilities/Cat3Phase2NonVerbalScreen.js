@@ -67,10 +67,10 @@ const CAT3_NV = Object.fromEntries(CAT3_NV_ORDER.map((key, i) => {
 const PROGRESS_FRACTION = 0.82;
 
 const AVATAR_IMAGES = {
-  lily:     require('../../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
-  boba:     require('../../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
+  lily:     require('../../../../../assets/avatar-images/LilyCongratulations.png'),
+  megatron: require('../../../../../assets/avatar-images/MegatronCongratulations.png'),
+  boba:     require('../../../../../assets/avatar-images/BobaCongratulations.png'),
+  glitter:  require('../../../../../assets/avatar-images/GlitterCongratulations.png'),
 };
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
@@ -146,6 +146,17 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
   const activeRef    = useRef(true);
   const apiCalledRef = useRef(false);
   const settingsFade = useRef(new Animated.Value(0)).current;
+  const avatarPop    = useRef(new Animated.Value(0)).current;
+
+  function popAvatar() {
+    avatarPop.setValue(0);
+    Animated.spring(avatarPop, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 10,
+    }).start();
+  }
   const [gatePurpose, setGatePurpose] = useState('settings');
 
   function goBackSmart() {
@@ -208,6 +219,7 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
     if (item.isCorrect) {
       setSettled(true);
       setCloud('Good job!');
+      popAvatar();
       await playSound(AUDIO_GOOD_JOB);
       goToPhase3(true);
     } else {
@@ -215,14 +227,17 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
       setWrongCount(n);
       if (n === 1) {
         setCloud('Try again!');
+        popAvatar();
         setTimeout(() => { if (activeRef.current) setSelectedId(null); }, 1200);
       } else if (n === 2) {
         setCloud('Look carefully!');
+        popAvatar();
         setTimeout(() => { if (activeRef.current) setSelectedId(null); }, 1200);
       } else {
         setSettled(true);
         setCorrectRev(true);
         setCloud("Let's keep going!");
+        popAvatar();
         goToPhase3(false);
       }
     }
@@ -310,7 +325,7 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
                     ]}
                   >
                     <View style={styles.imageWrap}>
-                      <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
+                      <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
                       {showGreen && (
                         <View style={styles.correctBadge}>
                           <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
@@ -337,7 +352,22 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
                   <View style={styles.bubbleTail} />
                 </View>
               ) : null}
-              <Image source={avatarImg} style={styles.avatarImg} resizeMode="contain" />
+              {cloudText ? (
+                <Animated.Image
+                  source={avatarImg}
+                  resizeMode="contain"
+                  style={[
+                    styles.avatarImg,
+                    {
+                      opacity: avatarPop,
+                      transform: [
+                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) },
+                        { translateY: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+                      ],
+                    },
+                  ]}
+                />
+              ) : null}
             </View>
 
           </View>
@@ -408,26 +438,26 @@ const styles = StyleSheet.create({
     paddingVertical:   Layout.spacing.md,
   },
 
-  avatarRow:  { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: Layout.spacing.md },
-  bubbleWrap: { alignItems: 'flex-end', marginBottom: 6, marginRight: -4 },
+  avatarRow:  { flexDirection: 'column', alignItems: 'flex-end', marginTop: Layout.spacing.md },
+  bubbleWrap: { width: 145, alignItems: 'center', alignSelf: 'flex-end', marginBottom: 2 },
   speechBubble: {
     backgroundColor:   '#FFFFFF',
     borderRadius:      Layout.radius.lg,
     paddingHorizontal: Layout.spacing.md,
     paddingVertical:   Layout.spacing.sm,
-    maxWidth:          160,
+    maxWidth:          180,
     ...Layout.shadow.sm,
   },
   speechText: { fontSize: Layout.fontSize.sm, fontWeight: '700', textAlign: 'center' },
   bubbleTail: {
-    alignSelf:       'flex-end',
-    marginRight:     24,
+    alignSelf:       'center',
+    marginTop:       -1,
     width:           0,
     height:          0,
     borderLeftWidth: 8, borderRightWidth: 8, borderTopWidth: 10,
     borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#FFFFFF',
   },
-  avatarImg: { width: 115, height: 135 },
+  avatarImg: { width: 145, height: 170 },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },

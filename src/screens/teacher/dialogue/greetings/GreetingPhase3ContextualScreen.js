@@ -412,7 +412,10 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
   const avatarImg = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
 
   const { width: screenWidth } = useWindowDimensions();
-  const cardW = Math.min(Math.floor((screenWidth - 64) / 3), 220);
+  // The source photos are wide (landscape), so cards are sized for 2 per row
+  // (wrapping a 3rd to its own centered row) instead of squeezing 3 into one
+  // row and cropping them into near-squares.
+  const cardW = Math.min(Math.floor((screenWidth - 64 - Layout.spacing.md) / 2), 380);
 
   const [scenario,     setScenario]     = useState('A');
   const [cloudText,    setCloudText]    = useState('');
@@ -726,8 +729,8 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
                       showRedDim      && styles.cardWrong,
                     ]}
                   >
-                    <View style={[styles.imageWrap, { height: cardW }]}>
-                      <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
+                    <View style={styles.imageWrap}>
+                      <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
                       {showGreenBorder && (
                         <View style={styles.correctBadge}>
                           <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
@@ -867,10 +870,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   title: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, textAlign: 'center', marginBottom: Layout.spacing.xs },
-  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xs },
+  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
   subtitleSinhala: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
-  cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.sm },
+  cardsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Layout.spacing.md },
   imageCard: {
     borderRadius: Layout.radius.lg,
     overflow: 'hidden',
@@ -884,7 +887,7 @@ const styles = StyleSheet.create({
   },
   cardCorrect: { borderColor: '#22C55E', borderWidth: 3 },
   cardWrong:   { borderColor: '#FF4D6D', borderWidth: 2, opacity: 0.55 },
-  imageWrap:   { position: 'relative', overflow: 'hidden' },
+  imageWrap:   { position: 'relative', overflow: 'hidden', width: '100%', aspectRatio: 4 / 3 },
   cardImage:   { width: '100%', height: '100%' },
   correctBadge: {
     position: 'absolute',

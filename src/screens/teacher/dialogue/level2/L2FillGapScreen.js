@@ -9,7 +9,7 @@
  * Params: { student, sessionData, sentenceIndex }
  * Output: navigate('L2SentenceMatch', { student, sessionData, sentenceIndex })
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated, BackHandler,
 } from 'react-native';
@@ -72,7 +72,22 @@ function buildOptions(sentence, sentenceIndex) {
     if (pool === correct || pool === dist1) pool = 'Other';
   }
 
-  return shuffle([correct, dist1, pool]);
+  // Guard against a sentence with a missing/empty distractor (or a distractor
+  // that happens to collide with the pool value) producing duplicate/blank
+  // option tiles — every rendered option must be a distinct, non-empty
+  // string. `correct` is kept even if empty so the caller's missing-data
+  // check (below) can still detect and skip an unscoreable exercise.
+  const seen = new Set([correct].filter(Boolean));
+  const options = [correct];
+  for (const candidate of [dist1, pool, ...POOL_DISTRACTORS]) {
+    if (options.length >= 3) break;
+    if (candidate && !seen.has(candidate)) {
+      seen.add(candidate);
+      options.push(candidate);
+    }
+  }
+
+  return shuffle(options);
 }
 
 export default function L2FillGapScreen({ route, navigation }) {
@@ -93,6 +108,16 @@ export default function L2FillGapScreen({ route, navigation }) {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => sub.remove();
   }, []));
+
+  // Guard: without a real dynamic_value this exercise has no correct answer
+  // to award, and every option tile would render blank — skip straight
+  // through instead of showing an unsolvable puzzle (same fallback pattern
+  // Cat3Phase2NonVerbalScreen.js uses when its own data is missing).
+  useEffect(() => {
+    if (!correct) {
+      navigation.navigate('L2SentenceMatch', { student, sessionData, sentenceIndex });
+    }
+  }, []);
 
   function handleOption(opt) {
     if (selected === 'correct') return; // already done
@@ -116,6 +141,8 @@ export default function L2FillGapScreen({ route, navigation }) {
       });
     }
   }
+
+  if (!correct) return null; // navigating away — see the guard effect above
 
   // Split blankText on '___' for styled rendering
   const parts = blankText.split('___');
@@ -159,13 +186,13 @@ export default function L2FillGapScreen({ route, navigation }) {
               { transform: [{ translateX: shakeAnim }] },
             ]}
           >
-            {options.map((opt) => {
+            {options.map((opt, idx) => {
               const isSelected = chosenOpt === opt;
               const isCorrect  = selected === 'correct' && isSelected;
               const isWrong    = selected === 'wrong'   && isSelected;
               return (
                 <TouchableOpacity
-                  key={opt}
+                  key={`${opt}-${idx}`}
                   style={[
                     styles.option,
                     { borderColor: theme.cardOutline, backgroundColor: theme.cardSurface },

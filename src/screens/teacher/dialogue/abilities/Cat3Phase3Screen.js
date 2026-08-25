@@ -117,6 +117,7 @@ export default function Cat3Phase3Screen({ route, navigation }) {
 
   // ── NEW — audio playback (this screen had none before) ─────────────
   const soundRef = useRef(null);
+  const videoRef = useRef(null);
 
   // ── RC2 feature capture refs ──────────────────────────────────────────
   const attemptRenderRef                = useRef(Date.now());
@@ -169,6 +170,9 @@ export default function Cat3Phase3Screen({ route, navigation }) {
       sub.remove();
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
+      // Stop the scene video on blur — otherwise its audio keeps playing in
+      // the background after the student navigates away.
+      videoRef.current?.pauseAsync().catch(() => {});
     };
   }, []));
 
@@ -321,6 +325,7 @@ export default function Cat3Phase3Screen({ route, navigation }) {
             {sceneVideo ? (
               <View style={[styles.sceneWrap, { backgroundColor: theme.cardSurface }]}>
                 <Video
+                  ref={videoRef}
                   source={sceneVideo}
                   style={styles.sceneImg}
                   resizeMode={ResizeMode.CONTAIN}

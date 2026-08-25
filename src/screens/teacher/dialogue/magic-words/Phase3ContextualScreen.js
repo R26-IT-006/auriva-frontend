@@ -495,9 +495,12 @@ export default function Phase3ContextualScreen({ route, navigation }) {
 
   const progressFraction = SCENARIO_PROGRESS[scenario] ?? 0.92;
   const scenarioLabel    = scenario === 'checkpoint' ? 'Checkpoint' : `Scenario ${scenario}`;
+  // Non-vertical layout: the source photos are wide (landscape), so cards
+  // are sized for 2 per row (wrapping a 3rd to its own centered row) instead
+  // of squeezing 3 into one row and cropping them into near-squares.
   const cardW = isVerticalLayout
     ? screenWidth - 2 * Layout.spacing.lg
-    : Math.min(Math.floor((screenWidth - 64) / 3), 220);
+    : Math.min(Math.floor((screenWidth - 64 - Layout.spacing.md) / 2), 380);
 
   return (
     <View style={styles.root}>
@@ -599,8 +602,8 @@ export default function Phase3ContextualScreen({ route, navigation }) {
                         showRedDim      && styles.cardWrong,
                       ]}
                     >
-                      <View style={[styles.imageWrap, { height: cardW }]}>
-                        <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
+                      <View style={styles.imageWrap}>
+                        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
                         {showGreenBorder && (
                           <View style={styles.correctBadge}>
                             <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
@@ -762,7 +765,7 @@ const styles = StyleSheet.create({
     fontSize:     Layout.fontSize.sm,
     textAlign:    'center',
     opacity:      0.65,
-    marginBottom: Layout.spacing.xs,
+    marginBottom: Layout.spacing.xl,
   },
   subtitleSinhala: {
     fontSize:     Layout.fontSize.sm,
@@ -773,10 +776,7 @@ const styles = StyleSheet.create({
 
   cardsRow: {
     flexDirection:  'row',
-    justifyContent: 'center',
-    gap:            Layout.spacing.sm,
-  },
-  cardsRowTwo: {
+    flexWrap:       'wrap',
     justifyContent: 'center',
     gap:            Layout.spacing.md,
   },
@@ -811,8 +811,10 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
   },
   imageWrap: {
-    position: 'relative',
-    overflow: 'hidden',
+    position:    'relative',
+    overflow:    'hidden',
+    width:       '100%',
+    aspectRatio: 4 / 3,
   },
   cardImage: {
     width:  '100%',
