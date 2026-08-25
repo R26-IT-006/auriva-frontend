@@ -11,7 +11,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 
-const SAMAN_VIDEO = require('../../../../../assets/avatar_actions-images/Saman_Clapping.mp4');
+const SAMAN_VIDEO = require('../../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4');
 
 export default function ClapActivityScreen({ route, navigation }) {
   const { student } = route.params ?? {};

@@ -57,20 +57,27 @@ const WORD_LABELS = {
   watch:    'Watch',
 };
 
-// Scene images for the AnimatedWord/BoldWord familiarisation screens — same
-// per-word images Cat3DragToLineScreen.js uses (abilities has no entries in
-// constants/dialogueAssets.js by design; the scene/context concept there
-// doesn't apply to this category — confirmed 2026-07-28).
+// Scene images for the AnimatedWord/BoldWord familiarisation screens. Each
+// word now has its own real Non_Verbal.jpg (2026-08-26 asset drop) — no
+// longer borrowed from clap's old Drag_Act.jpeg (deleted in that same drop).
 const CAT3_WORD_IMAGE = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
-  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/yes/Non_Verbal.jpg'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/no/Non_Verbal.jpg'),
+  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Non_Verbal.jpg'),
+  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Non_Verbal.jpg'),
+  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Non_Verbal.jpg'),
+  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Non_Verbal.jpg'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/talk/Non_Verbal.jpg'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/dance/Non_Verbal.jpg'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/sing/Non_Verbal.jpg'),
+  brush:    require('../../../../../assets/dialogue-images/words/abilities/brush/Non_Verbal.jpg'),
+  wash:     require('../../../../../assets/dialogue-images/words/abilities/wash/Non_Verbal.jpg'),
+  eat:      require('../../../../../assets/dialogue-images/words/abilities/eat/Non_Verbal.jpg'),
+  drink:    require('../../../../../assets/dialogue-images/words/abilities/drink/Non_Verbal.jpg'),
+  write:    require('../../../../../assets/dialogue-images/words/abilities/write/Non_Verbal.jpg'),
+  play:     require('../../../../../assets/dialogue-images/words/abilities/play/Non_Verbal.jpg'),
+  sleep:    require('../../../../../assets/dialogue-images/words/abilities/sleep/Non_Verbal.jpg'),
+  watch:    require('../../../../../assets/dialogue-images/words/abilities/watch/Non_Verbal.jpg'),
 };
 
 // Word audio for the familiarisation screens — mirrors Cat3Phase2Screen.js's
