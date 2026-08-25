@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import MemoryFlipBoard from '../../../../components/concept/MemoryFlipBoard';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
-import { buildMemoryGame } from '../../../../data/conceptMemoryGame';
+import { buildMemoryGame, MEMORY_PAIRS } from '../../../../data/conceptMemoryGame';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
 
@@ -37,28 +38,57 @@ const PEEK_MS = 1100;
  * logged so the teacher still sees a real signal.
  */
 export default function ConceptMemoryScreen({ route, navigation }) {
-  const { student, category, masteredKeys } = route.params;
+  const { student, category } = route.params;
 
   const theme = getAvatarTheme(student?.avatar_key);
   const { width, height } = useWindowDimensions();
 
-  // Built once per mount — rebuilding on render would reshuffle the grid under
-  // the child's finger on every turn.
-  const gameRef = useRef(null);
-  if (gameRef.current === null) {
-    gameRef.current = buildMemoryGame(category.key, masteredKeys ?? []);
-  }
-  const game = gameRef.current;
-
+  // Concepts come from the server, chosen from this child's tier 1 and tier 2
+  // results. Held in state rather than built at first render because the grid
+  // cannot exist until that call returns.
+  const [game,     setGame]     = useState(null);
+  const [loading,  setLoading]  = useState(true);
   const [faceUp,   setFaceUp]   = useState([]);   // card ids currently turned over
   const [matched,  setMatched]  = useState([]);   // concept keys already found
   const [locked,   setLocked]   = useState(false);
 
+  const activityId    = useRef(null);
   const sessionStart  = useRef(Date.now());
   const seen          = useRef(new Set());   // concepts turned over at least once
   const missed        = useRef(new Set());   // concepts that took more than one try
+  // concept -> Set(concepts it was wrongly turned over with), for the GKB edges.
+  const confusions    = useRef(new Map());
   const turns         = useRef(0);
   const peekTimer     = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+
+    conceptApi.startGameActivity({
+      studentId:    student.sid,
+      categoryKey:  category.key,
+      activityType: 'memory',
+      conceptCount: MEMORY_PAIRS,
+    })
+      .then((res) => {
+        if (!active) return;
+        activityId.current = res.activity_id;
+        setGame(buildMemoryGame(category.key, res.concept_keys || []));
+      })
+      .catch(() => {
+        // Unreachable server: fall back to a local deal rather than stranding
+        // the child on a spinner. The run simply is not recorded.
+        if (active) setGame(buildMemoryGame(category.key, []));
+      })
+      .finally(() => { if (active) setLoading(false); });
+
+    return () => { active = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function noteConfusion(a, b) {
+    if (!confusions.current.has(a)) confusions.current.set(a, new Set());
+    confusions.current.get(a).add(b);
+  }
 
   // Four cards across; the row count follows the deal, so a full eight pairs is
   // 4×4 and a small category's four pairs is 4×2. Sized from whichever axis runs
@@ -95,20 +125,20 @@ export default function ConceptMemoryScreen({ route, navigation }) {
     Speech.stop();
     Speech.speak('You found them all! Well done!', { language: 'en-US', rate: 0.8 });
 
-    conceptApi.logInteraction({
-      studentId:   student.sid,
-      sessionId:   null,
-      categoryKey: category.key,
-      conceptKey:  finalMatched[0] ?? category.key,
-      tier:        4,
-      eventType:   'memory_complete',
-      eventData: {
-        pairs:             finalMatched.length,
-        correct_first_try: finalMatched.length - missed.current.size,
-        turns:             turns.current,
-        time_spent_ms:     Date.now() - sessionStart.current,
-      },
-    }).catch(() => {});
+    // The activity row replaces the old ad-hoc completion log — it carries the
+    // score, the concepts covered and the confusion edges in one place.
+    if (activityId.current) {
+      conceptApi.completeGameActivity({
+        studentId:   student.sid,
+        sessionId:   null,
+        activityId:  activityId.current,
+        pairResults: finalMatched.map((key) => ({
+          concept_key:           key,
+          was_correct_first_try: !missed.current.has(key),
+          confused_with:         [...(confusions.current.get(key) ?? [])],
+        })),
+      }).catch(() => {});
+    }
 
     setTimeout(() => {
       navigation.replace('ConceptItems', { student, category });
@@ -165,6 +195,14 @@ export default function ConceptMemoryScreen({ route, navigation }) {
       seen.current.add(key);
     });
 
+    // Only a photo-against-drawing turn says anything about linking the two
+    // formats. Two photos, or two drawings, is a memory miss and nothing more,
+    // so it must not become a format-confusion edge.
+    if (firstCard.face !== card.face) {
+      noteConfusion(firstCard.key, card.key);
+      noteConfusion(card.key, firstCard.key);
+    }
+
     // Hold both visible, then turn them back. Locked meanwhile so a third tap
     // cannot land while the child is still looking at the pair.
     setLocked(true);
@@ -172,6 +210,16 @@ export default function ConceptMemoryScreen({ route, navigation }) {
       setFaceUp([]);
       setLocked(false);
     }, PEEK_MS);
+  }
+
+  if (loading) {
+    return (
+      <LinearGradient colors={theme.backgroundGradient} style={styles.root}>
+        <SafeAreaView style={[styles.safe, styles.centered]} edges={['top', 'bottom']}>
+          <ActivityIndicator size="large" color={theme.button} />
+        </SafeAreaView>
+      </LinearGradient>
+    );
   }
 
   // A category without enough photo/drawing pairs never reaches here — the

@@ -131,6 +131,30 @@ export const conceptApi = {
     return data;
   },
 
+  // ── Card games (pair match, memory) ───────────────────────────────────────
+  // The server picks the concepts from the child's tier 1 + tier 2 mastery, so
+  // the game screens ask for a set rather than choosing one themselves.
+
+  async startGameActivity({ studentId, categoryKey, activityType, conceptCount }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_GAME_START, {
+      student_id:    studentId,
+      category_key:  categoryKey,
+      activity_type: activityType,
+      concept_count: conceptCount,
+    });
+    return data;
+  },
+
+  async completeGameActivity({ studentId, sessionId, activityId, pairResults }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_GAME_COMPLETE, {
+      student_id:   studentId,
+      session_id:   sessionId || null,
+      activity_id:  activityId,
+      pair_results: pairResults,
+    });
+    return data;
+  },
+
   /**
    * Upload a finished Tier 3 colouring. `uri` is a local file from view-shot;
    * multipart rather than JSON so the PNG is not base64-inflated on the wire.

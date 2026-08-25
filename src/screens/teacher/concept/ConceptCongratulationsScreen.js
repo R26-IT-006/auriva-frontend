@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem } from '../../../data/conceptData';
+import { getConceptItem, categoryHasVideo } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
@@ -183,7 +183,19 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
         navigation.navigate('Tier2Image', { student, category, conceptKey, sessionId: null });
       }
     } else if (completedTier === 2) {
-      navigation.navigate('Tier3Video', { student, category, conceptKey, needsReplay: correctCount < 3 });
+      if (categoryHasVideo(category.key)) {
+        navigation.navigate('Tier3Video', { student, category, conceptKey, needsReplay: correctCount < 3 });
+      } else {
+        // No video stage here, so tier 2 is the end of the ladder. Hand over to the
+        // colouring page the video would have led to, or back to the grid when the
+        // concept has none — never to Tier3Video, which would sit on a blank player.
+        const concept = getConceptItem(category.key, conceptKey);
+        if (concept?.coloring) {
+          navigation.navigate('ConceptColoring', { student, category, conceptKey });
+        } else {
+          navigation.navigate('ConceptItems', { student, category });
+        }
+      }
     } else {
       navigation.navigate('ConceptItems', { student, category });
     }

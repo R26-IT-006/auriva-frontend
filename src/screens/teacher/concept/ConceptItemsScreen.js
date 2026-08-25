@@ -17,7 +17,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { ActivityPickerModal } from '../../../components/concept/ActivityPickerModal';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItemsForCategory } from '../../../data/conceptData';
+import {
+  getConceptItemsForCategory,
+  categoryHasVideo,
+  categoryHasPairMatch,
+} from '../../../data/conceptData';
 import { getConclusionForCategory } from '../../../data/conceptConclusions';
 import { getPairableItems } from '../../../data/conceptPairMatch';
 import { conceptApi } from '../../../api/concept';
@@ -182,10 +186,16 @@ export default function ConceptItemsScreen({ route, navigation }) {
     };
   });
 
-  // Re-entry point: first unlocked concept not yet fully through tier 3
+  // Where the ladder ends for this category. Without the video stage nothing ever
+  // sets tier3_status, so treating it as the finish line would leave every concept
+  // looking unfinished forever.
+  const hasVideo  = categoryHasVideo(category.key);
+  const isFinished = (i) => (hasVideo ? i.tier3_status === 'passed' : i.tier2_status === 'passed');
+
+  // Re-entry point: first unlocked concept not yet through the last stage
   const resumeKey = loading
     ? null
-    : (merged.find((i) => i.is_unlocked && i.tier3_status !== 'passed')?.key ?? null);
+    : (merged.find((i) => i.is_unlocked && !isFinished(i))?.key ?? null);
 
   // Category complete when every concept has passed tier 1
   const allTier1Passed = !loading && merged.length > 0 && merged.every((i) => i.tier1_status === 'passed');
@@ -213,7 +223,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
       const screen = item.tier2_status === 'in_progress' ? 'Tier2Activity' : 'Tier2Image';
       return [screen, { student, category, conceptKey: item.key, sessionId: null }];
     }
-    if (item.tier3_status !== 'passed') {
+    if (hasVideo && item.tier3_status !== 'passed') {
       return ['Tier3Video', { student, category, conceptKey: item.key }];
     }
     // Fully complete — allow re-practice from the top
@@ -243,9 +253,6 @@ export default function ConceptItemsScreen({ route, navigation }) {
   const conclusion    = getConclusionForCategory(category.key);
   const coloringItems = localItems.filter((i) => i.coloring);
   const pairableItems = getPairableItems(category.key);
-  const masteredKeys  = merged
-    .filter((i) => i.tier1_status === 'passed' && i.tier2_status === 'passed')
-    .map((i) => i.key);
 
   // The mixed practice activity is not listed here — it has its own banner at
   // the top of the list, which announces itself when it becomes available.
@@ -263,15 +270,14 @@ export default function ConceptItemsScreen({ route, navigation }) {
         ? null
         : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
     }] : []),
-    ...(pairableItems.length >= 3 ? [{
+    ...(categoryHasPairMatch(category.key) && pairableItems.length >= 3 ? [{
       key:      'pairmatch',
       screen:   'ConceptPairMatch',
       icon:     'git-compare',
       title:    'Photo & Picture Match',
       subtitle: 'Match each photo to its drawing.',
-      // Mastered concepts are preferred in the deal but not required, so this
-      // opens as soon as the child has learned one.
-      params:   { masteredKeys },
+      // The screen asks the server which concepts to deal, so nothing about the
+      // selection is passed through navigation.
       disabledReason: masteredCount >= 1
         ? null
         : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
@@ -282,7 +288,6 @@ export default function ConceptItemsScreen({ route, navigation }) {
       icon:     'grid',
       title:    'Memory Game',
       subtitle: 'Turn the cards over and find the pairs.',
-      params:   { masteredKeys },
       disabledReason: masteredCount >= 1
         ? null
         : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,

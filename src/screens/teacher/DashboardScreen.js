@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../../components/common/Avatar';
 import { Layout } from '../../constants/layout';
+import { ageFrom } from '../../utils/formatters';
 import { teacherApi } from '../../api/teacher';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
@@ -22,102 +23,221 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 const TEAL      = '#3A9BA8';
 const TEAL_GRAD = ['#4AABB8', '#52C07C'];
 
-function KpiTile({ icon, value, label, colors }) {
-  return (
-    <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.kpiTile}>
-      <Ionicons
-        name={icon}
-        size={64}
-        color="rgba(255,255,255,0.16)"
-        style={styles.kpiWatermark}
-      />
-      <View style={styles.kpiIconBox}>
-        <Ionicons name={icon} size={18} color="#FFF" />
-      </View>
-      <Text style={styles.kpiValue}>{value ?? '—'}</Text>
-      <Text style={styles.kpiLabel}>{label}</Text>
-    </LinearGradient>
-  );
+// Tinted pairs reused by the overview tiles and the session strip, so a green tile
+// and a green row mean the same thing in both places.
+const TINTS = {
+  purple: { bg: '#EFEBFA', fg: '#6C5CE0' },
+  green:  { bg: '#E3F7EC', fg: '#3FAE6F' },
+  blue:   { bg: '#E6F1FC', fg: '#3B82C4' },
+  amber:  { bg: '#FDF1DC', fg: '#E89A2E' },
+};
+
+const PANEL_PAD    = 16;
+const PANEL_BORDER = 1;
+const GRID_GAP     = 12;
+// Below this the two columns stack; the calendar needs ~330pt before its day cells
+// start crowding, and the student cards want the rest.
+const TWO_COL_MIN = 900;
+
+// ── Date helpers ─────────────────────────────────────────────────────────────
+
+/** Local calendar-day identity. Bucketing on this rather than the ISO string is
+ *  what keeps an evening session on the right day for a teacher offset from UTC. */
+function dayKey(d) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function timeLabel(dateStr) {
+  return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+/**
+ * Sunday-first cells covering `monthDate`'s month, padded out to whole weeks.
+ *
+ * The row count is derived rather than fixed at six so a month that fits in five
+ * doesn't leave a blank row hanging under the grid.
+ */
+function buildMonthGrid(monthDate) {
+  const year  = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const leading  = new Date(year, month, 1).getDay();
+  const daysIn   = new Date(year, month + 1, 0).getDate();
+  const weeks    = Math.ceil((leading + daysIn) / 7);
+
+  return Array.from({ length: weeks * 7 }, (_, i) =>
+    new Date(year, month, 1 - leading + i));
+}
+
+// ── Student cards ────────────────────────────────────────────────────────────
+
+// Soft rings behind the avatar so a row of cards reads as distinct children at a
+// glance. Picked by name the same way Avatar picks its own fill, so a child keeps
+// the same pairing everywhere the card appears.
+const AVATAR_HALOS = ['#D6F0F4', '#FCE0E9', '#DCF5E8', '#FCEFD2', '#E6E2F8'];
+
+function haloFor(name) {
+  if (!name) return AVATAR_HALOS[0];
+  return AVATAR_HALOS[name.charCodeAt(0) % AVATAR_HALOS.length];
 }
 
 function StudentCard({ student, width, onPress }) {
+  const age = ageFrom(student.dateOfBirth);
+
   return (
     <TouchableOpacity
       style={[styles.studentCard, { width }]}
       onPress={onPress}
       activeOpacity={0.85}
       accessibilityRole="button"
-      accessibilityLabel={student.fullName}
+      accessibilityLabel={`${student.fullName}${age != null ? `, age ${age}` : ''}`}
     >
-      <Avatar name={student.fullName} uri={student.profilePhotoUrl} size={52} />
-      <Text style={styles.studentName} numberOfLines={1}>{student.fullName}</Text>
+      <View style={[styles.studentHalo, { backgroundColor: haloFor(student.fullName) }]}>
+        <Avatar name={student.fullName} uri={student.profilePhotoUrl} size={72} />
+      </View>
+
+      {/* Two lines, with the height reserved either way: full names run long enough
+          that one line truncates most of them, and letting the box grow only when a
+          name wraps leaves the cards in a row at different heights. */}
+      <Text style={styles.studentName} numberOfLines={2}>{student.fullName}</Text>
+      <Text style={styles.studentAge}>{age != null ? `Age ${age}` : 'Age not set'}</Text>
     </TouchableOpacity>
   );
 }
 
-function ActionCard({ icon, label, sub, color, bg, onPress }) {
+// ── Panel shell ──────────────────────────────────────────────────────────────
+
+function Panel({ title, action, onAction, right, children, style }) {
   return (
-    <TouchableOpacity style={styles.actionCard} onPress={onPress} activeOpacity={0.82}>
-      <View style={[styles.actionIconBox, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={24} color={color} />
-      </View>
-      <View style={styles.actionText}>
-        <Text style={styles.actionLabel}>{label}</Text>
-        <Text style={styles.actionSub}>{sub}</Text>
-      </View>
-      <View style={[styles.actionChevron, { backgroundColor: bg }]}>
-        <Ionicons name="chevron-forward" size={16} color={color} />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function formatConceptLabel(conceptKey) {
-  if (!conceptKey) return 'a concept';
-  return conceptKey.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function ActivityRow({ icon, iconColor, iconBg, title, subtitle, time }) {
-  return (
-    <View style={styles.activityRow}>
-      <View style={[styles.activityIconBox, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={16} color={iconColor} />
-      </View>
-      <View style={styles.activityText}>
-        <Text style={styles.activityTitle} numberOfLines={1}>{title}</Text>
-        <Text style={styles.activitySubtitle} numberOfLines={1}>{subtitle}</Text>
-      </View>
-      <Text style={styles.activityTime}>{time}</Text>
+    <View style={[styles.panel, style]}>
+      {(title || right) && (
+        <View style={styles.panelHeader}>
+          <Text style={styles.panelTitle} numberOfLines={1}>{title}</Text>
+          {right}
+          {action ? (
+            <TouchableOpacity
+              style={styles.pillBtn}
+              onPress={onAction}
+              activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.pillBtnText}>{action}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      )}
+      {children}
     </View>
   );
 }
+
+function StatTile({ icon, tint, value, label, sub, width }) {
+  const t = TINTS[tint];
+  return (
+    <View style={[styles.statTile, { width, backgroundColor: t.bg }]}>
+      <View style={styles.statTileTop}>
+        <View style={[styles.statTileIcon, { backgroundColor: '#FFFFFF' }]}>
+          <Ionicons name={icon} size={16} color={t.fg} />
+        </View>
+        <Text style={[styles.statTileValue, { color: t.fg }]}>{value}</Text>
+      </View>
+      <Text style={styles.statTileLabel}>{label}</Text>
+      <Text style={styles.statTileSub}>{sub}</Text>
+    </View>
+  );
+}
+
+// ── Calendar ─────────────────────────────────────────────────────────────────
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function CalendarGrid({ monthDate, activeDays }) {
+  const cells      = useMemo(() => buildMonthGrid(monthDate), [monthDate]);
+  const todayKey   = dayKey(new Date());
+  const thisMonth  = monthDate.getMonth();
+
+  return (
+    <View>
+      <View style={styles.calRow}>
+        {WEEKDAYS.map((d) => (
+          <Text key={d} style={styles.calWeekday}>{d}</Text>
+        ))}
+      </View>
+
+      {Array.from({ length: cells.length / 7 }, (_, w) => (
+        <View key={w} style={styles.calRow}>
+          {cells.slice(w * 7, w * 7 + 7).map((d) => {
+            const key     = dayKey(d);
+            const outside = d.getMonth() !== thisMonth;
+            const isToday = key === todayKey;
+            const active  = activeDays.has(key);
+
+            return (
+              <View key={key} style={styles.calCell}>
+                <View style={[styles.calDay, isToday && styles.calDayToday]}>
+                  <Text
+                    style={[
+                      styles.calDayText,
+                      outside && styles.calDayOutsideText,
+                      isToday && styles.calDayTodayText,
+                    ]}
+                  >
+                    {d.getDate()}
+                  </Text>
+                </View>
+                {/* Dot marks a day the class ran a session. Hidden on today's cell,
+                    where the filled circle already carries the emphasis. */}
+                <View style={styles.calDotSlot}>
+                  {active && !isToday ? <View style={styles.calDot} /> : null}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function TeacherDashboardScreen({ navigation }) {
   const [data,          setData]          = useState(null);
   const [refreshing,    setRefreshing]    = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
+  const [monthDate,     setMonthDate]     = useState(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  });
 
   const logout = useAuthStore((s) => s.logout);
   const toast  = useToast();
 
-  // Two student cards per row once there is room; one on a phone.
   const { width } = useWindowDimensions();
-  const GRID_GAP     = 12;
   const contentWidth = width - Layout.spacing.lg * 2;
-  const twoCol       = contentWidth >= 620;
-  const cardW        = twoCol ? (contentWidth - GRID_GAP) / 2 : contentWidth;
+  const twoCol       = contentWidth >= TWO_COL_MIN;
+
+  // Explicit column widths rather than flex, so the student grid below can do its
+  // own column maths against a number it knows before layout. Widths are floored
+  // throughout: fractional ones round up during layout and overrun the row.
+  const COL_GAP  = Layout.spacing.md;
+  const mainW    = twoCol ? Math.floor((contentWidth - COL_GAP) * 0.62) : contentWidth;
+  const sideW    = twoCol ? contentWidth - COL_GAP - mainW : contentWidth;
+  // Panels are border-box, so the 1px border eats the same width the padding does.
+  // Measuring against padding alone overruns the pane by 2px — enough to wrap the
+  // last card onto its own row. The trailing pixel is slack against fractional
+  // device-pixel rounding, which would do the same thing on a half-pixel screen.
+  const mainPane = mainW - (PANEL_PAD + PANEL_BORDER) * 2 - 1;
+
+  // Column counts come from a target width rather than fixed breakpoints, so the
+  // grid keeps filling its row at any pane width. Capped at four to hold the
+  // one-row-of-four shape the design is built around.
+  const fit = (min, max) =>
+    Math.max(2, Math.min(max, Math.floor((mainPane + GRID_GAP) / (min + GRID_GAP))));
+
+  const cardCols = fit(150, 4);
+  const cardW    = Math.floor((mainPane - GRID_GAP * (cardCols - 1)) / cardCols);
+  const tileCols = fit(140, 4);
+  const tileW    = Math.floor((mainPane - GRID_GAP * (tileCols - 1)) / tileCols);
 
   const load = useCallback(async () => {
     try {
@@ -132,18 +252,41 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const profile            = data?.profile;
-  const stats               = data?.stats;
-  const proficiency         = data?.proficiency ?? [];
-  const recentSessions      = data?.recentSessions ?? [];
-  const recentAchievements  = data?.recentAchievements ?? [];
+  const profile        = data?.profile;
+  const stats          = data?.stats;
+  const weekStats      = data?.weekStats;
+  const proficiency    = data?.proficiency ?? [];
+  const recentSessions = data?.recentSessions ?? [];
+
+  const activeDays = useMemo(() => {
+    const set = new Set();
+    for (const iso of data?.sessionDates ?? []) {
+      const d = new Date(iso);
+      if (!Number.isNaN(d.getTime())) set.add(dayKey(d));
+    }
+    return set;
+  }, [data?.sessionDates]);
+
+  const todaySessions = useMemo(() => {
+    const today = dayKey(new Date());
+    return recentSessions
+      .filter((s) => s.startedAt && dayKey(new Date(s.startedAt)) === today)
+      .sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt));
+  }, [recentSessions]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'Teacher';
 
   const engagementDisplay = stats?.avgEngagement != null
     ? `${Math.round(stats.avgEngagement * 100)}%`
     : null;
+  const progressDisplay = weekStats?.avgProgress != null
+    ? `${Math.round(weekStats.avgProgress * 100)}%`
+    : '—';
+
+  const shiftMonth = (delta) =>
+    setMonthDate((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
 
   if (!data) {
     return (
@@ -159,6 +302,183 @@ export default function TeacherDashboardScreen({ navigation }) {
       </LinearGradient>
     );
   }
+
+  // ── Left column ──────────────────────────────────────────────────────────
+  const mainColumn = (
+    <View style={[styles.column, { width: mainW }]}>
+      <Panel
+        title={`My Students${proficiency.length > 0 ? ` (${proficiency.length})` : ''}`}
+        action={proficiency.length > 0 ? 'View all' : null}
+        onAction={() => navigation.navigate('TeacherStudentList')}
+      >
+        {proficiency.length > 0 ? (
+          <View style={styles.studentGrid}>
+            {proficiency.map((s) => (
+              <StudentCard
+                key={s.studentId}
+                student={s}
+                width={cardW}
+                onPress={() => navigation.navigate('TeacherStudentDetail', {
+                  student: {
+                    sid:               s.studentId,
+                    full_name:         s.fullName,
+                    profile_photo_url: s.profilePhotoUrl,
+                    // Seeds the profile hero so the age chip is there on the
+                    // first frame, before getStudent resolves.
+                    date_of_birth:     s.dateOfBirth,
+                  },
+                })}
+              />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="people-outline" size={24} color={TEAL} />
+            </View>
+            <Text style={styles.emptyTitle}>No students yet</Text>
+            <Text style={styles.emptySub}>
+              Once students are assigned to you, their progress will show up here.
+            </Text>
+          </View>
+        )}
+      </Panel>
+
+      <Panel title="Class Overview">
+        <View style={styles.tileGrid}>
+          <StatTile
+            width={tileW}
+            tint="purple"
+            icon="albums-outline"
+            value={weekStats?.activitiesAssigned ?? '—'}
+            label="Activities Assigned"
+            sub="This week"
+          />
+          <StatTile
+            width={tileW}
+            tint="green"
+            icon="checkmark-circle-outline"
+            value={weekStats?.activitiesCompleted ?? '—'}
+            label="Activities Completed"
+            sub="This week"
+          />
+          <StatTile
+            width={tileW}
+            tint="blue"
+            icon="stats-chart-outline"
+            value={progressDisplay}
+            label="Average Progress"
+            sub="This week"
+          />
+          <StatTile
+            width={tileW}
+            tint="amber"
+            icon="ribbon-outline"
+            value={weekStats?.milestones ?? '—'}
+            label="Milestones"
+            sub="This week"
+          />
+        </View>
+
+        {/* The tiles are all week-scoped; these two are lifetime figures and say so
+            rather than sitting in a tile that reads "this week". */}
+        <View style={styles.allTime}>
+          <Text style={styles.allTimeText}>
+            All time · {stats?.conceptsMastered ?? 0} concepts mastered
+            {engagementDisplay ? ` · ${engagementDisplay} engagement` : ''}
+          </Text>
+        </View>
+      </Panel>
+
+      <TouchableOpacity
+        activeOpacity={0.88}
+        style={styles.bannerWrap}
+        onPress={() => navigation.navigate('TeacherStudentList')}
+      >
+        <LinearGradient
+          colors={TEAL_GRAD}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.banner}
+        >
+          <View style={styles.bannerLeft}>
+            <Text style={styles.bannerTitle}>Ready to teach?</Text>
+            <Text style={styles.bannerSub}>
+              Select a student and start today's learning session.
+            </Text>
+          </View>
+          <View style={styles.bannerIcon}>
+            <Ionicons name="school-outline" size={30} color="rgba(255,255,255,0.9)" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ── Right column ─────────────────────────────────────────────────────────
+  const sideColumn = (
+    <View style={[styles.column, { width: sideW }]}>
+      <Panel
+        title="Calendar"
+        right={
+          <View style={styles.calNav}>
+            <Text style={styles.calMonth}>
+              {monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </Text>
+            <TouchableOpacity
+              style={styles.calArrow}
+              onPress={() => shiftMonth(-1)}
+              accessibilityRole="button"
+              accessibilityLabel="Previous month"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="chevron-back" size={16} color="#6B8A80" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.calArrow}
+              onPress={() => shiftMonth(1)}
+              accessibilityRole="button"
+              accessibilityLabel="Next month"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="chevron-forward" size={16} color="#6B8A80" />
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <CalendarGrid monthDate={monthDate} activeDays={activeDays} />
+      </Panel>
+
+      <Panel title="Today's Sessions">
+        {todaySessions.length > 0 ? (
+          todaySessions.map((s, i) => {
+            const tint = TINTS[['purple', 'amber', 'green', 'blue'][i % 4]];
+            return (
+              <View key={`${s.startedAt}-${i}`} style={[styles.slot, { backgroundColor: tint.bg }]}>
+                <Text style={styles.slotTime}>{timeLabel(s.startedAt)}</Text>
+                <View style={styles.slotBody}>
+                  <Text style={styles.slotTitle} numberOfLines={1}>{s.studentName}</Text>
+                  <Text style={styles.slotSub}>{s.isActive ? 'In progress' : 'Completed'}</Text>
+                </View>
+              </View>
+            );
+          })
+        ) : (
+          <Text style={styles.panelEmptyText}>
+            No sessions yet today. Pick a student to begin.
+          </Text>
+        )}
+
+        <TouchableOpacity
+          style={styles.wideBtn}
+          onPress={() => navigation.navigate('TeacherStudentList')}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.wideBtnText}>Start a session</Text>
+        </TouchableOpacity>
+      </Panel>
+    </View>
+  );
 
   return (
     <LinearGradient
@@ -179,189 +499,54 @@ export default function TeacherDashboardScreen({ navigation }) {
             />
           }
         >
-
-          {/* ── Top bar ── */}
-          <View style={styles.topBar}>
-            <View style={styles.topBarLeft}>
-              <Text style={styles.topGreeting}>{greeting}</Text>
-              <Text style={styles.topName} numberOfLines={1}>
-                {profile?.full_name ?? '...'}
+          {/* ── Header ── */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.headerGreeting} numberOfLines={1}>
+                {greeting}, {firstName}! 👋
+              </Text>
+              <Text style={styles.headerSub}>
+                Here's what's happening in your classroom today.
               </Text>
             </View>
-            <View style={styles.topBarRight}>
+
+            <View style={styles.headerRight}>
               <TouchableOpacity
                 style={styles.iconBtn}
                 onPress={() => navigation.getParent()?.navigate('WorkspaceSelect')}
                 activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel="Switch workspace"
               >
                 <Ionicons name="grid-outline" size={20} color="#2A5A48" />
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={styles.iconBtn}
+                style={styles.profileChip}
                 onPress={() => setLogoutVisible(true)}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={`${profile?.full_name ?? 'Account'} — sign out`}
               >
-                <Ionicons name="log-out-outline" size={20} color="#2A5A48" />
+                <Avatar name={profile?.full_name} uri={profile?.profile_photo_url} size={34} />
+                <View style={styles.profileChipText}>
+                  <Text style={styles.profileChipName} numberOfLines={1}>
+                    {profile?.full_name ?? '...'}
+                  </Text>
+                  <Text style={styles.profileChipCode} numberOfLines={1}>
+                    {profile?.teacher_code ?? 'Teacher'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={15} color="#6B8A80" />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* ── Profile card ── */}
-          <View style={styles.profileCard}>
-            <Avatar
-              name={profile?.full_name}
-              uri={profile?.profile_photo_url}
-              size={64}
-              style={styles.avatar}
-            />
-            <View style={styles.profileMeta}>
-              <Text style={styles.profileName}>{profile?.full_name ?? '...'}</Text>
-              <View style={styles.profileCodeRow}>
-                <Ionicons name="id-card-outline" size={13} color={TEAL} />
-                <Text style={styles.profileCode}>{profile?.teacher_code ?? '—'}</Text>
-              </View>
-              <View style={styles.profileBadge}>
-                <Text style={styles.profileBadgeText}>Teacher</Text>
-              </View>
-            </View>
+          {/* ── Body ── */}
+          <View style={[styles.body, twoCol && styles.bodyRow, { gap: COL_GAP }]}>
+            {mainColumn}
+            {sideColumn}
           </View>
-
-          {/* ── KPI tiles ── */}
-          <View style={styles.kpiRow}>
-            <KpiTile
-              icon="people-outline"
-              value={stats?.totalStudents ?? '—'}
-              label="Students"
-              colors={['#4AABB8', '#3A9BA8']}
-            />
-            <KpiTile
-              icon="checkmark-circle-outline"
-              value={stats?.conceptsMastered ?? '—'}
-              label="Mastered"
-              colors={['#5FCB8C', '#3FAE6F']}
-            />
-            <KpiTile
-              icon="pulse-outline"
-              value={engagementDisplay ?? '—'}
-              label="Engagement"
-              colors={['#F5B85B', '#E89A2E']}
-            />
-          </View>
-
-          {/* ── Students ── */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>My Students</Text>
-            {proficiency.length > 0 && (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('TeacherStudentList')}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={styles.sectionLink}>View all ({proficiency.length})</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {proficiency.length > 0 ? (
-            <View style={styles.studentGrid}>
-              {proficiency.map((s) => (
-                <StudentCard
-                  key={s.studentId}
-                  student={s}
-                  width={cardW}
-                  onPress={() => navigation.navigate('TeacherStudentDetail', {
-                    student: { sid: s.studentId, full_name: s.fullName, profile_photo_url: s.profilePhotoUrl },
-                  })}
-                />
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyCard}>
-              <View style={styles.emptyIconCircle}>
-                <Ionicons name="people-outline" size={26} color={TEAL} />
-              </View>
-              <Text style={styles.emptyTitle}>No students yet</Text>
-              <Text style={styles.emptySub}>Once students are assigned to you, their progress will show up here.</Text>
-            </View>
-          )}
-
-          {/* ── Quick actions ── */}
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsCol}>
-            <ActionCard
-              icon="people-outline"
-              label="My Students"
-              sub="View and manage your class"
-              color={TEAL}
-              bg="#D6F0F4"
-              onPress={() => navigation.navigate('TeacherStudentList')}
-            />
-          </View>
-
-          {/* ── Recent achievements ── */}
-          {recentAchievements.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Recent Achievements</Text>
-              <View style={styles.listCard}>
-                {recentAchievements.map((a, i) => (
-                  <ActivityRow
-                    key={i}
-                    icon="ribbon-outline"
-                    iconColor="#52C07C"
-                    iconBg="#DCF5E8"
-                    title={`${a.studentName} mastered ${formatConceptLabel(a.conceptKey)}`}
-                    subtitle={formatConceptLabel(a.categoryKey)}
-                    time={timeAgo(a.passedAt)}
-                  />
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* ── Recent activity ── */}
-          {recentSessions.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <View style={styles.listCard}>
-                {recentSessions.map((s, i) => (
-                  <ActivityRow
-                    key={i}
-                    icon={s.isActive ? 'radio-button-on-outline' : 'time-outline'}
-                    iconColor={TEAL}
-                    iconBg="#D6F0F4"
-                    title={`Session with ${s.studentName}`}
-                    subtitle={s.isActive ? 'In progress' : 'Completed'}
-                    time={timeAgo(s.startedAt)}
-                  />
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* ── Banner ── */}
-          <TouchableOpacity
-            activeOpacity={0.88}
-            style={styles.bannerWrap}
-            onPress={() => navigation.navigate('TeacherStudentList')}
-          >
-            <LinearGradient
-              colors={TEAL_GRAD}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.banner}
-            >
-              <View style={styles.bannerLeft}>
-                <Text style={styles.bannerTitle}>Ready to teach?</Text>
-                <Text style={styles.bannerSub}>
-                  Select a student and start today's learning session.
-                </Text>
-              </View>
-              <View style={styles.bannerIconCircle}>
-                <Ionicons name="school-outline" size={30} color="rgba(255,255,255,0.9)" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-
         </ScrollView>
       </SafeAreaView>
 
@@ -386,28 +571,28 @@ const styles = StyleSheet.create({
   scroll: {
     padding: Layout.spacing.lg,
     paddingBottom: Layout.spacing.xxl,
-    gap: Layout.spacing.md,
   },
 
-  // ── Top bar ───────────────────────────────────────────────────────────────
-  topBar: {
+  // ── Header ────────────────────────────────────────────────────────────────
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    gap: Layout.spacing.md,
+    marginBottom: Layout.spacing.md,
   },
-  topBarLeft: { gap: 1 },
-  topGreeting: {
+  headerLeft: { flex: 1, gap: 2 },
+  headerGreeting: {
+    fontSize: 24,
+    fontFamily: 'DMSans_900Black',
+    color: '#1A3D2E',
+  },
+  headerSub: {
     fontSize: 13,
     fontFamily: 'DMSans_400Regular',
     color: '#4A7A60',
   },
-  topName: {
-    fontSize: 22,
-    fontFamily: 'DMSans_900Black',
-    color: '#1A3D2E',
-  },
-  topBarRight: { flexDirection: 'row', gap: 10 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconBtn: {
     width: 40,
     height: 40,
@@ -420,137 +605,252 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-
-  // ── Profile card ──────────────────────────────────────────────────────────
-  profileCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+  profileChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
-    elevation: 4,
+    gap: 9,
+    paddingVertical: 6,
+    paddingLeft: 6,
+    paddingRight: 12,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  avatar: { borderWidth: 3, borderColor: '#D6F0F4' },
-  profileMeta: { flex: 1, gap: 4 },
-  profileName: {
-    fontSize: 18,
-    fontFamily: 'DMSans_800ExtraBold',
+  profileChipText: { maxWidth: 140 },
+  profileChipName: {
+    fontSize: 14,
+    fontFamily: 'DMSans_700Bold',
     color: '#1A3D2E',
   },
-  profileCodeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  profileCode: {
-    fontSize: 13,
-    fontFamily: 'DMSans_600SemiBold',
-    color: TEAL,
-  },
-  profileBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#D6F0F4',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginTop: 2,
-  },
-  profileBadgeText: {
+  profileChipCode: {
     fontSize: 11,
-    fontFamily: 'DMSans_700Bold',
-    color: TEAL,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
   },
 
-  // ── KPI tiles ─────────────────────────────────────────────────────────────
-  kpiRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  kpiTile: {
-    flex: 1,
-    borderRadius: 18,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    gap: 6,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  kpiWatermark: {
-    position: 'absolute',
-    right: -12,
-    bottom: -14,
-  },
-  kpiIconBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiValue: {
-    fontSize: 26,
-    fontFamily: 'DMSans_900Black',
-    color: '#FFF',
-  },
-  kpiLabel: {
-    fontSize: 11,
-    fontFamily: 'DMSans_700Bold',
-    color: 'rgba(255,255,255,0.85)',
-  },
+  // ── Layout ────────────────────────────────────────────────────────────────
+  body:    { flexDirection: 'column' },
+  bodyRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  column:  { gap: Layout.spacing.md },
 
-  // ── Student cards ─────────────────────────────────────────────────────────
-  studentGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  studentCard: {
+  // ── Panels ────────────────────────────────────────────────────────────────
+  panel: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    padding: PANEL_PAD,
+    borderWidth: 1,
+    borderColor: '#EDF1EF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-  studentName: {
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.sm,
+    marginBottom: Layout.spacing.md,
+  },
+  panelTitle: {
     flex: 1,
     fontSize: 16,
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
   },
-
-  // ── Empty states ──────────────────────────────────────────────────────────
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+  panelEmptyText: {
+    fontSize: 13,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
+    lineHeight: 20,
+    paddingVertical: Layout.spacing.sm,
   },
-  emptyIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  pillBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: TEAL,
+  },
+  pillBtnText: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: TEAL,
+  },
+  wideBtn: {
+    marginTop: Layout.spacing.md,
+    paddingVertical: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: TEAL,
+    alignItems: 'center',
+  },
+  wideBtnText: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: TEAL,
+  },
+
+  // ── Student cards ─────────────────────────────────────────────────────────
+  studentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
+  studentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#EDF1EF',
+  },
+  studentHalo: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  studentName: {
+    fontSize: 15,
+    lineHeight: 20,
+    height: 40,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: '#1A3D2E',
+    textAlign: 'center',
+  },
+  studentAge: {
+    fontSize: 12,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
+  },
+
+  // ── Class overview tiles ──────────────────────────────────────────────────
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
+  statTile: {
+    borderRadius: 16,
+    padding: 14,
+    gap: 3,
+  },
+  statTileTop: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 5 },
+  statTileIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statTileValue: {
+    fontSize: 22,
+    fontFamily: 'DMSans_900Black',
+  },
+  statTileLabel: {
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+    color: '#1A3D2E',
+  },
+  statTileSub: {
+    fontSize: 11,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
+  },
+  allTime: {
+    marginTop: Layout.spacing.md,
+    paddingTop: Layout.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: '#EDF1EF',
+  },
+  allTimeText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
+  },
+
+  // ── Calendar ──────────────────────────────────────────────────────────────
+  calNav: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  calMonth: {
+    fontSize: 13,
+    fontFamily: 'DMSans_600SemiBold',
+    color: '#1A3D2E',
+  },
+  calArrow: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F4F7F5',
+  },
+  calRow: { flexDirection: 'row' },
+  calWeekday: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
+    color: '#6B8A80',
+    paddingBottom: 6,
+  },
+  calCell: { flex: 1, alignItems: 'center' },
+  calDay: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calDayToday: { backgroundColor: TEAL },
+  calDayText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
+    color: '#1A3D2E',
+  },
+  calDayOutsideText: { color: '#C6D2CC' },
+  calDayTodayText: { color: '#FFFFFF', fontFamily: 'DMSans_700Bold' },
+  // Fixed-height slot so a dot appearing never nudges the row below it.
+  calDotSlot: { height: 8, justifyContent: 'center' },
+  calDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#52C07C' },
+
+  // ── Today's sessions ──────────────────────────────────────────────────────
+  slot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  slotTime: {
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
+    color: '#6B8A80',
+    width: 62,
+  },
+  slotBody: { flex: 1, gap: 1 },
+  slotTitle: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: '#1A3D2E',
+  },
+  slotSub: {
+    fontSize: 11,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
+  },
+
+  // ── Empty state ───────────────────────────────────────────────────────────
+  empty: { alignItems: 'center', paddingVertical: 22, paddingHorizontal: 16 },
+  emptyIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#D6F0F4',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   emptyTitle: {
     fontSize: 14,
@@ -566,113 +866,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ── Section title ─────────────────────────────────────────────────────────
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontFamily: 'DMSans_800ExtraBold',
-    color: '#1A3D2E',
-    marginTop: 4,
-  },
-  sectionLink: {
-    fontSize: 13,
-    fontFamily: 'DMSans_700Bold',
-    color: TEAL,
-    marginTop: 4,
-  },
-
-  // ── Quick actions ─────────────────────────────────────────────────────────
-  actionsCol: { gap: 10 },
-  actionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  actionIconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionText: { flex: 1, gap: 2 },
-  actionLabel: {
-    fontSize: 15,
-    fontFamily: 'DMSans_700Bold',
-    color: '#1A3D2E',
-  },
-  actionSub: {
-    fontSize: 12,
-    fontFamily: 'DMSans_400Regular',
-    color: '#6B8A80',
-  },
-  actionChevron: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // ── Activity / achievements lists ────────────────────────────────────────
-  listCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  activityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-  },
-  activityIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  activityText: { flex: 1, gap: 1 },
-  activityTitle: {
-    fontSize: 13,
-    fontFamily: 'DMSans_700Bold',
-    color: '#1A3D2E',
-  },
-  activitySubtitle: {
-    fontSize: 11,
-    fontFamily: 'DMSans_400Regular',
-    color: '#6B8A80',
-  },
-  activityTime: {
-    fontSize: 11,
-    fontFamily: 'DMSans_600SemiBold',
-    color: '#9BAFA8',
-    flexShrink: 0,
-  },
-
   // ── Banner ────────────────────────────────────────────────────────────────
   bannerWrap: {
     borderRadius: 20,
@@ -682,7 +875,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 5,
-    marginTop: 4,
   },
   banner: {
     flexDirection: 'row',
@@ -702,7 +894,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.82)',
     lineHeight: 20,
   },
-  bannerIconCircle: {
+  bannerIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,

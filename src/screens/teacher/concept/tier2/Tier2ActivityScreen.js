@@ -191,6 +191,10 @@ export default function Tier2ActivityScreen({ route, navigation }) {
       eventData:   {
         attempt_number: currentAttempt,
         selected_key: option.key,
+        // The concept under test is the right answer. Logged explicitly so a
+        // consumer can build a (correct, selected) pair from this row alone,
+        // rather than having to know that concept_key doubles as the target.
+        correct_key: conceptKey,
         was_correct: wasCorrect,
         time_taken_ms: timeTakenMs,
         // What the child was shown. Without it the log cannot distinguish a real

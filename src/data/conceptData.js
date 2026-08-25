@@ -468,6 +468,12 @@ export const CONCEPT_CATEGORIES = {
     label: 'Numbers',
     order: 3,
     image: require('../../assets/concepts/category-images/Numbers.png'),
+    // A number is not a thing you can photograph, so the photo-to-drawing match
+    // is two pictures of the same numeral, and there is no clip that shows one
+    // the way a clip can show an apple. Both stages are off here. See
+    // categoryHasVideo / categoryHasPairMatch below.
+    hasVideo:     false,
+    hasPairMatch: false,
     items: [
       {
         key:     'one',
@@ -546,6 +552,10 @@ export const CONCEPT_CATEGORIES = {
     label: 'Shapes',
     order: 2,
     image: require('../../assets/concepts/category-images/Shapes.png'),
+    // Abstract, like numbers — the "photo" of a circle is just another drawing of
+    // a circle, and there is nothing to film. Both stages off.
+    hasVideo:     false,
+    hasPairMatch: false,
     items: [
       {
         key:     'circle',
@@ -582,6 +592,10 @@ export const CONCEPT_CATEGORIES = {
     label: 'Colours',
     order: 1,
     image: require('../../assets/concepts/category-images/Colors.png'),
+    // A colour is a property, not an object: matching a red photo to a red
+    // drawing tests nothing, and a clip of "red" has no subject. Both stages off.
+    hasVideo:     false,
+    hasPairMatch: false,
     items: [
       {
         key:   'red',
@@ -662,117 +676,145 @@ export const CONCEPT_CATEGORIES = {
     image: require('../../assets/concepts/category-images/Household Items.png'),
     items: [
       {
-        key:      'bed',
-        label:    'Bed',
-        labelSi:  'ඇඳ',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/bed.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/bed.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Bed/Bed_Coloring.png'),
+        key:        'bed',
+        label:      'Bed',
+        labelSi:    'ඇඳ',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/bed.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Bed/Bed_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Bed/Bed_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Bed.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Bed/Bed_Coloring.png'),
       },
       {
-        key:      'brush',
-        label:    'Brush',
-        labelSi:  'බුරුසුව',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/brush.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/brush.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Brush/Brush_Coloring.png'),
+        key:        'brush',
+        label:      'Brush',
+        labelSi:    'බුරුසුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/brush.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Brush/Brush_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Brush/Brush_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Brush.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Brush/Brush_Coloring.png'),
       },
       {
-        key:      'comb',
-        label:    'Comb',
-        labelSi:  'පනාව',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/comb.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/comb.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Comb/Comb_Coloring.png'),
+        key:        'comb',
+        label:      'Comb',
+        labelSi:    'පනාව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/comb.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Comb/Comb_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Comb/Comb_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Comb.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Comb/Comb_Coloring.png'),
       },
       {
-        key:      'cup',
-        label:    'Cup',
-        labelSi:  'කෝප්පය',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/cup.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/cup.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Cup/Cup_Coloring.png'),
+        key:        'cup',
+        label:      'Cup',
+        labelSi:    'කෝප්පය',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/cup.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Cup/Cup_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Cup/Cup_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Cup.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Cup/Cup_Coloring.png'),
       },
       {
-        key:      'fork',
-        label:    'Fork',
-        labelSi:  'ගෑරප්පුව',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/fork.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/fork.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Fork/Fork_Coloring.png'),
+        key:        'fork',
+        label:      'Fork',
+        labelSi:    'ගෑරප්පුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/fork.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Fork/Fork_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Fork/Fork_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Fork.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Fork/Fork_Coloring.png'),
       },
       {
-        key:      'glass',
-        label:    'Glass',
-        labelSi:  'වීදුරුව',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/glass.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/glass.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Glass/Glass_Coloring.png'),
+        key:        'glass',
+        label:      'Glass',
+        labelSi:    'වීදුරුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/glass.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Glass/Glass_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Glass/Glass_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Glass.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Glass/Glass_Coloring.png'),
       },
       {
-        key:      'knife',
-        label:    'Knife',
-        labelSi:  'පිහිය',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/knife.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/knife.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Knife/Knife_Coloring.png'),
+        key:        'knife',
+        label:      'Knife',
+        labelSi:    'පිහිය',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/knife.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Knife/Knife_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Knife/Knife_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Knife.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Knife/Knife_Coloring.png'),
       },
       {
-        key:      'mug',
-        label:    'Mug',
-        labelSi:  'ජෝගුව',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/mug.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/mug.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Mug/Mug_Coloring.png'),
+        key:        'mug',
+        label:      'Mug',
+        labelSi:    'ජෝගුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/mug.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Mug/Mug_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Mug/Mug_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Mug.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Mug/Mug_Coloring.png'),
       },
       {
-        key:      'pillows',
-        label:    'Pillows',
-        labelSi:  'කොට්ටය',
-        plural:   true,
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/pillows.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/pillows.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Pillow/Pillows_Coloring.png'),
+        key:        'pillows',
+        label:      'Pillows',
+        labelSi:    'කොට්ටය',
+        plural:     true,
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/pillows.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Pillow/Pillows_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Pillow/Pillows_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Pillows.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Pillow/Pillows_Coloring.png'),
       },
       {
-        key:      'plate',
-        label:    'Plate',
-        labelSi:  'පිඟාන',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/plate.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/plate.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Plate/Plate_Coloring.png'),
+        key:        'plate',
+        label:      'Plate',
+        labelSi:    'පිඟාන',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/plate.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Plate/Plate_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Plate/Plate_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Plate.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Plate/Plate_Coloring.png'),
       },
       {
-        key:      'soap',
-        label:    'Soap',
-        labelSi:  'සබන්',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/soap.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/soap.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Soap/Soap_Coloring.png'),
+        key:        'soap',
+        label:      'Soap',
+        labelSi:    'සබන්',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/soap.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Soap/Soap_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Soap/Soap_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Soap.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Soap/Soap_Coloring.png'),
       },
       {
-        key:      'spoon',
-        label:    'Spoon',
-        labelSi:  'හැන්ද',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/spoon.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/spoon.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Spoon/Spoon_Coloring.png'),
+        key:        'spoon',
+        label:      'Spoon',
+        labelSi:    'හැන්ද',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/spoon.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Spoon/Spoon_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Spoon/Spoon_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Spoon.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Spoon/Spoon_Coloring.png'),
       },
       {
-        key:      'toothbrush',
-        label:    'Toothbrush',
-        labelSi:  'දත් බුරුසුව',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/toothbrush.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/toothbrush.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Toothbrush/Toothbrush_Coloring.png'),
+        key:        'toothbrush',
+        label:      'Toothbrush',
+        labelSi:    'දත් බුරුසුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/toothbrush.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Toothbrush/Toothbrush_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Toothbrush/Toothbrush_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Toothbrush.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Toothbrush/Toothbrush_Coloring.png'),
       },
       {
-        key:      'toothpaste',
-        label:    'Toothpaste',
-        labelSi:  'දන්තාලේප',
-        icon:     require('../../assets/concepts/categories/Household Items/Household_Icons/toothpaste.png'),
-        real:     require('../../assets/concepts/categories/Household Items/Household_Icons/toothpaste.png'),
-        coloring: require('../../assets/concepts/categories/Household Items/Toothpaste/Toothpaste_Coloring.png'),
+        key:        'toothpaste',
+        label:      'Toothpaste',
+        labelSi:    'දන්තාලේප',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/toothpaste.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Toothpaste/Toothpaste_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Toothpaste/Toothpaste_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Toothpaste.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Toothpaste/Toothpaste_Coloring.png'),
       },
     ],
   },
@@ -955,6 +997,29 @@ export function getConceptQuestionSi(concept) {
 // ("can you find …") doesn't fit. Concept-independent, hence a plain constant.
 export const NAMING_QUESTION_EN = 'What is this called?';
 export const NAMING_QUESTION_SI = 'මේකට කියන්නේ මොකක්ද?';
+
+/**
+ * Whether a category runs the tier 3 video stage.
+ *
+ * Opt-out rather than opt-in: an unset category keeps every stage, so adding one
+ * needs no change here, and only a category that deliberately drops a stage says
+ * so. A category with this false ends its ladder at tier 2 — callers must not
+ * wait on tier3_status for it, because nothing will ever set it.
+ */
+export function categoryHasVideo(categoryKey) {
+  return CONCEPT_CATEGORIES[categoryKey]?.hasVideo !== false;
+}
+
+/**
+ * Whether the Photo & Picture Match activity is offered for a category.
+ *
+ * Separate from the memory game, which pairs the same two images: that one is a
+ * recall exercise where the pictures are tokens, so it still works where the
+ * photo/drawing distinction carries no meaning.
+ */
+export function categoryHasPairMatch(categoryKey) {
+  return CONCEPT_CATEGORIES[categoryKey]?.hasPairMatch !== false;
+}
 
 export function getConceptItem(categoryKey, conceptKey) {
   const cat = CONCEPT_CATEGORIES[categoryKey];

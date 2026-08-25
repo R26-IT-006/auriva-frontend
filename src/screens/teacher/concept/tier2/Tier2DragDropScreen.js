@@ -214,6 +214,9 @@ export default function Tier2DragDropScreen({ route, navigation }) {
       eventData: {
         attempt_number: currentAttempt,
         selected_key:   option.key,
+        // See the note in Tier2ActivityScreen: the concept under test is the
+        // right answer, recorded here so the row is self-describing.
+        correct_key:    conceptKey,
         was_correct:    wasCorrect,
         time_taken_ms:  timeTakenMs,
         hint_shown:     hintKey !== null,

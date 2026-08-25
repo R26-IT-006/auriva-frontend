@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import PairMatchBoard from '../../../../components/concept/PairMatchBoard';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
-import { buildPairMatchGame } from '../../../../data/conceptPairMatch';
+import { buildPairMatchGame, MAX_PAIRS } from '../../../../data/conceptPairMatch';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
 
@@ -32,27 +33,56 @@ const FINISH_DELAY_MS    = 1600;
  * lost. First-try matches are logged so the teacher still sees a real signal.
  */
 export default function ConceptPairMatchScreen({ route, navigation }) {
-  const { student, category, masteredKeys } = route.params;
+  const { student, category } = route.params;
 
   const theme = getAvatarTheme(student?.avatar_key);
 
-  // Built once per mount — rebuilding on render would reshuffle both columns
-  // under the child's finger on every tap.
-  const gameRef = useRef(null);
-  if (gameRef.current === null) {
-    gameRef.current = buildPairMatchGame(category.key, masteredKeys ?? []);
-  }
-  const game = gameRef.current;
-
+  // Concepts come from the server, chosen from this child's tier 1 and tier 2
+  // results. Held in state rather than built at first render because the board
+  // cannot exist until that call returns.
+  const [game,       setGame]       = useState(null);
+  const [loading,    setLoading]    = useState(true);
   const [matched,    setMatched]    = useState([]);
   const [selected,   setSelected]   = useState(null);   // { side, key }
   const [wrongToken, setWrongToken] = useState(null);   // { photoKey, drawingKey, n }
   const [locked,     setLocked]     = useState(false);
 
+  const activityId    = useRef(null);
   const sessionStart  = useRef(Date.now());
   const missed        = useRef(new Set());   // concepts that took more than one try
+  // concept -> Set(concepts it was wrongly paired with), for the GKB edges.
+  const confusions    = useRef(new Map());
   const attempts      = useRef(0);
   const wrongCount    = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+
+    conceptApi.startGameActivity({
+      studentId:    student.sid,
+      categoryKey:  category.key,
+      activityType: 'pair_match',
+      conceptCount: MAX_PAIRS,
+    })
+      .then((res) => {
+        if (!active) return;
+        activityId.current = res.activity_id;
+        setGame(buildPairMatchGame(category.key, res.concept_keys || []));
+      })
+      .catch(() => {
+        // Unreachable server: fall back to a local deal rather than stranding
+        // the child on a spinner. The run simply is not recorded.
+        if (active) setGame(buildPairMatchGame(category.key, []));
+      })
+      .finally(() => { if (active) setLoading(false); });
+
+    return () => { active = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function noteConfusion(a, b) {
+    if (!confusions.current.has(a)) confusions.current.set(a, new Set());
+    confusions.current.get(a).add(b);
+  }
 
   const speakPrompt = useCallback(() => {
     Speech.stop();
@@ -72,20 +102,20 @@ export default function ConceptPairMatchScreen({ route, navigation }) {
     Speech.stop();
     Speech.speak('You matched them all! Well done!', { language: 'en-US', rate: 0.8 });
 
-    conceptApi.logInteraction({
-      studentId:   student.sid,
-      sessionId:   null,
-      categoryKey: category.key,
-      conceptKey:  finalMatched[0] ?? category.key,
-      tier:        4,
-      eventType:   'pair_match_complete',
-      eventData: {
-        pairs:            finalMatched.length,
-        correct_first_try: finalMatched.length - missed.current.size,
-        attempts:          attempts.current,
-        time_spent_ms:     Date.now() - sessionStart.current,
-      },
-    }).catch(() => {});
+    // The activity row replaces the old ad-hoc completion log — it carries the
+    // score, the concepts covered and the confusion edges in one place.
+    if (activityId.current) {
+      conceptApi.completeGameActivity({
+        studentId:   student.sid,
+        sessionId:   null,
+        activityId:  activityId.current,
+        pairResults: finalMatched.map((key) => ({
+          concept_key:           key,
+          was_correct_first_try: !missed.current.has(key),
+          confused_with:         [...(confusions.current.get(key) ?? [])],
+        })),
+      }).catch(() => {});
+    }
 
     setTimeout(() => {
       navigation.replace('ConceptItems', { student, category });
@@ -122,6 +152,10 @@ export default function ConceptPairMatchScreen({ route, navigation }) {
     if (!correct) {
       missed.current.add(photoKey);
       missed.current.add(drawingKey);
+      // Recorded both ways: the child could not tell these two apart, and which
+      // of them the game happens to call "correct" here is arbitrary.
+      noteConfusion(photoKey, drawingKey);
+      noteConfusion(drawingKey, photoKey);
       wrongCount.current += 1;
       setWrongToken({ photoKey, drawingKey, n: wrongCount.current });
       Speech.stop();
@@ -139,6 +173,16 @@ export default function ConceptPairMatchScreen({ route, navigation }) {
     }
 
     if (next.length === game.total) finish(next);
+  }
+
+  if (loading) {
+    return (
+      <LinearGradient colors={theme.backgroundGradient} style={styles.root}>
+        <SafeAreaView style={[styles.safe, styles.centered]} edges={['top', 'bottom']}>
+          <ActivityIndicator size="large" color={theme.button} />
+        </SafeAreaView>
+      </LinearGradient>
+    );
   }
 
   // A category without enough photo/drawing pairs never reaches here — the

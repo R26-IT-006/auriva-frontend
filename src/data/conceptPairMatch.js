@@ -5,7 +5,7 @@
 // classroom carry a proper `animated` frame; the rest carry an illustrated
 // `icon`. The drawn side prefers `animated` and falls back to `icon`, so the
 // activity works in every category rather than only the two with animated art.
-import { getConceptItemsForCategory } from './conceptData';
+import { getConceptItemsForCategory, categoryHasPairMatch } from './conceptData';
 
 // Four pairs is eight cards — enough to be a game, few enough that each card
 // stays large and the board never scrolls.
@@ -41,22 +41,30 @@ export function getPairableItems(categoryKey) {
  * One round: the same concepts down both columns, each column shuffled
  * separately so the answer is never "the one across from it".
  *
- * `preferKeys` — concepts the child has already mastered. They are drawn from
- * first so the game reinforces known material, then topped up from the rest of
- * the category rather than refusing to start.
+ * `conceptKeys` — chosen by the server from the child's tier 1 and tier 2
+ * performance, the same selection the mixed practice activity uses. Empty when
+ * that call failed, in which case this falls back to a local shuffle: a network
+ * blip should degrade to a playable game, not an error screen.
  *
  * Returns null when the category cannot field MIN_PAIRS, which is how a
  * category opts out without this file listing which ones qualify.
  */
-export function buildPairMatchGame(categoryKey, preferKeys = []) {
+export function buildPairMatchGame(categoryKey, conceptKeys = []) {
+  // Categories where a photo and a drawing are the same picture opt out entirely,
+  // however many pairs they could technically field. The activity picker already
+  // hides the row for them; this is the backstop for any other way in.
+  if (!categoryHasPairMatch(categoryKey)) return null;
+
   const pairable = getPairableItems(categoryKey);
   if (pairable.length < MIN_PAIRS) return null;
 
-  const preferred = new Set(preferKeys);
-  const known     = shuffle(pairable.filter((i) => preferred.has(i.key)));
-  const rest      = shuffle(pairable.filter((i) => !preferred.has(i.key)));
+  // The server's order *is* the selection order, so it is kept rather than
+  // re-sorted. Unknown keys are dropped: a concept without both a photo and a
+  // drawing cannot be a card here, whatever the server picked.
+  const byKey    = new Map(pairable.map((i) => [i.key, i]));
+  const selected = conceptKeys.map((k) => byKey.get(k)).filter(Boolean);
 
-  const chosen = [...known, ...rest]
+  const chosen = (selected.length >= MIN_PAIRS ? selected : shuffle(pairable))
     .slice(0, MAX_PAIRS)
     .map((item, i) => ({ ...item, pairColor: PAIR_COLORS[i % PAIR_COLORS.length] }));
 

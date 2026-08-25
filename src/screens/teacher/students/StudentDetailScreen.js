@@ -22,7 +22,7 @@ import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
 import { conceptApi } from '../../../api/concept';
-import { formatDate } from '../../../utils/formatters';
+import { formatDate, ageFrom } from '../../../utils/formatters';
 import { getConceptItem } from '../../../data/conceptData';
 
 function InfoRow({ icon, label, value }) {
@@ -73,18 +73,6 @@ const MODULES = [
   { key: 'pronunciation', tab: 'Pronunciation', title: 'Pronunciation Module', icon: 'mic-outline' },
   { key: 'dialogue',      tab: 'Dialogue',      title: 'Dialogue Module',      icon: 'chatbubbles-outline' },
 ];
-
-/** Whole years between a date of birth and today; null when unparseable. */
-function ageFrom(dateStr) {
-  if (!dateStr) return null;
-  const dob = new Date(dateStr);
-  if (Number.isNaN(dob.getTime())) return null;
-  const now = new Date();
-  let years = now.getFullYear() - dob.getFullYear();
-  const m = now.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) years -= 1;
-  return years >= 0 && years < 130 ? years : null;
-}
 
 export default function TeacherStudentDetailScreen({ route, navigation }) {
   const initialStudent = route.params?.student;

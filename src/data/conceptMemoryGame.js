@@ -33,21 +33,25 @@ function shuffle(arr) {
  * One round: every chosen concept contributes two cards — its photo and its
  * drawing — and the whole deck is shuffled into the grid.
  *
- * `preferKeys` — concepts already mastered, dealt first so the game reinforces
- * known material, then topped up from the rest of the category.
+ * `conceptKeys` — chosen by the server from the child's tier 1 and tier 2
+ * performance, the same selection the mixed practice activity uses. Empty when
+ * that call failed, in which case this falls back to a local shuffle: a network
+ * blip should degrade to a playable game, not an error screen.
  *
  * Returns null when the category cannot field MIN_PAIRS, which is how a
  * category opts out without this file naming which ones qualify.
  */
-export function buildMemoryGame(categoryKey, preferKeys = []) {
+export function buildMemoryGame(categoryKey, conceptKeys = []) {
   const pairable = getPairableItems(categoryKey);
   if (pairable.length < MIN_PAIRS) return null;
 
-  const preferred = new Set(preferKeys);
-  const known     = shuffle(pairable.filter((i) => preferred.has(i.key)));
-  const rest      = shuffle(pairable.filter((i) => !preferred.has(i.key)));
+  // The server's order *is* the selection order, so it is kept rather than
+  // re-sorted. Unknown keys are dropped: a concept without both a photo and a
+  // drawing cannot be a card here, whatever the server picked.
+  const byKey    = new Map(pairable.map((i) => [i.key, i]));
+  const selected = conceptKeys.map((k) => byKey.get(k)).filter(Boolean);
 
-  const chosen = [...known, ...rest]
+  const chosen = (selected.length >= MIN_PAIRS ? selected : shuffle(pairable))
     .slice(0, MEMORY_PAIRS)
     .map((item, i) => ({ ...item, pairColor: PAIR_COLORS[i % PAIR_COLORS.length] }));
 
