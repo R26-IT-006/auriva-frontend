@@ -276,3 +276,108 @@ describe('exportAndSharePeriodicReportPdf — export/share safety (spec §21/§2
       .resolves.toMatchObject({ status: 'failed' });
   });
 });
+
+describe('generate-then-share: review before anything leaves the device', () => {
+  let mockPrintToFileAsync, mockCopy, mockDelete, mockIsAvailableAsync, mockShareAsync;
+  let targetExists;
+
+  beforeEach(() => {
+    jest.resetModules();
+    mockPrintToFileAsync = jest.fn().mockResolvedValue({ uri: 'file:///cache/random123.pdf' });
+    mockCopy = jest.fn();
+    mockDelete = jest.fn();
+    targetExists = false;
+    mockIsAvailableAsync = jest.fn().mockResolvedValue(true);
+    mockShareAsync = jest.fn().mockResolvedValue(undefined);
+
+    jest.doMock('expo-print', () => ({ printToFileAsync: (...a) => mockPrintToFileAsync(...a) }), { virtual: true });
+    jest.doMock('expo-sharing', () => ({
+      isAvailableAsync: (...a) => mockIsAvailableAsync(...a),
+      shareAsync: (...a) => mockShareAsync(...a),
+    }), { virtual: true });
+
+    class MockFile {
+      constructor(...parts) {
+        this.uri = parts.map((p) => (typeof p === 'string' ? p : p.uri)).join('');
+      }
+      get exists() { return this.uri.endsWith('.pdf') && targetExists; }
+      delete(...a) { mockDelete(this.uri, ...a); }
+      copy(dest) { mockCopy(this.uri, dest.uri); }
+    }
+    jest.doMock('expo-file-system', () => ({
+      File: MockFile,
+      Paths: { cache: { uri: 'file:///cache/' } },
+    }), { virtual: true });
+  });
+
+  function freshModule() {
+    return require('./periodicReportPdf');
+  }
+
+  const ARGS = { report: SAMPLE_REPORT, studentName: 'Jane Doe', startDate: '2026-01-01', endDate: '2026-06-30' };
+  const EXPECTED_URI = 'file:///cache/Auriva_Handwriting_Report_Jane_Doe_2026-01-01_2026-06-30.pdf';
+
+  it('generating writes the PDF and SHARES NOTHING', async () => {
+    const { generatePeriodicReportPdf } = freshModule();
+    const result = await generatePeriodicReportPdf(ARGS);
+
+    expect(result.status).toBe('generated');
+    expect(result.fileUri).toBe(EXPECTED_URI);
+    expect(result.filename).toBe('Auriva_Handwriting_Report_Jane_Doe_2026-01-01_2026-06-30.pdf');
+    // The whole point of the split: nothing leaves the device on generate.
+    expect(mockShareAsync).not.toHaveBeenCalled();
+    expect(mockIsAvailableAsync).not.toHaveBeenCalled();
+  });
+
+  it('returns the same html the PDF was built from, so the preview cannot drift', async () => {
+    const { generatePeriodicReportPdf, buildReportHtml: build } = freshModule();
+    const result = await generatePeriodicReportPdf(ARGS);
+    expect(result.html).toBe(build(SAMPLE_REPORT));
+    expect(mockPrintToFileAsync).toHaveBeenCalledWith(expect.objectContaining({ html: result.html }));
+  });
+
+  it('a generation failure never throws and reports status "failed"', async () => {
+    mockPrintToFileAsync.mockRejectedValueOnce(new Error('rendering engine crashed'));
+    const { generatePeriodicReportPdf } = freshModule();
+    await expect(generatePeriodicReportPdf(ARGS)).resolves.toMatchObject({ status: 'failed', fileUri: null });
+  });
+
+  it('sharing sends the already-generated file, and never rebuilds it', async () => {
+    const { sharePeriodicReportPdf } = freshModule();
+    const result = await sharePeriodicReportPdf({ fileUri: EXPECTED_URI, studentName: 'Jane Doe' });
+
+    expect(result.status).toBe('shared');
+    expect(mockShareAsync).toHaveBeenCalledWith(EXPECTED_URI, expect.objectContaining({ mimeType: 'application/pdf' }));
+    // No second render: the reviewed document is the one that is sent.
+    expect(mockPrintToFileAsync).not.toHaveBeenCalled();
+  });
+
+  it('refuses to share when nothing has been generated', async () => {
+    const { sharePeriodicReportPdf } = freshModule();
+    const result = await sharePeriodicReportPdf({ fileUri: null, studentName: 'Jane Doe' });
+    expect(result.status).toBe('failed');
+    expect(mockShareAsync).not.toHaveBeenCalled();
+  });
+
+  it('a cancelled share is reported as cancelled, never as a failure', async () => {
+    mockShareAsync.mockRejectedValueOnce(new Error('User cancelled the share sheet'));
+    const { sharePeriodicReportPdf } = freshModule();
+    await expect(sharePeriodicReportPdf({ fileUri: EXPECTED_URI, studentName: 'Jane Doe' }))
+      .resolves.toMatchObject({ status: 'cancelled' });
+  });
+
+  it('sharing unavailable is distinct from a failure', async () => {
+    mockIsAvailableAsync.mockResolvedValueOnce(false);
+    const { sharePeriodicReportPdf } = freshModule();
+    const result = await sharePeriodicReportPdf({ fileUri: EXPECTED_URI, studentName: 'Jane Doe' });
+    expect(result.status).toBe('sharing_unavailable');
+    expect(mockShareAsync).not.toHaveBeenCalled();
+  });
+
+  it('the legacy one-shot export still composes the two steps', async () => {
+    const { exportAndSharePeriodicReportPdf: run } = freshModule();
+    const result = await run(ARGS);
+    expect(result.status).toBe('shared');
+    expect(mockShareAsync).toHaveBeenCalledWith(EXPECTED_URI, expect.anything());
+  });
+});

@@ -31,7 +31,8 @@ import {
   resolvePeriodRange, formatPeriodLabel, validateCustomRange, startOfTodayUtc, toDateOnly, parseDateOnly,
 } from '../../../utils/reportPeriod';
 import { fetchPeriodicReport } from '../../../api/periodicReport';
-import { exportAndSharePeriodicReportPdf } from '../../../utils/periodicReportPdf';
+import { generatePeriodicReportPdf, sharePeriodicReportPdf } from '../../../utils/periodicReportPdf';
+import ReportPreviewModal from './ReportPreviewModal';
 import { getLetterMotorPatternLabel, LETTER_MOTOR_PATTERN_CAPTION } from '../../../utils/letterMotorPatternLabels';
 // Plain SVG charts + progress bar, built on react-native-svg (already a
 // dependency, already used by the components/charts modules). No charting
@@ -78,8 +79,15 @@ export default function PeriodicReportSection({ student, theme }) {
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error' | 'empty_range'
   const [report, setReport] = useState(null);
 
-  const [exportState, setExportState] = useState('idle'); // 'idle' | 'exporting' | 'error'
+  // Report export is two deliberate steps: GENERATE (writes the PDF to this
+  // device and opens a preview) and then SHARE (only after the teacher has
+  // read it). Sharing a child's report cannot be undone once it has left the
+  // device, so the review step sits between them by design.
+  const [exportState, setExportState] = useState('idle'); // 'idle' | 'generating' | 'error'
   const [exportMessage, setExportMessage] = useState(null);
+  const [preview, setPreview] = useState(null); // { html, filename, fileUri }
+  const [sharing, setSharing] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState(null);
 
   // Stale-response guard (spec §15/§22) — only the MOST RECENT request's
   // result is ever applied to state.
@@ -137,6 +145,19 @@ export default function PeriodicReportSection({ student, theme }) {
     ? 'Outside represented reference range'
     : (patternState ? 'Within represented reference range' : 'Not yet observed');
 
+  // Explains WHY there is no pattern yet, instead of leaving the card
+  // reading "Not yet observed / 0 / Not yet observed", which looks like a
+  // broken section rather than a stage the child has not reached. Counted
+  // in frozen evidence letters, because that — not letters mastered — is
+  // what the first milestone requires. Absent on an older server, in which
+  // case no note is shown at all (never a fabricated count).
+  const referenceProgress = report?.letter_motor_development?.reference_progress ?? null;
+  const patternPendingNote = (!patternState && !patternRejected && referenceProgress)
+    ? `Recorded from ${referenceProgress.evidence_letters} of the `
+      + `${referenceProgress.first_milestone_required} reference letters needed before a `
+      + 'writing pattern can first be described.'
+    : null;
+
   // Optional completion figure, computed only from values already in the
   // report — never shown when nothing was practised (0/0 is not 0%).
   const wordsPractised = report?.word_writing?.words_attempted_during_period ?? 0;
@@ -184,23 +205,57 @@ export default function PeriodicReportSection({ student, theme }) {
     setCustomRange(candidate);
   }
 
-  async function handleExportPdf() {
+  // STEP 1 — build the PDF and show it. Nothing leaves the device here.
+  async function handleGeneratePdf() {
     if (!report) return;
-    setExportState('exporting');
+    setExportState('generating');
     setExportMessage(null);
-    const result = await exportAndSharePeriodicReportPdf({
+    setPreviewMessage(null);
+
+    const result = await generatePeriodicReportPdf({
       report, studentName: student?.full_name ?? 'Student',
       startDate: range?.startDate ?? '', endDate: range?.endDate ?? '',
     });
-    if (result.status === 'shared' || result.status === 'cancelled') {
-      setExportState('idle'); // cancellation is not an error — spec §21/§22
-    } else if (result.status === 'sharing_unavailable') {
-      setExportState('error');
-      setExportMessage('Sharing is not available on this device.');
-    } else {
-      setExportState('error');
-      setExportMessage('Could not generate the PDF. Please try again.');
+
+    if (result.status === 'generated') {
+      setExportState('idle');
+      setPreview({ html: result.html, filename: result.filename, fileUri: result.fileUri });
+      return;
     }
+    setExportState('error');
+    setExportMessage('Could not generate the PDF. Please try again.');
+  }
+
+  // STEP 2 — share the file the teacher just reviewed. Takes the uri from the
+  // preview, so it cannot send a different document from the one shown.
+  async function handleSharePdf() {
+    if (!preview?.fileUri) return;
+    setSharing(true);
+    setPreviewMessage(null);
+
+    const result = await sharePeriodicReportPdf({
+      fileUri: preview.fileUri,
+      studentName: student?.full_name ?? 'Student',
+    });
+    setSharing(false);
+
+    if (result.status === 'shared') {
+      setPreview(null); // sent — close the preview
+    } else if (result.status === 'cancelled') {
+      // Backing out of the share sheet is not an error: stay in the preview so
+      // the teacher can read on, or close deliberately.
+      setPreviewMessage(null);
+    } else if (result.status === 'sharing_unavailable') {
+      setPreviewMessage('Sharing is not available on this device. The report is saved on this device.');
+    } else {
+      setPreviewMessage('Could not share the report. Please try again.');
+    }
+  }
+
+  function handleClosePreview() {
+    setPreview(null);
+    setSharing(false);
+    setPreviewMessage(null);
   }
 
   return (
@@ -303,9 +358,22 @@ export default function PeriodicReportSection({ student, theme }) {
             note={report.initial_shape_motor_profile.available ? 'Baseline context — may predate this period.' : null}
           >
             {report.initial_shape_motor_profile.available ? (
-              <KeyValueRow label="Overall score" value={report.initial_shape_motor_profile.scores.overall} />
+              <>
+                {/* The same four scores the dashboard's baseline card shows.
+                    Reporting only the overall figure hid the shape-group
+                    detail that makes the baseline useful to a teacher. Read
+                    straight from the persisted StudentMotorBaseline row — no
+                    recomputation, no derived index. */}
+                <KeyValueRow label="Straight Line Shapes" value={report.initial_shape_motor_profile.scores.straight ?? 'Not available'} />
+                <KeyValueRow label="Curved Shapes" value={report.initial_shape_motor_profile.scores.curved ?? 'Not available'} />
+                <KeyValueRow label="Complex Shapes" value={report.initial_shape_motor_profile.scores.complex ?? 'Not available'} />
+                <KeyValueRow label="Overall Score" value={report.initial_shape_motor_profile.scores.overall ?? 'Not available'} />
+              </>
             ) : (
-              <Text style={styles.note}>Initial handwriting assessment not yet available.</Text>
+              <Text style={styles.note}>
+                Initial handwriting assessment not yet available. It appears here once the
+                student completes the shape assessment.
+              </Text>
             )}
           </SubCard>
 
@@ -318,6 +386,7 @@ export default function PeriodicReportSection({ student, theme }) {
             <KeyValueRow label="Current Writing Pattern" value={patternLabel} />
             <KeyValueRow label="Pattern Updates" value={report.letter_motor_development.milestones_during_period.length} />
             <KeyValueRow label="Reference Status" value={referenceStatus} />
+            {patternPendingNote && <Text style={styles.note}>{patternPendingNote}</Text>}
             <Text style={styles.note}>{LETTER_MOTOR_PATTERN_CAPTION}</Text>
           </SubCard>
 
@@ -328,6 +397,11 @@ export default function PeriodicReportSection({ student, theme }) {
             {wordCompletionPct != null && (
               <KeyValueRow label="Completion" value={`${wordCompletionPct}%`} />
             )}
+            {wordsPractised === 0 && (
+              <Text style={styles.note}>
+                No word writing was practised during this period.
+              </Text>
+            )}
           </SubCard>
 
           {/* -- 9. Period Summary -- */}
@@ -335,20 +409,22 @@ export default function PeriodicReportSection({ student, theme }) {
             <Text style={styles.summaryText}>{periodSummary}</Text>
           </SubCard>
 
+          {/* Generates and opens the report for review. Sharing is a separate,
+              deliberate action inside the preview — see handleSharePdf. */}
           <TouchableOpacity
             style={styles.exportBtn}
-            onPress={handleExportPdf}
+            onPress={handleGeneratePdf}
             activeOpacity={0.85}
-            disabled={exportState === 'exporting'}
+            disabled={exportState === 'generating'}
             accessibilityRole="button"
-            accessibilityLabel="Export and share PDF"
+            accessibilityLabel="Download report and open it for review"
           >
-            {exportState === 'exporting' ? (
+            {exportState === 'generating' ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Ionicons name="document-attach-outline" size={16} color="#FFFFFF" />
+              <Ionicons name="download-outline" size={16} color="#FFFFFF" />
             )}
-            <Text style={styles.exportBtnText}>Export & Share PDF</Text>
+            <Text style={styles.exportBtnText}>Download & Review Report</Text>
           </TouchableOpacity>
 
           {exportState === 'error' && exportMessage && (
@@ -356,6 +432,18 @@ export default function PeriodicReportSection({ student, theme }) {
           )}
         </>
       )}
+
+      {/* Review-before-send. Rendered once, outside the ready-branch, so a
+          period change while the preview is open cannot unmount it mid-read. */}
+      <ReportPreviewModal
+        visible={!!preview}
+        html={preview?.html ?? null}
+        filename={preview?.filename ?? null}
+        sharing={sharing}
+        message={previewMessage}
+        onShare={handleSharePdf}
+        onClose={handleClosePreview}
+      />
     </View>
   );
 }

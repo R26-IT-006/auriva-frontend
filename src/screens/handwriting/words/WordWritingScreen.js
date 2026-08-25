@@ -37,6 +37,7 @@ import { LIVE_ACTIVITY_TYPES } from '../../../constants/liveSessionPolicy';
 import { buildProgressPatch, buildScorePatch } from '../../../utils/liveSessionSnapshot';
 import BreakPromptModal from '../../../components/handwriting/BreakPromptModal';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
+import useGatedBack from '../../../utils/useGatedBack';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PAD = 16;
@@ -143,6 +144,11 @@ export default function WordWritingScreen({ route, navigation }) {
   // on focus, released on blur — see utils/useOrientationLock.js. The teacher
   // progress report is the one screen that locks portrait instead.
   useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
   const { student, theme } = route.params;
   const { selectedLetter, selectedWords, currentWordIndex, currentWord: wordEntry } = resolveWordSession(route.params);
@@ -521,7 +527,7 @@ export default function WordWritingScreen({ route, navigation }) {
         {/* â”€â”€ Compact header â”€â”€ */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
             style={styles.backBtn}
             accessibilityRole="button"
@@ -864,6 +870,10 @@ export default function WordWritingScreen({ route, navigation }) {
 
       <BreakPromptModal navigation={navigation} student={student} theme={theme} />
 
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }

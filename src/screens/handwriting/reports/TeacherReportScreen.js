@@ -79,6 +79,7 @@ import {
 // section below (current-state Feature 8/9/10/11, family thresholds,
 // motor patterns) is untouched.
 import PeriodicReportSection from '../../../components/handwriting/reports/PeriodicReportSection';
+import useGatedBack from '../../../utils/useGatedBack';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -308,6 +309,11 @@ export default function TeacherReportScreen({ route, navigation }) {
   // the SCREEN rather than in a navigator because this component is
   // registered under two different route names in two different navigators.
   useLockPortrait();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
   const [loading,  setLoading]  = useState(true);
   const [report,   setReport]   = useState(null);
@@ -571,7 +577,7 @@ export default function TeacherReportScreen({ route, navigation }) {
 
         {/* ── Top bar ── */}
         <View style={s.topBar}>
-          <TouchableOpacity style={s.topBtn} onPress={() => navigation.goBack()} activeOpacity={0.75}>
+          <TouchableOpacity style={s.topBtn} onPress={requestBack} activeOpacity={0.75}>
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <View style={{ alignItems: 'center' }}>
@@ -843,6 +849,10 @@ export default function TeacherReportScreen({ route, navigation }) {
           </ScrollView>
         )}
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }

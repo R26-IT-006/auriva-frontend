@@ -109,15 +109,17 @@ function buildMotorPerformanceHtml(motor) {
 
 function buildInitialProfileHtml(profile) {
   if (!profile?.available) {
-    return `<p class="note">Initial handwriting assessment not yet available.</p>`;
+    return `<p class="note">Initial handwriting assessment not yet available. It appears here once the student completes the shape assessment.</p>`;
   }
+  // Row labels match the on-screen card exactly — the printed report and the
+  // screen must not name the same four scores differently.
   return `
     <p class="note">Baseline/initial context — recorded ${escapeHtml(fmtDate(profile.recorded_at))}. This baseline summary may predate the selected reporting period.</p>
     ${table([
-      ['Straight-line control', fmtNum(profile.scores?.straight, ' / 100')],
-      ['Curved-line control', fmtNum(profile.scores?.curved, ' / 100')],
-      ['Complex-shape control', fmtNum(profile.scores?.complex, ' / 100')],
-      ['Overall motor score', fmtNum(profile.scores?.overall, ' / 100')],
+      ['Straight Line Shapes', fmtNum(profile.scores?.straight, ' / 100')],
+      ['Curved Shapes', fmtNum(profile.scores?.curved, ' / 100')],
+      ['Complex Shapes', fmtNum(profile.scores?.complex, ' / 100')],
+      ['Overall Score', fmtNum(profile.scores?.overall, ' / 100')],
     ])}`;
 }
 
@@ -180,12 +182,24 @@ function buildWritingPatternHtml(dev) {
     ? 'Outside represented reference range'
     : (asOf ? 'Within represented reference range' : 'Not yet observed');
 
+  // Mirrors the on-screen card: say how far along the reference set the
+  // student is, so a blank pattern reads as "not reached yet" rather than as
+  // a missing section. Omitted entirely on an older server that does not send
+  // reference_progress — never a fabricated count.
+  const refProgress = dev?.reference_progress ?? null;
+  const pendingNote = (!asOf && !rejected && refProgress)
+    ? `<p class="note">Recorded from ${escapeHtml(String(refProgress.evidence_letters))} of the `
+      + `${escapeHtml(String(refProgress.first_milestone_required))} reference letters needed before a `
+      + 'writing pattern can first be described.</p>'
+    : '';
+
   return `
     ${table([
       ['Current Writing Pattern', patternLabel],
       ['Pattern Updates', (dev?.milestones_during_period ?? []).length],
       ['Reference Status', referenceStatus],
     ])}
+    ${pendingNote}
     <p class="note">${escapeHtml(LETTER_MOTOR_PATTERN_CAPTION)}</p>`;
 }
 
@@ -201,6 +215,9 @@ function buildWordWritingHtml(words) {
         : null,
       ['Average Word Score', fmtNum(words.mean_word_score, ' / 100')],
     ])}
+    ${words.words_attempted_during_period > 0
+      ? ''
+      : '<p class="note">No word writing was practised during this period.</p>'}
     <p class="note">${escapeHtml(words.size_spacing_feedback_note)}</p>`;
 }
 
@@ -322,19 +339,40 @@ export function buildReportFilename({ studentName, startDate, endDate }) {
  * @returns {Promise<{status: 'shared'|'cancelled'|'sharing_unavailable'|'failed', error: string|null}>}
  */
 export async function exportAndSharePeriodicReportPdf({ report, studentName, startDate, endDate }) {
+  const generated = await generatePeriodicReportPdf({ report, studentName, startDate, endDate });
+  if (generated.status !== 'generated') return { status: generated.status, error: generated.error };
+  return sharePeriodicReportPdf({ fileUri: generated.fileUri, studentName });
+}
+
+/**
+ * STEP 1 — build the PDF and return where it landed, WITHOUT sharing it.
+ *
+ * Split out so a teacher can review the report before deciding whether to send
+ * it to anyone: the previous single action generated and immediately opened the
+ * share sheet, giving no opportunity to check the contents first. Sharing a
+ * child's progress report is not reversible once it has left the device, so the
+ * review step is a safeguard, not a convenience.
+ *
+ * Also returns the `html` used to build the PDF, so the preview can render
+ * exactly the document that was written to disk rather than a second,
+ * separately-assembled approximation that could drift from it.
+ *
+ * Never throws — every failure resolves to a tagged result.
+ *
+ * @param {{report: Object, studentName: string, startDate: string, endDate: string}} params
+ * @returns {Promise<{status: 'generated'|'failed', fileUri: string|null, filename: string|null, html: string|null, error: string|null}>}
+ */
+export async function generatePeriodicReportPdf({ report, studentName, startDate, endDate }) {
   try {
     // Required at call time, not at module top-level, so this pure-logic
     // file can still be imported/unit-tested under plain jest (no RN
     // native module registry) without crashing on import.
     const Print = require('expo-print');
-    const Sharing = require('expo-sharing');
     // expo-file-system v19 (Expo SDK 54) moved the old filesystem API behind
     // `expo-file-system/legacy`. On the main entry point `cacheDirectory` is
     // no longer exported (so it reads as `undefined`) and `copyAsync` THROWS
-    // a deprecation Error at runtime — which this function's own catch turned
-    // into a generic "Could not generate the PDF" with no other symptom.
-    // Migrated to the supported File/Paths API rather than importing the
-    // deprecated entry point, which is slated for removal.
+    // a deprecation Error at runtime. Migrated to the supported File/Paths
+    // API rather than importing the deprecated entry point.
     const { File, Paths } = require('expo-file-system');
 
     const html = buildReportHtml(report);
@@ -352,14 +390,41 @@ export async function exportAndSharePeriodicReportPdf({ report, studentName, sta
     if (target.exists) target.delete();
 
     new File(uri).copy(target);
-    const targetUri = target.uri;
+
+    return { status: 'generated', fileUri: target.uri, filename, html, error: null };
+  } catch (err) {
+    const message = err?.message ?? String(err);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log('[periodicReportPdf] generate failed:', message);
+    }
+    return { status: 'failed', fileUri: null, filename: null, html: null, error: message };
+  }
+}
+
+/**
+ * STEP 2 — share an ALREADY-GENERATED file. Called only after the teacher has
+ * reviewed the report and chosen to send it.
+ *
+ * Takes a file uri rather than the report object so it physically cannot share
+ * a different document from the one that was previewed.
+ *
+ * @param {{fileUri: string, studentName: string}} params
+ * @returns {Promise<{status: 'shared'|'cancelled'|'sharing_unavailable'|'failed', error: string|null}>}
+ */
+export async function sharePeriodicReportPdf({ fileUri, studentName }) {
+  try {
+    const Sharing = require('expo-sharing');
+
+    if (!fileUri) {
+      return { status: 'failed', error: 'No generated report to share.' };
+    }
 
     const available = await Sharing.isAvailableAsync();
     if (!available) {
       return { status: 'sharing_unavailable', error: 'Sharing is not available on this device.' };
     }
 
-    await Sharing.shareAsync(targetUri, {
+    await Sharing.shareAsync(fileUri, {
       mimeType: 'application/pdf',
       dialogTitle: `Auriva Handwriting Report — ${studentName}`,
       UTI: 'com.adobe.pdf',

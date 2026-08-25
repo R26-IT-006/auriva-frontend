@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { fetchWordProgress } from '../../../utils/wordApi';
 import { buildWordRouteParams, getSelectedWords } from '../../../utils/wordWorkflow';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
+import useGatedBack from '../../../utils/useGatedBack';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,11 @@ export default function WordLetterSelectScreen({ route, navigation }) {
   // on focus, released on blur — see utils/useOrientationLock.js. The teacher
   // progress report is the one screen that locks portrait instead.
   useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
   const { student, theme } = route.params;
 
@@ -126,7 +132,7 @@ export default function WordLetterSelectScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.28)' }]}
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityLabel="Go back"
           >
@@ -219,6 +225,10 @@ export default function WordLetterSelectScreen({ route, navigation }) {
         </ScrollView>
 
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }

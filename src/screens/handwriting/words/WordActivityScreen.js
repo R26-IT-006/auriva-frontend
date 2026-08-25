@@ -41,6 +41,7 @@ import ExerciseC_FillBlank   from '../../../components/word/ExerciseC_FillBlank'
 import ExerciseD_SpellWord   from '../../../components/word/ExerciseD_SpellWord';
 import ExerciseE_WriteWord   from '../../../components/word/ExerciseE_WriteWord';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
+import useGatedBack from '../../../utils/useGatedBack';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -76,6 +77,11 @@ export default function WordActivityScreen({ route, navigation }) {
   // on focus, released on blur — see utils/useOrientationLock.js. The teacher
   // progress report is the one screen that locks portrait instead.
   useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
   const { student, theme } = route.params;
   const { selectedLetter: letter, selectedWords: letterWords, currentWordIndex: wordIdx, currentWord } = resolveWordSession(route.params);
@@ -209,7 +215,7 @@ export default function WordActivityScreen({ route, navigation }) {
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
             accessibilityLabel="Go back"
@@ -298,6 +304,10 @@ export default function WordActivityScreen({ route, navigation }) {
          ════════════════════════════════════════════════════════════════════ */}
 
       <BreakPromptModal navigation={navigation} student={student} theme={theme} />
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }

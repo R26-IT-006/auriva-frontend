@@ -24,6 +24,7 @@ const sectionSource       = read('../components/handwriting/reports/PeriodicRepo
 const selectorSource      = read('../components/handwriting/reports/PeriodSelector.js');
 const apiSource           = read('../api/periodicReport.js');
 const pdfSource           = read('../utils/periodicReportPdf.js');
+const previewSource       = read('../components/handwriting/reports/ReportPreviewModal.js');
 
 // ─── 19/23. Preset changes date range / selected period displayed ─────────
 describe('TeacherReportScreen renders PeriodicReportSection exactly once', () => {
@@ -39,14 +40,20 @@ describe('Two distinct share capabilities, never both called "Share Report" (spe
   it('the pre-existing plaintext Share.share button is explicitly labeled "Share text summary"', () => {
     expect(teacherReportSource).toContain('accessibilityLabel="Share text summary"');
   });
-
-  it('PeriodicReportSection\'s PDF button is explicitly labeled "Export and share PDF" / "Export & Share PDF"', () => {
-    expect(sectionSource).toContain('accessibilityLabel="Export and share PDF"');
-    expect(sectionSource).toContain('Export & Share PDF');
+  it('the PDF flow names its two steps distinctly — download first, share second', () => {
+    // The single "Export & Share" action was split so a teacher can read the
+    // report before sending it: the button downloads/opens it, and sharing is
+    // a separate action inside the preview.
+    expect(sectionSource).toContain('accessibilityLabel="Download report and open it for review"');
+    expect(sectionSource).toContain('Download & Review Report');
+    expect(previewSource).toContain('accessibilityLabel="Share this report"');
   });
 
-  it('the two labels are never identical', () => {
-    expect(teacherReportSource).not.toContain('accessibilityLabel="Export and share PDF"');
+  it('the share labels are never identical across the two capabilities', () => {
+    // The real claim of spec §25: the plaintext share and the PDF share must
+    // stay distinguishable from each other.
+    expect(teacherReportSource).not.toContain('accessibilityLabel="Share this report"');
+    expect(previewSource).not.toContain('accessibilityLabel="Share text summary"');
     expect(sectionSource).not.toContain('accessibilityLabel="Share text summary"');
   });
 });
@@ -113,14 +120,20 @@ describe('loading/error/empty states are all represented', () => {
 
 // ─── 24. PDF uses selected-period data ─────────────────────────────────────
 describe('PDF export uses the currently-selected period, not a hardcoded one', () => {
-  it('exportAndSharePeriodicReportPdf is called with the resolved range\'s startDate/endDate', () => {
-    const block = sectionSource.slice(sectionSource.indexOf('async function handleExportPdf'), sectionSource.indexOf('async function handleExportPdf') + 500);
+  it('generatePeriodicReportPdf receives the resolved range startDate and endDate', () => {
+    const block = sectionSource.slice(sectionSource.indexOf('async function handleGeneratePdf'), sectionSource.indexOf('async function handleSharePdf'));
     expect(block).toContain('startDate: range?.startDate');
     expect(block).toContain('endDate: range?.endDate');
   });
 
+  it('sharing sends the file that was previewed, never a freshly rebuilt one', () => {
+    const block = sectionSource.slice(sectionSource.indexOf('async function handleSharePdf'), sectionSource.indexOf('function handleClosePreview'));
+    expect(block).toContain('fileUri: preview.fileUri');
+    expect(block).not.toContain('generatePeriodicReportPdf');
+  });
+
   it('the Export button is only rendered once a report for the current period has loaded (status === "ready")', () => {
-    const exportBtnIdx = sectionSource.indexOf('accessibilityLabel="Export and share PDF"');
+    const exportBtnIdx = sectionSource.indexOf('accessibilityLabel="Download report and open it for review"');
     const readyGuardIdx = sectionSource.lastIndexOf("status === 'ready' && report", exportBtnIdx);
     expect(readyGuardIdx).toBeGreaterThan(-1);
     expect(readyGuardIdx).toBeLessThan(exportBtnIdx);
@@ -133,10 +146,12 @@ describe('Export failure and cancellation handling (spec §22/§29/§30/§31)', 
     expect(sectionSource).toContain("setExportState('error')");
     expect(sectionSource).toContain('Could not generate the PDF. Please try again.');
   });
-
-  it('a cancelled share is treated as non-error (idle), distinct from a real failure', () => {
-    const block = sectionSource.slice(sectionSource.indexOf('async function handleExportPdf'), sectionSource.indexOf('return (\n    <View style={styles.card}>'));
-    expect(block).toMatch(/result\.status === 'shared' \|\| result\.status === 'cancelled'/);
+  it('a cancelled share is treated as non-error, and keeps the preview open', () => {
+    const block = sectionSource.slice(sectionSource.indexOf('async function handleSharePdf'), sectionSource.indexOf('function handleClosePreview'));
+    expect(block).toMatch(/result\.status === 'cancelled'/);
+    // Backing out of the share sheet must NOT close the preview or raise an error.
+    const cancelBranch = block.slice(block.indexOf("result.status === 'cancelled'"), block.indexOf("result.status === 'sharing_unavailable'"));
+    expect(cancelBranch).not.toMatch(/setPreview\(null\)/);
   });
 
   it('shareAsync is called with mimeType application/pdf — a real document share, never a plaintext message', () => {

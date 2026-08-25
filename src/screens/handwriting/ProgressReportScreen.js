@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import useGatedBack from '../../utils/useGatedBack';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -31,6 +32,11 @@ export default function ProgressReportScreen({ route, navigation }) {
   // on focus, released on blur — see utils/useOrientationLock.js. The teacher
   // progress report is the one screen that locks portrait instead.
   useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
   const {
     student,
@@ -161,7 +167,7 @@ export default function ProgressReportScreen({ route, navigation }) {
         <View style={styles.header}>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: theme.button + '18' }]}
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
@@ -290,6 +296,10 @@ export default function ProgressReportScreen({ route, navigation }) {
         </View>
 
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }

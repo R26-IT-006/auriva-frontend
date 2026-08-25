@@ -86,7 +86,7 @@ describe('section order matches the specified visual hierarchy', () => {
 
   it('the period selector comes first and Export & Share PDF stays last', () => {
     expect(section.indexOf('<PeriodSelector')).toBeLessThan(section.indexOf('title="Letter Learning Progress"'));
-    expect(section.indexOf('handleExportPdf')).toBeGreaterThan(-1);
+    expect(section.indexOf('handleGeneratePdf')).toBeGreaterThan(-1);
     expect(section.lastIndexOf('exportBtn')).toBeGreaterThan(section.indexOf('title="Period Summary"'));
   });
 });
@@ -149,6 +149,75 @@ describe('Writing Pattern Summary is descriptive only', () => {
     // A/B must come from the shared mapping, never be hardcoded here.
     expect(section).toMatch(/getLetterMotorPatternLabel\(patternState\.state_code\)/);
     expect(stripComments(section)).not.toMatch(/'Pattern A'|'Pattern B'/);
+  });
+});
+
+// A section that renders "0", "Not yet observed" and nothing else is
+// indistinguishable from a broken section. Each of the three data-dependent
+// cards must say WHY it is empty, on screen and in the PDF alike.
+describe('empty sections explain themselves rather than rendering blank values', () => {
+  it('the baseline card reports all four shape scores, not just the overall figure', () => {
+    for (const label of ['Straight Line Shapes', 'Curved Shapes', 'Complex Shapes', 'Overall Score']) {
+      expect(section).toContain(label);
+      expect(pdf).toContain(label);
+    }
+  });
+
+  it('a missing baseline tells the teacher what produces it', () => {
+    // The screen wraps the sentence across JSX lines, so match the fragment
+    // that survives wrapping; the PDF builds it as one string.
+    expect(section).toContain('It appears here once the');
+    expect(section).toContain('completes the shape assessment.');
+    expect(pdf).toContain('It appears here once the student completes the shape assessment.');
+  });
+
+  it('a not-yet-observed pattern reports progress toward the first milestone', () => {
+    expect(section).toMatch(/report\?\.letter_motor_development\?\.reference_progress/);
+    expect(section).toContain('reference letters needed before a');
+    expect(pdf).toContain('reference letters needed before a');
+  });
+
+  it('the pending note is suppressed when a pattern exists or was rejected', () => {
+    expect(section).toMatch(/!patternState && !patternRejected && referenceProgress/);
+    expect(pdf).toMatch(/!asOf && !rejected && refProgress/);
+  });
+
+  it('the pending note is omitted entirely rather than fabricated when the server omits the field', () => {
+    // `?? null` then a truthiness guard - an older server yields no note,
+    // never a "0 of null" string.
+    expect(section).toMatch(/reference_progress \?\? null/);
+    expect(pdf).toMatch(/reference_progress \?\? null/);
+  });
+
+  it('a period with no word practice says so', () => {
+    const wanted = 'No word writing was practised during this period.';
+    expect(section).toContain(wanted);
+    expect(pdf).toContain(wanted);
+  });
+
+  it('the word empty note is shown only when nothing was practised', () => {
+    expect(section).toMatch(/wordsPractised === 0 &&/);
+  });
+});
+
+// Phase 3 parity: the printed report and the preview render the SAME html
+// string, so anything asserted on `pdf` is by construction what the teacher
+// reviews before sharing. These pin the sections the teacher reported as
+// blank.
+describe('Recommendations / Teacher Notes are present and honest in the PDF', () => {
+  it('the section exists under its teacher-facing heading', () => {
+    expect(pdf).toContain('Recommendations / Teacher Notes');
+  });
+
+  it('states plainly when there is nothing to show, rather than rendering an empty table', () => {
+    expect(pdf).toContain('No worksheet recommendations are currently active.');
+    expect(pdf).toContain('No teacher review actions were recorded during this period.');
+  });
+
+  it('reads recommendations from adaptive_support, the same field the screen uses', () => {
+    expect(pdf).toMatch(/report\.adaptive_support/);
+    expect(pdf).toMatch(/worksheet_recommendations_current/);
+    expect(pdf).toMatch(/teacher_validations_during_period/);
   });
 });
 

@@ -21,6 +21,7 @@ import {
 } from '../../utils/preWritingSessionGuard';
 import { useLockLandscape } from '../../utils/useOrientationLock';
 import ScreenBackButton from '../../components/handwriting/ScreenBackButton';
+import useGatedBack from '../../utils/useGatedBack';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -35,6 +36,13 @@ export default function LetterPracticeScreen({ route, navigation }) {
   // on focus, released on blur — see utils/useOrientationLock.js. The teacher
   // progress report is the one screen that locks portrait instead.
   useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => (
+    navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LetterHome', { student, theme })
+  ));
 
   const { student, theme, letterSequence = [], motorProfile = null } = route.params;
   const { width } = useWindowDimensions();
@@ -160,13 +168,12 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
-          {/* Ungated: this is a chooser/hub, not an activity in progress, so
-              leaving it loses nothing. Screens that DO hold in-progress work
-              (ShapeAssessment, PreWritingActivity) must route back through
-              ParentGateModal instead — see ScreenBackButton's own header. */}
+          {/* Gated: leaving is an adult decision, so the tap opens the parent
+              gate rather than navigating. See utils/useGatedBack.js. */}
           <View style={styles.nameRow}>
             <ScreenBackButton
-              onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LetterHome', { student, theme }))}
+              onPress={requestBack}
+              gated
               tint={theme.button}
               color={theme.button}
               style={{ marginRight: 12 }}
@@ -386,6 +393,10 @@ export default function LetterPracticeScreen({ route, navigation }) {
         </Modal>
 
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }

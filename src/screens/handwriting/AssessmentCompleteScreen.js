@@ -18,6 +18,7 @@ import { attemptFinalization } from '../../utils/finalizeSync';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import { useToast } from '../../context/ToastContext';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import useGatedBack from '../../utils/useGatedBack';
 
 const SHAPE_LABELS = {
   horizontal_line: 'Horizontal Line',
@@ -82,6 +83,11 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
   // on focus, released on blur — see utils/useOrientationLock.js. The teacher
   // progress report is the one screen that locks portrait instead.
   useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.navigate('StudentWelcome', { student, theme }));
 
   const { student, theme, assessmentData = [], assessmentId, collectionMode = false, collectionSessionId = null } = route.params;
   const { width } = useWindowDimensions();
@@ -289,7 +295,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
             </Text>
             <TouchableOpacity
               style={[styles.retakeButton, { borderColor: theme.button }]}
-              onPress={() => navigation.navigate('StudentWelcome', { student, theme })}
+              onPress={requestBack}
               activeOpacity={0.75}
             >
               <Ionicons name="arrow-back" size={16} color={theme.button} />
@@ -409,6 +415,10 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
         </Animated.View>
 
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }

@@ -55,6 +55,7 @@ import {
   calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
 } from '../../../utils/trajectoryFeatures';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
+import useGatedBack from '../../../utils/useGatedBack';
 
 // Shapes occupy 0-5, lowercase letters occupy 6-15 — uppercase continues from 16.
 const UPPERCASE_TASK_ORDER_OFFSET = 16;
@@ -479,6 +480,11 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   // on focus, released on blur — see utils/useOrientationLock.js. The teacher
   // progress report is the one screen that locks portrait instead.
   useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
   const {
     student,
@@ -1241,7 +1247,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         {/* Header */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
             style={styles.backBtn}
           >
@@ -1593,6 +1599,10 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         )}
 
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }
