@@ -37,36 +37,39 @@ const AVATAR_IMAGES = {
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
+// Every word folder now has its own Non_Verbal.jpg — `correct` is the
+// tapped word's own photo; wrong1/wrong2 borrow OTHER words' own
+// Non_Verbal.jpg as decoys, same cross-word-distractor pattern used in
+// ProbeRetentionCheckScreen.js / Cat3Phase2NonVerbalScreen.js.
 const NV_IMAGES = {
   thank_you: {
-    correct: require('../../../../../assets/dialogue-images/Non-verbal/thankyou_NV_correct.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/Non-verbal/thankyou_NV_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/Non-verbal/thankyou_NV_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/Non_Verbal.jpg'),
   },
   im_sorry: {
-    correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
   },
   // youre_welcome uses comic-strip images stacked vertically
   youre_welcome: {
-    correct: require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/Non_Verbal.jpg'),
   },
   excuse_me: {
-    correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/Non_Verbal.jpg'),
   },
 };
 
-// Image captions per word — update once artwork filenames are confirmed
 const NV_CAPTIONS = {
-  thank_you:        ['Anjalie receives\na present',  'Saman is reading\na book',  'Anjalie and Saman are\nplaying'],
-  im_sorry:         ['Saman bumps into\nAnjalie',    'They are drawing\ntogether',  'Anjalie is eating\nher lunch'],
-  youre_welcome:    ["Anjalie says\n'Thank you'",    'Anjalie is sleeping',         'They are running\noutside'],
-  excuse_me:        ['Saman needs to\npass by',     'Anjalie is drawing',          'Saman is playing\nwith toys'],
+  thank_you:     ['Anjalie receives\na present',  'Saman needs to\npass by Anjalie', 'Saman bumps into\nAnjalie'],
+  im_sorry:      ['Saman bumps into\nAnjalie',    'Anjalie says\n"Thank you"',       'Saman needs to\npass by Anjalie'],
+  youre_welcome: ['Anjalie says\n"Thank you"',    'Saman needs to\npass by Anjalie', 'Anjalie receives\na present'],
+  excuse_me:     ['Saman needs to\npass by Anjalie', 'Anjalie receives\na present',  'Saman bumps into\nAnjalie'],
 };
 
 function shuffleArray(arr) {

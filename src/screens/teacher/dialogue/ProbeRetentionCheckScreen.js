@@ -20,111 +20,173 @@ import { cat3Api } from '../../../api/cat3';
 // escalation/correct-reveal state machine or any advance_to_phase3 logic —
 // this is a neutral check-in, never a right/wrong indicator.
 
+// Every word folder now has its own Non_Verbal.jpg — `correct` is the tapped
+// word's own photo; wrong1/wrong2 borrow OTHER words' own Non_Verbal.jpg as
+// decoys (same cross-word-distractor approach used in the Phase 3 screens),
+// rotated so no two words in a category share the exact same distractor pair.
 const MAGIC_WORDS_NV_IMAGES = {
   thank_you: {
-    correct: require('../../../../assets/dialogue-images/Non-verbal/thankyou_NV_correct.png'),
-    wrong1:  require('../../../../assets/dialogue-images/Non-verbal/thankyou_NV_wrong1.png'),
-    wrong2:  require('../../../../assets/dialogue-images/Non-verbal/thankyou_NV_wrong2.png'),
+    correct: require('../../../../assets/dialogue-images/words/magic_words/thank_you/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/magic_words/im_sorry/Non_Verbal.jpg'),
   },
   im_sorry: {
-    correct: require('../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
-    wrong1:  require('../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
-    wrong2:  require('../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+    correct: require('../../../../assets/dialogue-images/words/magic_words/im_sorry/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/magic_words/youre_welcome/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
   },
   youre_welcome: {
-    correct: require('../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
-    wrong1:  require('../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong1.png'),
-    wrong2:  require('../../../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong2.png'),
+    correct: require('../../../../assets/dialogue-images/words/magic_words/youre_welcome/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/magic_words/thank_you/Non_Verbal.jpg'),
   },
   excuse_me: {
-    correct: require('../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
-    wrong1:  require('../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
-    wrong2:  require('../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
+    correct: require('../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/magic_words/thank_you/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/magic_words/im_sorry/Non_Verbal.jpg'),
   },
 };
 
 const MAGIC_WORDS_NV_CAPTIONS = {
-  thank_you:     ['Anjalie receives\na present',  'Saman is reading\na book',  'Anjalie and Saman are\nplaying'],
-  im_sorry:      ['Saman bumps into\nAnjalie',    'They are drawing\ntogether',  'Anjalie is eating\nher lunch'],
-  youre_welcome: ["Anjalie says\n'Thank you'",    'Anjalie is sleeping',         'They are running\noutside'],
-  excuse_me:     ['Saman needs to\npass by',      'Anjalie is drawing',          'Saman is playing\nwith toys'],
+  thank_you:     ['Anjalie receives\na present',  'Saman needs to\npass by Anjalie', 'Saman bumps into\nAnjalie'],
+  im_sorry:      ['Saman bumps into\nAnjalie',    'Anjalie says\n"Thank you"',       'Saman needs to\npass by Anjalie'],
+  youre_welcome: ['Anjalie says\n"Thank you"',    'Saman needs to\npass by Anjalie', 'Anjalie receives\na present'],
+  excuse_me:     ['Saman needs to\npass by Anjalie', 'Anjalie receives\na present',  'Saman bumps into\nAnjalie'],
 };
 
-// Non-verbal pathway images are not yet available for most greeting words —
-// using context images as placeholders, same as GreetingPhase2NonVerbalScreen.js.
-const HELLO_NV = {
-  correct: require('../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  wrong1:  require('../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-  wrong2:  require('../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
-};
+// Same cross-word-distractor pattern as magic_words above, rotated through
+// all 9 greetings words.
 const GREETINGS_NV_IMAGES = {
   hello: {
-    correct: require('../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
   },
   goodbye: {
-    correct: require('../../../../assets/dialogue-images/words/greetings/goodbye/correct_context1.png'),
-    wrong1:  require('../../../../assets/dialogue-images/words/greetings/goodbye/context_wrong1.png'),
-    wrong2:  require('../../../../assets/dialogue-images/words/greetings/goodbye/context_wrong2.png'),
+    correct: require('../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
   },
   good_morning: {
-    correct: require('../../../../assets/dialogue-images/words/greetings/good_morning/correct_context1.png'),
-    wrong1:  require('../../../../assets/dialogue-images/words/greetings/good_morning/context_wrong1.png'),
-    wrong2:  require('../../../../assets/dialogue-images/words/greetings/good_morning/context_wrong2.png'),
+    correct: require('../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
   },
-  good_afternoon: HELLO_NV,
-  good_night:     HELLO_NV,
-  happy_birthday: HELLO_NV,
-  how_are_you:    HELLO_NV,
-  im_fine:        HELLO_NV,
-  happy_new_year: HELLO_NV,
+  good_afternoon: {
+    correct: require('../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+  },
+  good_night: {
+    correct: require('../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+  },
+  happy_birthday: {
+    correct: require('../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+  },
+  how_are_you: {
+    correct: require('../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
+  },
+  im_fine: {
+    correct: require('../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+  },
+  happy_new_year: {
+    correct: require('../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
+    wrong1:  require('../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+    wrong2:  require('../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+  },
 };
 
 const GREETINGS_NV_CAPTIONS = {
-  hello:          ['Friends greeting\neach other',        'A child saying\nGoodbye',            'A child eating\nlunch'],
-  goodbye:        ['Waving goodbye\nat the door',         'Playing at\nthe park',               'Eating dinner\ntogether'],
-  good_morning:   ['Morning greeting\nat school',         'Playing in\nthe evening',            'Reading a book\nat night'],
-  good_afternoon: ['Afternoon greeting\nafter school',    'Having breakfast\nin the morning',   'Playing outside\nat night'],
-  good_night:     ['Going to bed\nat night',              'Playing in\nthe morning',            'Having lunch\ntogether'],
-  happy_birthday: ['Birthday party\nwith friends',        'Eating lunch\ntogether',             'Playing football\noutside'],
-  how_are_you:    ['Asking a friend\nhow they are',       'Playing alone\noutside',             'Eating dinner\nquietly'],
-  im_fine:        ['Answering happily\n"I\'m Fine"',      'Running outside\nalone',             'Reading a\nstorybook'],
-  happy_new_year: ['New Year\ncelebration',               'Playing in\nthe garden',             'Eating breakfast\nalone'],
+  hello:          ['Friends greeting\neach other',                    'Waving goodbye\nat the door',       'Greeting teacher\nin the morning'],
+  goodbye:        ['Waving goodbye\nat the door',                     'Greeting teacher\nin the morning',  'Afternoon greeting\nafter school'],
+  good_morning:   ['Greeting teacher\nin the morning',                'Afternoon greeting\nafter school',  'Going to bed\nat night'],
+  good_afternoon: ['Afternoon greeting\nafter school',                'Going to bed\nat night',            'Birthday party\nwith friends'],
+  good_night:     ['Going to bed\nat night',                          'Birthday party\nwith friends',      'Asking a friend\nhow they are feeling'],
+  happy_birthday: ['Birthday party\nwith friends',                    'Asking a friend\nhow they are feeling', 'Answering happily\nwhen asked "How are you?"'],
+  how_are_you:    ['Asking a friend\nhow they are feeling',           'Answering happily\nwhen asked "How are you?"', 'New Year\ncelebration with family'],
+  im_fine:        ['Answering happily\nwhen asked "How are you?"',    'New Year\ncelebration with family', 'Friends greeting\neach other'],
+  happy_new_year: ['New Year\ncelebration with family',               'Friends greeting\neach other',      'Waving goodbye\nat the door'],
 };
 
-const CAN_YOU_NV = {
-  correct: require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  wrong1:  require('../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-  wrong2:  require('../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
+// Same cross-word-distractor pattern, rotated through all 17 abilities words
+// (difficulty 1 and 2 both — every word folder has its own Non_Verbal.jpg).
+function abilitiesFolder(wordKey) {
+  if (wordKey === 'cat3_yes') return 'yes';
+  if (wordKey === 'cat3_no')  return 'no';
+  return wordKey;
+}
+const ABILITIES_NV_CAPTION_TEXT = {
+  cat3_yes: 'Saying yes!',
+  cat3_no:  'Saying no!',
+  clap:     'Clapping hands',
+  run:      'Running fast',
+  walk:     'Walking along',
+  jump:     'Jumping up high',
+  talk:     'Talking to someone',
+  dance:    'Dancing around',
+  sing:     'Singing a song',
+  brush:    'Brushing your teeth',
+  wash:     'Washing your hands',
+  eat:      'Eating your food',
+  drink:    'Drinking some water',
+  write:    'Writing a letter',
+  play:     'Playing with toys',
+  sleep:    'Sleeping soundly',
+  watch:    'Watching TV',
 };
-const ABILITIES_NV_IMAGES = {
-  cat3_yes: CAN_YOU_NV,
-  cat3_no:  CAN_YOU_NV,
-  clap:     CAN_YOU_NV,
-  run: {
-    correct: require('../../../../assets/dialogue-images/words/abilities/run/Non_verbal.jpeg'),
-    wrong1:  require('../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-    wrong2:  require('../../../../assets/dialogue-images/words/abilities/walk/Phase3.jpeg'),
-  },
-  walk: CAN_YOU_NV,
-  jump: CAN_YOU_NV,
-  talk: CAN_YOU_NV,
-  dance: CAN_YOU_NV,
-  sing: CAN_YOU_NV,
-};
-
-const ABILITIES_NV_CAPTIONS = {
-  cat3_yes: ['Saying yes!',        'Playing alone',   'Looking away'],
-  cat3_no:  ['Saying no!',         'Clapping hands',  'Running around'],
-  clap:     ['Clapping hands',     'Running outside', 'Jumping up'],
-  run:      ['Running fast',       'Clapping',        'Walking to School'],
-  walk:     ['Walking along',      'Jumping high',    'Dancing around'],
-  jump:     ['Jumping up high',    'Walking slowly',  'Talking quietly'],
-  talk:     ['Talking to someone', 'Clapping hands',  'Running outside'],
-  dance:    ['Dancing around',     'Singing a song',  'Walking slowly'],
-  sing:     ['Singing a song',     'Dancing around',  'Jumping high'],
-};
+const ABILITIES_ORDER = [
+  'cat3_yes', 'cat3_no', 'clap', 'run', 'walk', 'jump', 'talk', 'dance', 'sing',
+  'brush', 'wash', 'eat', 'drink', 'write', 'play', 'sleep', 'watch',
+];
+function abilitiesImage(wordKey) {
+  const folder = abilitiesFolder(wordKey);
+  const images = {
+    yes:   require('../../../../assets/dialogue-images/words/abilities/yes/Non_Verbal.jpg'),
+    no:    require('../../../../assets/dialogue-images/words/abilities/no/Non_Verbal.jpg'),
+    clap:  require('../../../../assets/dialogue-images/words/abilities/clap/Non_Verbal.jpg'),
+    run:   require('../../../../assets/dialogue-images/words/abilities/run/Non_Verbal.jpg'),
+    walk:  require('../../../../assets/dialogue-images/words/abilities/walk/Non_Verbal.jpg'),
+    jump:  require('../../../../assets/dialogue-images/words/abilities/jump/Non_Verbal.jpg'),
+    talk:  require('../../../../assets/dialogue-images/words/abilities/talk/Non_Verbal.jpg'),
+    dance: require('../../../../assets/dialogue-images/words/abilities/dance/Non_Verbal.jpg'),
+    sing:  require('../../../../assets/dialogue-images/words/abilities/sing/Non_Verbal.jpg'),
+    brush: require('../../../../assets/dialogue-images/words/abilities/brush/Non_Verbal.jpg'),
+    wash:  require('../../../../assets/dialogue-images/words/abilities/wash/Non_Verbal.jpg'),
+    eat:   require('../../../../assets/dialogue-images/words/abilities/eat/Non_Verbal.jpg'),
+    drink: require('../../../../assets/dialogue-images/words/abilities/drink/Non_Verbal.jpg'),
+    write: require('../../../../assets/dialogue-images/words/abilities/write/Non_Verbal.jpg'),
+    play:  require('../../../../assets/dialogue-images/words/abilities/play/Non_Verbal.jpg'),
+    sleep: require('../../../../assets/dialogue-images/words/abilities/sleep/Non_Verbal.jpg'),
+    watch: require('../../../../assets/dialogue-images/words/abilities/watch/Non_Verbal.jpg'),
+  };
+  return images[folder];
+}
+const ABILITIES_NV_IMAGES = Object.fromEntries(ABILITIES_ORDER.map((key, i) => {
+  const wrong1Key = ABILITIES_ORDER[(i + 1) % ABILITIES_ORDER.length];
+  const wrong2Key = ABILITIES_ORDER[(i + 2) % ABILITIES_ORDER.length];
+  return [key, {
+    correct: abilitiesImage(key),
+    wrong1:  abilitiesImage(wrong1Key),
+    wrong2:  abilitiesImage(wrong2Key),
+  }];
+}));
+const ABILITIES_NV_CAPTIONS = Object.fromEntries(ABILITIES_ORDER.map((key, i) => {
+  const wrong1Key = ABILITIES_ORDER[(i + 1) % ABILITIES_ORDER.length];
+  const wrong2Key = ABILITIES_ORDER[(i + 2) % ABILITIES_ORDER.length];
+  return [key, [
+    ABILITIES_NV_CAPTION_TEXT[key],
+    ABILITIES_NV_CAPTION_TEXT[wrong1Key],
+    ABILITIES_NV_CAPTION_TEXT[wrong2Key],
+  ]];
+}));
 
 function nvDataFor(category, assetKey) {
   const [images, captions] =

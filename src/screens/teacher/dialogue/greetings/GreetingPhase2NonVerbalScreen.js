@@ -42,66 +42,68 @@ const AVATAR_IMAGES = {
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
-// Non-verbal pathway images are not yet available.
-// Using context images as placeholders until dedicated NV assets arrive.
+// Every word folder now has its own Non_Verbal.jpg — `correct` is the
+// tapped word's own photo; wrong1/wrong2 borrow OTHER words' own
+// Non_Verbal.jpg as decoys, same cross-word-distractor pattern used in
+// ProbeRetentionCheckScreen.js / Cat3Phase2NonVerbalScreen.js.
 const NV_IMAGES = {
   hello: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
   },
   goodbye: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/goodbye/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
   },
   good_morning: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/good_morning/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
   },
   good_afternoon: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
   },
   good_night: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
   },
   happy_birthday: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
   },
   how_are_you: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
   },
   im_fine: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
   },
   happy_new_year: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
   },
 };
 
 const NV_CAPTIONS = {
-  hello:          ['Friends greeting\neach other',        'A child saying\nGoodbye',            'A child eating\nlunch'],
-  goodbye:        ['Waving goodbye\nat the door',         'Playing at\nthe park',               'Eating dinner\ntogether'],
-  good_morning:   ['Morning greeting\nat school',         'Playing in\nthe evening',            'Reading a book\nat night'],
-  good_afternoon: ['Afternoon greeting\nafter school',    'Having breakfast\nin the morning',   'Playing outside\nat night'],
-  good_night:     ['Going to bed\nat night',              'Playing in\nthe morning',            'Having lunch\ntogether'],
-  happy_birthday: ['Birthday party\nwith friends',        'Eating lunch\ntogether',             'Playing football\noutside'],
-  how_are_you:    ['Asking a friend\nhow they are',       'Playing alone\noutside',             'Eating dinner\nquietly'],
-  im_fine:        ['Answering happily\n"I\'m Fine"',      'Running outside\nalone',             'Reading a\nstorybook'],
-  happy_new_year: ['New Year\ncelebration',               'Playing in\nthe garden',             'Eating breakfast\nalone'],
+  hello:          ['Friends greeting\neach other',                    'Waving goodbye\nat the door',       'Greeting teacher\nin the morning'],
+  goodbye:        ['Waving goodbye\nat the door',                     'Greeting teacher\nin the morning',  'Afternoon greeting\nafter school'],
+  good_morning:   ['Greeting teacher\nin the morning',                'Afternoon greeting\nafter school',  'Going to bed\nat night'],
+  good_afternoon: ['Afternoon greeting\nafter school',                'Going to bed\nat night',            'Birthday party\nwith friends'],
+  good_night:     ['Going to bed\nat night',                          'Birthday party\nwith friends',      'Asking a friend\nhow they are feeling'],
+  happy_birthday: ['Birthday party\nwith friends',                    'Asking a friend\nhow they are feeling', 'Answering happily\nwhen asked "How are you?"'],
+  how_are_you:    ['Asking a friend\nhow they are feeling',           'Answering happily\nwhen asked "How are you?"', 'New Year\ncelebration with family'],
+  im_fine:        ['Answering happily\nwhen asked "How are you?"',    'New Year\ncelebration with family', 'Friends greeting\neach other'],
+  happy_new_year: ['New Year\ncelebration with family',               'Friends greeting\neach other',      'Waving goodbye\nat the door'],
 };
 
 function shuffleArray(arr) {

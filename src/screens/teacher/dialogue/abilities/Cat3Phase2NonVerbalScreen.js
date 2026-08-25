@@ -18,54 +18,51 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 
-// Context images for Phase 2 NonVerbal (abilities assets confirmed on disk)
-const CAT3_NV = {
-  cat3_yes: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  },
-  cat3_no: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  },
-  clap: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  },
-  run: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/run/Non_verbal.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/walk/Phase3.jpeg'),
-  },
-  walk: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  },
-  jump: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  },
-  talk: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  },
-  dance: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  },
-  sing: {
-    correct: require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  },
-};
+// Non-verbal context images — every abilities word folder has its own
+// Non_Verbal.jpg (difficulty 1 and 2 both). `correct` is the tapped word's
+// own photo; wrong1/wrong2 borrow OTHER words' own Non_Verbal.jpg as decoys,
+// rotated through the full word order so no word repeats its distractor pair.
+function cat3NvFolder(wordKey) {
+  if (wordKey === 'cat3_yes') return 'yes';
+  if (wordKey === 'cat3_no')  return 'no';
+  return wordKey;
+}
+function cat3NvImage(wordKey) {
+  const folder = cat3NvFolder(wordKey);
+  const images = {
+    yes:   require('../../../../../assets/dialogue-images/words/abilities/yes/Non_Verbal.jpg'),
+    no:    require('../../../../../assets/dialogue-images/words/abilities/no/Non_Verbal.jpg'),
+    clap:  require('../../../../../assets/dialogue-images/words/abilities/clap/Non_Verbal.jpg'),
+    run:   require('../../../../../assets/dialogue-images/words/abilities/run/Non_Verbal.jpg'),
+    walk:  require('../../../../../assets/dialogue-images/words/abilities/walk/Non_Verbal.jpg'),
+    jump:  require('../../../../../assets/dialogue-images/words/abilities/jump/Non_Verbal.jpg'),
+    talk:  require('../../../../../assets/dialogue-images/words/abilities/talk/Non_Verbal.jpg'),
+    dance: require('../../../../../assets/dialogue-images/words/abilities/dance/Non_Verbal.jpg'),
+    sing:  require('../../../../../assets/dialogue-images/words/abilities/sing/Non_Verbal.jpg'),
+    brush: require('../../../../../assets/dialogue-images/words/abilities/brush/Non_Verbal.jpg'),
+    wash:  require('../../../../../assets/dialogue-images/words/abilities/wash/Non_Verbal.jpg'),
+    eat:   require('../../../../../assets/dialogue-images/words/abilities/eat/Non_Verbal.jpg'),
+    drink: require('../../../../../assets/dialogue-images/words/abilities/drink/Non_Verbal.jpg'),
+    write: require('../../../../../assets/dialogue-images/words/abilities/write/Non_Verbal.jpg'),
+    play:  require('../../../../../assets/dialogue-images/words/abilities/play/Non_Verbal.jpg'),
+    sleep: require('../../../../../assets/dialogue-images/words/abilities/sleep/Non_Verbal.jpg'),
+    watch: require('../../../../../assets/dialogue-images/words/abilities/watch/Non_Verbal.jpg'),
+  };
+  return images[folder];
+}
+const CAT3_NV_ORDER = [
+  'cat3_yes', 'cat3_no', 'clap', 'run', 'walk', 'jump', 'talk', 'dance', 'sing',
+  'brush', 'wash', 'eat', 'drink', 'write', 'play', 'sleep', 'watch',
+];
+const CAT3_NV = Object.fromEntries(CAT3_NV_ORDER.map((key, i) => {
+  const wrong1Key = CAT3_NV_ORDER[(i + 1) % CAT3_NV_ORDER.length];
+  const wrong2Key = CAT3_NV_ORDER[(i + 2) % CAT3_NV_ORDER.length];
+  return [key, {
+    correct: cat3NvImage(key),
+    wrong1:  cat3NvImage(wrong1Key),
+    wrong2:  cat3NvImage(wrong2Key),
+  }];
+}));
 
 const PROGRESS_FRACTION = 0.82;
 
@@ -82,17 +79,32 @@ function getNVImages(wordKey) {
   return CAT3_NV[wordKey] ?? null;
 }
 
-const NV_CAPTIONS = {
-  cat3_yes: ['Saying yes!',        'Playing alone',   'Looking away'],
-  cat3_no:  ['Saying no!',         'Clapping hands',  'Running around'],
-  clap:     ['Clapping hands',     'Running outside', 'Jumping up'],
-  run:      ['Running fast',       'Clapping',  'Walking to School'],
-  walk:     ['Walking along',      'Jumping high',    'Dancing around'],
-  jump:     ['Jumping up high',    'Walking slowly',  'Talking quietly'],
-  talk:     ['Talking to someone', 'Clapping hands',  'Running outside'],
-  dance:    ['Dancing around',     'Singing a song',  'Walking slowly'],
-  sing:     ['Singing a song',     'Dancing around',  'Jumping high'],
+// Caption text mirrors the CAT3_NV_ORDER rotation above, so a word's caption
+// list always describes the same three photos as its images list.
+const NV_CAPTION_TEXT = {
+  cat3_yes: 'Saying yes!',
+  cat3_no:  'Saying no!',
+  clap:     'Clapping hands',
+  run:      'Running fast',
+  walk:     'Walking along',
+  jump:     'Jumping up high',
+  talk:     'Talking to someone',
+  dance:    'Dancing around',
+  sing:     'Singing a song',
+  brush:    'Brushing your teeth',
+  wash:     'Washing your hands',
+  eat:      'Eating your food',
+  drink:    'Drinking some water',
+  write:    'Writing a letter',
+  play:     'Playing with toys',
+  sleep:    'Sleeping soundly',
+  watch:    'Watching TV',
 };
+const NV_CAPTIONS = Object.fromEntries(CAT3_NV_ORDER.map((key, i) => {
+  const wrong1Key = CAT3_NV_ORDER[(i + 1) % CAT3_NV_ORDER.length];
+  const wrong2Key = CAT3_NV_ORDER[(i + 2) % CAT3_NV_ORDER.length];
+  return [key, [NV_CAPTION_TEXT[key], NV_CAPTION_TEXT[wrong1Key], NV_CAPTION_TEXT[wrong2Key]]];
+}));
 
 function shuffleArray(arr) {
   const a = [...arr];

@@ -27,48 +27,52 @@ const CATEGORY_LABEL = {
   abilities:    'Can You?',
 };
 
-// "Correct context" picture per word, keyed by asset_key — the same field the
-// evaluation-build API returns. NOT sourced from constants/dialogueAssets.js:
-// that shared map (out of this task's Files in scope) assumes every word has
-// scene.png/context_correct.png/context_wrong.png/context_wrong_2.png, but
-// several folders on disk actually use the comic-strip naming
-// (correct_context1.png/context_wrong1.png, same convention already special-
-// cased for thank_you/youre_welcome in that file) — e.g. hello's real files
-// are correct_context1.png etc., not scene.png, which crashed Metro bundling
-// since dialogueAssets.js require()s every entry eagerly regardless of which
-// word is actually shown. Every path below was verified to exist on disk
-// (`ls assets/dialogue-images/words/<category>/<word>/`) before being added.
-// cat3_yes / cat3_no (abilities "Yes"/"No") have no image folder at all —
-// intentionally omitted, falls back to PLACEHOLDER_IMAGE.
+// "Match picture" per word, keyed by asset_key — the same field the
+// evaluation-build API returns. Every word folder now has its own
+// Non_Verbal.jpg (uploaded 2026-08-26), so each word gets its own real photo
+// instead of a shared placeholder — the matching game itself already
+// supplies the "distractor" element (every other word's picture is visible
+// in the same list), so no wrong1/wrong2 rotation is needed here, unlike the
+// non-verbal multiple-choice screens.
 const EVAL_WORD_IMAGE = {
   // Greetings
-  hello:           require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  goodbye:         require('../../../../../assets/dialogue-images/words/greetings/goodbye/correct_context1.png'),
-  good_morning:    require('../../../../../assets/dialogue-images/words/greetings/good_morning/correct_context1.png'),
-  good_afternoon:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  good_night:      require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  happy_birthday:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  how_are_you:     require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  im_fine:         require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  happy_new_year:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+  hello:           require('../../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+  goodbye:         require('../../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+  good_morning:    require('../../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
+  good_afternoon:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
+  good_night:      require('../../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
+  happy_birthday:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+  how_are_you:     require('../../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+  im_fine:         require('../../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+  happy_new_year:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
 
   // Magic Words
-  thank_you:       require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
-  youre_welcome:   require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
-  im_sorry:        require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
-  excuse_me:       require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+  thank_you:       require('../../../../../assets/dialogue-images/words/magic_words/thank_you/Non_Verbal.jpg'),
+  youre_welcome:   require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/Non_Verbal.jpg'),
+  im_sorry:        require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/Non_Verbal.jpg'),
+  excuse_me:       require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
 
-  // Abilities
+  // Abilities (difficulty 1 and 2 both)
   // can_you/yes_i_can/no_i_cant/i_can removed 2026-08-16 — those words were
   // retired (not taught, asset folders deleted); their entries here were
   // dead the moment those words stopped existing in dialogue_words.
-  clap:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-  run:        require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-  walk:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-  jump:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-  talk:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-  dance:      require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-  sing:       require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
+  cat3_yes:   require('../../../../../assets/dialogue-images/words/abilities/yes/Non_Verbal.jpg'),
+  cat3_no:    require('../../../../../assets/dialogue-images/words/abilities/no/Non_Verbal.jpg'),
+  clap:       require('../../../../../assets/dialogue-images/words/abilities/clap/Non_Verbal.jpg'),
+  run:        require('../../../../../assets/dialogue-images/words/abilities/run/Non_Verbal.jpg'),
+  walk:       require('../../../../../assets/dialogue-images/words/abilities/walk/Non_Verbal.jpg'),
+  jump:       require('../../../../../assets/dialogue-images/words/abilities/jump/Non_Verbal.jpg'),
+  talk:       require('../../../../../assets/dialogue-images/words/abilities/talk/Non_Verbal.jpg'),
+  dance:      require('../../../../../assets/dialogue-images/words/abilities/dance/Non_Verbal.jpg'),
+  sing:       require('../../../../../assets/dialogue-images/words/abilities/sing/Non_Verbal.jpg'),
+  brush:      require('../../../../../assets/dialogue-images/words/abilities/brush/Non_Verbal.jpg'),
+  wash:       require('../../../../../assets/dialogue-images/words/abilities/wash/Non_Verbal.jpg'),
+  eat:        require('../../../../../assets/dialogue-images/words/abilities/eat/Non_Verbal.jpg'),
+  drink:      require('../../../../../assets/dialogue-images/words/abilities/drink/Non_Verbal.jpg'),
+  write:      require('../../../../../assets/dialogue-images/words/abilities/write/Non_Verbal.jpg'),
+  play:       require('../../../../../assets/dialogue-images/words/abilities/play/Non_Verbal.jpg'),
+  sleep:      require('../../../../../assets/dialogue-images/words/abilities/sleep/Non_Verbal.jpg'),
+  watch:      require('../../../../../assets/dialogue-images/words/abilities/watch/Non_Verbal.jpg'),
 };
 
 // Standard word-pronunciation audio, reused from each category's Phase 2
