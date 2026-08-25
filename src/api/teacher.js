@@ -24,6 +24,20 @@ export const teacherApi = {
     return data;
   },
 
+  async getStudentNotes(studentId) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_STUDENT_NOTES(studentId));
+    return data;
+  },
+
+  async addStudentNote(studentId, body) {
+    const { data } = await client.post(ENDPOINTS.TEACHER_STUDENT_NOTES(studentId), { body });
+    return data;
+  },
+
+  async deleteStudentNote(studentId, noteId) {
+    await client.delete(ENDPOINTS.TEACHER_STUDENT_NOTE(studentId, noteId));
+  },
+
   // Cheap — progress table only. Safe to call on the student profile.
   async getConceptSummary(studentId) {
     const { data } = await client.get(ENDPOINTS.TEACHER_CONCEPT_SUMMARY(studentId));

@@ -26,6 +26,8 @@ export const ENDPOINTS = {
   TEACHER_STUDENTS: "/teacher/students",
   TEACHER_STUDENT: (id) => `/teacher/students/${id}`,
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
+  TEACHER_STUDENT_NOTES: (id) => `/teacher/students/${id}/notes`,
+  TEACHER_STUDENT_NOTE: (id, noteId) => `/teacher/students/${id}/notes/${noteId}`,
   TEACHER_CONCEPT_SUMMARY: (id) => `/teacher/students/${id}/concepts/summary`,
   TEACHER_CONCEPT_REPORT:  (id) => `/teacher/students/${id}/concepts/report`,
 

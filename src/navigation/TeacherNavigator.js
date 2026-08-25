@@ -3,7 +3,6 @@ import { Colors } from '../constants/colors';
 import { Layout } from '../constants/layout';
 
 import TeacherDashboardScreen    from '../screens/teacher/DashboardScreen';
-import TeacherStudentListScreen  from '../screens/teacher/students/StudentListScreen';
 import TeacherStudentDetailScreen from '../screens/teacher/students/StudentDetailScreen';
 import ConceptReportScreen        from '../screens/teacher/students/ConceptReportScreen';
 import WorkspaceSelectScreen      from '../screens/teacher/WorkspaceSelectScreen';
@@ -50,7 +49,6 @@ function TeacherWorkspace() {
   return (
     <Stack.Navigator screenOptions={stackOptions}>
       <Stack.Screen name="TeacherHome"          component={TeacherDashboardScreen}   options={{ headerShown: false }} />
-      <Stack.Screen name="TeacherStudentList"   component={TeacherStudentListScreen}  options={{ title: 'My Students' }} />
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
       {/* Kept in this stack, not the root one, so the report keeps Colors theming
           rather than the student-workspace chrome. */}
