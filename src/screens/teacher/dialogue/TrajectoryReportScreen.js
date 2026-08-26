@@ -16,6 +16,7 @@ import { TrendSparkline } from '../../../components/charts/TrendSparkline';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { dialogueApi } from '../../../api/dialogue';
+import { buildReportHtml, printReport, printTimestamp } from '../../../utils/reportPrint';
 
 // ---------------------------------------------------------------------------
 // Honest-labelling constants (TASK-43)
@@ -26,8 +27,12 @@ import { dialogueApi } from '../../../api/dialogue';
 // is the only thing that has to change.
 // ---------------------------------------------------------------------------
 
-/** DEC-07 — mandatory, verbatim, always rendered wherever a Tier 2 result is. */
-const TIER2_RELIABILITY_CAVEAT =
+/**
+ * DEC-07 — mandatory, verbatim, always rendered wherever a Tier 2 result is.
+ * Exported (TASK-48) so the printed footnote carries this exact string and a
+ * test can assert against it rather than a retyped copy.
+ */
+export const TIER2_RELIABILITY_CAVEAT =
   "This is an early hint from a still-learning model, based on a very small "
   + "amount of real data so far. It hasn't yet been shown to be reliable — right "
   + "now it gets it right about as often as a guess would. Use your own "
@@ -79,7 +84,9 @@ const TERM_LABEL = {
 // TASK-45 — what a Tier 1 row means, in a sentence. The score and the threshold
 // it crossed are still shown directly underneath, just demoted: a teacher who
 // wants the number finds it one line down rather than having to start there.
-const PLAIN_SCORE_LEAD = {
+// Exported for TASK-48's print builder, so the printed sentence is literally
+// this same string rather than a second copy that could drift from it.
+export const PLAIN_SCORE_LEAD = {
   fast:       'This word is going well — the five signals below point the same way.',
   typical:    'This word is progressing at a typical pace.',
   struggling: 'This word may need extra support — several signals below point that way.',
@@ -116,6 +123,28 @@ const TRAJECTORY_TINT = {
   typical:    Colors.text.secondary,
   struggling: Colors.status.error,
 };
+
+/**
+ * TASK-48 — the one-line summary this row shows, as plain text.
+ *
+ * Exported and used by both the print builder and (via the components below)
+ * the screen itself, so the printed line and the on-screen line are the same
+ * string by construction. A disabled row has no finding, so it reports its
+ * caveat rather than a trajectory it never predicted.
+ */
+export function wordSummaryLine(row) {
+  if (row.tier === 'disabled') {
+    return `${row.word} — no prediction. ${row.caveat ?? ''}`.trim();
+  }
+  const lead = row.tier === 'tier1'
+    ? (row.explanation?.scored === false
+      ? 'No score — none of the five terms had data.'
+      // The screen keys this off the explanation's own label; do the same here
+      // rather than off row.trajectory, so the two can never disagree.
+      : PLAIN_SCORE_LEAD[row.explanation?.label ?? row.trajectory] ?? '')
+    : `The model’s prediction: ${voteShareLabel(row.confidence)}.`;
+  return `${row.word} — ${row.trajectory}. ${lead}`.trim();
+}
 
 // How many SHAP factors to draw per word. The full 13 per row would bury the
 // signal; the remainder is counted, never silently dropped.
@@ -413,6 +442,44 @@ function WordRow({ row, studentId }) {
   );
 }
 
+/**
+ * TASK-48 — the printable shape of this report, built from state already on
+ * screen. No fetching, no re-deriving: every sentence comes from the same
+ * helpers the screen renders with, and the charts are deliberately excluded
+ * (they are SVG components, not DOM — see the task's §0).
+ */
+export function buildTrajectoryPrintModel(report, studentName) {
+  const { totals, words } = report;
+  const sections = Object.keys(CATEGORY_LABEL)
+    .map((key) => ({
+      heading: CATEGORY_LABEL[key],
+      lines: words.filter((w) => w.category === key).map(wordSummaryLine),
+    }))
+    .filter((s) => s.lines.length > 0);
+
+  return {
+    title: 'Level 1 Trajectory Report',
+    studentName,
+    generatedAt: printTimestamp(),
+    overview: [
+      { label: 'Fast', value: String(totals.fast) },
+      { label: 'Typical', value: String(totals.typical) },
+      { label: 'Struggling', value: String(totals.struggling) },
+      { label: 'No prediction', value: String(totals.disabled) },
+      {
+        label: 'Words with a prediction',
+        value: `${totals.words_predicted} of ${totals.words_total}`,
+      },
+    ],
+    sections,
+    // The DEC-07 disclosure travels with the printout: a page handed to someone
+    // else must not present the model as more reliable than it is.
+    footnote: totals.tier2 > 0
+      ? `${TIER2_RELIABILITY_CAVEAT} Based on each word’s most recent recorded session.`
+      : 'Based on each word’s most recent recorded session.',
+  };
+}
+
 export default function TrajectoryReportScreen({ route, navigation }) {
   const student = route.params?.student;
   const { width } = useWindowDimensions();
@@ -422,6 +489,8 @@ export default function TrajectoryReportScreen({ route, navigation }) {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [printing, setPrinting]     = useState(false);
+  const [printError, setPrintError] = useState(null);
 
   const load = useCallback(async () => {
     if (!student?.sid) return;
@@ -452,11 +521,45 @@ export default function TrajectoryReportScreen({ route, navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // TASK-48 — print the report as it currently stands. Builds from state that
+  // is already loaded, so pressing this never triggers a fetch.
+  const handlePrint = useCallback(async () => {
+    if (!report || printing) return;
+    setPrinting(true);
+    setPrintError(null);
+    try {
+      const model = buildTrajectoryPrintModel(report, student?.full_name ?? '');
+      await printReport(buildReportHtml(model));
+    } catch (err) {
+      // A failed print must never blank the report underneath it.
+      setPrintError(err?.message || 'Could not open the print dialog.');
+    } finally {
+      setPrinting(false);
+    }
+  }, [report, printing, student?.full_name]);
+
   useEffect(() => {
     navigation.setOptions({
       title: student?.full_name ? `${student.full_name} · Trajectory` : 'Trajectory Report',
+      headerRight: () => (
+        report ? (
+          <TouchableOpacity
+            onPress={handlePrint}
+            disabled={printing}
+            accessibilityRole="button"
+            accessibilityLabel="Print report"
+            hitSlop={8}
+          >
+            {printing ? (
+              <ActivityIndicator size="small" color={Colors.icon.active} />
+            ) : (
+              <Ionicons name="print-outline" size={22} color={Colors.text.link} />
+            )}
+          </TouchableOpacity>
+        ) : null
+      ),
     });
-  }, [navigation, student?.full_name]);
+  }, [navigation, student?.full_name, report, printing, handlePrint]);
 
   if (loading) {
     return (
@@ -511,6 +614,15 @@ export default function TrajectoryReportScreen({ route, navigation }) {
             </Text>
           </View>
         </Card>
+
+        {/* TASK-48 — a print failure is reported here and nowhere else; the
+            report below stays exactly as it was. */}
+        {printError ? (
+          <View style={styles.hint}>
+            <Ionicons name="alert-circle-outline" size={16} color="#B4780A" />
+            <Text style={styles.hintText}>{printError}</Text>
+          </View>
+        ) : null}
 
         {/* TASK-47 — how practice is going over time. Sits with the at-a-glance
             summary rather than under the per-word detail. This is practice

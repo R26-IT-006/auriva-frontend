@@ -17,6 +17,7 @@ import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { level2Api } from '../../../api/level2';
 import { formatDate } from '../../../utils/formatters';
+import { buildReportHtml, printReport, printTimestamp } from '../../../utils/reportPrint';
 
 // ---------------------------------------------------------------------------
 // Plain-language mappings (TASK-46, following TASK-45's conventions)
@@ -125,7 +126,7 @@ function Line({ text, detail }) {
 }
 
 /** "Last attempted 18 Aug 2026, using speech" — or an unalarming absence. */
-function attemptSentence(topic) {
+export function attemptSentence(topic) {
   if (!topic.last_session_date) return 'Not attempted yet.';
   const how = PATHWAY_LABEL[topic.last_pathway];
   const when = formatDate(topic.last_session_date);
@@ -136,7 +137,7 @@ function attemptSentence(topic) {
  * What came through in the full paragraph. A null score means the paragraph
  * step was never reached, which must not be reported as "all five missing".
  */
-function paragraphSentence(topic) {
+export function paragraphSentence(topic) {
   if (topic.paragraph_score == null) {
     return 'The full-paragraph step was not reached in this session.';
   }
@@ -262,6 +263,73 @@ function TopicBlock({ topic, studentId }) {
   );
 }
 
+/**
+ * TASK-48 — the printable shape of this report, built from state already on
+ * screen. Every line comes from the same helpers the topic sections render
+ * with, so print and screen cannot drift. Charts are excluded (task §0).
+ */
+export function buildLevel2PrintModel(report, studentName) {
+  const { totals, topics } = report;
+
+  const sections = TOPIC_ORDER
+    .map((key) => topics.find((t) => t.topic === key))
+    .filter(Boolean)
+    .map((topic) => {
+      const lines = [
+        `Status: ${(STATUS_META[topic.status] || STATUS_META.not_started).label}`,
+        attemptSentence(topic),
+      ];
+      if (topic.status !== 'not_started' && topic.sessions_attempted > 0) {
+        lines.push(topic.sessions_attempted === 1
+          ? 'One session so far.'
+          : `${topic.sessions_attempted} sessions so far.`);
+      }
+      if (topic.last_session_date) {
+        lines.push(paragraphSentence(topic));
+        if (topic.sentence_by_sentence_score != null) {
+          lines.push(
+            'Saying the sentences one at a time is the part mastery is judged on: '
+            + `${topic.sentence_by_sentence_score} of 5 sentences.`
+          );
+        }
+        if (topic.sentences_total > 0) {
+          lines.push(topic.sentences_needing_hints === 0
+            ? `Needed no hints across ${topic.sentences_total} sentences.`
+            : `Needed a hint on ${topic.sentences_needing_hints} of ${topic.sentences_total} sentences.`);
+        }
+        // Same convention as the screen: absent things are simply not mentioned.
+        if (topic.used_picture_fallback) {
+          lines.push('Used the picture-choice fallback during this session.');
+        }
+        if (topic.silence_timeout) {
+          lines.push('The session waited through a silence without an answer at least once.');
+        }
+      }
+      return { heading: TOPIC_LABEL[topic.topic] || topic.topic, lines };
+    });
+
+  return {
+    title: 'Level 2 Sentence Construction Report',
+    studentName,
+    generatedAt: printTimestamp(),
+    overview: [
+      { label: 'Mastered', value: String(totals.mastered) },
+      { label: 'In progress', value: String(totals.in_progress) },
+      { label: 'Needs support', value: String(totals.struggling) },
+      { label: 'Not started', value: String(totals.not_started) },
+      {
+        label: 'Topics started',
+        value: `${totals.topics_started} of ${totals.topics_total}`,
+      },
+    ],
+    sections,
+    footnote:
+      'Each topic shows its most recent session. Mastery needs two sessions '
+      + 'scoring 4 or more out of 5 on different days; "Needs support" appears '
+      + 'after three sessions in a row scoring 1 or less.',
+  };
+}
+
 export default function Level2ReportScreen({ route, navigation }) {
   const student = route.params?.student;
   const { width } = useWindowDimensions();
@@ -271,6 +339,8 @@ export default function Level2ReportScreen({ route, navigation }) {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [printing, setPrinting]     = useState(false);
+  const [printError, setPrintError] = useState(null);
 
   const load = useCallback(async () => {
     if (!student?.sid) return;
@@ -298,11 +368,43 @@ export default function Level2ReportScreen({ route, navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // TASK-48 — print what is already on screen; never triggers a fetch.
+  const handlePrint = useCallback(async () => {
+    if (!report || printing) return;
+    setPrinting(true);
+    setPrintError(null);
+    try {
+      const model = buildLevel2PrintModel(report, student?.full_name ?? '');
+      await printReport(buildReportHtml(model));
+    } catch (err) {
+      setPrintError(err?.message || 'Could not open the print dialog.');
+    } finally {
+      setPrinting(false);
+    }
+  }, [report, printing, student?.full_name]);
+
   useEffect(() => {
     navigation.setOptions({
       title: student?.full_name ? `${student.full_name} · Level 2` : 'Level 2 Report',
+      headerRight: () => (
+        report ? (
+          <TouchableOpacity
+            onPress={handlePrint}
+            disabled={printing}
+            accessibilityRole="button"
+            accessibilityLabel="Print report"
+            hitSlop={8}
+          >
+            {printing ? (
+              <ActivityIndicator size="small" color={Colors.icon.active} />
+            ) : (
+              <Ionicons name="print-outline" size={22} color={Colors.text.link} />
+            )}
+          </TouchableOpacity>
+        ) : null
+      ),
     });
-  }, [navigation, student?.full_name]);
+  }, [navigation, student?.full_name, report, printing, handlePrint]);
 
   if (loading) {
     return (
@@ -356,6 +458,15 @@ export default function Level2ReportScreen({ route, navigation }) {
             </Text>
           </View>
         </Card>
+
+        {/* TASK-48 — a print failure is reported here and nowhere else; the
+            report below stays exactly as it was. */}
+        {printError ? (
+          <View style={styles.hint}>
+            <Ionicons name="alert-circle-outline" size={16} color="#B4780A" />
+            <Text style={styles.hintText}>{printError}</Text>
+          </View>
+        ) : null}
 
         {/* TASK-47 — practice over time across all three topics. Sits with the
             at-a-glance summary, above the per-topic detail. */}
