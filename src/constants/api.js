@@ -67,6 +67,8 @@ export const ENDPOINTS = {
   // Dialogue – Level 2
   LEVEL2_QUESTIONNAIRE:         (sid) => `/teacher/student/${sid}/level2/questionnaire`,
   LEVEL2_PROGRESS:              (sid) => `/teacher/student/${sid}/level2/progress`,
+  // TASK-46 — teacher-facing Level 2 report, all three topics in one call.
+  LEVEL2_REPORT:                (sid) => `/teacher/student/${sid}/level2/report`,
   LEVEL2_SESSION_START:         (sid) => `/teacher/student/${sid}/level2/session/start`,
   LEVEL2_SESSION_COMPLETE:      (sid, sessId) => `/teacher/student/${sid}/level2/session/${sessId}/complete`,
   LEVEL2_STEP3:                 (sid, sessId, sentIdx) => `/teacher/student/${sid}/level2/session/${sessId}/sentence/${sentIdx}/step3`,

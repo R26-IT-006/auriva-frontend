@@ -21,6 +21,7 @@ import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
 import { dialogueApi } from '../../../api/dialogue';
+import { level2Api } from '../../../api/level2';
 import { formatDate } from '../../../utils/formatters';
 
 function InfoRow({ icon, label, value }) {
@@ -102,6 +103,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [conceptsLoading, setConceptsLoading] = useState(true);
   const [dialogue, setDialogue] = useState(null);
   const [dialogueLoading, setDialogueLoading] = useState(true);
+  const [level2, setLevel2] = useState(null);
   const [activeModule, setActiveModule] = useState('concept');
 
   const fetch = useCallback(async () => {
@@ -142,13 +144,28 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
+  // TASK-46 — Level 2's summary comes from its own report endpoint's `totals`.
+  // Unlike Level 1 there is no cheaper per-topic summary that covers all three
+  // topics in one call (level2Api.getProgress returns a single topic), and this
+  // report is plain database reads with no model or microservice behind it.
+  const fetchLevel2 = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    try {
+      const resp = await level2Api.getReport(initialStudent.sid);
+      setLevel2(resp?.data ?? null);
+    } catch {
+      setLevel2(null); // the block renders nothing rather than blanking the tab
+    }
+  }, [initialStudent?.sid]);
+
   useEffect(() => { fetch(); }, [fetch]);
 
   // Refetch on focus so returning from the report reflects a session just played.
   useFocusEffect(useCallback(() => {
     fetchConcepts();
     fetchDialogue();
-  }, [fetchConcepts, fetchDialogue]));
+    fetchLevel2();
+  }, [fetchConcepts, fetchDialogue, fetchLevel2]));
 
   if (!student) return null;
 
@@ -177,6 +194,9 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const dialogueMastery = dialogueTotals.total > 0
     ? dialogueTotals.mastered / dialogueTotals.total
     : null;
+
+  // TASK-46 — Level 2 lives in the same Dialogue tab, below Level 1.
+  const level2Started = level2?.totals?.topics_started ?? 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -308,15 +328,24 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                   <Text style={styles.retryText}>Retry</Text>
                 </TouchableOpacity>
               </View>
-            ) : dialogueStarted === 0 ? (
-              <View style={styles.conceptEmpty}>
-                <Ionicons name="chatbubbles-outline" size={22} color={Colors.text.muted} />
-                <Text style={styles.conceptEmptyText}>
-                  No dialogue activity yet. Progress appears here once {firstName} starts a session.
-                </Text>
-              </View>
             ) : (
+              // TASK-46 — the Dialogue module has two levels. Level 1 (word
+              // learning) and Level 2 (sentence construction) are shown as two
+              // labelled blocks in this one tab, matching how the child-facing
+              // DialogueLandingScreen presents them as two cards under one
+              // module rather than as separate modules.
               <>
+                <Text style={styles.levelHeading}>Level 1 · Dialogue word learning</Text>
+
+                {dialogueStarted === 0 ? (
+                  <View style={styles.conceptEmpty}>
+                    <Ionicons name="chatbubbles-outline" size={22} color={Colors.text.muted} />
+                    <Text style={styles.conceptEmptyText}>
+                      No Level 1 activity yet. Progress appears here once {firstName} starts a session.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
                 <View style={styles.conceptHeader}>
                   <MasteryRing value={dialogueMastery} size={92} label="mastered" />
                   <View style={styles.conceptStats}>
@@ -355,6 +384,47 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                   <Text style={styles.reportLinkText}>View full report</Text>
                   <Ionicons name="chevron-forward" size={16} color={Colors.text.link} />
                 </TouchableOpacity>
+                  </>
+                )}
+
+                {/* Level 2 — always shown once the report has loaded, so the
+                    level is visible (and its report reachable) even before the
+                    child has started it. An untouched Level 2 gets a plain
+                    not-started line rather than a block of zeroes. */}
+                {level2 ? (
+                  <>
+                    <Text style={styles.levelHeading}>Level 2 · Sentence construction</Text>
+
+                    {level2Started === 0 ? (
+                      <View style={styles.conceptEmpty}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={22} color={Colors.text.muted} />
+                        <Text style={styles.conceptEmptyText}>
+                          Not started yet — all {level2.totals.topics_total} topics are
+                          waiting for {firstName}'s first session.
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.categoryBlock}>
+                        <StatLine
+                          label="Mastered"
+                          value={`${level2.totals.mastered} / ${level2.totals.topics_total}`}
+                        />
+                        <StatLine label="Started" value={String(level2.totals.topics_started)} />
+                        <StatLine label="In progress" value={String(level2.totals.in_progress)} />
+                        <StatLine label="Needs support" value={String(level2.totals.struggling)} />
+                      </View>
+                    )}
+
+                    <TouchableOpacity
+                      style={styles.reportLink}
+                      activeOpacity={0.7}
+                      onPress={() => navigation.navigate('Level2Report', { student })}
+                    >
+                      <Text style={styles.reportLinkText}>View full report</Text>
+                      <Ionicons name="chevron-forward" size={16} color={Colors.text.link} />
+                    </TouchableOpacity>
+                  </>
+                ) : null}
               </>
             )
           ) : activeModule !== 'concept' ? (
@@ -589,5 +659,14 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     color: Colors.text.link,
     fontFamily: 'Nunito_700Bold',
+  },
+  // TASK-46 — separates the two levels of the Dialogue module inside one tab.
+  levelHeading: {
+    fontSize: Layout.fontSize.xs,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.text.muted,
+    letterSpacing: 0.4,
+    paddingHorizontal: Layout.spacing.md,
+    paddingTop: Layout.spacing.md,
   },
 });

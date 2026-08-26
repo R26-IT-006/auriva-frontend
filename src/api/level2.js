@@ -99,4 +99,14 @@ export const level2Api = {
     const { data } = await client.get(ENDPOINTS.LEVEL2_PROGRESS(studentId));
     return data;
   },
+
+  /**
+   * TASK-46 — one Level 2 report per student, covering all three topics.
+   * Returns the `{ data: { totals, topics } }` envelope every other method in
+   * this file returns; callers unwrap `.data`, as they already do elsewhere.
+   */
+  async getReport(studentId) {
+    const { data } = await client.get(ENDPOINTS.LEVEL2_REPORT(studentId));
+    return data;
+  },
 };

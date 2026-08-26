@@ -14,6 +14,7 @@ import DialogueLandingScreen      from '../screens/teacher/students/DialogueLand
 import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
 import TrajectoryReportScreen     from '../screens/teacher/dialogue/TrajectoryReportScreen';
+import Level2ReportScreen         from '../screens/teacher/dialogue/Level2ReportScreen';
 import AnimatedWordScreen         from '../screens/teacher/dialogue/AnimatedWordScreen';
 import BoldWordScreen             from '../screens/teacher/dialogue/BoldWordScreen';
 import ProbeProductionScreen      from '../screens/teacher/dialogue/ProbeProductionScreen';
@@ -111,6 +112,7 @@ function TeacherWorkspace() {
           from TeacherStudentDetail, which lives here. */}
       <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
       <Stack.Screen name="TrajectoryReport"     component={TrajectoryReportScreen}     options={{ title: 'Trajectory Report' }} />
+      <Stack.Screen name="Level2Report"         component={Level2ReportScreen}         options={{ title: 'Level 2 Report' }} />
     </Stack.Navigator>
   );
 }

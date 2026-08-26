@@ -14,7 +14,6 @@ import { Card } from '../../../components/common/Card';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { dialogueApi } from '../../../api/dialogue';
-import { scoreColor } from '../../../utils/scoreColor';
 
 // ---------------------------------------------------------------------------
 // Honest-labelling constants (TASK-43)
@@ -34,11 +33,26 @@ const TIER2_RELIABILITY_CAVEAT =
   + "thing to consider, not a conclusion.";
 
 /**
- * Tier 2's number is the share of trees in the forest that voted for this
- * label. It is NOT a calibrated probability and must never be labelled as a
- * confidence percentage.
+ * Buckets the raw RandomForest vote share into a plain phrase for display.
+ *
+ * The number this reads is the share of trees in the forest that voted for the
+ * predicted label. It is NOT a calibrated probability and must never be shown
+ * as a confidence percentage — hence "leaning", never "% sure". The raw value
+ * stays on screen as a muted suffix, so nothing is hidden; this only changes
+ * what carries the sentence. Boundaries intentionally coarse: do not present a
+ * bucketed label as more precise than the number backing it actually is
+ * (that's the whole point of DEC-07).
+ *
+ * TASK-45 supersedes TASK-43's "label it a RandomForest vote share" rule. When
+ * calibrator remediation changes what this number represents, this function and
+ * TIER2_RELIABILITY_CAVEAT are the only things that should need to change.
  */
-const TIER2_CONFIDENCE_LABEL = 'RandomForest vote share';
+function voteShareLabel(confidence) {
+  if (confidence == null) return 'not available';
+  if (confidence >= 0.85) return 'strongly leaning this way';
+  if (confidence >= 0.70) return 'leaning this way';
+  return 'weakly leaning this way';
+}
 
 /** Always rendered under every Tier 1 breakdown — never behind a disclosure. */
 const TIER1_PLACEHOLDER_WEIGHTS_FOOTER =
@@ -59,6 +73,25 @@ const TERM_LABEL = {
   prompt:    'Prompts needed',
   latency:   'Response time',
 };
+
+// TASK-45 — what a Tier 1 row means, in a sentence. The score and the threshold
+// it crossed are still shown directly underneath, just demoted: a teacher who
+// wants the number finds it one line down rather than having to start there.
+const PLAIN_SCORE_LEAD = {
+  fast:       'This word is going well — the five signals below point the same way.',
+  typical:    'This word is progressing at a typical pace.',
+  struggling: 'This word may need extra support — several signals below point that way.',
+};
+
+/**
+ * TASK-45 — the same three numbers the old `0.78 → 0.78 × 0.35` expression
+ * carried, as a phrase. The weight is the renormalized one, so it already
+ * accounts for any term that was missing from the payload.
+ */
+function plainContributionDetail(t) {
+  const weightPct = Math.round(t.renormalizedWeight * 100);
+  return `${formatValue(t.rawValue)} — counted for about ${weightPct}% of the score`;
+}
 
 const FEATURE_LABEL = {
   phase1_exposure_ratio:      'Phase 1 exposure',
@@ -110,11 +143,17 @@ function StatCell({ label, value, tint }) {
   );
 }
 
-/** Which tier produced this row, at a glance. */
+/**
+ * Which of the two prediction paths produced this row, at a glance.
+ *
+ * TASK-45: the keys and colours are unchanged — only the visible wording. A
+ * teacher has no reason to know the words "tier", "formula" or "model", but
+ * does need to know whether a row came from the AI or from a fixed rule.
+ */
 function TierPill({ tier }) {
   const map = {
-    tier2:    { bg: Colors.status.infoLight,    fg: Colors.text.link, label: 'Model' },
-    tier1:    { bg: Colors.status.warningLight, fg: '#B4780A',        label: 'Formula' },
+    tier2:    { bg: Colors.status.infoLight,    fg: Colors.text.link,  label: 'AI estimate' },
+    tier1:    { bg: Colors.status.warningLight, fg: '#B4780A',         label: 'Rule-based' },
     disabled: { bg: Colors.surfaceAlt,          fg: Colors.text.muted, label: 'Off' },
   };
   const s = map[tier] || map.disabled;
@@ -196,12 +235,14 @@ function Tier1Breakdown({ explanation }) {
 
   return (
     <View>
-      <View style={styles.scoreLine}>
-        <Text style={styles.scoreLineText}>{crossed}</Text>
+      {/* Plain sentence first, the score-vs-threshold detail demoted beneath it.
+          The unscored case has no number to demote, so it stands alone. */}
+      <View style={styles.leadBlock}>
+        <Text style={styles.plainLead}>
+          {explanation.scored ? PLAIN_SCORE_LEAD[explanation.label] : crossed}
+        </Text>
         {explanation.scored ? (
-          <Text style={[styles.scoreLineValue, { color: scoreColor(explanation.score) }]}>
-            {explanation.score.toFixed(2)}
-          </Text>
+          <Text style={styles.leadDetail}>{crossed}</Text>
         ) : null}
       </View>
 
@@ -209,7 +250,7 @@ function Tier1Breakdown({ explanation }) {
         <ContributionBar
           key={t.term}
           label={TERM_LABEL[t.term] || t.term}
-          detail={`${formatValue(t.rawValue)} → ${t.normalizedValue.toFixed(2)} × ${t.renormalizedWeight.toFixed(2)}`}
+          detail={plainContributionDetail(t)}
           contribution={t.contribution}
           magnitude={Math.abs(t.contribution) / maxAbs}
         />
@@ -246,8 +287,13 @@ function Tier2Breakdown({ explanation, confidence }) {
 
   return (
     <View>
-      <Text style={styles.scoreLineText}>
-        {TIER2_CONFIDENCE_LABEL}: {confidence != null ? confidence.toFixed(2) : '—'}
+      {/* Plain phrase carries the sentence; the raw vote share stays visible as
+          a muted suffix so the number is never hidden, only de-emphasised. */}
+      <Text style={styles.plainLead}>
+        The model’s prediction: {voteShareLabel(confidence)}
+        {confidence != null ? (
+          <Text style={styles.leadDetail}> ({confidence.toFixed(2)})</Text>
+        ) : null}
       </Text>
 
       {shown.map((a) => (
@@ -378,7 +424,7 @@ export default function TrajectoryReportScreen({ route, navigation }) {
             </View>
             <Text style={styles.overviewMeta}>
               {totals.words_predicted} of {totals.words_total} words have a prediction
-              {' · '}{totals.tier2} from the model, {totals.tier1} from the formula
+              {' · '}{totals.tier2} AI estimate{totals.tier2 === 1 ? '' : 's'}, {totals.tier1} rule-based
             </Text>
           </View>
         </Card>
@@ -415,9 +461,10 @@ export default function TrajectoryReportScreen({ route, navigation }) {
         ))}
 
         <Text style={styles.footnote}>
-          Based on each word’s most recent recorded session. “Formula” rows come
-          from a fixed weighted score, “Model” rows from the trajectory model —
-          which has not yet been shown to be reliable on real data.
+          Based on each word’s most recent recorded session. “Rule-based” rows
+          come from a fixed weighted score, “AI estimate” rows from the
+          trajectory model — which has not yet been shown to be reliable on real
+          data.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -455,9 +502,16 @@ const styles = StyleSheet.create({
   tierPill:     { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Layout.radius.full },
   tierPillText: { fontSize: 10, fontFamily: 'Nunito_700Bold' },
 
-  scoreLine:      { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  scoreLineText:  { flex: 1, fontSize: Layout.fontSize.xs, color: Colors.text.secondary },
-  scoreLineValue: { fontSize: Layout.fontSize.md, fontFamily: 'Nunito_800ExtraBold' },
+  // TASK-45 — plain sentence carries the meaning, the numbers sit under it at
+  // the same visual weight as a bar's detail line.
+  leadBlock:  { marginBottom: Layout.spacing.xs },
+  plainLead:  {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.text.primary,
+    lineHeight: 19,
+  },
+  leadDetail: { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: 1 },
 
   barRow:      { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm, paddingVertical: 3 },
   barLabelWrap:{ width: 108 },
