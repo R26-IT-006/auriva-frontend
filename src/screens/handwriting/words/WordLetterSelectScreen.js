@@ -75,6 +75,17 @@ export default function WordLetterSelectScreen({ route, navigation }) {
   // Concept screens do. Cancelling navigates nowhere.
   const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
+  // The Teacher button opens TeacherReport — the same teacher-facing
+  // destination LetterHomeScreen already gates behind its own
+  // requestGatedAction('progress'). Leaving it open here made the gate
+  // bypassable simply by reaching the report from the word flow instead of
+  // the letter flow. Reuses the SAME ParentGateModal mechanism (a second
+  // independent instance of the existing hook), not a new gate concept.
+  const {
+    requestBack: requestTeacherReport,
+    gateModal: teacherReportGateModal,
+  } = useGatedBack(() => navigation.navigate('TeacherReport', { student, theme }));
+
   const { student, theme } = route.params;
 
   const [wordProgress, setWordProgress] = useState({});
@@ -153,8 +164,8 @@ export default function WordLetterSelectScreen({ route, navigation }) {
 
             <TouchableOpacity
               style={[styles.topFilledBtn, { backgroundColor: theme.button }]}
-              onPress={() => navigation.navigate('TeacherReport', { student, theme })}
-              accessibilityLabel="Teacher report"
+              onPress={requestTeacherReport}
+              accessibilityLabel="Teacher report — needs a code"
             >
               <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
               <Text style={[styles.topFilledBtnText, { color: theme.buttonText }]}>Teacher</Text>
@@ -226,9 +237,12 @@ export default function WordLetterSelectScreen({ route, navigation }) {
 
       </SafeAreaView>
 
-      {/* Parent gate for the back button above. Rendered once, at the
-          end of the tree, so it overlays the whole screen. */}
+      {/* Parent gates for the back button and the Teacher-report button.
+          Rendered once each, at the end of the tree, so they overlay the
+          whole screen. Only one can be visible at a time — each is opened
+          by its own button and closes itself on success or cancel. */}
       {gateModal}
+      {teacherReportGateModal}
     </LinearGradient>
   );
 }

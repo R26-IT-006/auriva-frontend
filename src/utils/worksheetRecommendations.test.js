@@ -251,9 +251,33 @@ describe('getWorksheetRecommendationEmptyState', () => {
     expect(msg).toBe('No persistent handwriting difficulty currently requires an additional practice recommendation.');
   });
 
-  it('mixed insufficient + notPersistent -> prefers the more conservative "more practice history" message', () => {
+  // O2 — previously ANY insufficient stream made the whole result read as
+  // "more practice history is needed", which misdescribed the streams that
+  // were in fact fully evaluated and simply produced no recommendation.
+  it('mixed insufficient + notPersistent -> a mixed message describing both, not insufficient-only', () => {
     const msg = getWorksheetRecommendationEmptyState({ evaluatedStreamCount: 6, persistentStreamCount: 0, notPersistentCount: 2, insufficientDataCount: 4, recommendationCount: 0 });
-    expect(msg).toBe('More practice history is needed before an adaptive practice recommendation can be generated.');
+    expect(msg).toBe(
+      'Some handwriting areas were reviewed and did not require an additional practice '
+      + 'recommendation. Others need more practice history before they can be reviewed.'
+    );
+    expect(msg).not.toBe('More practice history is needed before an adaptive practice recommendation can be generated.');
+  });
+
+  it('the mixed message claims nothing about difficulty, improvement or trajectory', () => {
+    const msg = getWorksheetRecommendationEmptyState({ notPersistentCount: 1, insufficientDataCount: 5 });
+    expect(msg).not.toMatch(/improv|declin|worse|better|progress|difficulty is|persistent difficulty/i);
+  });
+
+  it('a single not_persistent stream alongside insufficient ones still reads as mixed', () => {
+    const msg = getWorksheetRecommendationEmptyState({ notPersistentCount: 1, insufficientDataCount: 5 });
+    expect(msg).toMatch(/Some handwriting areas were reviewed/);
+  });
+
+  it('pure states are unchanged by the mixed branch', () => {
+    expect(getWorksheetRecommendationEmptyState({ notPersistentCount: 0, insufficientDataCount: 6 }))
+      .toBe('More practice history is needed before an adaptive practice recommendation can be generated.');
+    expect(getWorksheetRecommendationEmptyState({ notPersistentCount: 6, insufficientDataCount: 0 }))
+      .toBe('No persistent handwriting difficulty currently requires an additional practice recommendation.');
   });
 
   it('a missing/malformed summary -> the generic fallback message, never throws', () => {
@@ -264,7 +288,8 @@ describe('getWorksheetRecommendationEmptyState', () => {
 
   it('never mentions the 24-hour rule, algorithm, severity, or window mechanics', () => {
     for (const summary of [
-      { insufficientDataCount: 6 }, { notPersistentCount: 3 }, null,
+      { insufficientDataCount: 6 }, { notPersistentCount: 3 },
+      { insufficientDataCount: 4, notPersistentCount: 2 }, null,
     ]) {
       const msg = getWorksheetRecommendationEmptyState(summary);
       expect(msg).not.toMatch(/24.hour|window|algorithm|severity|threshold/i);

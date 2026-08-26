@@ -16,6 +16,7 @@ const screen = fs.readFileSync(screenPath, 'utf8');
 
 const motorClusterUtil = fs.readFileSync(path.resolve(__dirname, './motorClusterProfile.js'), 'utf8');
 const letterMotorUtil  = fs.readFileSync(path.resolve(__dirname, './letterMotorState.js'), 'utf8');
+const patternLabels    = fs.readFileSync(path.resolve(__dirname, './letterMotorPatternLabels.js'), 'utf8');
 
 // Strips // and /* */ comments before a "banned word/pattern" assertion —
 // several assertions below check that FORBIDDEN language never appears in
@@ -73,7 +74,8 @@ describe('State A/B is only ever rendered from the found branch, gated strictly 
     expect(codeOnly).not.toContain('Current Letter Motor State');
     expect(codeOnly).not.toContain('currentState.displayName');
     expect(codeOnly).not.toMatch(/State A|State B/);
-    expect(notFoundBranch).toContain('Motor evidence is still being collected as the student masters letters.');
+    // S2 — the approved not-reached wording, shared with the periodic report and the PDF.
+    expect(notFoundBranch).toContain('More eligible handwriting evidence is needed before a writing pattern can be described.');
   });
 
   it('never shows "No data" / "Assessment failed" / "Unable to classify" for the accumulating state', () => {
@@ -392,9 +394,14 @@ describe('teacher-facing pattern labels come only from state_code', () => {
     expect(code).not.toMatch(/\.displayName/);
   });
 
-  it('all three code surfaces derive the label through getLetterMotorPatternLabel', () => {
-    expect(stripComments(pdf)).toMatch(/getLetterMotorPatternLabel\(/);
-    expect(stripComments(section)).toMatch(/getLetterMotorPatternLabel\(/);
+  it('all three code surfaces derive the label through the shared label helpers', () => {
+    // S2 — the PDF and the periodic section now go through
+    // getLetterMotorPresentation(), which itself calls
+    // getLetterMotorPatternLabel() for the assigned case. Neither builds a
+    // label of its own.
+    expect(stripComments(pdf)).toMatch(/getLetterMotorPresentation\(/);
+    expect(stripComments(section)).toMatch(/getLetterMotorPresentation\(/);
+    expect(stripComments(patternLabels)).toMatch(/getLetterMotorPatternLabel\(stateCode\)/);
     // The screen consumes the already-mapped `patternLabel` from the normalizer.
     expect(stripComments(screen)).toMatch(/patternLabel/);
     expect(stripComments(letterMotorUtil)).toMatch(/getLetterMotorPatternLabel\(row\.state_code\)/);
@@ -434,12 +441,13 @@ describe('outside-reference-range presentation', () => {
 
   it('renders the approved heading and supporting text', () => {
     expect(cardFn).toContain('Letter motor pattern not reported');
-    expect(cardFn).toMatch(/falls outside the range represented by the/);
-    expect(cardFn).toMatch(/so the system did not assign a motor pattern/);
+    // S2 — the approved outside-range wording, identical on all three surfaces.
+    expect(cardFn).toMatch(/differs from the data represented by the/);
+    expect(cardFn).toMatch(/so no writing pattern was assigned/);
   });
 
   it('never shows a pattern label in the not-reported branch', () => {
-    const branch = slice(cardFn, 'if (fullCoverageWithoutPattern) {', 'return (\n    <SectionCard title="Letter Motor Patterns"');
+    const branch = slice(cardFn, "if (evaluationStatus === 'outside_reference_range') {", 'return (\n    <SectionCard title="Letter Motor Patterns"');
     expect(stripComments(branch)).not.toMatch(/patternLabel|Pattern A|Pattern B/);
   });
 

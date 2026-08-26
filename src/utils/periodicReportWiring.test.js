@@ -24,6 +24,7 @@ const sectionSource       = read('../components/handwriting/reports/PeriodicRepo
 const selectorSource      = read('../components/handwriting/reports/PeriodSelector.js');
 const apiSource           = read('../api/periodicReport.js');
 const pdfSource           = read('../utils/periodicReportPdf.js');
+const shareSource         = read('../utils/pdfShare.js');
 const previewSource       = read('../components/handwriting/reports/ReportPreviewModal.js');
 
 // ─── 19/23. Preset changes date range / selected period displayed ─────────
@@ -155,8 +156,15 @@ describe('Export failure and cancellation handling (spec §22/§29/§30/§31)', 
   });
 
   it('shareAsync is called with mimeType application/pdf — a real document share, never a plaintext message', () => {
-    expect(pdfSource).toContain("mimeType: 'application/pdf'");
-    expect(pdfSource).not.toMatch(/Share\.share\(/); // the RN core plaintext Share API is never used here
+    // The share-sheet call moved into the shared pdfShare.js wrapper when the
+    // worksheet exporter began reusing it, so the assertion follows the code:
+    // the guarantee is about the call that actually reaches expo-sharing.
+    expect(shareSource).toContain("mimeType: 'application/pdf'");
+    expect(shareSource).not.toMatch(/Share\.share\(/); // the RN core plaintext Share API is never used here
+    expect(pdfSource).not.toMatch(/Share\.share\(/);
+    // The report still routes through that one wrapper, with report wording.
+    expect(pdfSource).toContain('sharePdfFile({');
+    expect(pdfSource).toContain('Auriva Handwriting Report');
   });
 });
 

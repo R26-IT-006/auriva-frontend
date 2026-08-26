@@ -28,7 +28,20 @@
 
 // Dependency-free import by design — letterMotorPatternLabels.js pulls in no
 // RN/api code, so buildReportHtml() below stays directly unit-testable.
-import { getLetterMotorPatternLabel, LETTER_MOTOR_PATTERN_CAPTION } from './letterMotorPatternLabels';
+import {
+  getLetterMotorPresentation, buildReferenceProgressText, LETTER_MOTOR_PATTERN_CAPTION,
+  getWritingCheckPresentation,
+} from './letterMotorPatternLabels';
+// Same shared wording module the two screens use — dependency-free, so this
+// builder stays unit-testable without an RN environment.
+import {
+  getWorksheetStatusLabel, getReviewStatusLabel, getIntensityLabel,
+  formatWorksheetDate, EMPTY_NO_PERIOD_ACTIVITY,
+} from './worksheetLabels';
+// The single expo-sharing wrapper, shared with the worksheet exporter so the
+// share-sheet mechanics (availability check, cancellation-is-not-failure,
+// never re-render) exist in ONE place. Dependency-free at module level.
+import { sharePdfFile, sanitizeForFilename as sanitizeSegment } from './pdfShare';
 
 function escapeHtml(value) {
   if (value == null) return '';
@@ -113,6 +126,17 @@ function buildInitialProfileHtml(profile) {
   }
   // Row labels match the on-screen card exactly — the printed report and the
   // screen must not name the same four scores differently.
+  // The server-built summary narrative, from the same builder the dashboard
+  // card and the on-screen periodic report use. Omitted entirely on an older
+  // server that does not send it — never fabricated here.
+  const summary = profile.summary ?? null;
+  const summaryHtml = summary?.description
+    ? `<p class="subhead">Summary</p><p>${escapeHtml(summary.description)}</p>`
+    : '';
+  const disclosureHtml = summary?.disclosure
+    ? `<p class="note">${escapeHtml(summary.disclosure)}</p>`
+    : '';
+
   return `
     <p class="note">Baseline/initial context — recorded ${escapeHtml(fmtDate(profile.recorded_at))}. This baseline summary may predate the selected reporting period.</p>
     ${table([
@@ -120,7 +144,9 @@ function buildInitialProfileHtml(profile) {
       ['Curved Shapes', fmtNum(profile.scores?.curved, ' / 100')],
       ['Complex Shapes', fmtNum(profile.scores?.complex, ' / 100')],
       ['Overall Score', fmtNum(profile.scores?.overall, ' / 100')],
-    ])}`;
+    ])}
+    ${summaryHtml}
+    ${disclosureHtml}`;
 }
 
 // Inline SVG trend chart for the printed report. Inline (not an <img>) so it
@@ -171,27 +197,66 @@ function buildMotorTrendSvg(points) {
 
 // Writing Pattern Summary — a descriptive card, never a chart, gauge,
 // percentage or ranking. Mirrors the on-screen three-state logic exactly.
+// Writing Check — the dedicated, teacher-initiated route. Rendered as a dated
+// LIST, never a chart: Pattern A and Pattern B are NOMINAL categories, so a
+// line/bar over time would falsely imply they are ordinal. No arrows, no
+// colour coding, no improvement/decline wording; each check is an independent
+// observation. Cluster ids, model versions and OOD diagnostics stay internal.
+function buildWritingCheckHtml(dev) {
+  const latest = dev?.latest_writing_check ?? null;
+  const during = dev?.writing_checks_during_period ?? [];
+
+  const latestRows = latest
+    ? [
+        ['Latest Writing Check', fmtDate(latest.observed_at)],
+        ['Current Writing Pattern', getWritingCheckPresentation(latest).patternValue],
+        ['Reference Status', getWritingCheckPresentation(latest).referenceStatus],
+      ]
+    : [['Latest Writing Check', 'Not yet available']];
+
+  const latestNote = latest
+    ? `<p class="note">${escapeHtml(getLetterMotorPresentation(
+        latest.evaluation_status === 'outside_reference_range' ? 'outside_reference_range' : 'assigned'
+      ).supportingText)}</p>`
+    : '<p class="note">A Writing Check has not yet been completed.</p>';
+
+  const duringHtml = during.length
+    ? `<table class="grid"><thead><tr><th>Date</th><th>Result</th><th>Reference Status</th></tr></thead><tbody>${
+        during.slice().reverse().map((c) => {
+          const p = getWritingCheckPresentation(c);
+          return `<tr><td>${escapeHtml(fmtDate(c.observed_at))}</td><td>${escapeHtml(p.patternValue)}</td><td>${escapeHtml(p.referenceStatus)}</td></tr>`;
+        }).join('')
+      }</tbody></table>`
+    : '<p class="note">No Writing Checks were completed during this period.</p>';
+
+  return `
+    <p class="subhead">Writing Check</p>
+    ${table(latestRows)}
+    ${latestNote}
+    <p class="subhead">Writing Checks During This Period</p>
+    ${duringHtml}`;
+}
+
 function buildWritingPatternHtml(dev) {
   const asOf = dev?.state_as_of_end_date ?? null;
-  const rejected = asOf?.outside_reference_range === true;
 
-  const patternLabel = rejected
-    ? 'Not reported'
-    : (asOf ? getLetterMotorPatternLabel(asOf.state_code) : 'Not yet observed');
-  const referenceStatus = rejected
-    ? 'Outside represented reference range'
-    : (asOf ? 'Within represented reference range' : 'Not yet observed');
+  // S2 — the server states which of the four cases applies. An older server
+  // that sends no evaluation_status falls back to the previous
+  // pattern-present/absent reading.
+  const evaluationStatus = dev?.evaluation_status ?? (asOf ? 'assigned' : 'not_reached');
+  const presentation = getLetterMotorPresentation(evaluationStatus, { stateCode: asOf?.state_code });
+  const patternLabel = presentation.patternValue;
+  const referenceStatus = presentation.referenceStatus;
 
-  // Mirrors the on-screen card: say how far along the reference set the
-  // student is, so a blank pattern reads as "not reached yet" rather than as
-  // a missing section. Omitted entirely on an older server that does not send
-  // reference_progress — never a fabricated count.
+  // Real milestone progress, shown ONLY while no milestone has been
+  // evaluated — after a rejection the evidence is complete, so "N of 14"
+  // would misdescribe why no pattern appears. Omitted entirely on an older
+  // server that does not send reference_progress — never a fabricated count.
   const refProgress = dev?.reference_progress ?? null;
-  const pendingNote = (!asOf && !rejected && refProgress)
-    ? `<p class="note">Recorded from ${escapeHtml(String(refProgress.evidence_letters))} of the `
-      + `${escapeHtml(String(refProgress.first_milestone_required))} reference letters needed before a `
-      + 'writing pattern can first be described.</p>'
-    : '';
+  const progressText = evaluationStatus === 'not_reached'
+    ? buildReferenceProgressText(refProgress)
+    : null;
+  const pendingNote = progressText ? `<p class="note">${escapeHtml(progressText)}</p>` : '';
 
   return `
     ${table([
@@ -199,7 +264,9 @@ function buildWritingPatternHtml(dev) {
       ['Pattern Updates', (dev?.milestones_during_period ?? []).length],
       ['Reference Status', referenceStatus],
     ])}
+    <p class="note">${escapeHtml(presentation.supportingText)}</p>
     ${pendingNote}
+    ${buildWritingCheckHtml(dev)}
     <p class="note">${escapeHtml(LETTER_MOTOR_PATTERN_CAPTION)}</p>`;
 }
 
@@ -237,6 +304,42 @@ function buildRecommendationsHtml(support) {
     : `<p class="note">No teacher review actions were recorded during this period.</p>`;
 
   return `<p class="subhead">Current worksheet recommendations</p>${recsHtml}<p class="subhead">Teacher review actions during this period</p>${validationsHtml}`;
+}
+
+// Home practice summary. Compact by design: counts, the worksheet live on the
+// end date, and a short activity table. The scanned worksheet image is NEVER
+// embedded, and a full teacher comment is not carried here — a short review
+// outcome is what a periodic report needs.
+function buildHomePracticeHtml(home) {
+  const active = home?.active_worksheet_as_of_end_date ?? null;
+  const during = home?.worksheets_during_period ?? [];
+  const reviews = home?.teacher_reviews_during_period ?? [];
+
+  const rows = [
+    ['Worksheets Assigned', home?.worksheets_assigned ?? 0],
+    ['Worksheets Submitted', home?.worksheets_submitted ?? 0],
+    ['Worksheets Reviewed', home?.worksheets_reviewed ?? 0],
+  ];
+  if (active) {
+    rows.push(['Active Worksheet', active.worksheet_code]);
+    rows.push(['Target Letter', active.target_letter]);
+    rows.push(['Status', getWorksheetStatusLabel(active.status)]);
+  }
+
+  const activity = [
+    ...during.map((w) => [w.assigned_at, w.target_letter, getWorksheetStatusLabel(w.status)]),
+    ...reviews.map((r) => [r.reviewed_at, r.target_letter ?? '', getReviewStatusLabel(r.review_status)]),
+  ].sort((a, b) => new Date(a[0]) - new Date(b[0]));
+
+  const activityHtml = activity.length
+    ? `<table class="grid"><thead><tr><th>Date</th><th>Target Letter</th><th>Activity</th></tr></thead><tbody>${
+        activity.map(([when, letter, status]) =>
+          `<tr><td>${escapeHtml(formatWorksheetDate(when))}</td><td>${escapeHtml(letter)}</td><td>${escapeHtml(status)}</td></tr>`
+        ).join('')
+      }</tbody></table>`
+    : `<p class="note">${escapeHtml(EMPTY_NO_PERIOD_ACTIVITY)}</p>`;
+
+  return `${table(rows)}${activityHtml}`;
 }
 
 /**
@@ -295,6 +398,7 @@ export function buildReportHtml(report) {
   ${section(5, 'Writing Pattern Summary', buildWritingPatternHtml(report.letter_motor_development ?? {}))}
   ${section(6, 'Word Writing Progress', buildWordWritingHtml(report.word_writing ?? {}))}
   ${section(7, 'Recommendations / Teacher Notes', buildRecommendationsHtml(report.adaptive_support ?? {}))}
+  ${section(8, 'Home Practice', buildHomePracticeHtml(report.home_practice ?? {}))}
 
   <div class="summary">${escapeHtml(report.summary_text)}</div>
 
@@ -307,13 +411,13 @@ export function buildReportHtml(report) {
  * Sanitizes a student name into a safe filename segment — letters/digits/
  * spaces only, spaces collapsed to underscores (spec §20: "sanitize
  * student name, avoid path traversal").
+ *
+ * Now a thin alias over the shared implementation in pdfShare.js, so the
+ * report and the worksheet sanitize names identically. Behaviour, including
+ * the 'Student' fallback, is unchanged.
  */
 export function sanitizeForFilename(value) {
-  return String(value ?? 'Student')
-    .replace(/[^a-zA-Z0-9 _-]/g, '')
-    .trim()
-    .replace(/\s+/g, '_')
-    .slice(0, 60) || 'Student';
+  return sanitizeSegment(value, 'Student');
 }
 
 /**
@@ -412,36 +516,13 @@ export async function generatePeriodicReportPdf({ report, studentName, startDate
  * @returns {Promise<{status: 'shared'|'cancelled'|'sharing_unavailable'|'failed', error: string|null}>}
  */
 export async function sharePeriodicReportPdf({ fileUri, studentName }) {
-  try {
-    const Sharing = require('expo-sharing');
-
-    if (!fileUri) {
-      return { status: 'failed', error: 'No generated report to share.' };
-    }
-
-    const available = await Sharing.isAvailableAsync();
-    if (!available) {
-      return { status: 'sharing_unavailable', error: 'Sharing is not available on this device.' };
-    }
-
-    await Sharing.shareAsync(fileUri, {
-      mimeType: 'application/pdf',
-      dialogTitle: `Auriva Handwriting Report — ${studentName}`,
-      UTI: 'com.adobe.pdf',
-    });
-    return { status: 'shared', error: null };
-  } catch (err) {
-    // expo-sharing resolves (not rejects) on user cancellation on most
-    // platforms, but some native share-sheet cancellations surface as a
-    // rejected promise with a recognizable message — treated as
-    // 'cancelled', never as a genuine failure (spec §21).
-    const message = err?.message ?? String(err);
-    if (/cancel/i.test(message)) {
-      return { status: 'cancelled', error: null };
-    }
-    if (typeof __DEV__ !== 'undefined' && __DEV__) {
-      console.log('[periodicReportPdf] export/share failed:', message);
-    }
-    return { status: 'failed', error: message };
-  }
+  // Report-specific wording only; the mechanics (availability, cancellation
+  // handling, never re-rendering) live in pdfShare.js and are shared with the
+  // worksheet exporter.
+  return sharePdfFile({
+    fileUri,
+    dialogTitle: `Auriva Handwriting Report — ${studentName}`,
+    missingFileMessage: 'No generated report to share.',
+    logTag: 'periodicReportPdf',
+  });
 }

@@ -677,6 +677,11 @@ export default function LetterWritingScreen({ route, navigation }) {
   // covers both the staleness and the concurrent-request-protection
   // requirements at once).
   const cycleTokenRef = useRef(0);
+
+  // True while a completion cycle (including its network POST) is running.
+  // See handleNext's own comment for why this guard exists and why it is a
+  // ref rather than state.
+  const submitInFlightRef = useRef(false);
   attemptRef.current  = attempt;
   hasDrawnRef.current = hasDrawn;
 
@@ -1108,7 +1113,7 @@ export default function LetterWritingScreen({ route, navigation }) {
   }, [celebOpacity, celebScale, reduceMotion]);
 
   // â”€â”€ Next attempt / next letter logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const handleNext = useCallback(async () => {
+  const runNextCycle = useCallback(async () => {
     // Feature 5 Step 3 — a fresh token for THIS cycle (success or failure),
     // incremented before anything else in handleNext runs. Captured by
     // scheduleAdaptiveRepetitionIfEligible() below so its async response
@@ -1360,6 +1365,33 @@ export default function LetterWritingScreen({ route, navigation }) {
     // handleNext's body now reads it directly to build the attempt record.
   }, [attempt, actualDemoSpeedLevel, caseType, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
       letterObj, interactionId, resetCanvas, sequence, showCelebrationFor, student.sid, supportLevel]);
+
+  // ── Double-submit guard ──────────────────────────────────────────────────
+  // The Next button is disabled only while `attemptFeedback` is showing, and
+  // that flag is cleared BEFORE the completion POST is sent. Between the
+  // feedback clearing and the response landing the button is live again, so a
+  // second tap fires a whole second completion — a duplicate set of attempt
+  // rows under a NEW session_key.
+  //
+  // Live data confirms this happens: 10 pairs of attempt-3 rows for the same
+  // student and letter exist less than 3 seconds apart under different
+  // session_keys. Feature 7 dedupes by session_key, so those two bursts count
+  // as two independent longitudinal cycles rather than the one the child
+  // actually performed.
+  //
+  // A ref, not state: two taps in the same frame would both read a stale
+  // `false` from state before either re-render, so the check must be
+  // synchronous. Cleared in `finally` so a failed/rejected cycle can be
+  // retried normally.
+  const handleNext = useCallback(async () => {
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+    try {
+      await runNextCycle();
+    } finally {
+      submitInFlightRef.current = false;
+    }
+  }, [runNextCycle]);
 
   const handleDismissCelebration = useCallback(() => {
     const isAllDone = celebration?.isAllDone;

@@ -210,7 +210,11 @@ describe('35. no extra useFocusEffect added', () => {
   it('the total useFocusEffect count is unchanged from Feature 9 Step 5 by Feature 10 specifically (still exactly 3 at that point: main report + Feature 8 recommendations + Feature 9 history — Feature 10 added none). Feature 11 Phase 6 later added 2 more of its own (Feature 11A profile, Feature 11B state/history/trend) for the same "independent per-feature loading" reason Features 8/9 already established — see teacherReportFeature11.test.js for that pair\'s own coverage.', () => {
     const source = readScreen();
     const occurrences = source.match(/useFocusEffect\(/g) ?? [];
-    expect(occurrences).toHaveLength(5);
+    // Feature 12 (Homework Practice) later added ONE more of its own, for the
+    // same "independent per-feature loading" reason every feature above
+    // established: worksheet data refreshes on focus and after each teacher
+    // action without refetching the whole report.
+    expect(occurrences).toHaveLength(6);
   });
 });
 

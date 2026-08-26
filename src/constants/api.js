@@ -83,6 +83,22 @@ export const ENDPOINTS = {
   LETTER_MOTOR_STATE_LATEST:  (studentId) => `/handwriting/letter-motor-state/latest/${studentId}`,
   LETTER_MOTOR_STATE_HISTORY: (studentId) => `/handwriting/letter-motor-state/history/${studentId}`,
   LETTER_MOTOR_EVIDENCE_TREND: (studentId) => `/handwriting/letter-motor-evidence-trend/${studentId}`,
+  // Feature 11B S2 — milestone evaluation log, including reference-range
+  // rejections (which persist no pattern row).
+  LETTER_MOTOR_EVALUATIONS: (studentId) => `/handwriting/letter-motor-evaluations/${studentId}`,
+  // Writing Check — the dedicated teacher-initiated route for the frozen
+  // letter motor pattern model. Descriptive assessment only.
+  WRITING_CHECK_START:    () => '/handwriting/writing-check/start',
+  WRITING_CHECK_PROGRESS: (checkId) => `/handwriting/writing-check/${checkId}/progress`,
+  WRITING_CHECK_COMPLETE: (checkId) => `/handwriting/writing-check/${checkId}/complete`,
+  WRITING_CHECK_HISTORY:  (studentId) => `/handwriting/writing-check/history/${studentId}`,
+  // Homework practice worksheets — teacher-facing throughout.
+  WORKSHEET_CANDIDATES: (studentId) => `/handwriting/worksheets/candidates/${studentId}`,
+  WORKSHEET_HISTORY:    (studentId) => `/handwriting/worksheets/${studentId}`,
+  WORKSHEET_GENERATE:   () => '/handwriting/worksheets/generate',
+  WORKSHEET_ASSIGN:     (worksheetId) => `/handwriting/worksheets/${worksheetId}/assign`,
+  WORKSHEET_SUBMIT:     (worksheetId) => `/handwriting/worksheets/${worksheetId}/submit`,
+  WORKSHEET_REVIEW:     (submissionId) => `/handwriting/worksheet-submissions/${submissionId}/review`,
   WORD_ATTEMPT:               '/handwriting/word-attempt',
   WORD_ACTIVITY:              '/handwriting/word-activity',
   WORD_PROGRESS:              (studentId) => `/handwriting/word-progress/${studentId}`,

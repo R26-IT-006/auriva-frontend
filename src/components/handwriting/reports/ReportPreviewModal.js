@@ -38,13 +38,17 @@ const TEXT_3 = '#94A3B8';
 
 export default function ReportPreviewModal({
   visible, html, filename, onShare, onClose, sharing = false, message = null,
+  // The document being previewed. Defaults to the periodic report's own
+  // wording so existing report behaviour is unchanged; the worksheet preview
+  // passes its own title rather than a second preview component being built.
+  title = 'Report preview',
 }) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent={false}>
       <View style={styles.root}>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title} numberOfLines={1}>Report preview</Text>
+            <Text style={styles.title} numberOfLines={1}>{title}</Text>
             {filename ? <Text style={styles.subtitle} numberOfLines={1}>{filename}</Text> : null}
           </View>
 

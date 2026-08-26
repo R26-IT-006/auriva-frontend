@@ -143,3 +143,74 @@ describe('fetch wrappers never throw', () => {
     expect(result.status).toBe('unavailable');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// S2 — milestone evaluation events
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('S2 — fetchLetterMotorEvaluations / resolveLetterMotorEvaluationStatus', () => {
+  const {
+    fetchLetterMotorEvaluations, normalizeEvaluationsResponse, resolveLetterMotorEvaluationStatus,
+  } = require('./letterMotorState');
+
+  it('normalizes a found response', () => {
+    const r = normalizeEvaluationsResponse({
+      status: 'found',
+      results: [{ id: 1, evaluation_status: 'outside_reference_range' }],
+      latest: { id: 1, evaluation_status: 'outside_reference_range' },
+    });
+    expect(r.status).toBe('found');
+    expect(r.results).toHaveLength(1);
+    expect(r.latest.evaluation_status).toBe('outside_reference_range');
+  });
+
+  it('an unrecognized shape degrades to unavailable, never to "nothing has happened"', () => {
+    for (const bad of [null, undefined, {}, { status: 'found' }, { status: 'nope', results: [] }]) {
+      expect(normalizeEvaluationsResponse(bad).status).toBe('unavailable');
+    }
+  });
+
+  it('a failed fetch resolves to unavailable and never throws', async () => {
+    client.get.mockRejectedValueOnce(new Error('network down'));
+    await expect(fetchLetterMotorEvaluations(9)).resolves.toEqual({
+      status: 'unavailable', latest: null, results: [],
+    });
+  });
+
+  it('resolves assigned when a pattern state exists', () => {
+    expect(resolveLetterMotorEvaluationStatus(
+      { status: 'found', state: { patternLabel: 'Letter Motor Pattern A' } },
+      { status: 'found', latest: null },
+    )).toBe('assigned');
+  });
+
+  it('resolves outside_reference_range from the persisted evaluation, not from coverage', () => {
+    expect(resolveLetterMotorEvaluationStatus(
+      { status: 'not_found', state: null },
+      { status: 'found', latest: { evaluation_status: 'outside_reference_range' } },
+    )).toBe('outside_reference_range');
+  });
+
+  it('resolves not_reached only when the evaluation log is genuinely empty', () => {
+    expect(resolveLetterMotorEvaluationStatus(
+      { status: 'not_found', state: null },
+      { status: 'found', latest: null },
+    )).toBe('not_reached');
+  });
+
+  it('resolves unavailable when either read failed — never silently not_reached', () => {
+    expect(resolveLetterMotorEvaluationStatus(
+      { status: 'unavailable', state: null }, { status: 'found', latest: null },
+    )).toBe('unavailable');
+    expect(resolveLetterMotorEvaluationStatus(
+      { status: 'not_found', state: null }, { status: 'unavailable', latest: null },
+    )).toBe('unavailable');
+  });
+
+  it('an assigned pattern wins even if the evaluation log is unreadable', () => {
+    expect(resolveLetterMotorEvaluationStatus(
+      { status: 'found', state: { patternLabel: 'Letter Motor Pattern B' } },
+      { status: 'unavailable', latest: null },
+    )).toBe('assigned');
+  });
+});

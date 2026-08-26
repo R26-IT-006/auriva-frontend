@@ -27,6 +27,7 @@ import { recordAssessmentSnapshot } from '../../constants/sessionProgress';
 // wander into teacher-facing data the same way they couldn't back out of a
 // concept lesson.
 import { ParentGateModal } from '../../components/common/ParentGateModal';
+import { useGatedHardwareBack } from '../../utils/useGatedBack';
 // Screen-consistency fix (Initial Motor Assessment scoring audit): reads
 // features.motor_score, the SAME per-shape unified score
 // AssessmentCompleteScreen.js reads (and the same one that produces the
@@ -386,6 +387,11 @@ export default function LetterHomeScreen({ route, navigation }) {
     if (pendingGateAction === 'why') setShowWhyModal(true);
     else if (pendingGateAction === 'assessment') setShowSummary(true);
     else if (pendingGateAction === 'progress') navigation.navigate('TeacherReport', { student, theme });
+    else if (pendingGateAction === 'dashboard') navigation.navigate('TeacherMain');
+    // Writing Check is a TEACHER-initiated assessment, so it goes through the
+    // same ParentGateModal as every other teacher-facing action here. A child
+    // cannot reach it unaided.
+    else if (pendingGateAction === 'writingCheck') navigation.navigate('WritingCheck', { student, theme });
     else if (pendingGateAction === 'back') {
       // goBack() when the stack has somewhere to return to; otherwise exit
       // the writing module. See the back button's own comment for why both
@@ -395,6 +401,14 @@ export default function LetterHomeScreen({ route, navigation }) {
     }
     setPendingGateAction(null);
   }
+
+  // The Android hardware back button opens the SAME gate as the on-screen
+  // back button, rather than navigating straight out of the writing module.
+  // Disabled while the gate is already showing so the hardware button can
+  // dismiss the modal instead of re-opening it. This screen owns its
+  // ParentGateModal directly (three gated actions), so it wires the shared
+  // hook itself rather than going through useGatedBack.
+  useGatedHardwareBack(() => requestGatedAction('back'), !gateVisible);
 
   function handleGateCancel() {
     setGateVisible(false);
@@ -463,15 +477,20 @@ export default function LetterHomeScreen({ route, navigation }) {
           </View>
 
           <View style={styles.topBtnGroup}>
-            {/* Dashboard stays a normal, ungated, friendly action — it's
-                just navigation, not teacher-facing data. */}
+            {/* Dashboard leaves the child's writing module for the TEACHER
+                area, so it is gated exactly like every other exit from this
+                screen. The back button below already gates the identical
+                'TeacherMain' destination (see handleGateSuccess's 'back'
+                branch) — leaving this one open made the gate bypassable by
+                tapping Dashboard instead of Back. */}
             <TouchableOpacity
               style={[styles.dashboardBtn, {
                 backgroundColor: theme.button + '14',
                 borderColor: theme.button + '40',
               }]}
-              onPress={() => navigation.navigate('TeacherMain')}
+              onPress={() => requestGatedAction('dashboard')}
               activeOpacity={0.8}
+              accessibilityLabel="Dashboard — needs a code"
             >
               <Ionicons name="home-outline" size={15} color={theme.button} />
               <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Dashboard</Text>
@@ -481,6 +500,19 @@ export default function LetterHomeScreen({ route, navigation }) {
                 so all three top-bar buttons read as one consistent group.
                 Still gated by ParentGateModal on tap (requestGatedAction);
                 only the visual treatment matches Dashboard now. */}
+            <TouchableOpacity
+              style={[styles.dashboardBtn, {
+                backgroundColor: theme.button + '14',
+                borderColor: theme.button + '40',
+              }]}
+              onPress={() => requestGatedAction('writingCheck')}
+              activeOpacity={0.8}
+              accessibilityLabel="Writing Check — needs a code"
+            >
+              <Ionicons name="create-outline" size={15} color={theme.button} />
+              <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Writing Check</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.dashboardBtn, {
                 backgroundColor: theme.button + '14',

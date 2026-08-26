@@ -71,14 +71,39 @@ import { fetchMotorBaseline } from '../../../utils/motorBaseline';
 // (spec §15) — see the util's own header for the full research-safe-
 // terminology contract.
 import {
-  fetchLatestLetterMotorState, fetchLetterMotorStateHistory, fetchLetterMotorEvidenceTrend, METRIC_LABELS,
-  LETTER_MOTOR_PATTERN_CAPTION, FULL_REFERENCE_COVERAGE,
+  fetchLatestLetterMotorState, fetchLetterMotorStateHistory, fetchLetterMotorEvidenceTrend,
+  fetchLetterMotorEvaluations, resolveLetterMotorEvaluationStatus, METRIC_LABELS,
+  LETTER_MOTOR_PATTERN_CAPTION,
 } from '../../../utils/letterMotorState';
 // Proposal FR-19/FR-20, Phase 7C/7D — periodic report (flexible date
 // ranges) + real PDF export/share. Additive section only — every existing
 // section below (current-state Feature 8/9/10/11, family thresholds,
 // motor patterns) is untouched.
 import PeriodicReportSection from '../../../components/handwriting/reports/PeriodicReportSection';
+// Writing Check — the dedicated, teacher-initiated route for the frozen letter
+// motor pattern model. Read-only here; starting one navigates into its own flow.
+import {
+  fetchWritingCheckHistory, getWritingCheckPresentation,
+} from '../../../utils/writingCheck';
+// Homework worksheets — teacher-directed support material. Every action below
+// is gated; none of them affect mastery, scores, thresholds or sequencing.
+import {
+  fetchWorksheetCandidates, fetchWorksheetHistory, generateWorksheet as apiGenerateWorksheet,
+  assignWorksheet as apiAssignWorksheet, submitWorksheet as apiSubmitWorksheet,
+  reviewSubmission as apiReviewSubmission,
+} from '../../../utils/worksheetApi';
+import {
+  getWorksheetStatusLine, getIntensityLabel, formatWorksheetDate, describeMotorPreparation,
+  REVIEW_OPTIONS, INTENSITY_OPTIONS, PRACTICE_SEQUENCE_TEXT, WORKSHEET_SUPPORTING_TEXT,
+  EMPTY_NO_RECOMMENDATION, EMPTY_NO_HISTORY, EMPTY_NO_SUBMISSION,
+  PENDING_REVIEW_TEXT, ALREADY_ASSIGNED_TEXT, UNMAPPED_LETTER_TEXT,
+} from '../../../utils/worksheetLabels';
+import { generateWorksheetPdf, shareWorksheetPdf } from '../../../utils/worksheetPdf';
+// Reuses the existing preview modal rather than building a second preview
+// framework; the SHARE itself is worksheet-specific (shareWorksheetPdf), so a
+// practice sheet never carries report wording.
+import ReportPreviewModal from '../../../components/handwriting/reports/ReportPreviewModal';
+import * as ImagePicker from 'expo-image-picker';
 import useGatedBack from '../../../utils/useGatedBack';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -509,16 +534,33 @@ export default function TeacherReportScreen({ route, navigation }) {
   );
 
   // ── Feature 11B — Letter Motor Development ────────────────────────────────
-  // 3 independent read-only fetches (latest state, state history,
-  // mastery-evidence trend) — none of them ever POSTs or triggers a
-  // milestone check/prediction (spec §16; see the read-only guarantee
-  // tests). Fetched together per screen-focus, same stale-response guard.
+  // 4 independent read-only fetches (latest state, state history,
+  // mastery-evidence trend, and — S2 — the milestone evaluation log) — none
+  // of them ever POSTs or triggers a milestone check/prediction (spec §16;
+  // see the read-only guarantee tests). Fetched together per screen-focus,
+  // same stale-response guard.
   const emptyLatest  = { status: 'loading', state: null };
   const emptyHistory = { status: 'loading', history: [] };
   const emptyTrend   = { status: 'loading', coverageN: 0, meanSmoothness: null, meanDtw: null, meanSpeedCv: null };
   const [letterMotorLatest,  setLetterMotorLatest]  = useState(emptyLatest);
   const [letterMotorHistory, setLetterMotorHistory] = useState(emptyHistory);
   const [letterMotorTrend,   setLetterMotorTrend]   = useState(emptyTrend);
+  const emptyEvaluations = { status: 'loading', latest: null, results: [] };
+  const [letterMotorEvaluations, setLetterMotorEvaluations] = useState(emptyEvaluations);
+  // Writing Check history. Refetched on every screen FOCUS (not just mount), so
+  // returning from a completed Writing Check shows the new result immediately,
+  // with no app restart and no manual refresh.
+  const emptyChecks = { status: 'loading', checks: [] };
+  const [writingChecks, setWritingChecks] = useState(emptyChecks);
+
+  // Homework worksheets. Refetched on every screen FOCUS and after every
+  // teacher action (generate / upload / review), so the card never shows a
+  // stale worksheet and no app restart is ever needed.
+  const emptyWorksheets = { status: 'loading', worksheets: [], active: null };
+  const [worksheetHistory, setWorksheetHistory] = useState(emptyWorksheets);
+  const [worksheetCandidates, setWorksheetCandidates] = useState({ status: 'loading', candidates: [] });
+  const [worksheetReloadToken, setWorksheetReloadToken] = useState(0);
+  const refreshWorksheets = useCallback(() => setWorksheetReloadToken((t) => t + 1), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -526,19 +568,44 @@ export default function TeacherReportScreen({ route, navigation }) {
       setLetterMotorLatest(emptyLatest);
       setLetterMotorHistory(emptyHistory);
       setLetterMotorTrend(emptyTrend);
+      setLetterMotorEvaluations(emptyEvaluations);
+      setWritingChecks(emptyChecks);
       Promise.all([
         fetchLatestLetterMotorState(student?.sid),
         fetchLetterMotorStateHistory(student?.sid),
         fetchLetterMotorEvidenceTrend(student?.sid),
-      ]).then(([latest, history, trend]) => {
+        fetchLetterMotorEvaluations(student?.sid),
+        fetchWritingCheckHistory(student?.sid),
+      ]).then(([latest, history, trend, evaluations, checks]) => {
         if (!active) return;
         setLetterMotorLatest(latest);
         setLetterMotorHistory(history);
         setLetterMotorTrend(trend);
+        setLetterMotorEvaluations(evaluations);
+        setWritingChecks(checks);
       });
       return () => { active = false; };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [student])
+  );
+
+  // Worksheet data has its OWN focus effect keyed on a reload token, so a
+  // generate/upload/review can refresh just this section without refetching
+  // the whole report.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      Promise.all([
+        fetchWorksheetHistory(student?.sid),
+        fetchWorksheetCandidates(student?.sid),
+      ]).then(([history, candidates]) => {
+        if (!active) return;
+        setWorksheetHistory(history);
+        setWorksheetCandidates(candidates);
+      });
+      return () => { active = false; };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [student, worksheetReloadToken])
   );
 
   async function handleShare() {
@@ -725,6 +792,24 @@ export default function TeacherReportScreen({ route, navigation }) {
               latest={letterMotorLatest}
               history={letterMotorHistory}
               trend={letterMotorTrend}
+              evaluations={letterMotorEvaluations}
+            />
+
+            {/* ══ Homework Practice ══════════════════════════════════════ */}
+            <HomeworkPracticeCard
+              student={student}
+              theme={theme}
+              candidates={worksheetCandidates}
+              history={worksheetHistory}
+              onChanged={refreshWorksheets}
+            />
+
+            {/* ══ Writing Check history ═══════════════════════════════════ */}
+            <WritingCheckHistoryCard
+              result={writingChecks}
+              student={student}
+              theme={theme}
+              navigation={navigation}
             />
 
             {/* ══ 5. Letters Mastery ══════════════════════════════════════ */}
@@ -2011,8 +2096,630 @@ function LetterMotorHistoryList({ history }) {
   );
 }
 
-function LetterMotorDevelopmentCard({ latest, history, trend }) {
-  const anyLoading = latest.status === 'loading' || history.status === 'loading' || trend.status === 'loading';
+// ─── Homework Practice ────────────────────────────────────────────────────
+//
+// Turns an approved adaptive practice recommendation into a printable
+// worksheet, then accepts the completed paper back for the teacher to read.
+//
+// Every action here is behind the same ParentGateModal the rest of this screen
+// uses. Nothing in this card changes mastery, Motor Score, thresholds, the
+// practice sequence, word unlock, or the Letter Motor Pattern — and an
+// uploaded photo is stored and shown, never analysed or scored.
+function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }) {
+  const [selectedLetter, setSelectedLetter] = useState(null);
+  const [intensity, setIntensity] = useState('standard');
+  const [note, setNote] = useState('');
+  const [dismissed, setDismissed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [sharing, setSharing] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState(null);
+  const [reviewChoice, setReviewChoice] = useState(null);
+  const [reviewComment, setReviewComment] = useState('');
+  // A history row the teacher asked to view/reprint. Held in state so the gate
+  // confirms before the historical sheet is rendered.
+  const [reprintTarget, setReprintTarget] = useState(null);
+
+  const loading = candidates.status === 'loading' || history.status === 'loading';
+  const active = history.active ?? null;
+  const worksheets = history.worksheets ?? [];
+  // The recommendation to act on: the first persistent stream that does not
+  // already have a live worksheet out.
+  const recommendation = (candidates.candidates ?? []).find((c) => !c.alreadyAssigned) ?? null;
+  const targetLetter = selectedLetter ?? recommendation?.suggestedLetter ?? null;
+
+  const latestSubmission = active && Array.isArray(active.submissions) && active.submissions.length > 0
+    ? active.submissions[0] : null;
+
+  // Every teacher action runs behind the gate. One hook per action so each
+  // button opens the gate for its own effect only.
+  function gatedAction(fn) { return fn; }
+
+  async function runGuarded(fn) {
+    if (busy) return;
+    setBusy(true); setMessage(null);
+    try { await fn(); } finally { setBusy(false); }
+  }
+
+  const doGenerate = () => runGuarded(async () => {
+    if (!targetLetter || !recommendation) return;
+    const res = await apiGenerateWorksheet({
+      studentId: student?.sid,
+      targetLetter,
+      caseType: recommendation.caseType,
+      motorFamily: recommendation.family,
+      intensity,
+      teacherNote: note.trim() || null,
+      recommendationFingerprint: recommendation.recommendationFingerprint,
+    });
+    if (res.status === 'created') {
+      setMessage('Worksheet created.');
+      setNote(''); setSelectedLetter(null);
+      onChanged();
+    } else if (res.status === 'already_assigned') {
+      setMessage(ALREADY_ASSIGNED_TEXT);
+      onChanged();
+    } else if (res.status === 'unmapped_letter') {
+      setMessage(UNMAPPED_LETTER_TEXT);
+    } else {
+      setMessage('The worksheet could not be created. Please try again.');
+    }
+  });
+
+  /**
+   * Renders a worksheet and opens the real preview modal.
+   *
+   * `markAssigned` is false for a REPRINT from history: reprinting is
+   * read-only and must not touch assigned_at, status, or anything else about
+   * the original assignment.
+   *
+   * The worksheet is passed through so the renderer uses its OWN frozen plan —
+   * a reprint reproduces the sheet the child was given, never a sheet the
+   * current mapping would produce today.
+   */
+  const doPreview = (worksheet, { markAssigned = true } = {}) => runGuarded(async () => {
+    if (!worksheet) { setMessage('That worksheet could not be opened.'); return; }
+    const res = await generateWorksheetPdf({ student, worksheet, plan: null });
+    if (res.status !== 'ok' || !res.fileUri || !res.html) {
+      setMessage('The worksheet could not be prepared for printing.');
+      return;
+    }
+    // The worksheet travels with the preview so a share names the sheet that
+    // is actually on screen — including a historical reprint.
+    setPreview({ uri: res.fileUri, filename: res.filename, html: res.html, worksheet });
+    if (markAssigned) {
+      // Producing the printable sheet for the FIRST time is what hands it out.
+      await apiAssignWorksheet(worksheet.id, null);
+      onChanged();
+    }
+  });
+
+  /**
+   * Shares the previewed worksheet. Worksheet wording throughout — a teacher
+   * printing a practice sheet should never see report language.
+   *
+   * Read-only: sharing sends the already-rendered file and writes nothing.
+   */
+  const doSharePreview = async () => {
+    if (!preview?.uri) { setPreviewMessage('There is no worksheet to share.'); return; }
+    setSharing(true); setPreviewMessage(null);
+    try {
+      const res = await shareWorksheetPdf({
+        fileUri: preview.uri, worksheet: preview.worksheet, student,
+      });
+      // A cancelled share is normal use, and says nothing to the teacher.
+      if (res.status === 'sharing_unavailable') {
+        setPreviewMessage('Sharing is not available on this device.');
+      } else if (res.status === 'failed') {
+        // Never surfaces a raw native error string to a teacher.
+        setPreviewMessage('The worksheet could not be shared.');
+      }
+    } catch (err) {
+      setPreviewMessage('The worksheet could not be shared.');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  // Closing is always safe and always re-openable — nothing is torn down.
+  const closePreview = () => { setPreview(null); setPreviewMessage(null); };
+
+  const doUpload = (worksheet, fromCamera) => runGuarded(async () => {
+    try {
+      const perm = fromCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm?.granted) {
+        setMessage(fromCamera
+          ? 'Camera access is needed to photograph the worksheet.'
+          : 'Photo access is needed to choose a worksheet image.');
+        return;
+      }
+      const result = fromCamera
+        ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8,
+          });
+      if (result?.canceled) return;   // cancelling is not an error
+      const asset = result?.assets?.[0];
+      if (!asset?.uri) { setMessage('That file could not be used. Please try another.'); return; }
+
+      const res = await apiSubmitWorksheet(worksheet.id, {
+        uri: asset.uri,
+        name: asset.fileName ?? `worksheet-${worksheet.worksheet_code}.jpg`,
+        mimeType: asset.mimeType ?? 'image/jpeg',
+      }, 'photo');
+      if (res.status === 'submitted') {
+        setMessage('Worksheet submitted for teacher review.');
+        onChanged();
+      } else {
+        setMessage(res.message ?? 'The worksheet could not be uploaded. Please try again.');
+      }
+    } catch (err) {
+      // A picker or upload failure must never take the report screen down.
+      setMessage('The worksheet could not be uploaded. Please try again.');
+    }
+  });
+
+  const doReview = (submission) => runGuarded(async () => {
+    const option = REVIEW_OPTIONS.find((o) => o.key === reviewChoice);
+    if (!option) { setMessage('Please choose a review option.'); return; }
+    const res = await apiReviewSubmission(submission.id, option.status, reviewComment.trim() || null);
+    if (res.status === 'reviewed') {
+      setMessage('Review saved.');
+      setReviewChoice(null); setReviewComment('');
+      onChanged();
+    } else {
+      setMessage('The review could not be saved. Please try again.');
+    }
+  });
+
+  // One gate per action, all using the shared ParentGateModal mechanism.
+  const gGenerate = useGatedBack(doGenerate);
+  const gPreview  = useGatedBack(() => active && doPreview(active));
+  const gCamera   = useGatedBack(() => active && doUpload(active, true));
+  const gGallery  = useGatedBack(() => active && doUpload(active, false));
+  const gReview   = useGatedBack(() => latestSubmission && doReview(latestSubmission));
+  const gReprint  = useGatedBack(() => reprintTarget && doPreview(reprintTarget, { markAssigned: false }));
+
+  // Opening the gate is what a history "View" tap does; the render happens on
+  // confirmation.
+  useEffect(() => {
+    if (reprintTarget) gReprint.requestBack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reprintTarget]);
+
+  if (loading) {
+    return (
+      <SectionCard title="Homework Practice" icon="document-text-outline" accentColor="#7C3AED">
+        <View style={f11.loadingRow}>
+          <ActivityIndicator size="small" color="#7C3AED" />
+          <Text style={f11.loadingText}>Loading homework practice…</Text>
+        </View>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard title="Homework Practice" icon="document-text-outline" accentColor="#7C3AED">
+      <View style={{ gap: 14 }}>
+
+        {/* ── A. Current recommendation ── */}
+        {!active && recommendation && !dismissed ? (
+          <View>
+            <Text style={mda.sectionLabel}>Homework Recommendation</Text>
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Target Letter</Text>
+              <Text style={hw.rowValueBig}>{targetLetter ?? '—'}</Text>
+            </View>
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Reason</Text>
+              <Text style={hw.rowValue}>{recommendation.rationale}</Text>
+            </View>
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Suggested Practice</Text>
+              <Text style={hw.rowValue}>{PRACTICE_SEQUENCE_TEXT}</Text>
+            </View>
+
+            {/* Target override — only letters this recommendation actually
+                names. An unrelated letter is never offered. */}
+            {(recommendation.candidateLetters ?? []).length > 1 ? (
+              <View style={{ marginTop: 8 }}>
+                <Text style={hw.rowLabel}>Other affected letters</Text>
+                <View style={hw.chipRow}>
+                  {recommendation.candidateLetters.map((c) => (
+                    <TouchableOpacity
+                      key={c.letter}
+                      style={[hw.chip, targetLetter === c.letter && hw.chipOn]}
+                      onPress={() => setSelectedLetter(c.letter)}
+                      accessibilityLabel={`Choose letter ${c.letter}`}
+                    >
+                      <Text style={[hw.chipText, targetLetter === c.letter && hw.chipTextOn]}>{c.letter}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* Practice type — neutral support levels, never a difficulty grade. */}
+            <View style={{ marginTop: 8 }}>
+              <Text style={hw.rowLabel}>Practice Type</Text>
+              <View style={hw.chipRow}>
+                {INTENSITY_OPTIONS.map((o) => (
+                  <TouchableOpacity
+                    key={o.key}
+                    style={[hw.chip, intensity === o.key && hw.chipOn]}
+                    onPress={() => setIntensity(o.key)}
+                    accessibilityLabel={o.label}
+                  >
+                    <Text style={[hw.chipText, intensity === o.key && hw.chipTextOn]}>{o.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={{ marginTop: 8 }}>
+              <Text style={hw.rowLabel}>Teacher Note (optional)</Text>
+              <TextInput
+                style={hw.input}
+                value={note}
+                onChangeText={setNote}
+                placeholder="e.g. Please practise slowly and focus on the curved movement."
+                placeholderTextColor="#94A3B8"
+                multiline
+                accessibilityLabel="Teacher note"
+              />
+            </View>
+
+            <View style={hw.btnRow}>
+              <TouchableOpacity
+                style={[hw.primaryBtn, busy && hw.btnDisabled]}
+                onPress={gGenerate.requestBack}
+                disabled={busy}
+                accessibilityLabel="Generate worksheet — needs a code"
+              >
+                <Text style={hw.primaryBtnText}>Generate Worksheet</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={hw.secondaryBtn}
+                onPress={() => setDismissed(true)}
+                accessibilityLabel="Dismiss recommendation"
+              >
+                <Text style={hw.secondaryBtnText}>Dismiss</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
+        {!active && (!recommendation || dismissed) ? (
+          <Text style={f11.patternCaption}>{EMPTY_NO_RECOMMENDATION}</Text>
+        ) : null}
+
+        {/* ── B. Active worksheet ── */}
+        {active ? (
+          <View>
+            <Text style={mda.sectionLabel}>Active Homework Worksheet</Text>
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Target Letter</Text>
+              <Text style={hw.rowValueBig}>{active.target_letter}</Text>
+            </View>
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Practice Type</Text>
+              <Text style={hw.rowValue}>{getIntensityLabel(active.worksheet_intensity)}</Text>
+            </View>
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Assigned</Text>
+              <Text style={hw.rowValue}>
+                {formatWorksheetDate(active.assigned_at ?? active.generated_at) || 'Not available'}
+              </Text>
+            </View>
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Status</Text>
+              <Text style={hw.rowValue}>{getWorksheetStatusLine(active)}</Text>
+            </View>
+
+            <View style={hw.btnRow}>
+              <TouchableOpacity
+                style={[hw.primaryBtn, busy && hw.btnDisabled]}
+                onPress={gPreview.requestBack}
+                disabled={busy}
+                accessibilityLabel="Preview and print worksheet — needs a code"
+              >
+                <Text style={hw.primaryBtnText}>Preview / Print</Text>
+              </TouchableOpacity>
+            </View>
+
+            {active.status === 'submitted' && latestSubmission ? (
+              <Text style={f11.patternCaption}>{PENDING_REVIEW_TEXT}</Text>
+            ) : (
+              <>
+                <Text style={hw.rowLabel}>Upload Completed Worksheet</Text>
+                <View style={hw.btnRow}>
+                  <TouchableOpacity
+                    style={[hw.secondaryBtn, busy && hw.btnDisabled]}
+                    onPress={gCamera.requestBack}
+                    disabled={busy}
+                    accessibilityLabel="Take photo of completed worksheet — needs a code"
+                  >
+                    <Text style={hw.secondaryBtnText}>Take Photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[hw.secondaryBtn, busy && hw.btnDisabled]}
+                    onPress={gGallery.requestBack}
+                    disabled={busy}
+                    accessibilityLabel="Choose worksheet image from gallery — needs a code"
+                  >
+                    <Text style={hw.secondaryBtnText}>Choose from Gallery</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {/* ── D. Teacher review of a returned worksheet ── */}
+            {latestSubmission && latestSubmission.review_status === 'pending_review' ? (
+              <View style={{ marginTop: 10 }}>
+                <Text style={mda.sectionLabel}>Teacher Review</Text>
+                {REVIEW_OPTIONS.map((o) => (
+                  <TouchableOpacity
+                    key={o.key}
+                    style={hw.radioRow}
+                    onPress={() => setReviewChoice(o.key)}
+                    accessibilityLabel={o.label}
+                  >
+                    <View style={[hw.radio, reviewChoice === o.key && hw.radioOn]} />
+                    <Text style={hw.radioText}>{o.label}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TextInput
+                  style={hw.input}
+                  value={reviewComment}
+                  onChangeText={setReviewComment}
+                  placeholder="Teacher comment (optional)"
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  accessibilityLabel="Teacher comment"
+                />
+                <TouchableOpacity
+                  style={[hw.primaryBtn, busy && hw.btnDisabled]}
+                  onPress={gReview.requestBack}
+                  disabled={busy}
+                  accessibilityLabel="Save review — needs a code"
+                >
+                  <Text style={hw.primaryBtnText}>Save Review</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* ── C. History — ONE card per worksheet, newest first ── */}
+        <View>
+          <Text style={mda.sectionLabel}>Worksheet History</Text>
+          {worksheets.length === 0 ? (
+            <Text style={f11.patternCaption}>{EMPTY_NO_HISTORY}</Text>
+          ) : (
+            worksheets.map((w) => (
+              <View key={w.id} style={f11.historyRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={f11.historyMilestone}>
+                    {w.target_letter} · {getIntensityLabel(w.worksheet_intensity)}
+                  </Text>
+                  <Text style={f11.historyMeta}>{getWorksheetStatusLine(w)}</Text>
+                </View>
+                <Text style={f11.historyDate}>
+                  {formatWorksheetDate(w.assigned_at ?? w.generated_at) || '—'}
+                </Text>
+                {/* Reprint is READ-ONLY: it renders from the worksheet's frozen
+                    plan and changes no date, status or review. */}
+                <TouchableOpacity
+                  style={hw.linkBtn}
+                  onPress={() => setReprintTarget(w)}
+                  accessibilityLabel={`View worksheet for ${w.target_letter} — needs a code`}
+                >
+                  <Text style={hw.linkBtnText}>View</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+          {worksheets.length > 0 && !worksheets.some((w) => (w.submissions ?? []).length > 0) ? (
+            <Text style={f11.patternCaption}>{EMPTY_NO_SUBMISSION}</Text>
+          ) : null}
+        </View>
+
+        {message ? <Text style={hw.message}>{message}</Text> : null}
+
+        <Text style={f11.patternCaption}>{WORKSHEET_SUPPORTING_TEXT}</Text>
+      </View>
+
+      {/* Real preview, reusing the report PDF preview + share modal. */}
+      <ReportPreviewModal
+        title="Writing Practice Worksheet"
+        visible={!!preview}
+        html={preview?.html ?? null}
+        filename={preview?.filename ?? null}
+        sharing={sharing}
+        message={previewMessage}
+        onShare={doSharePreview}
+        onClose={closePreview}
+      />
+
+      {gGenerate.gateModal}
+      {gPreview.gateModal}
+      {gReprint.gateModal}
+      {gCamera.gateModal}
+      {gGallery.gateModal}
+      {gReview.gateModal}
+    </SectionCard>
+  );
+}
+
+const hw = StyleSheet.create({
+  row:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 5, gap: 12 },
+  rowLabel:     { fontSize: 13, color: '#64748B', flex: 1 },
+  rowValue:     { fontSize: 13, fontWeight: '600', color: '#0F172A', textAlign: 'right', flex: 1.4 },
+  rowValueBig:  { fontSize: 20, fontWeight: '700', color: '#0F172A', textAlign: 'right', flex: 1.4 },
+  chipRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 5 },
+  chip:         { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#CBD5E1' },
+  chipOn:       { backgroundColor: '#7C3AED14', borderColor: '#7C3AED' },
+  chipText:     { fontSize: 13, color: '#475569', fontWeight: '600' },
+  chipTextOn:   { color: '#7C3AED' },
+  input:        { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, padding: 9, minHeight: 58,
+                  fontSize: 13, color: '#0F172A', marginTop: 5, textAlignVertical: 'top' },
+  btnRow:       { flexDirection: 'row', gap: 9, marginTop: 10, flexWrap: 'wrap' },
+  primaryBtn:   { flexGrow: 1, backgroundColor: '#7C3AED', borderRadius: 9, paddingVertical: 11, alignItems: 'center' },
+  primaryBtnText:{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  secondaryBtn: { flexGrow: 1, borderWidth: 1, borderColor: '#7C3AED', borderRadius: 9, paddingVertical: 11, alignItems: 'center' },
+  secondaryBtnText:{ color: '#7C3AED', fontSize: 14, fontWeight: '700' },
+  btnDisabled:  { opacity: 0.5 },
+  radioRow:     { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 7 },
+  radio:        { width: 17, height: 17, borderRadius: 9, borderWidth: 1.5, borderColor: '#94A3B8' },
+  radioOn:      { borderColor: '#7C3AED', backgroundColor: '#7C3AED' },
+  radioText:    { fontSize: 13, color: '#0F172A' },
+  linkBtn:      { paddingHorizontal: 10, paddingVertical: 5, marginLeft: 8 },
+  linkBtnText:  { fontSize: 12.5, color: '#7C3AED', fontWeight: '700' },
+  message:      { fontSize: 12.5, color: '#7C3AED', fontWeight: '600', marginTop: 4 },
+});
+
+// ─── Writing Check history ────────────────────────────────────────────────
+//
+// The dedicated, teacher-initiated route for the frozen letter motor pattern
+// model, kept visually separate from the legacy 14/17/20 milestone card above.
+//
+// Rendered as a dated LIST, never a chart. Pattern A and Pattern B are NOMINAL
+// categories, so a line or bar over time would falsely suggest they are ordinal
+// — there are deliberately no arrows, no colour coding, no green/red, and no
+// improvement/decline wording anywhere below. Each check is an independent
+// descriptive observation.
+//
+// Only EVALUATED checks appear in history; an in-progress check is never shown
+// as a completed result. Cluster ids, model versions and OOD diagnostics stay
+// internal and are never rendered.
+function WritingCheckHistoryCard({ result, student, theme, navigation }) {
+  // Starting a Writing Check leaves the teacher report for a child activity, so
+  // it goes through the SAME ParentGateModal every other teacher-facing action
+  // on this screen uses — no new authentication concept.
+  const { requestBack: requestStartCheck, gateModal } = useGatedBack(
+    () => navigation.navigate('WritingCheck', { student, theme })
+  );
+
+  if (result.status === 'loading') {
+    return (
+      <SectionCard title="Writing Check" icon="create-outline" accentColor="#0891B2">
+        <View style={f11.loadingRow}>
+          <ActivityIndicator size="small" color="#0891B2" />
+          <Text style={f11.loadingText}>Loading Writing Checks…</Text>
+        </View>
+      </SectionCard>
+    );
+  }
+  if (result.status !== 'found') {
+    return (
+      <SectionCard title="Writing Check" icon="create-outline" accentColor="#0891B2">
+        <Empty message="Writing Check information could not be loaded at this time." />
+        {gateModal}
+      </SectionCard>
+    );
+  }
+
+  const checks = result.checks ?? [];
+  // Only evaluated checks are real results. An in-progress one drives the
+  // Start/Resume label instead of appearing as a completed history entry.
+  const evaluated = checks.filter((c) => c.status === 'evaluated');
+  const inProgress = checks.find((c) => c.status === 'in_progress') ?? null;
+  const failed = checks.find((c) => c.status === 'evaluation_failed') ?? null;
+  const latest = evaluated[0] ?? null;
+  const latestPresentation = latest ? getWritingCheckPresentation(latest) : null;
+
+  const supportingText = latest
+    ? (latest.evaluation_status === 'outside_reference_range'
+        ? 'The available handwriting evidence differs from the data represented by the '
+          + 'current pattern model, so no writing pattern was assigned.'
+        : 'Writing patterns describe movement characteristics only and do not indicate '
+          + 'ability, ASD severity, or improvement.')
+    : 'A Writing Check has not yet been completed.';
+
+  return (
+    <SectionCard title="Writing Check" icon="create-outline" accentColor="#0891B2">
+      <View style={{ gap: 12 }}>
+        <View>
+          <Text style={mda.sectionLabel}>Latest Writing Check</Text>
+          {latest ? (
+            <>
+              <View style={wc.row}>
+                <Text style={wc.rowLabel}>Date</Text>
+                <Text style={wc.rowValue}>{formatReviewDate(latest.observed_at) || '—'}</Text>
+              </View>
+              <View style={wc.row}>
+                <Text style={wc.rowLabel}>Current Writing Pattern</Text>
+                <Text style={wc.rowValue}>{latestPresentation.patternValue}</Text>
+              </View>
+              <View style={wc.row}>
+                <Text style={wc.rowLabel}>Reference Status</Text>
+                <Text style={wc.rowValue}>{latestPresentation.referenceStatus}</Text>
+              </View>
+            </>
+          ) : (
+            <View style={wc.row}>
+              <Text style={wc.rowLabel}>Latest Writing Check</Text>
+              <Text style={wc.rowValue}>Not yet available</Text>
+            </View>
+          )}
+          <Text style={f11.patternCaption}>{supportingText}</Text>
+          {failed && !latest ? (
+            <Text style={f11.patternCaption}>
+              The Writing Check was completed, but pattern information could not be evaluated at this time.
+            </Text>
+          ) : null}
+        </View>
+
+        {evaluated.length > 1 ? (
+          <View>
+            <Text style={mda.sectionLabel}>Writing Check History</Text>
+            {evaluated.map((c) => {
+              const p = getWritingCheckPresentation(c);
+              return (
+                <View key={c.id} style={f11.historyRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={f11.historyMilestone}>{p.patternValue}</Text>
+                    <Text style={f11.historyMeta}>{p.referenceStatus}</Text>
+                  </View>
+                  <Text style={f11.historyDate}>{formatReviewDate(c.observed_at) || '—'}</Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+
+        <TouchableOpacity
+          style={[wc.startBtn, { borderColor: '#0891B2' }]}
+          onPress={requestStartCheck}
+          activeOpacity={0.8}
+          accessibilityLabel={inProgress ? 'Resume Writing Check — needs a code' : 'Start Writing Check — needs a code'}
+        >
+          <Ionicons name="create-outline" size={15} color="#0891B2" />
+          <Text style={wc.startBtnText}>
+            {inProgress ? 'Resume Writing Check' : 'Start Writing Check'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {gateModal}
+    </SectionCard>
+  );
+}
+
+const wc = StyleSheet.create({
+  row:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 5 },
+  rowLabel:    { fontSize: 13, color: '#64748B', flex: 1 },
+  rowValue:    { fontSize: 13, fontWeight: '600', color: '#0F172A', textAlign: 'right', flex: 1 },
+  startBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+                 borderWidth: 1, borderRadius: 10, paddingVertical: 11, marginTop: 2 },
+  startBtnText:{ fontSize: 14, fontWeight: '700', color: '#0891B2' },
+});
+
+function LetterMotorDevelopmentCard({ latest, history, trend, evaluations }) {
+  const anyLoading = latest.status === 'loading' || history.status === 'loading'
+    || trend.status === 'loading' || evaluations?.status === 'loading';
 
   if (anyLoading) {
     return (
@@ -2077,26 +2784,31 @@ function LetterMotorDevelopmentCard({ latest, history, trend }) {
     );
   }
 
-  // latest.status === 'not_found' — no pattern is persisted. Two distinct
-  // situations, distinguished ONLY by evidence coverage (no new column, no
-  // migration):
+  // latest.status === 'not_found' — no pattern is persisted. S2 replaced the
+  // previous coverage>=20 HEURISTIC with the real persisted fact: a
+  // reference-range rejection now writes a letter_motor_state_evaluations
+  // row, so this branch reads what actually happened instead of inferring it
+  // from how much evidence exists.
   //
-  //   coverage < 20  -> evidence is still accumulating (3/7/10/14/17). This
-  //                     is the normal pre-milestone state.
-  //   coverage = 20  -> the full reference set is complete, so every
-  //                     milestone's required letters exist, yet no pattern
-  //                     was recorded. The reference-range guard declined to
-  //                     assign one.
+  // The old heuristic was conservative but wrong in both directions: a
+  // student rejected at the 14 milestone showed "still accumulating" until
+  // they reached 20, and a student who simply had 20 letters of evidence
+  // without any milestone ever being evaluated would have been described as
+  // rejected. Neither can happen now.
   //
-  // The 20/20 trigger is deliberately conservative: below it, a missing
-  // pattern could simply mean the specific required letters for a milestone
-  // are not all present yet, so claiming "outside the reference range"
-  // there would be wrong.
-  //
-  // NEVER shows a pattern label in either branch.
-  const fullCoverageWithoutPattern = (trend.coverageN ?? 0) >= FULL_REFERENCE_COVERAGE;
+  // NEVER shows a pattern label in any branch below.
+  const evaluationStatus = resolveLetterMotorEvaluationStatus(latest, evaluations);
+  const rejectedEvaluation = evaluations?.latest ?? null;
 
-  if (fullCoverageWithoutPattern) {
+  if (evaluationStatus === 'unavailable') {
+    return (
+      <SectionCard title="Letter Motor Patterns" icon="trending-up" accentColor="#0891B2">
+        <Empty message="Writing pattern information could not be evaluated at this time." />
+      </SectionCard>
+    );
+  }
+
+  if (evaluationStatus === 'outside_reference_range') {
     return (
       <SectionCard title="Letter Motor Patterns" icon="trending-up" accentColor="#0891B2">
         <View style={{ gap: 14 }}>
@@ -2105,9 +2817,15 @@ function LetterMotorDevelopmentCard({ latest, history, trend }) {
             <View style={{ flex: 1 }}>
               <Text style={f11.notReportedTitle}>Letter motor pattern not reported</Text>
               <Text style={f11.notReportedText}>
-                The current handwriting evidence falls outside the range represented by the
-                reference data, so the system did not assign a motor pattern.
+                The available handwriting evidence differs from the data represented by the
+                current pattern model, so no writing pattern was assigned.
               </Text>
+              {rejectedEvaluation?.milestone ? (
+                <Text style={f11.notReportedText}>
+                  Evaluated at milestone {rejectedEvaluation.milestone} on{' '}
+                  {formatReviewDate(rejectedEvaluation.observed_at) || '—'}.
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -2130,7 +2848,7 @@ function LetterMotorDevelopmentCard({ latest, history, trend }) {
         <View style={f11.accumulatingBanner}>
           <Ionicons name="hourglass-outline" size={18} color="#0891B2" />
           <Text style={f11.accumulatingText}>
-            Motor evidence is still being collected as the student masters letters.
+            More eligible handwriting evidence is needed before a writing pattern can be described.
           </Text>
         </View>
 

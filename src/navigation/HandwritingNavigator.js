@@ -19,6 +19,7 @@ import WordWritingScreen        from '../screens/handwriting/words/WordWritingSc
 import WordProgressScreen       from '../screens/handwriting/words/WordProgressScreen';
 import WordLetterSelectScreen   from '../screens/handwriting/words/WordLetterSelectScreen';
 import TeacherReportScreen        from '../screens/handwriting/reports/TeacherReportScreen';
+import WritingCheckScreen         from '../screens/handwriting/WritingCheckScreen';
 import DataCollectionDoneScreen  from '../screens/handwriting/DataCollectionDoneScreen';
 // Proposal FR-13, Phase 7A — one central session-duration mechanism for
 // the whole handwriting flow (prewriting/lowercase/uppercase/word
@@ -116,6 +117,12 @@ export default function HandwritingNavigator({ route }) {
       <Stack.Screen
         name="WordProgress"
         component={WordProgressScreen}
+        initialParams={{ student, theme }}
+      />
+      {/* Writing Check — teacher-initiated, descriptive assessment only. */}
+      <Stack.Screen
+        name="WritingCheck"
+        component={WritingCheckScreen}
         initialParams={{ student, theme }}
       />
       <Stack.Screen

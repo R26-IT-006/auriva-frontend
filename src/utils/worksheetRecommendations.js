@@ -185,6 +185,14 @@ const EMPTY_STATE_NOT_PERSISTENT =
   'No persistent handwriting difficulty currently requires an additional practice recommendation.';
 const EMPTY_STATE_GENERIC =
   'No additional adaptive practice recommendation is available at this time.';
+// Both conditions are true at once across the six evaluated streams. Saying
+// only "more practice history is needed" would misdescribe the streams that
+// WERE fully evaluated and simply produced no recommendation. Neutral in
+// both directions — it reports what was and was not evaluated, and claims
+// nothing about difficulty, improvement or trajectory beyond that.
+const EMPTY_STATE_MIXED =
+  'Some handwriting areas were reviewed and did not require an additional practice '
+  + 'recommendation. Others need more practice history before they can be reviewed.';
 
 /**
  * Resolves the teacher-facing empty-state message for a successfully
@@ -202,7 +210,13 @@ const EMPTY_STATE_GENERIC =
  */
 export function getWorksheetRecommendationEmptyState(summary) {
   if (!summary || typeof summary !== 'object') return EMPTY_STATE_GENERIC;
-  if ((summary.insufficientDataCount ?? 0) > 0) return EMPTY_STATE_INSUFFICIENT_DATA;
-  if ((summary.notPersistentCount ?? 0) > 0) return EMPTY_STATE_NOT_PERSISTENT;
+  const insufficient = summary.insufficientDataCount ?? 0;
+  const notPersistent = summary.notPersistentCount ?? 0;
+  // Mixed state is checked FIRST — previously any insufficient stream at all
+  // made the whole result read as "insufficient data", even when five of the
+  // six streams had been fully evaluated.
+  if (insufficient > 0 && notPersistent > 0) return EMPTY_STATE_MIXED;
+  if (insufficient > 0) return EMPTY_STATE_INSUFFICIENT_DATA;
+  if (notPersistent > 0) return EMPTY_STATE_NOT_PERSISTENT;
   return EMPTY_STATE_GENERIC;
 }

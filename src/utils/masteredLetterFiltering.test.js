@@ -118,3 +118,59 @@ describe('filterUnmasteredSequence', () => {
     expect(filterUnmasteredSequence(SEQ, 'not-an-array')).toEqual(SEQ);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Mastery-semantics correction — a FAILED letter must stay in the sequence
+//
+// The backend used to report any letter_progress row as mastered, including
+// the rows its own failure branch creates to hold blocked_attempts. This
+// filter then removed a letter the child had FAILED, so it was never
+// presented again. The backend now sends only genuinely mastered pairs
+// (mastered_at IS NOT NULL); these pin the resulting child-facing behaviour.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('failed vs mastered letters in the practice sequence', () => {
+  const sequence = [
+    { letter: 'l', caseType: 'lowercase' },
+    { letter: 'i', caseType: 'lowercase' },
+    { letter: 't', caseType: 'lowercase' },
+    { letter: 'o', caseType: 'lowercase' },
+  ];
+
+  it('a FAILED letter is absent from the mastered list, so it stays practisable', () => {
+    // The server omits 'i' because it was failed, never mastered.
+    const mastered = [{ letter: 'l', caseType: 'lowercase' }];
+    const remaining = filterUnmasteredSequence(sequence, mastered);
+    expect(remaining.map(e => e.letter)).toEqual(['i', 't', 'o']);
+  });
+
+  it('a MASTERED letter is removed from the unmastered sequence', () => {
+    const mastered = [
+      { letter: 'l', caseType: 'lowercase' },
+      { letter: 'i', caseType: 'lowercase' },
+    ];
+    const remaining = filterUnmasteredSequence(sequence, mastered);
+    expect(remaining.map(e => e.letter)).toEqual(['t', 'o']);
+  });
+
+  it('FAIL then PASS: the letter is practisable first, then filtered out', () => {
+    const beforePass = filterUnmasteredSequence(sequence, []);
+    expect(beforePass.map(e => e.letter)).toContain('l');
+
+    const afterPass = filterUnmasteredSequence(sequence, [{ letter: 'l', caseType: 'lowercase' }]);
+    expect(afterPass.map(e => e.letter)).not.toContain('l');
+  });
+
+  it('case is respected — mastering lowercase l never hides uppercase L', () => {
+    const mixed = [
+      { letter: 'l', caseType: 'lowercase' },
+      { letter: 'L', caseType: 'uppercase' },
+    ];
+    const remaining = filterUnmasteredSequence(mixed, [{ letter: 'l', caseType: 'lowercase' }]);
+    expect(remaining).toEqual([{ letter: 'L', caseType: 'uppercase' }]);
+  });
+
+  it('an empty mastered list leaves the sequence untouched and in order', () => {
+    expect(filterUnmasteredSequence(sequence, [])).toEqual(sequence);
+  });
+});

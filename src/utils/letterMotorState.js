@@ -181,6 +181,69 @@ export async function fetchLetterMotorStateHistory(studentId) {
   }
 }
 
+// ─── S2 — milestone evaluation events ──────────────────────────────────────
+//
+// The four semantic states a teacher-facing surface must distinguish. Before
+// S2 a reference-range rejection persisted nothing at all, so 'not_reached'
+// and 'outside_reference_range' were indistinguishable and the screen had to
+// guess from evidence coverage.
+export const EVALUATION_NOT_REACHED = 'not_reached';
+export const EVALUATION_ASSIGNED = 'assigned';
+export const EVALUATION_OUTSIDE_REFERENCE_RANGE = 'outside_reference_range';
+export const EVALUATION_UNAVAILABLE = 'unavailable';
+
+const FAILSAFE_EVALUATIONS = Object.freeze({ status: 'unavailable', latest: null, results: [] });
+
+/**
+ * Normalizes GET /handwriting/letter-motor-evaluations/:studentId.
+ * Never throws; an unrecognized shape degrades to 'unavailable' rather than
+ * being reported as "no evaluation has happened".
+ */
+export function normalizeEvaluationsResponse(data) {
+  if (!data || typeof data !== 'object' || data.status !== 'found' || !Array.isArray(data.results)) {
+    return { ...FAILSAFE_EVALUATIONS };
+  }
+  return {
+    status: 'found',
+    latest: data.latest ?? null,
+    results: data.results,
+  };
+}
+
+/** @param {number|string} studentId */
+export async function fetchLetterMotorEvaluations(studentId) {
+  try {
+    const response = await client.get(ENDPOINTS.LETTER_MOTOR_EVALUATIONS(studentId));
+    return normalizeEvaluationsResponse(response?.data);
+  } catch (err) {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log('[letterMotorState] evaluations fetch failed — treating as unavailable:', err?.message ?? err);
+    }
+    return { ...FAILSAFE_EVALUATIONS };
+  }
+}
+
+/**
+ * Resolves the single teacher-facing semantic state from the three
+ * already-fetched reads. Pure — no I/O, no inference from missing values:
+ * a pattern row means 'assigned', a persisted rejection means
+ * 'outside_reference_range', and only a genuinely empty evaluation log
+ * means 'not_reached'.
+ *
+ * @param {{status: string, state: Object|null}} latestState
+ * @param {{status: string, latest: Object|null}} evaluations
+ * @returns {'assigned'|'outside_reference_range'|'not_reached'|'unavailable'}
+ */
+export function resolveLetterMotorEvaluationStatus(latestState, evaluations) {
+  if (latestState?.status === 'found' && latestState.state) return EVALUATION_ASSIGNED;
+  if (latestState?.status === 'unavailable') return EVALUATION_UNAVAILABLE;
+  if (evaluations?.status !== 'found') return EVALUATION_UNAVAILABLE;
+  if (evaluations.latest?.evaluation_status === EVALUATION_OUTSIDE_REFERENCE_RANGE) {
+    return EVALUATION_OUTSIDE_REFERENCE_RANGE;
+  }
+  return EVALUATION_NOT_REACHED;
+}
+
 /** @param {number|string} studentId */
 export async function fetchLetterMotorEvidenceTrend(studentId) {
   try {

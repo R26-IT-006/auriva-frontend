@@ -308,7 +308,11 @@ describe('36. no global preview state', () => {
 describe('37. no new useFocusEffect', () => {
   it('useFocusEffect count was unchanged from Feature 9 Step 5 by Feature 10 specifically (3 total at that point). Feature 11 Phase 6 later added 2 more of its own (Feature 11A + Feature 11B, each independently loaded) — see teacherReportFeature11.test.js.', () => {
     const occurrences = readScreen().match(/useFocusEffect\(/g) ?? [];
-    expect(occurrences).toHaveLength(5);
+    // Feature 12 (Homework Practice) later added ONE more of its own, for the
+    // same "independent per-feature loading" reason every feature above
+    // established: worksheet data refreshes on focus and after each teacher
+    // action without refetching the whole report.
+    expect(occurrences).toHaveLength(6);
   });
 });
 
