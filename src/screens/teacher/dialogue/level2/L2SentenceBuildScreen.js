@@ -148,7 +148,7 @@ export default function L2SentenceBuildScreen({ route, navigation }) {
             <Text style={[styles.stepLabel, { color: theme.button }]}>BUILD THE SENTENCE</Text>
           </View>
           <View style={[styles.progressTrack, { backgroundColor: theme.cardOutline }]}>
-            <View style={[styles.progressFill, { width: '50%', backgroundColor: theme.button }]} />
+            <View style={[styles.progressFill, { width: '67%', backgroundColor: theme.button }]} />
           </View>
         </View>
 

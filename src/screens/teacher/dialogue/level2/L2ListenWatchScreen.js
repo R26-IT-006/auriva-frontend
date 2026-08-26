@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, BackHandler,
+  View, Text, Image, StyleSheet, TouchableOpacity, Animated, BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,26 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 
 // Emoji keyed by sentence index (matches L2SentencePathScreen STOPS)
 const SENTENCE_EMOJIS = { 1: '👤', 2: '🎂', 3: '🏠', 4: '⭐', 5: '🎨' };
+
+// Show the matching waving character instead of the generic emoji on the
+// two sentences that are actually about a person's identity:
+// self_introduction sentence 1 "My name is ___" / sentence 4 "I am a
+// boy/girl" (both about the child, sessionData.gender); describe_friend
+// sentence 1 "My friend's name is ___" / sentence 2 "My friend is a
+// boy/girl" (both about the friend, sessionData.friend_gender).
+const CHARACTER_IMAGES = {
+  boy:  require('../../../../../assets/avatar-images/Saman_Waving.png'),
+  girl: require('../../../../../assets/avatar-images/Anjalie_Waving.png'),
+};
+const TOPIC_CHARACTER_SENTENCES = {
+  self_introduction: { indices: [1, 4], genderField: 'gender' },
+  describe_friend:   { indices: [1, 2], genderField: 'friend_gender' },
+};
+function getCharacterImage(sessionData, sentenceIndex) {
+  const cfg = TOPIC_CHARACTER_SENTENCES[sessionData?.topic];
+  if (!cfg || !cfg.indices.includes(sentenceIndex)) return null;
+  return CHARACTER_IMAGES[sessionData?.[cfg.genderField]] ?? null;
+}
 
 async function playBase64Audio(base64, soundRef) {
   if (!base64) return;
@@ -51,6 +71,7 @@ export default function L2ListenWatchScreen({ route, navigation }) {
   const sentence = (sessionData?.sentences ?? []).find((s) => s.index === sentenceIndex);
   const words    = sentence?.words ?? (sentence?.text?.split(' ') ?? []);
   const emoji    = SENTENCE_EMOJIS[sentenceIndex] ?? '📖';
+  const characterImage = getCharacterImage(sessionData, sentenceIndex);
 
   // One Animated.Value per word for fade-in
   const wordAnims  = useRef(words.map(() => new Animated.Value(0))).current;
@@ -112,15 +133,19 @@ export default function L2ListenWatchScreen({ route, navigation }) {
             <Text style={[styles.stepLabel, { color: theme.button }]}>LISTEN &amp; WATCH</Text>
           </View>
           <View style={[styles.progressTrack, { backgroundColor: theme.cardOutline }]}>
-            <View style={[styles.progressFill, { width: '25%', backgroundColor: theme.button }]} />
+            <View style={[styles.progressFill, { width: '33%', backgroundColor: theme.button }]} />
           </View>
         </View>
 
-        {/* Sentence emoji + bubble */}
+        {/* Sentence character/emoji + bubble */}
         <View style={styles.body}>
-          <View style={styles.emojiWrap}>
-            <Text style={styles.emojiLarge}>{emoji}</Text>
-          </View>
+          {characterImage ? (
+            <Image source={characterImage} style={styles.characterImg} resizeMode="contain" />
+          ) : (
+            <View style={styles.emojiWrap}>
+              <Text style={styles.emojiLarge}>{emoji}</Text>
+            </View>
+          )}
 
           {/* Speech bubble */}
           <View style={[styles.bubble, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
@@ -184,15 +209,17 @@ const styles = StyleSheet.create({
   progressTrack: { height: 6, width: '80%', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
 
-  body: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.xl, gap: Layout.spacing.lg },
+  body: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: Layout.spacing.xl, paddingTop: Layout.spacing.lg },
 
   emojiWrap: {
     width: 100, height: 100, borderRadius: 50,
     backgroundColor: 'rgba(255,255,255,0.4)',
     alignItems: 'center', justifyContent: 'center',
+    marginBottom: Layout.spacing.sm,
     ...Layout.shadow.md,
   },
   emojiLarge: { fontSize: 52 },
+  characterImg: { width: 260, height: 300, marginBottom: Layout.spacing.sm },
 
   bubble: {
     borderRadius: 20,
@@ -202,6 +229,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Layout.spacing.lg,
     ...Layout.shadow.sm,
   },
   wordsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4 },

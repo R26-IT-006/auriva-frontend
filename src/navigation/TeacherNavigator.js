@@ -65,7 +65,6 @@ import L2PortraitScreen        from '../screens/teacher/dialogue/level2/L2Portra
 import L2ListenWatchScreen     from '../screens/teacher/dialogue/level2/L2ListenWatchScreen';
 import L2SentenceBuildScreen   from '../screens/teacher/dialogue/level2/L2SentenceBuildScreen';
 import L2FillGapScreen         from '../screens/teacher/dialogue/level2/L2FillGapScreen';
-import L2SentenceMatchScreen   from '../screens/teacher/dialogue/level2/L2SentenceMatchScreen';
 
 import ConceptCategoriesScreen        from '../screens/teacher/concept/ConceptCategoriesScreen';
 import ConceptItemsScreen            from '../screens/teacher/concept/ConceptItemsScreen';
@@ -194,11 +193,12 @@ export default function TeacherNavigator() {
       {/* Level 2 – Sentence Familiarisation Ladder (TASK-18)
           Inserted between L2SentencePath and L2SentenceTeach.
           Flow per sentence stop: L2SentencePath → L2ListenWatch → L2SentenceBuild
-                                  → L2FillGap → L2SentenceMatch → L2SentenceTeach */}
+                                  → L2FillGap → L2SentenceTeach
+          (L2SentenceMatch — a tap-to-match review step — was removed; it
+          didn't fit the teaching flow.) */}
       <Stack.Screen name="L2ListenWatch"     component={L2ListenWatchScreen} />
       <Stack.Screen name="L2SentenceBuild"   component={L2SentenceBuildScreen} />
       <Stack.Screen name="L2FillGap"         component={L2FillGapScreen} />
-      <Stack.Screen name="L2SentenceMatch"   component={L2SentenceMatchScreen} />
 
       <Stack.Screen name="L2SentenceTeach"   component={L2SentenceTeachScreen} />
       <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />

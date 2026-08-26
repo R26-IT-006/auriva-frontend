@@ -172,8 +172,9 @@ export default function L2SentencePathScreen({ route, navigation }) {
       navigation.navigate('L2ListenTogether', { student, sessionData });
     } else {
       // TASK-18: route through the Sentence Familiarisation Ladder before teaching.
-      // L2ListenWatch → L2SentenceBuild → L2FillGap → L2SentenceMatch → L2SentenceTeach
-      // (L2SentenceTeach still navigates back here with justCompleted when done.)
+      // L2ListenWatch → L2SentenceBuild → L2FillGap → L2SentenceTeach
+      // (L2SentenceMatch was removed from this chain. L2SentenceTeach still
+      // navigates back here with justCompleted when done.)
       navigation.navigate('L2ListenWatch', {
         student,
         sessionData,

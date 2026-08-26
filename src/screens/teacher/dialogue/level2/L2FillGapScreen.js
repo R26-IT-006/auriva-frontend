@@ -7,11 +7,13 @@
  * to never accidentally match the correct answer.
  *
  * Params: { student, sessionData, sentenceIndex }
- * Output: navigate('L2SentenceMatch', { student, sessionData, sentenceIndex })
+ * Output: navigate('L2SentenceTeach', { student, sessionData, sentenceIndex, returnTo: 'L2SentencePath' })
+ * (L2SentenceMatch — the old Step 4 — was removed; this screen advances
+ * straight to L2SentenceTeach now.)
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, BackHandler,
+  View, Text, Image, StyleSheet, TouchableOpacity, Animated, BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +23,26 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 
 // Sentence emojis matching L2SentencePathScreen STOPS
 const SENTENCE_EMOJIS = { 1: '👤', 2: '🎂', 3: '🏠', 4: '⭐', 5: '🎨' };
+
+// Show the matching waving character instead of the generic emoji on the
+// two sentences that are actually about a person's identity:
+// self_introduction sentence 1 "My name is ___" / sentence 4 "I am a
+// boy/girl" (both about the child, sessionData.gender); describe_friend
+// sentence 1 "My friend's name is ___" / sentence 2 "My friend is a
+// boy/girl" (both about the friend, sessionData.friend_gender).
+const CHARACTER_IMAGES = {
+  boy:  require('../../../../../assets/avatar-images/Saman_Waving.png'),
+  girl: require('../../../../../assets/avatar-images/Anjalie_Waving.png'),
+};
+const TOPIC_CHARACTER_SENTENCES = {
+  self_introduction: { indices: [1, 4], genderField: 'gender' },
+  describe_friend:   { indices: [1, 2], genderField: 'friend_gender' },
+};
+function getCharacterImage(sessionData, sentenceIndex) {
+  const cfg = TOPIC_CHARACTER_SENTENCES[sessionData?.topic];
+  if (!cfg || !cfg.indices.includes(sentenceIndex)) return null;
+  return CHARACTER_IMAGES[sessionData?.[cfg.genderField]] ?? null;
+}
 
 /**
  * Second distractor pool — one entry per sentence index (1-indexed).
@@ -99,6 +121,7 @@ export default function L2FillGapScreen({ route, navigation }) {
   const blankText   = buildBlankSentence(sentence?.text ?? '___', correct);
   const options     = useRef(buildOptions(sentence ?? {}, sentenceIndex)).current;
   const emoji       = SENTENCE_EMOJIS[sentenceIndex] ?? '📖';
+  const characterImage = getCharacterImage(sessionData, sentenceIndex);
 
   const [selected,  setSelected]  = useState(null);   // null | 'correct' | 'wrong'
   const [chosenOpt, setChosenOpt] = useState(null);   // which option string was tapped
@@ -115,7 +138,7 @@ export default function L2FillGapScreen({ route, navigation }) {
   // Cat3Phase2NonVerbalScreen.js uses when its own data is missing).
   useEffect(() => {
     if (!correct) {
-      navigation.navigate('L2SentenceMatch', { student, sessionData, sentenceIndex });
+      navigation.navigate('L2SentenceTeach', { student, sessionData, sentenceIndex, returnTo: 'L2SentencePath' });
     }
   }, []);
 
@@ -126,7 +149,7 @@ export default function L2FillGapScreen({ route, navigation }) {
       setSelected('correct');
       // Short pause, then advance
       setTimeout(() => {
-        navigation.navigate('L2SentenceMatch', { student, sessionData, sentenceIndex });
+        navigation.navigate('L2SentenceTeach', { student, sessionData, sentenceIndex, returnTo: 'L2SentencePath' });
       }, 900);
     } else {
       setSelected('wrong');
@@ -157,13 +180,17 @@ export default function L2FillGapScreen({ route, navigation }) {
             <Text style={[styles.stepLabel, { color: theme.button }]}>FILL IN THE BLANK</Text>
           </View>
           <View style={[styles.progressTrack, { backgroundColor: theme.cardOutline }]}>
-            <View style={[styles.progressFill, { width: '75%', backgroundColor: theme.button }]} />
+            <View style={[styles.progressFill, { width: '100%', backgroundColor: theme.button }]} />
           </View>
         </View>
 
         <View style={styles.body}>
-          {/* Emoji */}
-          <Text style={styles.emojiLarge}>{emoji}</Text>
+          {/* Character / emoji */}
+          {characterImage ? (
+            <Image source={characterImage} style={styles.characterImg} resizeMode="contain" />
+          ) : (
+            <Text style={styles.emojiLarge}>{emoji}</Text>
+          )}
 
           {/* Sentence with blank */}
           <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
@@ -243,11 +270,12 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', borderRadius: 3 },
 
   body: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: Layout.spacing.xl, gap: Layout.spacing.lg,
+    flex: 1, alignItems: 'center', justifyContent: 'flex-start',
+    paddingHorizontal: Layout.spacing.xl, paddingTop: Layout.spacing.lg,
   },
 
-  emojiLarge: { fontSize: 52 },
+  emojiLarge: { fontSize: 52, marginBottom: Layout.spacing.sm },
+  characterImg: { width: 260, height: 300, marginBottom: Layout.spacing.sm },
 
   sentenceCard: {
     borderRadius: Layout.radius.lg ?? 16,
@@ -255,6 +283,7 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.lg,
     width: '100%',
     alignItems: 'center',
+    marginBottom: Layout.spacing.lg,
     ...Layout.shadow?.sm,
   },
   sentenceText: {
@@ -265,7 +294,7 @@ const styles = StyleSheet.create({
   },
   blank: { fontWeight: '900', letterSpacing: 3 },
 
-  instruction: { fontSize: Layout.fontSize.sm, fontWeight: '600', opacity: 0.7, textAlign: 'center' },
+  instruction: { fontSize: Layout.fontSize.sm, fontWeight: '600', opacity: 0.7, textAlign: 'center', marginBottom: Layout.spacing.lg },
 
   optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, width: '100%' },
   option: {
