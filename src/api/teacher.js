@@ -51,4 +51,22 @@ export const teacherApi = {
     });
     return data;
   },
+
+  // Slowest of the three on a cache miss — a model call. Always fetch it after
+  // the screen has already rendered, never as a precondition for rendering.
+  // Resolves to { available: false } when the feature is off or the model fails;
+  // callers should render nothing in that case rather than showing an error.
+  async getConceptNarrative(studentId, refresh = false) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_CONCEPT_NARRATIVE(studentId), {
+      params: refresh ? { refresh: true } : {},
+    });
+    return data;
+  },
+
+  async getClassDigest(refresh = false) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_DASHBOARD_DIGEST, {
+      params: refresh ? { refresh: true } : {},
+    });
+    return data;
+  },
 };

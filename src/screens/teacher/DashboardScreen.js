@@ -34,6 +34,7 @@ const TINTS = {
   green:  { bg: '#E3F7EC', fg: '#3FAE6F' },
   blue:   { bg: '#E6F1FC', fg: '#3B82C4' },
   amber:  { bg: '#FDF1DC', fg: '#E89A2E' },
+  teal:   { bg: '#E2F4F6', fg: '#3A9BA8' },
 };
 
 // Each dashboard section gets its own accent so the panels read as distinct
@@ -43,6 +44,7 @@ const SECTION = {
   notes:        { icon: 'document-text-outline', ...TINTS.amber },
   calendar:     { icon: 'calendar-outline',    ...TINTS.blue },
   daySessions:  { icon: 'time-outline',        ...TINTS.green },
+  digest:       { icon: 'sparkles-outline',    ...TINTS.teal },
 };
 
 const PANEL_PAD    = 20;
@@ -354,6 +356,81 @@ function NotesPanel({ students, selectedId, onSelect, notes, loading, draft, onD
   );
 }
 
+/**
+ * Weekly class digest. Uses the dashboard's own Panel rather than the report
+ * screen's AiSummaryCard — the two screens are different visual systems, and a
+ * card styled for one reads as foreign in the other.
+ *
+ * Returns null whenever there is nothing to show: feature off, model call failed,
+ * or no students yet. A summary of numbers shown elsewhere on the page does not
+ * warrant an error state when it is missing.
+ */
+function DigestPanel({ data, loading, onRefresh, refreshing, width }) {
+  if (loading) {
+    return (
+      <Panel title="This week" section="digest" style={{ width }}>
+        <View style={styles.digestLoading}>
+          <ActivityIndicator size="small" color={TEAL} />
+          <Text style={styles.digestLoadingText}>Writing summary…</Text>
+        </View>
+      </Panel>
+    );
+  }
+
+  if (!data?.available || !data.summary) return null;
+
+  const { headline, highlights, watch_areas: watchAreas, caveat } = data.summary;
+
+  return (
+    <Panel
+      title="This week"
+      section="digest"
+      style={{ width }}
+      right={
+        <TouchableOpacity
+          onPress={onRefresh}
+          disabled={refreshing}
+          accessibilityRole="button"
+          accessibilityLabel="Regenerate weekly summary"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.digestRefresh}
+        >
+          {refreshing
+            ? <ActivityIndicator size="small" color={TEAL} />
+            : <Ionicons name="refresh" size={15} color={TEAL} />}
+        </TouchableOpacity>
+      }
+    >
+      {headline ? <Text style={styles.digestHeadline}>{headline}</Text> : null}
+
+      {highlights?.length ? (
+        <View style={styles.digestGroup}>
+          {highlights.map((h, i) => (
+            <View key={`hl-${i}`} style={styles.digestRow}>
+              <Ionicons name="ellipse" size={5} color={TINTS.green.fg} style={styles.digestDot} />
+              <Text style={styles.digestText}>{h}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {watchAreas?.length ? (
+        <View style={styles.digestGroup}>
+          <Text style={styles.digestGroupTitle}>Worth a look</Text>
+          {watchAreas.map((w, i) => (
+            <View key={`wa-${i}`} style={styles.digestRow}>
+              <Ionicons name="ellipse" size={5} color={TINTS.amber.fg} style={styles.digestDot} />
+              <Text style={styles.digestText}>{w}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {caveat ? <Text style={styles.digestCaveat}>{caveat}</Text> : null}
+    </Panel>
+  );
+}
+
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export default function TeacherDashboardScreen({ navigation }) {
@@ -371,6 +448,12 @@ export default function TeacherDashboardScreen({ navigation }) {
   const [notesLoading,      setNotesLoading]      = useState(false);
   const [noteDraft,         setNoteDraft]         = useState('');
   const [noteSaving,        setNoteSaving]        = useState(false);
+
+  // Kept out of `data` on purpose: a model call that may be slow, disabled or
+  // failing must not hold up or break the dashboard it decorates.
+  const [digest,           setDigest]           = useState(null);
+  const [digestLoading,    setDigestLoading]    = useState(false);
+  const [digestRefreshing, setDigestRefreshing] = useState(false);
 
   const logout = useAuthStore((s) => s.logout);
   const toast  = useToast();
@@ -408,6 +491,21 @@ export default function TeacherDashboardScreen({ navigation }) {
       toast.show(err.message, 'error');
     } finally {
       setRefreshing(false);
+    }
+  }, []);
+
+  // Errors are swallowed rather than toasted: unlike the notes and dashboard
+  // calls, a failed summary is not something the teacher needs to know about or
+  // act on — the panel simply does not appear.
+  const loadDigest = useCallback(async (refresh = false) => {
+    if (refresh) setDigestRefreshing(true); else setDigestLoading(true);
+    try {
+      setDigest(await teacherApi.getClassDigest(refresh));
+    } catch {
+      setDigest({ available: false });
+    } finally {
+      setDigestLoading(false);
+      setDigestRefreshing(false);
     }
   }, []);
 
@@ -457,6 +555,13 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   useEffect(() => { loadNotes(selectedStudentId); }, [selectedStudentId, loadNotes]);
 
+  // Chained off the dashboard load so the digest never competes with the data it
+  // summarises. Skipped entirely for a teacher with no students — there is
+  // nothing for the model to say, and the endpoint would only answer as much.
+  useEffect(() => {
+    if (data?.stats?.totalStudents > 0) loadDigest(false);
+  }, [data, loadDigest]);
+
   const handleAddNote = async () => {
     const body = noteDraft.trim();
     if (!body || selectedStudentId == null) return;
@@ -501,6 +606,15 @@ export default function TeacherDashboardScreen({ navigation }) {
   // ── Left column ──────────────────────────────────────────────────────────
   const mainColumn = (
     <View style={[styles.column, { width: mainW }]}>
+      {/* Absent whenever the summary is unavailable — the column closes up. */}
+      <DigestPanel
+        data={digest}
+        loading={digestLoading}
+        refreshing={digestRefreshing}
+        onRefresh={() => loadDigest(true)}
+        width={mainW}
+      />
+
       <Panel
         title={`My Students${proficiency.length > 0 ? ` (${proficiency.length})` : ''}`}
         section="students"
@@ -810,6 +924,60 @@ const styles = StyleSheet.create({
     color: '#6B8A80',
     lineHeight: 20,
     paddingVertical: Layout.spacing.sm,
+  },
+
+  // ── Weekly digest ──
+  digestHeadline: {
+    fontSize: 15,
+    fontFamily: 'DMSans_600SemiBold',
+    color: '#1A3D2E',
+    lineHeight: 22,
+  },
+  digestGroup: { marginTop: Layout.spacing.md },
+  digestGroupTitle: {
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
+    color: '#8AA79D',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  digestRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 5,
+  },
+  digestDot: { marginTop: 7, marginRight: 8 },
+  digestText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'DMSans_400Regular',
+    color: '#3F5C52',
+    lineHeight: 19,
+  },
+  // Shown, not hidden: the teacher should see what the summary does not know.
+  digestCaveat: {
+    marginTop: Layout.spacing.md,
+    paddingTop: Layout.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: '#E4EFEB',
+    fontSize: 11,
+    fontFamily: 'DMSans_400Regular',
+    color: '#8AA79D',
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
+  digestRefresh: { marginLeft: Layout.spacing.sm },
+  digestLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.sm,
+    paddingVertical: Layout.spacing.sm,
+  },
+  digestLoadingText: {
+    fontSize: 13,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
   },
   pillBtn: {
     paddingHorizontal: 14,

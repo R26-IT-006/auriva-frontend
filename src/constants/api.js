@@ -1,9 +1,9 @@
 // For Android emulator: http://10.0.2.2:3000/api
 // For iOS simulator: http://localhost:3000/api
 // For physical device: use your machine's local IP
-// Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.180:3000/api
+// Physical device on same WiFi → use machine's LAN IP e.g. http://192.168.1.19:3000/api
 // Android emulator → 10.0.2.2 maps to host machine's localhost
-export const API_BASE_URL = 'http://192.168.1.180:3000/api'; // Replace with your machine's LAN IP
+export const API_BASE_URL = 'http://192.168.1.19:3000/api'; // Replace with your machine's LAN IP
 
 export const ENDPOINTS = {
   // Auth
@@ -30,6 +30,10 @@ export const ENDPOINTS = {
   TEACHER_STUDENT_NOTE: (id, noteId) => `/teacher/students/${id}/notes/${noteId}`,
   TEACHER_CONCEPT_SUMMARY: (id) => `/teacher/students/${id}/concepts/summary`,
   TEACHER_CONCEPT_REPORT:  (id) => `/teacher/students/${id}/concepts/report`,
+  // AI summaries — teacher-facing narration of the two payloads above. Optional
+  // by design: both may answer { available: false }.
+  TEACHER_CONCEPT_NARRATIVE: (id) => `/teacher/students/${id}/concepts/narrative`,
+  TEACHER_DASHBOARD_DIGEST:  "/teacher/dashboard/digest",
 
   // Handwriting
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',

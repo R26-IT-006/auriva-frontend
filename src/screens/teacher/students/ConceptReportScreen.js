@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
+import { AiSummaryCard } from '../../../components/common/AiSummaryCard';
 import { MasteryRing } from '../../../components/charts/MasteryRing';
 import { TierBar, TierLegend } from '../../../components/charts/TierBar';
 import { TrendSparkline } from '../../../components/charts/TrendSparkline';
@@ -22,6 +23,16 @@ import { teacherApi } from '../../../api/teacher';
 import { scoreColor, formatPct, formatDuration } from '../../../utils/scoreColor';
 
 const TIER_LABEL = { tier1_status: 'Identify', tier2_status: 'Name', tier3_status: 'Watch' };
+
+// Which fields of the narrative to render, in order. "suggested_focus" is worded
+// as options for the teacher, never as instructions — the model has no authority
+// over what this child is shown next.
+const NARRATIVE_GROUPS = {
+  strengths:       { title: 'Going well',       tone: 'positive' },
+  watch_areas:     { title: 'Worth a look',     tone: 'warning'  },
+  mix_ups:         { title: 'Mix-ups',          tone: 'mixup'    },
+  suggested_focus: { title: 'You might revisit', tone: 'neutral' },
+};
 
 function Section({ title, subtitle, children, right }) {
   return (
@@ -73,6 +84,13 @@ export default function ConceptReportScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [expanded, setExpanded] = useState(null);
 
+  // Deliberately separate from `report`: the narrative is a model call that can be
+  // slow, disabled, or fail outright, and none of that may hold up or break the
+  // report itself. Its errors are swallowed — an absent card, never a banner.
+  const [narrative, setNarrative] = useState(null);
+  const [narrativeLoading, setNarrativeLoading] = useState(false);
+  const [narrativeRefreshing, setNarrativeRefreshing] = useState(false);
+
   const load = useCallback(async () => {
     if (!student?.sid) return;
     try {
@@ -86,7 +104,27 @@ export default function ConceptReportScreen({ route, navigation }) {
     }
   }, [student?.sid]);
 
+  const loadNarrative = useCallback(async (refresh = false) => {
+    if (!student?.sid) return;
+    if (refresh) setNarrativeRefreshing(true); else setNarrativeLoading(true);
+    try {
+      setNarrative(await teacherApi.getConceptNarrative(student.sid, refresh));
+    } catch {
+      setNarrative({ available: false });
+    } finally {
+      setNarrativeLoading(false);
+      setNarrativeRefreshing(false);
+    }
+  }, [student?.sid]);
+
   useEffect(() => { load(); }, [load]);
+
+  // Chained off `report` rather than fired alongside it: on a cache miss this is
+  // the slowest request on the screen, and there is no reason to have it
+  // competing with the data the teacher actually came for.
+  useEffect(() => {
+    if (report) loadNarrative(false);
+  }, [report, loadNarrative]);
 
   useEffect(() => {
     navigation.setOptions({ title: student?.full_name ? `${student.full_name} · Concepts` : 'Concept Report' });
@@ -153,6 +191,16 @@ export default function ConceptReportScreen({ route, navigation }) {
             </View>
           </View>
         </Card>
+
+        {/* Renders nothing when the feature is off, the model call failed, or the
+            child has no logged activity yet. */}
+        <AiSummaryCard
+          data={narrative}
+          loading={narrativeLoading}
+          refreshing={narrativeRefreshing}
+          onRefresh={() => loadNarrative(true)}
+          groups={NARRATIVE_GROUPS}
+        />
 
         <Section title="Accuracy trend" subtitle="Last 30 days · dashed line is the pass mark">
           <View style={styles.trendWrap}>
