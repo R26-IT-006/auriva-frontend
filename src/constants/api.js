@@ -52,6 +52,10 @@ export const ENDPOINTS = {
   DIALOGUE_TRAJECTORY_EXPLAIN:      (sid, wid) => `/teacher/student/${sid}/word/${wid}/trajectory/explain`,
   DIALOGUE_TRAJECTORY_REPORT:       (sid) => `/teacher/student/${sid}/dialogue/trajectory-report`,
 
+  // Dialogue – TASK-47 practice-trend timelines (module-level and per-word).
+  DIALOGUE_TIMELINE:                (sid) => `/teacher/student/${sid}/dialogue/timeline`,
+  DIALOGUE_WORD_TIMELINE:           (sid, wid) => `/teacher/student/${sid}/word/${wid}/dialogue/timeline`,
+
   // Dialogue – TASK-12 Non-Verbal Adaptive Wait-Time Escalation
   DIALOGUE_SPEECH_STATE:            (sid) => `/teacher/student/${sid}/speech-state`,
 
@@ -69,6 +73,9 @@ export const ENDPOINTS = {
   LEVEL2_PROGRESS:              (sid) => `/teacher/student/${sid}/level2/progress`,
   // TASK-46 — teacher-facing Level 2 report, all three topics in one call.
   LEVEL2_REPORT:                (sid) => `/teacher/student/${sid}/level2/report`,
+  // TASK-47 — practice-trend timelines (module-level and per-topic).
+  LEVEL2_TIMELINE:              (sid) => `/teacher/student/${sid}/level2/timeline`,
+  LEVEL2_TOPIC_TIMELINE:        (sid, topic) => `/teacher/student/${sid}/level2/topic/${topic}/timeline`,
   LEVEL2_SESSION_START:         (sid) => `/teacher/student/${sid}/level2/session/start`,
   LEVEL2_SESSION_COMPLETE:      (sid, sessId) => `/teacher/student/${sid}/level2/session/${sessId}/complete`,
   LEVEL2_STEP3:                 (sid, sessId, sentIdx) => `/teacher/student/${sid}/level2/session/${sessId}/sentence/${sentIdx}/step3`,

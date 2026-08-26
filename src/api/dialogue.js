@@ -119,6 +119,22 @@ export const dialogueApi = {
     return data;
   },
 
+  // TASK-47 — module-level practice trend. Returns { points: [...] } ready for
+  // TrendSparkline. Cheap: one date-grouped query, no model involved.
+  async getModuleTimeline(studentId, days = 90) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_TIMELINE(studentId), {
+      params: { days },
+    });
+    return data;
+  },
+
+  // TASK-47 — one word's history across every date it was attempted. Fetched
+  // lazily, only when a teacher expands that row — never in the batch report.
+  async getWordTimeline(studentId, wordId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_WORD_TIMELINE(studentId, wordId));
+    return data;
+  },
+
   // TASK-12 — Non-Verbal Adaptive Wait-Time Escalation
   // Returns { consecutive_refusals_today, wait_multiplier, auto_nonverbal_today }.
   // Fetched by each Phase 2 production screen on mount; failure degrades to 1.0×.

@@ -109,4 +109,19 @@ export const level2Api = {
     const { data } = await client.get(ENDPOINTS.LEVEL2_REPORT(studentId));
     return data;
   },
+
+  // TASK-47 — module-level practice trend across all three topics.
+  async getModuleTimeline(studentId, days = 90) {
+    const { data } = await client.get(ENDPOINTS.LEVEL2_TIMELINE(studentId), {
+      params: { days },
+    });
+    return data;
+  },
+
+  // TASK-47 — one topic's history across every session date. Fetched lazily,
+  // only when a teacher expands that topic — never in the batch report.
+  async getTopicTimeline(studentId, topic) {
+    const { data } = await client.get(ENDPOINTS.LEVEL2_TOPIC_TIMELINE(studentId, topic));
+    return data;
+  },
 };

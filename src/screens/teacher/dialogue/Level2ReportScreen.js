@@ -7,10 +7,12 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
+import { TrendSparkline } from '../../../components/charts/TrendSparkline';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { level2Api } from '../../../api/level2';
@@ -148,7 +150,61 @@ function paragraphSentence(topic) {
   return `Included ${labelElements(included)}; ${labelElements(missing)} ${wereWas} missing.`;
 }
 
-function TopicBlock({ topic }) {
+/**
+ * TASK-47 — one topic's session-by-session accuracy, fetched only when opened
+ * and cached in this component's own state, so reopening costs nothing. Never
+ * part of the batch report payload.
+ */
+function TopicHistory({ studentId, topic }) {
+  const [open, setOpen] = useState(false);
+  const [points, setPoints] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const toggle = useCallback(async () => {
+    const next = !open;
+    setOpen(next);
+    if (!next || points !== null || loading) return;
+    setLoading(true);
+    setFailed(false);
+    try {
+      const data = await level2Api.getTopicTimeline(studentId, topic);
+      setPoints(data?.data?.points ?? data?.points ?? []);
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [open, points, loading, studentId, topic]);
+
+  return (
+    <View>
+      <TouchableOpacity style={styles.historyToggle} activeOpacity={0.7} onPress={toggle}>
+        <Ionicons name="time-outline" size={13} color={Colors.text.link} />
+        <Text style={styles.historyToggleText}>History</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color={Colors.text.link} />
+      </TouchableOpacity>
+
+      {open ? (
+        <View style={styles.historyBody}>
+          {/* Practice over time, not the mastery status on the chip above. */}
+          <Text style={styles.historyNote}>
+            Session-by-session accuracy for this topic — separate from the status above.
+          </Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.icon.active} style={styles.historyLoading} />
+          ) : failed ? (
+            <Text style={styles.historyNote}>Could not load this topic’s history.</Text>
+          ) : (
+            <TrendSparkline points={points ?? []} width={220} height={48} />
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function TopicBlock({ topic, studentId }) {
   const started = topic.status !== 'not_started';
 
   return (
@@ -198,6 +254,8 @@ function TopicBlock({ topic }) {
           {topic.silence_timeout ? (
             <Line text="The session waited through a silence without an answer at least once." />
           ) : null}
+
+          <TopicHistory studentId={studentId} topic={topic.topic} />
         </>
       ) : null}
     </View>
@@ -206,8 +264,10 @@ function TopicBlock({ topic }) {
 
 export default function Level2ReportScreen({ route, navigation }) {
   const student = route.params?.student;
+  const { width } = useWindowDimensions();
 
   const [report, setReport]         = useState(null);
+  const [timeline, setTimeline]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -216,8 +276,18 @@ export default function Level2ReportScreen({ route, navigation }) {
     if (!student?.sid) return;
     try {
       setError(null);
-      const resp = await level2Api.getReport(student.sid);
-      setReport(resp?.data ?? null);
+      // Both started together — the trend never queues behind the report.
+      const [reportResult, timelineResult] = await Promise.allSettled([
+        level2Api.getReport(student.sid),
+        level2Api.getModuleTimeline(student.sid),
+      ]);
+
+      if (reportResult.status === 'rejected') throw reportResult.reason;
+      setReport(reportResult.value?.data ?? null);
+      // A failing trend degrades to its own empty state, never the whole screen.
+      setTimeline(timelineResult.status === 'fulfilled'
+        ? (timelineResult.value?.data?.points ?? timelineResult.value?.points ?? [])
+        : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -287,6 +357,17 @@ export default function Level2ReportScreen({ route, navigation }) {
           </View>
         </Card>
 
+        {/* TASK-47 — practice over time across all three topics. Sits with the
+            at-a-glance summary, above the per-topic detail. */}
+        <Section title="Practice trend" subtitle="Session score per day · dashed line is the pass mark">
+          <View style={styles.trendWrap}>
+            <TrendSparkline
+              points={timeline}
+              width={width - Layout.spacing.lg * 2 - Layout.spacing.md * 2}
+            />
+          </View>
+        </Section>
+
         {totals.topics_started === 0 && (
           <View style={styles.hint}>
             <Ionicons name="information-circle-outline" size={16} color="#B4780A" />
@@ -304,7 +385,7 @@ export default function Level2ReportScreen({ route, navigation }) {
             right={<StatusChip status={topic.status} />}
           >
             <View style={styles.topicCard}>
-              <TopicBlock topic={topic} />
+              <TopicBlock topic={topic} studentId={student?.sid} />
             </View>
           </Section>
         ))}
@@ -348,6 +429,20 @@ const styles = StyleSheet.create({
 
   chip:     { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Layout.radius.full },
   chipText: { fontSize: 10, fontFamily: 'Nunito_700Bold' },
+
+  // TASK-47 — module trend + per-topic history
+  trendWrap: { padding: Layout.spacing.md },
+  historyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  historyToggleText: { fontSize: 10, color: Colors.text.link, fontFamily: 'Nunito_700Bold' },
+  historyBody:    { paddingTop: 2, gap: 4 },
+  historyNote:    { fontSize: 10, color: Colors.text.muted, lineHeight: 15 },
+  historyLoading: { alignSelf: 'flex-start', paddingVertical: Layout.spacing.sm },
 
   hint: {
     flexDirection: 'row',

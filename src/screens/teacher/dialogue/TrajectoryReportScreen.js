@@ -7,10 +7,12 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
+import { TrendSparkline } from '../../../components/charts/TrendSparkline';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { dialogueApi } from '../../../api/dialogue';
@@ -315,7 +317,70 @@ function Tier2Breakdown({ explanation, confidence }) {
   );
 }
 
-function WordRow({ row }) {
+/**
+ * TASK-47 — one word's session-by-session accuracy, fetched only when a teacher
+ * opens it. Deliberately not part of the batch report: that call already runs a
+ * SHAP pass per word, and most rows are never expanded.
+ *
+ * The result is cached in this row's own state, so collapsing and reopening the
+ * same row costs nothing.
+ */
+function WordHistory({ studentId, wordId }) {
+  const [open, setOpen] = useState(false);
+  const [points, setPoints] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const toggle = useCallback(async () => {
+    const next = !open;
+    setOpen(next);
+    // Fetch once per row per session — an already-loaded row never refetches.
+    if (!next || points !== null || loading) return;
+    setLoading(true);
+    setFailed(false);
+    try {
+      const data = await dialogueApi.getWordTimeline(studentId, wordId);
+      setPoints(data?.points ?? []);
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [open, points, loading, studentId, wordId]);
+
+  return (
+    <View>
+      <TouchableOpacity style={styles.historyToggle} activeOpacity={0.7} onPress={toggle}>
+        <Ionicons name="time-outline" size={13} color={Colors.text.link} />
+        <Text style={styles.historyToggleText}>History</Text>
+        <Ionicons
+          name={open ? 'chevron-up' : 'chevron-down'}
+          size={13}
+          color={Colors.text.link}
+        />
+      </TouchableOpacity>
+
+      {open ? (
+        <View style={styles.historyBody}>
+          {/* Says plainly that this is practice over time, not the mastery
+              status shown above — the two must not be read as the same thing. */}
+          <Text style={styles.historyNote}>
+            Session-by-session accuracy for this word — separate from the status above.
+          </Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.icon.active} style={styles.historyLoading} />
+          ) : failed ? (
+            <Text style={styles.muted}>Could not load this word’s history.</Text>
+          ) : (
+            <TrendSparkline points={points ?? []} width={220} height={48} />
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function WordRow({ row, studentId }) {
   const tint = TRAJECTORY_TINT[row.trajectory] || Colors.text.secondary;
   const isDisabled = row.tier === 'disabled';
 
@@ -342,14 +407,18 @@ function WordRow({ row }) {
       {!isDisabled && row.caveat ? (
         <Text style={styles.rowCaveat}>{row.caveat}</Text>
       ) : null}
+
+      <WordHistory studentId={studentId} wordId={row.word_id} />
     </View>
   );
 }
 
 export default function TrajectoryReportScreen({ route, navigation }) {
   const student = route.params?.student;
+  const { width } = useWindowDimensions();
 
   const [report, setReport]         = useState(null);
+  const [timeline, setTimeline]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -358,7 +427,21 @@ export default function TrajectoryReportScreen({ route, navigation }) {
     if (!student?.sid) return;
     try {
       setError(null);
-      setReport(await dialogueApi.getTrajectoryReport(student.sid));
+      // Started together, not one after the other: the report runs a SHAP pass
+      // per word, and making the trend queue behind it would add its latency to
+      // an already-slow call for no reason.
+      const [reportResult, timelineResult] = await Promise.allSettled([
+        dialogueApi.getTrajectoryReport(student.sid),
+        dialogueApi.getModuleTimeline(student.sid),
+      ]);
+
+      if (reportResult.status === 'rejected') throw reportResult.reason;
+      setReport(reportResult.value);
+      // A failing trend must not take the report down with it — the chart just
+      // shows its own empty state.
+      setTimeline(timelineResult.status === 'fulfilled'
+        ? (timelineResult.value?.points ?? [])
+        : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -429,6 +512,18 @@ export default function TrajectoryReportScreen({ route, navigation }) {
           </View>
         </Card>
 
+        {/* TASK-47 — how practice is going over time. Sits with the at-a-glance
+            summary rather than under the per-word detail. This is practice
+            accuracy, not the mastery status shown per word below. */}
+        <Section title="Practice trend" subtitle="Accuracy per day · dashed line is the pass mark">
+          <View style={styles.trendWrap}>
+            <TrendSparkline
+              points={timeline}
+              width={width - Layout.spacing.lg * 2 - Layout.spacing.md * 2}
+            />
+          </View>
+        </Section>
+
         {/* DEC-07 — mandatory reliability caveat, placed immediately under the
             overview so it is on screen before any Tier 2 result can be read. */}
         {totals.tier2 > 0 && (
@@ -455,7 +550,9 @@ export default function TrajectoryReportScreen({ route, navigation }) {
             subtitle={`${rows.filter((r) => r.tier !== 'disabled').length} of ${rows.length} predicted`}
           >
             <View style={styles.wordBlock}>
-              {rows.map((row) => <WordRow key={row.word_id} row={row} />)}
+              {rows.map((row) => (
+                <WordRow key={row.word_id} row={row} studentId={student.sid} />
+              ))}
             </View>
           </Section>
         ))}
@@ -522,6 +619,21 @@ const styles = StyleSheet.create({
   barValue:    { width: 46, textAlign: 'right', fontSize: Layout.fontSize.xs, fontFamily: 'Nunito_700Bold', color: Colors.text.secondary },
 
   absentNote: { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: 2 },
+
+  // TASK-47 — module trend + per-word history
+  trendWrap: { padding: Layout.spacing.md },
+  historyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    marginTop: 2,
+  },
+  historyToggleText: { fontSize: 10, color: Colors.text.link, fontFamily: 'Nunito_700Bold' },
+  historyBody:    { paddingTop: 2, gap: 4 },
+  historyNote:    { fontSize: 10, color: Colors.text.muted, lineHeight: 15 },
+  historyLoading: { alignSelf: 'flex-start', paddingVertical: Layout.spacing.sm },
   disclaimer: { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: Layout.spacing.xs, fontStyle: 'italic' },
   rowCaveat:  { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: 2 },
 
