@@ -12,7 +12,7 @@
     "start:local": "expo start --localhost --port 8081",
     "start:lan": "expo start --lan --port 8081",
     "start:clear": "expo start --lan --port 8081 --clear",
-    "android": "expo run:android",
+    "android": "node scripts/run-android.js",
     "ios": "expo run:ios",
     "web": "expo start --web"
   },
