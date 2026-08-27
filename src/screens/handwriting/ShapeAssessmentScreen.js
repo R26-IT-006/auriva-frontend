@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   PanResponder,
-  Dimensions,
   Animated,
   AccessibilityInfo,
 } from 'react-native';
@@ -25,6 +24,13 @@ import { ENDPOINTS } from '../../constants/api';
 import {
   computeShapeTemplate, computeInvariantDtwDistance, computeUnifiedShapeScore,
 } from '../../utils/unifiedShapeScoreMirror';
+// The shared shape-assessment presentation - this screen and the
+// demonstration render the SAME component, in different modes.
+import ShapeAssessmentStage from '../../components/handwriting/ShapeAssessmentStage';
+import {
+  CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CX, CANVAS_CY, POINTER_SIZE, POINTER_HALF,
+  SHAPE_STARTS, SHAPE_SCREEN_WIDTH, SHAPE_SCREEN_HEIGHT,
+} from '../../constants/shapeCanvasLayout';
 import {
   calculatePauseMetrics,
   calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
@@ -37,12 +43,16 @@ import {
 } from '../../utils/collectionSession';
 import { useLockLandscape } from '../../utils/useOrientationLock';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const CANVAS_WIDTH  = SCREEN_WIDTH  * 0.6;
-const CANVAS_HEIGHT = SCREEN_HEIGHT * 0.55;
-const CANVAS_CX     = CANVAS_WIDTH  / 2;
-const CANVAS_CY     = CANVAS_HEIGHT / 2;
+// Canvas geometry now lives in ONE place, imported above and shared with the
+// "watch first" demonstration, so a demo can never render a shape at a
+// different size. Values unchanged - see constants/shapeCanvasLayout.js.
+//
+// The screen dimensions keep their original local names because this file's
+// own decorative styles (the background bubbles) size themselves from them.
+// Aliased rather than re-measured: a second Dimensions.get('window') call
+// would be a second source of truth for the same number.
+const SCREEN_WIDTH  = SHAPE_SCREEN_WIDTH;
+const SCREEN_HEIGHT = SHAPE_SCREEN_HEIGHT;
 
 // TEMPORARY RESEARCH/DEBUG INSTRUMENTATION — remove after canvas-dimension
 // investigation is done. No formula/layout/scoring/DB-write change.
@@ -51,8 +61,6 @@ console.log(`WINDOW_HEIGHT=${SCREEN_HEIGHT}`);
 console.log(`CANVAS_WIDTH=${CANVAS_WIDTH}`);
 console.log(`CANVAS_HEIGHT=${CANVAS_HEIGHT}`);
 
-const POINTER_SIZE = 14;
-const POINTER_HALF = POINTER_SIZE / 2;
 const N_POINTS     = 100;
 
 const AVATAR_MAP = {
@@ -111,15 +119,6 @@ const SHAPES = [
   },
 ];
 
-// Starting coordinates (SVG space) for pulsing ring — matches GuideShape start dots
-const SHAPE_STARTS = {
-  horizontal_line: { x: CANVAS_CX - 200,  y: CANVAS_CY        },
-  vertical_line:   { x: CANVAS_CX,         y: CANVAS_CY - 150  },
-  full_circle:     { x: CANVAS_CX,         y: CANVAS_CY - 120  },
-  half_circle:     { x: CANVAS_CX - 150,   y: CANVAS_CY        },
-  zigzag:          { x: CANVAS_CX - 180,   y: CANVAS_CY + 40   },
-  curve_wave:      { x: CANVAS_CX - 180,   y: CANVAS_CY        },
-};
 
 const SHAPE_AUDIO = {
   horizontal_line: require('../../../assets/handwriting_instructions/horizontal_line.mp3'),
@@ -244,70 +243,6 @@ function calculateFeatures(paths, shapeId) {
 }
 
 // ─── Guide shape SVG ──────────────────────────────────────────────────────────
-
-function GuideShape({ shapeId, theme }) {
-  const cx = CANVAS_CX;
-  const cy = CANVAS_CY;
-  const dash = { stroke: '#B8C8E8', strokeWidth: 3, strokeDasharray: '10,6' };
-
-  if (shapeId === 'horizontal_line') return (
-    <>
-      <Line x1={cx - 200} y1={cy} x2={cx + 200} y2={cy} {...dash} />
-      <Circle cx={cx - 200} cy={cy} r={12} fill={theme.button} />
-    </>
-  );
-
-  if (shapeId === 'vertical_line') return (
-    <>
-      <Line x1={cx} y1={cy - 150} x2={cx} y2={cy + 150} {...dash} />
-      <Circle cx={cx} cy={cy - 150} r={12} fill={theme.button} />
-    </>
-  );
-
-  if (shapeId === 'full_circle') return (
-    <>
-      <Circle cx={cx} cy={cy} r={120} fill="none" {...dash} />
-      <Circle cx={cx} cy={cy - 120} r={12} fill={theme.button} />
-    </>
-  );
-
-  if (shapeId === 'half_circle') return (
-    <>
-      <Path
-        d={`M ${cx - 150} ${cy} A 150 150 0 0 1 ${cx + 150} ${cy}`}
-        fill="none" {...dash}
-      />
-      <Circle cx={cx - 150} cy={cy} r={12} fill={theme.button} />
-    </>
-  );
-
-  if (shapeId === 'zigzag') {
-    const pts = [
-      { x: cx - 180, y: cy + 40 }, { x: cx - 120, y: cy - 40 },
-      { x: cx - 60,  y: cy + 40 }, { x: cx,       y: cy - 40 },
-      { x: cx + 60,  y: cy + 40 }, { x: cx + 120, y: cy - 40 },
-      { x: cx + 180, y: cy + 40 },
-    ];
-    return (
-      <>
-        <Polyline points={pts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" {...dash} />
-        <Circle cx={cx - 180} cy={cy + 40} r={12} fill={theme.button} />
-      </>
-    );
-  }
-
-  if (shapeId === 'curve_wave') return (
-    <>
-      <Path
-        d={`M ${cx - 180} ${cy} Q ${cx - 120} ${cy - 60},${cx - 60} ${cy} Q ${cx} ${cy + 60},${cx + 60} ${cy} Q ${cx + 120} ${cy - 60},${cx + 180} ${cy}`}
-        fill="none" {...dash}
-      />
-      <Circle cx={cx - 180} cy={cy} r={12} fill={theme.button} />
-    </>
-  );
-
-  return null;
-}
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
@@ -663,99 +598,26 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
         <View style={styles.container}>
 
-          {/* ── TOP: assessment badge + shape title + success badge + instruction ── */}
-          <View style={styles.topArea}>
-
-            <View style={[styles.assessBadge, { backgroundColor: theme.button + '18', borderColor: theme.button + '40' }]}>
-              <Ionicons name="pencil-outline" size={13} color={theme.button} />
-              <Text style={[styles.assessBadgeText, { color: theme.button }]}>
-                {currentShape.pageLabel}
-              </Text>
-            </View>
-
-            <View style={[styles.instructionCard, { borderLeftColor: theme.button }]}>
-              <View style={styles.instructionInner}>
-                <View style={styles.instructionTexts}>
-                  <Text style={styles.instructionEn}>{currentShape.instruction}</Text>
-                  <Text style={styles.instructionSi}>{currentShape.instructionSi}</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => playShapeAudio(currentShape.id)}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={[styles.speakerBtn, { backgroundColor: theme.button + '18' }]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="volume-high" size={24} color={theme.button} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-          </View>
-
-          {/* ── MIDDLE: drawing canvas ── */}
-          <View style={styles.canvasArea}>
-            <View
-              style={[styles.canvasCard, { borderColor: theme.button + '30' }]}
-              ref={canvasRef}
-              onLayout={measureCanvasOrigin}
-              {...panResponder.panHandlers}
-            >
-              <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
-                <GuideShape shapeId={currentShape.id} theme={theme} />
-
-                {allPaths.map((stroke, i) => (
-                  <Polyline
-                    key={i}
-                    points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
-                    stroke={theme.button}
-                    strokeWidth={4}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                ))}
-
-                {currentPath.length > 1 && (
-                  <Polyline
-                    points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
-                    stroke={theme.button}
-                    strokeWidth={4}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                    opacity={0.7}
-                  />
-                )}
-              </Svg>
-
-              {/* Pulsing ring — guides child to start position */}
-              {!showNext && (
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.pulseDot,
-                    {
-                      left:            startDot.x - 18,
-                      top:             startDot.y - 18,
-                      borderColor:     theme.button,
-                      backgroundColor: theme.button + '20',
-                      transform:       [{ scale: pulseScale }],
-                      opacity:         pulseOpacity,
-                    },
-                  ]}
-                />
-              )}
-
-              {/* Animated guide pointer */}
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.pointer,
-                  { backgroundColor: theme.button, left: pointerLeft, top: pointerTop },
-                ]}
-              />
-            </View>
-          </View>
+          {/* Instruction + drawing canvas, rendered by the SHARED
+              ShapeAssessmentStage so the "watch first" demonstration and this
+              real assessment are the same layout from the same file. */}
+          <ShapeAssessmentStage
+            mode="practice"
+            theme={theme}
+            shape={currentShape}
+            startDot={startDot}
+            allPaths={allPaths}
+            currentPath={currentPath}
+            showPulse={!showNext}
+            pulseScale={pulseScale}
+            pulseOpacity={pulseOpacity}
+            pointerLeft={pointerLeft}
+            pointerTop={pointerTop}
+            onSpeak={() => playShapeAudio(currentShape.id)}
+            canvasRef={canvasRef}
+            onCanvasLayout={measureCanvasOrigin}
+            panHandlers={panResponder.panHandlers}
+          />
 
           {/* ── BOTTOM: progress dots + action buttons ── */}
           <View style={styles.bottomArea}>
@@ -866,31 +728,6 @@ const styles = StyleSheet.create({
   },
 
   // Top area
-  topArea: {
-    alignItems: 'center',
-    marginTop: 16,
-    width: '100%',
-    flexShrink: 0,
-  },
-
-  assessBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  assessBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-
-
   successBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -907,88 +744,7 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
   },
 
-  instructionCard: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 22,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    borderLeftWidth: 4,
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
-    marginTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  instructionInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  instructionTexts: {
-    flex: 1,
-    gap: 4,
-  },
-  instructionEn: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#333333',
-    textAlign: 'center',
-    lineHeight: 30,
-  },
-  instructionSi: {
-    fontSize: 19,
-    fontWeight: '600',
-    color: '#7B7B9E',
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-  speakerBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   // Canvas area
-  canvasArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-  },
-  canvasCard: {
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
-    backgroundColor: 'rgba(248,250,255,0.96)',
-    borderRadius: 26,
-    borderWidth: 2,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.09,
-    shadowRadius: 18,
-    elevation: 5,
-  },
-  pointer: {
-    position: 'absolute',
-    width: POINTER_SIZE,
-    height: POINTER_SIZE,
-    borderRadius: POINTER_HALF,
-    opacity: 0.8,
-  },
-  pulseDot: {
-    position: 'absolute',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-  },
-
   // Bottom area
   bottomArea: {
     alignItems: 'center',

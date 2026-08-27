@@ -21,6 +21,10 @@ import WordLetterSelectScreen   from '../screens/handwriting/words/WordLetterSel
 import TeacherReportScreen        from '../screens/handwriting/reports/TeacherReportScreen';
 import WritingCheckScreen         from '../screens/handwriting/WritingCheckScreen';
 import DataCollectionDoneScreen  from '../screens/handwriting/DataCollectionDoneScreen';
+// One-time "watch first" demonstrations. A pure detour screen: it renders an
+// animation of the SAME reference path the next activity uses, then replaces
+// itself with that activity. See screens/handwriting/HandwritingDemoScreen.js.
+import HandwritingDemoScreen     from '../screens/handwriting/HandwritingDemoScreen';
 // Proposal FR-13, Phase 7A — one central session-duration mechanism for
 // the whole handwriting flow (prewriting/lowercase/uppercase/word
 // writing-practice only — never teacher report/setup/login). Mounted once
@@ -117,6 +121,12 @@ export default function HandwritingNavigator({ route }) {
       <Stack.Screen
         name="WordProgress"
         component={WordProgressScreen}
+        initialParams={{ student, theme }}
+      />
+      {/* Demonstration detour — child-facing, landscape, writes nothing. */}
+      <Stack.Screen
+        name="HandwritingDemo"
+        component={HandwritingDemoScreen}
         initialParams={{ student, theme }}
       />
       {/* Writing Check — teacher-initiated, descriptive assessment only. */}

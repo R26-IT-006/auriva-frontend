@@ -156,3 +156,33 @@ export function describeMotorPreparation(plan) {
   if (labels.length === 0) return 'Not available';
   return labels.join(' · ');
 }
+
+// ─── Exact-letter home practice (two failed cycles on one practice date) ──
+// A SECOND recommendation source alongside the family-level persistent
+// difficulty one. Teacher-facing wording only: it never mentions cycles,
+// thresholds, scores or any internal identifier - just the letter, whether it
+// is mastered yet, and what to do.
+
+export const CANDIDATE_SOURCE_TWO_CYCLE = 'two_cycle_failure';
+// The cap became three cycles when mastery moved to attempt-3-only (see
+// backend config/masteryPolicy.js). New candidates carry this source; the
+// old one above is still emitted by NOTHING but still present on every
+// worksheet row created before the change, so both must be recognised.
+export const CANDIDATE_SOURCE_THREE_CYCLE = 'three_cycle_failure';
+export const EXACT_LETTER_CANDIDATE_SOURCES = [
+  CANDIDATE_SOURCE_THREE_CYCLE,
+  CANDIDATE_SOURCE_TWO_CYCLE,
+];
+
+export const TWO_CYCLE_SECTION_LABEL = 'Additional Home Practice';
+export const TWO_CYCLE_STATUS_LABEL  = 'Not yet mastered';
+export const TWO_CYCLE_DEFER_LABEL   = 'Not Now';
+
+/** @returns {boolean} true for the exact-letter home-practice candidate. */
+export function isTwoCycleCandidate(recommendation) {
+  // Accepts the historical source too — a teacher looking at a
+  // recommendation issued before the three-cycle policy must still see it
+  // rendered as an exact-letter home-practice card, not fall through to the
+  // generic "Homework Recommendation" branch.
+  return EXACT_LETTER_CANDIDATE_SOURCES.includes(recommendation?.source);
+}

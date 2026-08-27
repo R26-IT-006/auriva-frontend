@@ -91,8 +91,24 @@ describe('LetterPracticeScreen\'s uppercase unlock gate is authoritative, not ha
     expect(effectBlock).toContain('setLowercaseProgress(res.data.lowercase_completed');
   });
 
-  it('the uppercase pill\'s tap handler is still gated behind lowercaseDone', () => {
-    expect(letterPractice).toMatch(/onPress=\{\(\)\s*=>\s*lowercaseDone\s*&&\s*goToLetterScreen\('uppercase'/);
+  it("the uppercase pill's tap handler is still gated", () => {
+    // The tap site now reads `uppercaseOpen`, which is `lowercaseDone` OR the
+    // explicit demo-preview switch (constants/demoAccess.js), and nothing else.
+    expect(letterPractice).toMatch(/onPress=\{\(\)\s*=>\s*uppercaseOpen\s*&&\s*goToLetterScreen\('uppercase'/);
+    expect(letterPractice).toMatch(/const uppercaseOpen\s+= canOpen\(lowercaseDone\);/);
+  });
+
+  it('the EARNED rule is untouched - lowercaseDone still decides how the pill looks', () => {
+    expect(letterPractice).toMatch(/const lowercaseDone\s+= lowercaseProgress >= 26;/);
+    // "Ready to go!" - the earned state - is still keyed off the real rule.
+    expect(letterPractice).toMatch(/lowercaseDone \? \(/);
+    expect(letterPractice).toMatch(/<Text style=\{styles\.pillSubLabel\}>Ready to go!/);
+  });
+
+  it('an early tap is shown as a preview, never dressed up as earned', () => {
+    expect(letterPractice).toMatch(/const uppercasePreview\s+= isPreview\(lowercaseDone\);/);
+    expect(letterPractice).toMatch(/UPPERCASE_ORDER_CAPTION/);
+    expect(letterPractice).toMatch(/PREVIEW_BADGE/);
   });
 });
 

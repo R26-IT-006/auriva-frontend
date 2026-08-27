@@ -84,7 +84,11 @@ export default function WordLetterSelectScreen({ route, navigation }) {
   const {
     requestBack: requestTeacherReport,
     gateModal: teacherReportGateModal,
-  } = useGatedBack(() => navigation.navigate('TeacherReport', { student, theme }));
+  } = useGatedBack(() => navigation.navigate('TeacherReport', {
+    // Back from the report returns HERE, not to whatever the stack holds
+    // underneath it — see utils/backToOrigin.js.
+    student, theme, originRoute: 'WordLetterSelect',
+  }));
 
   const { student, theme } = route.params;
 

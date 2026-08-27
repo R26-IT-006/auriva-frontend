@@ -30,6 +30,9 @@ import {
 import { featuresToScore } from '../../../utils/adaptiveSequencing';
 import { submitWordAttempt, newActionId } from '../../../utils/wordApi';
 import { afterGuidedAttempt, buildWordRouteParams, resolveWordSession } from '../../../utils/wordWorkflow';
+// One-time word-writing introduction — see utils/demoPolicy.js.
+import { useDemoDetour } from '../../../utils/demoDetour';
+import { DEMO_KEYS } from '../../../utils/demoPolicy';
 import { childFeedbackMessage } from '../../../utils/wordFeedback';
 import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../../utils/touchPointSanitize';
 import { useLearningSessionActivity } from '../../../context/LearningSessionContext';
@@ -37,26 +40,25 @@ import { LIVE_ACTIVITY_TYPES } from '../../../constants/liveSessionPolicy';
 import { buildProgressPatch, buildScorePatch } from '../../../utils/liveSessionSnapshot';
 import BreakPromptModal from '../../../components/handwriting/BreakPromptModal';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
+// The shared word-writing presentation - this screen and the demonstration
+// render the SAME component, in different modes.
+import WordWritingStage from '../../../components/handwriting/WordWritingStage';
+import {
+  PAD, COL_L, IMG_SIZE, CANVAS_W, CANVAS_H, LINE_1, LINE_2, LINE_3, LINE_4,
+  WORD_SCREEN_W,
+} from '../../../constants/wordCanvasLayout';
 import useGatedBack from '../../../utils/useGatedBack';
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const PAD = 16;
-
-// Two-column split — all sizes relative to screen, zero hardcoded pixels.
-// Image column is deliberately narrow (vs. the 0.43 letter-tracing screens
-// use for one big letter) so the canvas gets most of the width — a whole
-// word needs far more horizontal room than a single letter does.
-const COL_L    = Math.round(SCREEN_W * 0.28);           // left column (image)
-const IMG_SIZE = COL_L - 8;                              // image fills the column
-const CANVAS_W = SCREEN_W - COL_L - PAD * 2;            // canvas = right column width
-const CANVAS_H = Math.round(SCREEN_H * 0.46);           // 46 % of screen height
-
-// 4-line handwriting ruling — baseline/descender match the LETTER_PATHS
-// fy=0.64/0.92 convention so the word guide sits exactly on these lines.
-const LINE_1 = Math.round(CANVAS_H * 0.08);  // cap line     — blue solid
-const LINE_2 = Math.round(CANVAS_H * 0.36);  // x-height     — blue solid
-const LINE_3 = Math.round(CANVAS_H * 0.64);  // baseline     — red dashed
-const LINE_4 = Math.round(CANVAS_H * 0.92);  // descender    — blue solid
+// Canvas geometry (CANVAS_W/CANVAS_H, the 4-line ruling, the column split)
+// now lives in ONE place, imported above and shared with the "watch first"
+// demonstration, so a demo can never lay this word out at a different size.
+// Every value is unchanged - see constants/wordCanvasLayout.js.
+//
+// The screen width keeps its original local name because the intro-video
+// overlay below sizes itself from it. Aliased rather than re-measured: a
+// second Dimensions.get('window') call would be a second source of truth for
+// the same number.
+const SCREEN_W = WORD_SCREEN_W;
 
 // â”€â”€â”€ Attempt colours â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ATTEMPT_BADGE = {
@@ -192,6 +194,37 @@ export default function WordWritingScreen({ route, navigation }) {
     const src = WORD_VIDEOS[wordEntry?.word] ?? null;
     if (src) setShowWordVideo(true);
   }, [wordEntry?.word]);
+
+  // ── One-time word-writing introduction (utils/demoPolicy.js) ─────────────
+  // Shown the first time this child writes a word — ONCE, not per word.
+  //
+  // Deliberately suppressed when this word already has an intro video: that
+  // video plays automatically on this same transition, and demo -> video ->
+  // writing would be two tutorials stacked before one activity. The video is
+  // the richer introduction of the two, so where one exists it satisfies the
+  // introduction and the animated demo stands down. (The key is left unmarked
+  // in that case, so a later word without a video still gets the demo.)
+  const hasIntroVideo = !!(wordEntry && WORD_VIDEOS[wordEntry.word]);
+
+  useDemoDetour({
+    studentId: student?.sid,
+    demoKey: DEMO_KEYS.WORD_WRITING_INTRO,
+    enabled: !!wordEntry?.word && !hasIntroVideo && attempt === 1 && !hasDrawn,
+    navigate: () => {
+      navigation.navigate('HandwritingDemo', {
+        student, theme,
+        demoKey: DEMO_KEYS.WORD_WRITING_INTRO,
+        // The whole word, animated letter by letter in writing order from
+        // wordPaths.js's own composed guide — the exact strokes this screen
+        // traces.
+        word: wordEntry.word,
+        nextRoute: 'WordWriting',
+        nextParams: buildWordRouteParams({
+          student, theme, selectedLetter, selectedWords, currentWordIndex,
+        }),
+      });
+    },
+  });
 
   const allPathsRef    = useRef([]);
   const startTimeRef   = useRef(null);
@@ -562,235 +595,41 @@ export default function WordWritingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* â”€â”€ Main area: image LEFT · content RIGHT â”€â”€ */}
-        <View style={styles.mainRow}>
-
-          {/* Left column — large image */}
-          <View style={styles.imageCol}>
-            <Animated.View style={{ transform: [{ scale: imageScale }] }}>
-              <WordImageDisplay imageKey={imageKey} emoji={emoji} size={IMG_SIZE} />
-            </Animated.View>
-          </View>
-
-          {/* Right column — word card + spelling + badge + canvas */}
-          <View style={styles.contentCol}>
-
-            {/* Word title card */}
-            <View style={[styles.wordCard, {
-              backgroundColor: theme.button + '14',
-              borderColor:     theme.button + '35',
-            }]}>
-              <Text
-                style={[styles.wordTitle, { color: theme.headingText }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {displayWord}
-              </Text>
-              <TouchableOpacity
-                style={[styles.soundBtn, { backgroundColor: theme.button }]}
-                onPress={() => spellWordRef.current?.()}
-                activeOpacity={0.75}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                accessibilityRole="button"
-                accessibilityLabel={`Replay pronunciation of ${word}`}
-              >
-                <Ionicons name="volume-high" size={18} color={theme.buttonText} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Spelling */}
-            <Text style={[styles.spellingText, { color: theme.headingText }]}>
-              {spelling}
-            </Text>
-
-            {/* Attempt badge */}
-            <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-              <Text style={[styles.attemptTitle, { color: badge.text }]}>
-                {ATTEMPT_TITLES[attempt]}
-              </Text>
-              <Text style={[styles.attemptHint, { color: badge.text }]}>
-                {ATTEMPT_HINTS[attempt]}
-              </Text>
-            </View>
-
-            {/* Writing canvas — canvasOuter wraps the card so the tracer dot
-                is never clipped by the card's overflow:hidden */}
-            <View style={styles.canvasOuter}>
-              <View
-                style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
-                ref={canvasRef}
-                onLayout={measureCanvasOrigin}
-                {...panResponder.panHandlers}
-                accessible
-                accessibilityLabel="Word handwriting practice area"
-              >
-                <Svg width={CANVAS_W} height={CANVAS_H}>
-
-                  {/* 4-line ruling */}
-                  <Line x1={0} y1={LINE_1} x2={CANVAS_W} y2={LINE_1} stroke="#90CAF9" strokeWidth={1.5} />
-                  <Line x1={0} y1={LINE_2} x2={CANVAS_W} y2={LINE_2} stroke="#90CAF9" strokeWidth={1} />
-                  <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3} stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
-                  <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#90CAF9" strokeWidth={1.5} />
-
-                  {/* Visible letter-size/spacing guide boxes — instructional
-                      only, shown on every attempt. Thin, low-prominence
-                      border; no fill; rendered below the guide path/tracer/
-                      ink so handwriting always stays clearly on top. Purely
-                      decorative — writing outside a box never clips strokes
-                      or affects scoring (see wordPaths.js). */}
-                  {letterBoxes.map(box => (
-                    <Rect
-                      key={`letter-box-${box.index}`}
-                      x={box.x}
-                      y={box.y}
-                      width={box.width}
-                      height={box.height}
-                      rx={4}
-                      fill="rgba(120,120,140,0.05)"
-                      stroke="rgba(120,120,140,0.45)"
-                      strokeWidth={1}
-                    />
-                  ))}
-
-                  {/* Reference-path guide — built from the same per-letter
-                      LETTER_PATHS waypoints letter tracing uses, laid out
-                      left-to-right across the word. Ghost dots mark single-
-                      point strokes (the 'i' / 'j' dots). */}
-                  {guideOpacity > 0 && guidePathD && (
-                    <>
-                      <Path
-                        d={guidePathD}
-                        stroke={`rgba(80,80,80,${guideOpacity})`}
-                        strokeWidth={5}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        fill="none"
-                      />
-                      {guideDots.map((dot, idx) => (
-                        <Circle
-                          key={`ghost-dot-${idx}`}
-                          cx={dot.cx}
-                          cy={dot.cy}
-                          r={3.5}
-                          fill={`rgba(80,80,80,${guideOpacity})`}
-                        />
-                      ))}
-                    </>
-                  )}
-
-                  {/* Stroke-order marker (attempt 2) — same system as letter
-                      tracing: numbered start dot + direction arrow(s) for
-                      the current stroke, advancing letter by letter as each
-                      stroke is completed. Number resets per letter (1, 2, 3…),
-                      matching what single-letter tracing shows. */}
-                  {attempt === 2 && activeStrokeDesc && activeDirectionHint && (
-                    <>
-                      <Circle
-                        cx={activeDirectionHint.start.x}
-                        cy={activeDirectionHint.start.y}
-                        r={11}
-                        fill="none"
-                        stroke={theme.button}
-                        strokeWidth={2}
-                        opacity={0.72}
-                      />
-                      <Circle
-                        cx={activeDirectionHint.start.x}
-                        cy={activeDirectionHint.start.y}
-                        r={8}
-                        fill={theme.button}
-                        opacity={0.80}
-                      />
-                      <SvgText
-                        x={activeDirectionHint.start.x}
-                        y={activeDirectionHint.start.y + 4}
-                        fontSize={11}
-                        fill={theme.buttonText ?? '#FFFFFF'}
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {activeStrokeDesc.localStrokeIndex + 1}
-                      </SvgText>
-                      {activeDirectionHint.endGuides.map((guide, index) => (
-                        <Circle
-                          key={`stroke-end-${index}`}
-                          cx={guide.x}
-                          cy={guide.y}
-                          r={index === activeDirectionHint.endGuides.length - 1 ? 6 : 4.5}
-                          fill="none"
-                          stroke={theme.button}
-                          strokeWidth={2}
-                          opacity={0.72}
-                        />
-                      ))}
-                      {activeDirectionHint.arrows.map((arrow, index) => (
-                        <React.Fragment key={`stroke-arrow-${index}`}>
-                          <Line
-                            x1={arrow.shaftStart.x}
-                            y1={arrow.shaftStart.y}
-                            x2={arrow.tip.x}
-                            y2={arrow.tip.y}
-                            stroke={theme.button}
-                            strokeWidth={3.5}
-                            strokeLinecap="round"
-                          />
-                          <Polygon points={arrow.arrowHead} fill={theme.button} />
-                        </React.Fragment>
-                      ))}
-                    </>
-                  )}
-
-                  {/* Completed strokes */}
-                  {allPaths.map((stroke, i) => (
-                    <Polyline
-                      key={i}
-                      points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
-                      stroke={theme.button}
-                      strokeWidth={4.5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
-                    />
-                  ))}
-
-                  {/* Live stroke */}
-                  {currentPath.length > 1 && (
-                    <Polyline
-                      points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
-                      stroke={theme.button}
-                      strokeWidth={4.5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
-                      opacity={0.75}
-                    />
-                  )}
-
-                </Svg>
-              </View>
-
-              {/* Tracer dot — traces the whole word guide during Attempt 1 */}
-              {attempt === 1 && !hasDrawn && tracerVisible && tracerXInterp && (
-                <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                  <Animated.View
-                    style={[
-                      styles.tracerDot,
-                      {
-                        backgroundColor: theme.button,
-                        transform: [
-                          { translateX: tracerXInterp },
-                          { translateY: tracerYInterp },
-                        ],
-                      },
-                    ]}
-                  />
-                </View>
-              )}
-            </View>
-
-          </View>
-        </View>
+        {/* Main area: image LEFT | content RIGHT.
+            Rendered by the SHARED WordWritingStage so the "watch first"
+            demonstration and this practice screen are the same layout from
+            the same file, never two copies that can drift apart. */}
+        <WordWritingStage
+          mode="practice"
+          theme={theme}
+          imageKey={imageKey}
+          emoji={emoji}
+          imageScale={imageScale}
+          displayWord={displayWord}
+          word={word}
+          spelling={spelling}
+          badge={badge}
+          badgeTitle={ATTEMPT_TITLES[attempt]}
+          badgeHint={ATTEMPT_HINTS[attempt]}
+          guideOpacity={guideOpacity}
+          guidePathD={guidePathD}
+          guideDots={guideDots}
+          letterBoxes={letterBoxes}
+          attempt={attempt}
+          showStrokeOrder={attempt === 2}
+          activeStrokeDesc={activeStrokeDesc}
+          activeDirectionHint={activeDirectionHint}
+          allPaths={allPaths}
+          currentPath={currentPath}
+          hasDrawn={hasDrawn}
+          tracerVisible={tracerVisible}
+          tracerXInterp={tracerXInterp}
+          tracerYInterp={tracerYInterp}
+          onSpeakWord={() => spellWordRef.current?.()}
+          canvasRef={canvasRef}
+          onCanvasLayout={measureCanvasOrigin}
+          panHandlers={panResponder.panHandlers}
+        />
 
         {/* â”€â”€ Feedback pill â”€â”€ */}
         {feedbackData && (
@@ -956,110 +795,13 @@ const styles = StyleSheet.create({
   },
 
   // â”€â”€ Main two-column layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  mainRow: {
-    flexDirection: 'row',
-    flex: 1,
-    paddingHorizontal: PAD,
-    paddingBottom: 4,
-  },
-
   // Left: large image, centered vertically
-  imageCol: {
-    width: COL_L,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingRight: 8,
-  },
-
   // Right: stacked content
-  contentCol: {
-    flex: 1,
-    gap: 8,
-    justifyContent: 'center',
-  },
-
   // Word title card (rounded box with light theme tint)
-  wordCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  wordTitle: {
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-    flexShrink: 1,
-  },
-  soundBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    marginLeft: 8,
-  },
-
   // Spelling  (a · p · p · l · e)
-  spellingText: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    letterSpacing: 1.5,
-    opacity: 0.65,
-    paddingLeft: 2,
-  },
-
   // Attempt badge
-  attemptBadge: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    alignItems: 'center',
-  },
-  attemptTitle: { fontSize: 12, fontWeight: '800' },
-  attemptHint:  { fontSize: 10, marginTop: 2, textAlign: 'center', opacity: 0.85 },
-
   // Canvas
-  canvasOuter: {
-    width:  CANVAS_W,
-    height: CANVAS_H,
-  },
-  canvasCard: {
-    width: CANVAS_W,
-    height: CANVAS_H,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
   // â”€â”€ Tracer dot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  tracerDot: {
-    position: 'absolute',
-    left: -13,
-    top: -13,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.30,
-    shadowRadius: 4,
-  },
-
   // â”€â”€ Feedback pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   feedbackPill: {
     alignSelf: 'center',

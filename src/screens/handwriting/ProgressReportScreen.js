@@ -14,8 +14,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
-import { useLockLandscape } from '../../utils/useOrientationLock';
+import { useLockPortrait } from '../../utils/useOrientationLock';
 import useGatedBack from '../../utils/useGatedBack';
+import { goBackToOrigin } from '../../utils/backToOrigin';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -27,16 +28,21 @@ const AVATAR_MAP = {
 };
 
 export default function ProgressReportScreen({ route, navigation }) {
-  // The handwriting activities are designed for a tablet held in landscape:
-  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
-  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
-  // progress report is the one screen that locks portrait instead.
-  useLockLandscape();
+  // Reports are kept in portrait while focused so their vertically structured
+  // content remains easy to scan. The lock is released on blur by the shared
+  // orientation hook, leaving all writing activities' landscape behavior intact.
+  useLockPortrait();
 
   // Leaving a learning activity is an adult decision — the back button
   // opens the parent gate first, exactly as LetterHomeScreen and the
   // Concept screens do. Cancelling navigates nowhere.
-  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
+  // Returns to the screen this report was OPENED FROM (route param
+  // `originRoute`), not to whatever sits directly below it in the stack —
+  // see utils/backToOrigin.js. Falls back to goBack() when no origin was
+  // passed, so an older navigation behaves exactly as before.
+  const { requestBack, gateModal } = useGatedBack(
+    () => goBackToOrigin(navigation, route.params?.originRoute)
+  );
 
   const {
     student,

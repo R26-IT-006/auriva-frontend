@@ -14,4 +14,10 @@ module.exports = {
   transform: {
     '^.+\\.js$': 'babel-jest',
   },
+  // babel-preset-expo rewrites `process.env.EXPO_PUBLIC_*` into an import
+  // from expo/virtual/env.js, which ships as untransformed ESM. node_modules
+  // is not transformed by default, so that one virtual module has to be
+  // excepted or any file reading an EXPO_PUBLIC_ variable fails to load here.
+  // Deliberately narrow: only expo/virtual, never node_modules at large.
+  transformIgnorePatterns: ['/node_modules/(?!expo/virtual/)'],
 };

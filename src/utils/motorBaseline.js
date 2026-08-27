@@ -23,6 +23,20 @@ import { ENDPOINTS } from '../constants/api';
 
 const FAILSAFE = Object.freeze({ status: 'read_failed', baseline: null, summary: null });
 
+
+/**
+ * True for a 404 from api/client.js.
+ *
+ * The client's response interceptor rejects with a PLAIN `Error` carrying
+ * `.status` — it never re-exposes axios's `.response`. Checking
+ * `err.response.status` therefore never matched, so a legitimate 404 fell
+ * through to the read_failed branch and logged as if the server had broken.
+ * Both shapes are accepted so this keeps working either way.
+ */
+function isNotFound(err) {
+  return err?.status === 404 || err?.response?.status === 404;
+}
+
 /**
  * `summary` is the backend's deterministic Initial Motor Baseline Summary
  * (src/utils/initialMotorBaselineSummary.js) — passed through verbatim,
@@ -69,7 +83,15 @@ export async function fetchMotorBaseline({ studentId } = {}) {
     const response = await client.get(ENDPOINTS.MOTOR_BASELINE(studentId));
     return normalizeMotorBaselineResponse(response?.data);
   } catch (err) {
-    if (err?.response?.status === 404) return { status: 'baseline_not_found', baseline: null, summary: null };
+    if (isNotFound(err)) {
+      // Not an error: this student has not completed the initial motor
+      // assessment yet. The teacher report has its own branch for exactly
+      // this, and says so in plain words.
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        console.log('[motorBaseline] no baseline recorded for this student yet');
+      }
+      return { status: 'baseline_not_found', baseline: null, summary: null };
+    }
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.log('[motorBaseline] fetch failed — treating as read_failed:', err?.message ?? err);
     }

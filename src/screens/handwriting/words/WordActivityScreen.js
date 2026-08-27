@@ -14,7 +14,7 @@
  * ────────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,10 @@ import BreakPromptModal from '../../../components/handwriting/BreakPromptModal';
 import WORD_DATA from '../../../constants/wordData';
 import { saveWordActivity } from '../../../utils/wordApi';
 import { afterExerciseESuccess, buildWordRouteParams, resolveWordSession } from '../../../utils/wordWorkflow';
+// One-time demonstration for the letter-tile spelling activity (Exercise D)
+// only — see utils/demoPolicy.js for why A/B/C and E get none.
+import { useDemoDetour } from '../../../utils/demoDetour';
+import { DEMO_KEYS } from '../../../utils/demoPolicy';
 import ExerciseA_WriteFirst  from '../../../components/word/ExerciseA_WriteFirst';
 import ExerciseB_CircleImage from '../../../components/word/ExerciseB_CircleImage';
 import ExerciseC_FillBlank   from '../../../components/word/ExerciseC_FillBlank';
@@ -48,6 +52,7 @@ const { height: SCREEN_H } = Dimensions.get('window');
 // ─── Exercise registry ────────────────────────────────────────────────────────
 
 const EXERCISES = ['A', 'B', 'C', 'D', 'E'];
+const WORD_EXERCISE_COUNT = EXERCISES.length;
 
 const EXERCISE_LABELS = {
   A: 'First Letter',
@@ -101,9 +106,53 @@ export default function WordActivityScreen({ route, navigation }) {
 
   // ── Letter-scoped word list ───────────────────────────────────────────────
   // ── Word / exercise state ─────────────────────────────────────────────────
-  const [exIdx,      setExIdx]      = useState(0);
+  // Seeded from the route so a demonstration detour can hand the child back
+  // to the exercise they were about to start, rather than restarting the
+  // whole A→E run at A. Defaults to 0 for every normal entry.
+  const [exIdx,      setExIdx]      = useState(() => {
+    const requested = Number(route.params?.initialExerciseIndex ?? 0);
+    return Number.isInteger(requested) && requested >= 0 && requested < WORD_EXERCISE_COUNT
+      ? requested : 0;
+  });
   const [exStatus,   setExStatus]   = useState(BLANK_STATUS);
   const [score,      setScore]      = useState({ correct: 0, total: 0 });
+
+  // ── One-time spelling-tile demonstration (utils/demoPolicy.js) ───────────
+  // Exercise D is the only word activity that gets one. A, B and C are all
+  // "tap the correct large option" — an interaction this child already
+  // performs throughout the concept tiers — and E is the same write-on-a-
+  // guide canvas the word-writing introduction already demonstrated.
+  // Arranging letter tiles into an order is genuinely new, so it is shown
+  // once, the first time the child reaches it.
+  const currentExercise = EXERCISES[exIdx];
+  const spellDemoLetters = useMemo(
+    () => (currentWord?.word ?? '').replace(/[^a-z]/gi, '').toLowerCase().split(''),
+    [currentWord?.word],
+  );
+
+  useDemoDetour({
+    studentId: student?.sid,
+    demoKey: DEMO_KEYS.WORD_ACTIVITY_SPELL_TILES,
+    enabled: currentExercise === 'D' && spellDemoLetters.length > 0,
+    navigate: () => {
+      navigation.navigate('HandwritingDemo', {
+        student, theme,
+        demoKey: DEMO_KEYS.WORD_ACTIVITY_SPELL_TILES,
+        // The child's own current word, so the example is the task — the
+        // demo calls no scoring or evaluation function with it.
+        tapLetters: spellDemoLetters,
+        nextRoute: 'WordPractice',
+        nextParams: {
+          ...buildWordRouteParams({
+            student, theme,
+            selectedLetter: letter, selectedWords: letterWords, currentWordIndex: wordIdx,
+          }),
+          // Resume at Exercise D, not back at A.
+          initialExerciseIndex: exIdx,
+        },
+      });
+    },
+  });
 
   // Snapshot of all word results — set when letter is done, drives the summary modal
 

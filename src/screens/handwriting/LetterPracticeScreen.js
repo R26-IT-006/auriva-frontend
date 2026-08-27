@@ -20,6 +20,12 @@ import {
   createPreWritingInteractionId, markWarmupHandled, buildPreWritingNavigationParams, PRE_WRITING_REASON,
 } from '../../utils/preWritingSessionGuard';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+// Demo preview switch - see constants/demoAccess.js. Does NOT change the
+// lowercaseDone rule below; it only decides whether a not-yet-earned card can
+// be opened, and makes that state visible rather than silent.
+import {
+  canOpen, isPreview, PREVIEW_BADGE, UPPERCASE_ORDER_CAPTION,
+} from '../../constants/demoAccess';
 import ScreenBackButton from '../../components/handwriting/ScreenBackButton';
 import useGatedBack from '../../utils/useGatedBack';
 
@@ -141,6 +147,10 @@ export default function LetterPracticeScreen({ route, navigation }) {
   // guarantees this count can never exceed 26, so >= and === are equivalent
   // here; >= is used defensively, matching the sibling screen's convention.
   const lowercaseDone    = lowercaseProgress >= 26;
+  // `lowercaseDone` still means EARNED, and still drives how the pill looks.
+  // These two only decide whether it opens, and whether it says so.
+  const uppercaseOpen    = canOpen(lowercaseDone);
+  const uppercasePreview = isPreview(lowercaseDone);
   const lowercasePercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
 
   return (
@@ -200,6 +210,8 @@ export default function LetterPracticeScreen({ route, navigation }) {
               theme,
               lowercaseProgress,
               uppercaseProgress,
+              // Where back should return to — see utils/backToOrigin.js.
+              originRoute: 'LetterPractice',
             })}
             activeOpacity={0.8}
           >
@@ -267,31 +279,56 @@ export default function LetterPracticeScreen({ route, navigation }) {
                 <Text style={styles.pillSubLabel}>{lowercaseProgress} / 26 done</Text>
               </TouchableOpacity>
 
-              {/* Uppercase — locked until lowercase done */}
+              {/* Uppercase - earned once all 26 lowercase letters are done.
+                  In a demo build it can also be opened early, and then it
+                  wears its own calm "Preview" state: not dressed up as
+                  earned, not left looking dead. */}
               <TouchableOpacity
-                style={[styles.uppercasePill, !lowercaseDone && styles.uppercaseLocked]}
-                onPress={() => lowercaseDone && goToLetterScreen('uppercase',
+                style={[
+                  styles.uppercasePill,
+                  !lowercaseDone && !uppercasePreview && styles.uppercaseLocked,
+                  uppercasePreview && styles.previewPill,
+                ]}
+                onPress={() => uppercaseOpen && goToLetterScreen('uppercase',
                   { student, theme, letterSequence, motorProfile },
                   letterSequence,
                 )}
                 onLongPress={() => setPickerCase('uppercase')}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  lowercaseDone ? 'Uppercase'
+                    : `Uppercase, preview. ${UPPERCASE_ORDER_CAPTION}`
+                }
               >
                 <View style={[
                   styles.pillIconCircle,
-                  { backgroundColor: lowercaseDone ? '#CE93D8' : '#E0E0E0' },
+                  { backgroundColor: lowercaseDone ? '#CE93D8' : (uppercasePreview ? '#EDE0F3' : '#E0E0E0') },
                 ]}>
                   <Ionicons
-                    name={lowercaseDone ? 'arrow-up-circle-outline' : 'lock-closed'}
+                    name={uppercaseOpen ? 'arrow-up-circle-outline' : 'lock-closed'}
                     size={32}
-                    color={lowercaseDone ? '#4A148C' : '#9E9E9E'}
+                    color={lowercaseDone ? '#4A148C' : (uppercasePreview ? '#9575CD' : '#9E9E9E')}
                   />
                 </View>
-                <Text style={[styles.uppercaseTitle, !lowercaseDone && styles.lockedText]}>
+                <Text style={[
+                  styles.uppercaseTitle,
+                  !lowercaseDone && !uppercasePreview && styles.lockedText,
+                  uppercasePreview && styles.previewTitle,
+                ]}>
                   Uppercase
                 </Text>
                 {lowercaseDone ? (
                   <Text style={styles.pillSubLabel}>Ready to go!</Text>
+                ) : uppercasePreview ? (
+                  <>
+                    <View style={styles.previewBadge}>
+                      <Text style={styles.previewBadgeText}>{PREVIEW_BADGE}</Text>
+                    </View>
+                    {/* One short line, present tense, says what comes first
+                        rather than what is forbidden. */}
+                    <Text style={styles.previewCaption}>{UPPERCASE_ORDER_CAPTION}</Text>
+                  </>
                 ) : (
                   <Text style={[styles.pillSubLabel, styles.lockedSubLabel]}>
                     Finish all lowercase{'\n'}letters to unlock
@@ -626,6 +663,31 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  // Preview state: a soft, unalarming middle ground between earned and
+  // locked. Same size and position as both, so the layout never shifts.
+  previewPill: {
+    backgroundColor: '#FAF6FD',
+    borderWidth: 1.5,
+    borderColor: '#D9C7E8',
+    borderStyle: 'dashed',
+  },
+  previewTitle:  { color: '#7E57C2' },
+  previewBadge:  {
+    marginTop: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#EDE0F3',
+  },
+  previewBadgeText: { fontSize: 11, fontWeight: '800', color: '#7E57C2', letterSpacing: 0.3 },
+  previewCaption: {
+    fontSize: 11,
+    color: '#8A7B96',
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 6,
+  },
+
   uppercaseLocked: {
     backgroundColor: '#F8F8F8',
     borderColor: '#DDDDDD',

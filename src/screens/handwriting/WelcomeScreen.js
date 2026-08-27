@@ -94,9 +94,42 @@ export default function WelcomeScreen({ route, navigation }) {
       try {
         const res = await client.get(ENDPOINTS.HANDWRITING_INITIAL_REPORT(student?.sid));
         if (!active) return;
-        if (res.data?.hasData) {
+
+        // Routes on assessmentStatus, NOT on hasData.
+        //
+        // hasData means "there is an assessment row" — which is the right
+        // question for the teacher report and the shape-preview loader, but
+        // not for this gate. A row whose motor_profile never arrived is not a
+        // completed assessment, and treating it as one locked such a learner
+        // out of ever taking the assessment through the real UI again
+        // (student 41 was exactly this: a row, six shapes, no motor profile,
+        // no baseline — and no route back).
+        //
+        //   'complete'    -> proceed to normal practice
+        //   'incomplete'  -> STAY here and offer the assessment again. The old
+        //                    unusable row is never deleted; a new valid
+        //                    assessment simply coexists with it, and the
+        //                    earliest-fully-eligible baseline selector picks
+        //                    the usable one. No loop: once the new assessment
+        //                    succeeds, the status becomes 'complete'.
+        //   'not_started' -> offer the assessment
+        //
+        // Falls back to hasData when the field is absent, so an older backend
+        // behaves exactly as it did before.
+        const status = res.data?.assessmentStatus;
+        const isComplete = status != null ? status === 'complete' : Boolean(res.data?.hasData);
+
+        if (isComplete) {
           navigation.replace('LetterHome', { student, theme });
           return;
+        }
+        if (__DEV__ && status != null && status !== 'not_started') {
+          console.log('[INITIAL_ASSESSMENT_GATE]', {
+            student_id: student?.sid,
+            assessmentStatus: status,
+            reason: res.data?.assessmentStatusReason ?? null,
+            action: 'showing initial assessment',
+          });
         }
       } catch (netErr) {
         console.warn('Could not check initial-assessment status (defaulting to showing the assessment):', netErr?.message);

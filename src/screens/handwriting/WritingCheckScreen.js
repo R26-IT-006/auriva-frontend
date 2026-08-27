@@ -33,7 +33,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { useLockLandscape } from '../../utils/useOrientationLock';
 import useGatedBack from '../../utils/useGatedBack';
-import { uuid } from '../../utils/uuid';
+import { generateUuidV4 } from '../../utils/uuid';
 import {
   startWritingCheck, fetchWritingCheckProgress, completeWritingCheck,
   WRITING_CHECK_REQUIRED_COUNT,
@@ -58,31 +58,53 @@ export default function WritingCheckScreen({ route, navigation }) {
   const { student, theme } = route.params ?? {};
   const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
+  // ── The screen's whole state, as one explicit machine ────────────────────
+  //   loading -> ready | done | unavailable | error
+  // There is deliberately no path that leaves `loading` set. A spinner with
+  // no exit is worse than an error message: the teacher cannot tell whether
+  // to wait, retry, or fetch help.
   const [state, setState] = useState({ phase: 'loading', check: null, captured: 0, remaining: [] });
 
   const load = useCallback(async () => {
-    const started = await startWritingCheck({
-      studentId: student?.sid,
-      collectionSessionId: uuid(),
-    });
-    if (started.status === 'unavailable') {
-      setState({ phase: 'unavailable', check: null, captured: 0, remaining: [] });
-      return;
-    }
-    const progress = await fetchWritingCheckProgress(started.check.id);
-    const captured = progress.status === 'found' ? progress.capturedCount : 0;
-    const remaining = progress.status === 'found' ? progress.remaining : started.remaining;
+    setState((s) => (s.phase === 'loading' ? s : { ...s, phase: 'loading' }));
+    try {
+      const started = await startWritingCheck({
+        studentId: student?.sid,
+        collectionSessionId: generateUuidV4(),
+      });
+      // A missing check object is as unusable as an outright failure - never
+      // read `.id` off it and hope.
+      if (started.status === 'unavailable' || !started.check?.id) {
+        setState({ phase: 'unavailable', check: null, captured: 0, remaining: [] });
+        return;
+      }
 
-    if (remaining.length === 0) {
-      // Everything is already captured — finish it rather than re-presenting
-      // letters the child has done.
-      await completeWritingCheck(started.check.id);
-      setState({ phase: 'done', check: started.check, captured: WRITING_CHECK_REQUIRED_COUNT, remaining: [] });
-      return;
+      const progress = await fetchWritingCheckProgress(started.check.id);
+      const captured = progress.status === 'found' ? progress.capturedCount : 0;
+      const remaining = progress.status === 'found' ? progress.remaining : started.remaining;
+
+      if (remaining.length === 0) {
+        // Everything is already captured - finish it rather than
+        // re-presenting letters the child has already done.
+        await completeWritingCheck(started.check.id);
+        setState({ phase: 'done', check: started.check, captured: WRITING_CHECK_REQUIRED_COUNT, remaining: [] });
+        return;
+      }
+      setState({ phase: 'ready', check: started.check, captured, remaining });
+    } catch (err) {
+      // The API client never throws, so reaching here means a programming
+      // fault in this screen - exactly the class of bug that used to sit
+      // invisible behind the spinner. It becomes a visible, retryable error.
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        console.log('[WritingCheck] load failed:', err?.message ?? err, err?.stack);
+      }
+      setState({ phase: 'error', check: null, captured: 0, remaining: [] });
     }
-    setState({ phase: 'ready', check: started.check, captured, remaining });
   }, [student]);
 
+  // `load` is memoised on `student` (a stable route param), so this runs once
+  // per focus and cannot re-trigger itself: nothing it sets is in its own
+  // dependency list.
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   /**
@@ -90,12 +112,44 @@ export default function WritingCheckScreen({ route, navigation }) {
    * mode. That is what reproduces the model's training capture conditions —
    * this screen never re-implements any part of the capture.
    */
+  /**
+   * Hands the next batch of remaining letters to the existing writing screen
+   * in COLLECTION mode. That is what reproduces the model's training capture
+   * conditions - this screen never re-implements any part of the capture.
+   *
+   * ONE CASE AT A TIME, and always the earlier case first. The two writing
+   * screens each render a single case: LetterWritingScreen filters the
+   * sequence it is given down to its own `caseType`, so handing it all 20
+   * mixed pairs would silently drop the 10 uppercase ones (and, on an
+   * uppercase-only resume, would leave it with an empty sequence and fall
+   * back to the whole alphabet). The child returns here between the two
+   * batches, where fresh progress decides what is left.
+   *
+   * The protocol itself is untouched: `remaining` comes from the backend, in
+   * LETTER_MOTOR_REFERENCE_LETTERS order, and is only partitioned by case.
+   */
+  function nextBatch() {
+    const remaining = state.remaining ?? [];
+    const lower = remaining.filter(p => p.caseType === 'lowercase');
+    const upper = remaining.filter(p => p.caseType === 'uppercase');
+    if (lower.length > 0) return { route: 'LetterWriting', caseType: 'lowercase', pairs: lower };
+    if (upper.length > 0) return { route: 'UppercaseWriting', caseType: 'uppercase', pairs: upper };
+    return null;
+  }
+
   function beginWriting() {
-    navigation.navigate('LetterWriting', {
+    const batch = nextBatch();
+    if (!batch || !state.check) return;
+
+    navigation.navigate(batch.route, {
       student, theme,
+      caseType: batch.caseType,
       collectionMode: true,
       collectionSessionId: state.check.collection_session_id,
-      letterSequence: state.remaining.map(p => ({ letter: p.letter, caseType: p.caseType })),
+      letterSequence: batch.pairs.map(p => ({ letter: p.letter, caseType: p.caseType })),
+      // Tells the writing screen this run belongs to a Writing Check, so it
+      // returns here when the batch is done instead of continuing into the
+      // research data-collection protocol.
       writingCheckId: state.check.id,
     });
   }
@@ -124,10 +178,32 @@ export default function WritingCheckScreen({ route, navigation }) {
             </>
           )}
 
-          {state.phase === 'unavailable' && (
+          {(state.phase === 'unavailable' || state.phase === 'error') && (
             <>
               <Text style={styles.title}>Writing Check</Text>
-              <Text style={styles.subtitle}>We can&apos;t start right now. Please try again later.</Text>
+              <Text style={styles.subtitle}>
+                {state.phase === 'error'
+                  ? 'Writing Check could not be loaded.'
+                  : 'We can\u2019t start right now. Please try again later.'}
+              </Text>
+              <View style={styles.errorRow}>
+                <TouchableOpacity
+                  style={[styles.startBtn, { backgroundColor: theme?.button ?? '#6366F1' }]}
+                  onPress={load}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Try again"
+                >
+                  <Text style={[styles.startBtnText, { color: theme?.buttonText ?? '#FFFFFF' }]}>Try Again</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={requestBack}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Back \u2014 needs a code"
+                >
+                  <Text style={styles.secondaryBtnText}>Back</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
 
@@ -194,6 +270,10 @@ const styles = StyleSheet.create({
   dot:       { width: 13, height: 13, borderRadius: 7 },
   dotFilled: { backgroundColor: '#6366F1' },
   dotEmpty:  { backgroundColor: 'rgba(100,116,139,0.22)' },
+  errorRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  secondaryBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 28, marginTop: 6,
+                  backgroundColor: 'rgba(255,255,255,0.55)' },
+  secondaryBtnText: { fontSize: 18, fontWeight: '700', color: '#475569' },
   startBtn:  { paddingHorizontal: 40, paddingVertical: 14, borderRadius: 28, marginTop: 6 },
   startBtnText: { fontSize: 18, fontWeight: '700' },
 });

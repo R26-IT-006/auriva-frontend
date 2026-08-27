@@ -69,6 +69,20 @@ export const MILESTONE_LABELS = Object.freeze({
 // never drives a milestone decision, which stays entirely server-side.
 export const FULL_REFERENCE_COVERAGE = 20;
 
+
+/**
+ * True for a 404 from api/client.js.
+ *
+ * The client's response interceptor rejects with a PLAIN `Error` carrying
+ * `.status` — it never re-exposes axios's `.response`. Checking
+ * `err.response.status` therefore never matched, so a legitimate 404 fell
+ * through to the read_failed branch and logged as if the server had broken.
+ * Both shapes are accepted so this keeps working either way.
+ */
+function isNotFound(err) {
+  return err?.status === 404 || err?.response?.status === 404;
+}
+
 export function formatMilestoneLabel(milestone) {
   return MILESTONE_LABELS[milestone] ?? milestone ?? 'Unknown milestone';
 }
@@ -160,7 +174,12 @@ export async function fetchLatestLetterMotorState(studentId) {
     const response = await client.get(ENDPOINTS.LETTER_MOTOR_STATE_LATEST(studentId));
     return normalizeLatestStateResponse(response?.data);
   } catch (err) {
-    if (err?.response?.status === 404) return { status: 'not_found', state: null };
+    if (isNotFound(err)) {
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        console.log('[letterMotorState] no state recorded for this student yet');
+      }
+      return { status: 'not_found', state: null };
+    }
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.log('[letterMotorState] latest fetch failed — treating as unavailable:', err?.message ?? err);
     }

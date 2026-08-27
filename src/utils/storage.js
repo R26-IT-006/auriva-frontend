@@ -11,6 +11,7 @@
  *   student_<id>_letter_<l>_progress       — attempt history for one letter
  *   student_<id>_completedLetters          — running list of completed letters
  *   student_<id>_pendingFinalize_<assessId> — replayable finalize record (Reliability Step 2)
+ *   student_<id>_demosShown                — completed one-time demonstrations
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -58,6 +59,7 @@ function motorProfileKey(studentId)          { return `student_${studentId}_moto
 function letterProgressKey(studentId, letter){ return `student_${studentId}_letter_${letter}_progress`; }
 function completedLettersKey(studentId)      { return `student_${studentId}_completedLetters`; }
 function wordProgressKey(studentId)          { return `student_${studentId}_wordProgress`; }
+function demosShownKey(studentId)            { return `student_${studentId}_demosShown`; }
 
 async function safeGet(key) {
   try {
@@ -74,6 +76,57 @@ async function safeSet(key, value) {
   } catch (err) {
     console.error(`AsyncStorage write failed [${key}]:`, err);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// One-time demonstrations  (utils/demoPolicy.js owns WHICH demos exist)
+//
+// A child sees each demonstration at most once, ever. That "ever" is why
+// this is persistent per-student storage and not session state: a demo that
+// replayed after every app restart would be a tutorial the child has to sit
+// through repeatedly, which is the exact opposite of what a predictable,
+// ASD-friendly flow needs.
+//
+// Written ONLY when the child presses "I'm Ready" at the end of the
+// demonstration — never when navigation into it merely starts. A crash or a
+// forced close mid-demo therefore leaves the key unwritten and the child
+// sees the demonstration again, which is the safe direction to fail: a
+// repeated demo costs 15 seconds, a wrongly-suppressed one costs the child
+// the only explanation they were going to get.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @param {number|string} studentId
+ * @returns {Promise<string[]>} completed demo keys — always an array, never
+ *   null, so a read failure reads as "none completed" and the child is
+ *   shown the demonstration rather than silently skipped past it.
+ */
+export async function getShownDemos(studentId) {
+  const stored = await safeGet(demosShownKey(studentId));
+  return Array.isArray(stored) ? stored.filter((k) => typeof k === 'string') : [];
+}
+
+/**
+ * Records one demonstration as completed for one child. Idempotent, and
+ * additive — never rewrites the list from a caller's own copy, so two
+ * screens marking different demos cannot erase each other.
+ *
+ * @param {number|string} studentId
+ * @param {string} demoKey
+ * @returns {Promise<string[]>} the stored list after the write.
+ */
+export async function markDemoShown(studentId, demoKey) {
+  if (typeof demoKey !== 'string' || demoKey === '') return getShownDemos(studentId);
+  const current = await getShownDemos(studentId);
+  if (current.includes(demoKey)) return current;
+  const next = [...current, demoKey];
+  await safeSet(demosShownKey(studentId), next);
+  return next;
+}
+
+/** Test/support helper — clears one child's demo history. */
+export async function clearShownDemos(studentId) {
+  await safeSet(demosShownKey(studentId), []);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   PanResponder,
-  Dimensions,
   Animated,
   AccessibilityInfo,
 } from 'react-native';
@@ -38,6 +37,10 @@ import {
   createPreWritingInteractionId, markWarmupHandled, buildPreWritingNavigationParams, PRE_WRITING_REASON,
   hasWarmupHandled, resolveAdaptivePreWritingDetour,
 } from '../../utils/preWritingSessionGuard';
+// One-time category demonstration — see utils/demoPolicy.js. Decides only;
+// writes nothing until the child presses "I'm Ready" on the demo screen.
+import { useDemoDetour } from '../../utils/demoDetour';
+import { makeLetterCategoryDemoKey } from '../../utils/demoPolicy';
 import { SUPPORT_LEVELS, getSupportPresentation, resolveSessionSupportLevel } from '../../constants/handwritingSupportLevels';
 import { buildSessionAttemptRecord } from '../../utils/handwritingAttemptPayload';
 import { fetchRecommendedStartSupport, shouldApplyRecommendation, resolveRecommendedStartSupport } from '../../utils/supportRecommendation';
@@ -50,38 +53,37 @@ import {
 import { resolveActualDemoSpeedLevel } from '../../utils/demoSpeedPersistence';
 import { getAdaptiveRepetitionsUsed, incrementAdaptiveRepetitionsUsed } from '../../utils/repetitionSessionGuard';
 import { insertSpacedRepetition } from '../../utils/controlledRepetition';
+// The two-cycle-per-practice-date ceiling. Before this, a failed cycle
+// reset the child to attempt 1 on the SAME letter with nothing bounding it.
+import {
+  recordCycleCompleted, getCyclesUsed, MAX_CYCLES_PER_LETTER_PER_DATE, MASTERY_ATTEMPT_NUMBER, MASTERY_ATTEMPT_INDEX,
+} from '../../utils/letterCycleGuard';
 import {
   calculateTotalDistance, calculateAverageSpeed, calculateSpeedStats, calculatePauseMetrics,
   calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
 } from '../../utils/trajectoryFeatures';
 import { useLockLandscape } from '../../utils/useOrientationLock';
 import useGatedBack from '../../utils/useGatedBack';
+// The shared letter-writing presentation - this screen and the demonstration
+// render the SAME component, in different modes.
+import LetterWritingStage from '../../components/handwriting/LetterWritingStage';
+import {
+  SUPPORT_BADGE, SUPPORT_INSTRUCTIONS, SUPPORT_HINTS,
+} from '../../components/handwriting/LetterWritingStage';
+import {
+  PAD, COL_L, LETTER_CARD_SIZE, CANVAS_W, CANVAS_H, ASPECT, aspectX,
+  LINE_1, LINE_2, LINE_3, LINE_4,
+} from '../../constants/letterCanvasLayout';
 
 // Shapes occupy task_order 0-5 in the collection protocol; lowercase
 // letters continue from 6, matching DATA_COLLECTION_PROTOCOL's fixed order.
 const LOWERCASE_TASK_ORDER_OFFSET = 6;
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const PAD = 16;
-
-// Two-column split — mirrors WordWritingScreen layout
-const COL_L           = Math.round(SCREEN_W * 0.43);   // left column (letter card)
-const LETTER_CARD_SIZE = COL_L - 8;                     // card fills the column
-const CANVAS_W        = SCREEN_W - COL_L - PAD * 2;    // canvas = right column width
-const CANVAS_H        = Math.round(SCREEN_H * 0.50);   // 50 % of screen height
-
-// Aspect-ratio correction: map fx fractions so equal fx/fy deltas produce
-// equal pixel distances, keeping letter shapes true across all devices.
-const ASPECT  = CANVAS_W / CANVAS_H;
-const aspectX = (fx) => 0.5 + (fx - 0.5) / ASPECT;
-
-if (__DEV__) console.log('[LetterWriting] CANVAS_W =', CANVAS_W, ' CANVAS_H =', CANVAS_H, ' ASPECT =', ASPECT.toFixed(3), ' COL_L =', COL_L);
-
-// 4-line handwriting ruling — evenly spaced (0.28 gap), 0.08 margins
-const LINE_1 = Math.round(CANVAS_H * 0.08);  // cap line     — blue solid
-const LINE_2 = Math.round(CANVAS_H * 0.36);  // x-height     — blue solid
-const LINE_3 = Math.round(CANVAS_H * 0.64);  // baseline     — red dashed
-const LINE_4 = Math.round(CANVAS_H * 0.92);  // descender    — blue solid
+// Canvas geometry (CANVAS_W/CANVAS_H, the 4-line ruling, the aspect
+// correction, the column split) now lives in ONE place, imported above and
+// shared with the "watch first" demonstration, so a demo can never render
+// this letter at a different size. Every value is unchanged - the module is
+// a move of this screen's own declarations, not a redesign.
 
 // â”€â”€â”€ Support badge colours (small indicator only — theme bg is never changed) â”€
 // Feature 3 Step 2: keyed by SUPPORT_LEVELS (high/medium/low) instead of raw
@@ -89,35 +91,6 @@ const LINE_4 = Math.round(CANVAS_H * 0.92);  // descender    — blue solid
 // which is a support-level concept, not a session-position one. Values are
 // byte-identical to the pre-refactor ATTEMPT_BADGE/ATTEMPT_TITLES/
 // ATTEMPT_HINTS — only the lookup key changed (attempt → supportLevel).
-
-const SUPPORT_BADGE = {
-  [SUPPORT_LEVELS.HIGH]:   { bg: '#FFCBA8', border: '#FF8C42', text: '#7A2D00' },  // warm orange
-  [SUPPORT_LEVELS.MEDIUM]: { bg: '#FFE97A', border: '#F0C000', text: '#5A4000' },  // golden yellow
-  [SUPPORT_LEVELS.LOW]:    { bg: '#A8E6A8', border: '#4CAF50', text: '#1B5E20' },  // fresh green
-};
-
-// Feature 3 Step 6: this used to be a single string per level hardcoding
-// BOTH the attempt number and the support phrase together (e.g. 'Attempt 3
-// · Write Freely'), which was only ever safe while attempt and supportLevel
-// were guaranteed to move in lockstep (Step 2). Now that a session may
-// start at medium/low (adaptive recommendation), that hardcoded "Attempt N"
-// prefix would go factually wrong — e.g. supportLevel='low' at attempt=1
-// would still say "Attempt 3 · Write Freely". Split in two: this map holds
-// ONLY the support-specific phrase (wording unchanged from before — still
-// exactly 'Watch & Trace' / 'Follow the Guide' / 'Write Freely'); the
-// attempt number is read live from the real `attempt` state at the JSX call
-// site below, so the two can never drift apart again.
-const SUPPORT_INSTRUCTIONS = {
-  [SUPPORT_LEVELS.HIGH]:   'Watch & Trace',
-  [SUPPORT_LEVELS.MEDIUM]: 'Follow the Guide',
-  [SUPPORT_LEVELS.LOW]:    'Write Freely',
-};
-
-const SUPPORT_HINTS = {
-  [SUPPORT_LEVELS.HIGH]:   'Watch the dot — then draw it yourself!',
-  [SUPPORT_LEVELS.MEDIUM]: 'Start at the number, then follow the arrow.',
-  [SUPPORT_LEVELS.LOW]:    'Write from memory — no guide this time!',
-};
 
 // â”€â”€â”€ Per-letter start positions (fraction of canvas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -338,44 +311,6 @@ function getAttemptBadge(smoothness) {
   return                        { label: 'Keep going!',  color: '#C62828', bg: '#FFEBEE' };
 }
 
-// Builds a smooth catmull-rom SVG path from LETTER_PATHS waypoints.
-// Supports multi-stroke paths: each stroke gets its own M command (pen-lift gaps).
-function toSmoothPath(rawPath) {
-  const strokes = normalizeStrokes(rawPath);
-  let d = '';
-  for (const waypoints of strokes) {
-    if (!waypoints || waypoints.length < 2) continue;
-    const pts = waypoints.map(p => [aspectX(p.fx) * CANVAS_W, p.fy * CANVAS_H]);
-    d += ` M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[Math.max(0, i - 1)];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const p3 = pts[Math.min(pts.length - 1, i + 2)];
-      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
-      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
-      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
-      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
-      d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
-    }
-  }
-  return d.trim();
-}
-
-function toStraightPath(rawPath) {
-  const strokes = normalizeStrokes(rawPath);
-  let d = '';
-  for (const waypoints of strokes) {
-    if (!waypoints || waypoints.length < 2) continue;
-    const pts = waypoints.map(p => [aspectX(p.fx) * CANVAS_W, p.fy * CANVAS_H]);
-    d += ` M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-    for (let i = 1; i < pts.length; i++) {
-      d += ` L ${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}`;
-    }
-  }
-  return d.trim();
-}
-
 function sampleStraightStroke(waypoints, numSamples, canvasW, canvasH) {
   if (!waypoints || waypoints.length < 2) return { points: [], totalLength: 0 };
   const aspect = canvasW / canvasH;
@@ -403,17 +338,6 @@ function sampleStraightStroke(waypoints, numSamples, canvasW, canvasH) {
     });
   }
   return { points, totalLength };
-}
-
-function getGhostDots(rawPath) {
-  const strokes = normalizeStrokes(rawPath);
-  const dots = [];
-  for (const s of strokes) {
-    if (s && s.length === 1) {
-      dots.push({ cx: aspectX(s[0].fx) * CANVAS_W, cy: s[0].fy * CANVAS_H });
-    }
-  }
-  return dots;
 }
 
 function getStrokeDirectionHint(stroke, showEverySegment = false) {
@@ -535,6 +459,10 @@ export default function LetterWritingScreen({ route, navigation }) {
     collectionMode  = false,
     collectionSessionId = null,
     interactionId: interactionIdParam = null,
+    // Present only when this run is a Writing Check batch. Its ONLY effect is
+    // where the flow goes when the batch finishes - capture, attempts,
+    // scoring and every collection-mode behaviour are untouched.
+    writingCheckId = null,
   } = route.params;
 
   // Feature 4 Step 3: normally seeded by LetterPracticeScreen and carried
@@ -657,6 +585,8 @@ export default function LetterWritingScreen({ route, navigation }) {
     canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
   }, []);
   const attemptScoresRef   = useRef([]);   // accumulates featuresToScore result for each attempt
+  // Server-issued retry key for a capture-fault cycle; null at all other times.
+  const retrySessionKeyRef = useRef(null);
   const sessionAttemptsRef = useRef([]);   // ML: accumulates {attempt_number, features, strokes} per letter
   const strokeIdCounter    = useRef(0);    // ML: counts strokes within the current attempt
   // Feature 3 Step 6 — mirrors of attempt/hasDrawn state, read inside the
@@ -932,6 +862,71 @@ export default function LetterWritingScreen({ route, navigation }) {
     return () => { cancelled = true; };
   }, [letter, caseType, collectionMode, student.sid, interactionId, letterIdx, sequence, navigation, student, theme]);
 
+
+  // ── One-time category demonstration (utils/demoPolicy.js) ────────────────
+  // The FIRST time this child meets a motor category — lowercase straight,
+  // uppercase curved, and so on — they are taken to a full-screen "watch
+  // first" demonstration of the real target letter before Attempt 1.
+  //
+  // This is NOT Attempt 1, and it does not replace it. Attempt 1 keeps its
+  // HIGH support and its own on-canvas tracer exactly as before; the demo
+  // adds the one thing that tracer cannot, a moment where the child is
+  // asked to watch and there is nothing to draw on. Attempts 1/2/3 and
+  // everything downstream of them are untouched.
+  //
+  // Once per category, ever — not per letter and not per session. The
+  // second letter of the same category goes straight to Attempt 1.
+  const categoryDemoKey = makeLetterCategoryDemoKey({
+    caseType, category: letterObj?.category,
+  });
+
+  useDemoDetour({
+    studentId: student?.sid,
+    demoKey: categoryDemoKey,
+    // Before the child has done anything: attempt 1, nothing drawn. A demo
+    // must never interrupt work in progress.
+    enabled: attempt === 1 && !hasDrawn,
+    collectionMode,
+    navigate: () => {
+      navigation.navigate('HandwritingDemo', {
+        student, theme,
+        demoKey: categoryDemoKey,
+        // THIS letter, from the same reference waypoints Attempt 1 traces —
+        // never a stand-in letter.
+        letter, caseType,
+        nextRoute: 'LetterWriting',
+        // slice(letterIdx), not letterIdx + 1: the same target letter must
+        // still be active[0] on return, exactly as the adaptive pre-writing
+        // detour above does it.
+        nextParams: {
+          student, theme, caseType,
+          letterSequence: sequence.slice(letterIdx),
+          collectionMode, collectionSessionId, interactionId,
+        },
+      });
+    },
+  });
+
+
+  // ── DEV-ONLY practice-cycle diagnostics ──────────────────────────────────
+  // Development builds only (`__DEV__`), console only, never rendered. Added
+  // because a physical test could not tell WHY a letter advanced: the answer
+  // needs the mode flags, the server's own verdict and the cycle count in one
+  // place. Reads state, changes none.
+  useEffect(() => {
+    if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+    if (attempt !== 1 || hasDrawn) return;
+    const used = getCyclesUsed({ studentId: student?.sid, letter, caseType, interactionId });
+    console.log('[PRACTICE_CYCLE_STATUS]', JSON.stringify({
+      letter, case_type: caseType, category: letterObj?.category ?? null,
+      cycles_used_today: used,
+      cycles_remaining_today: Math.max(0, MAX_CYCLES_PER_LETTER_PER_DATE - used),
+      mode: collectionMode ? (writingCheckId ? 'writing_check' : 'research_collection') : 'normal',
+      collectionMode, writingCheckId, collectionSessionId,
+      interactionId, letterIdx, sequence_length: sequence.length,
+    }));
+  }, [letter, caseType, attempt, hasDrawn]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // â”€â”€ Tracer dot animation for HIGH support (originally "Attempt 1") â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const rawPath = LETTER_PATHS[letter];
@@ -1123,6 +1118,158 @@ export default function LetterWritingScreen({ route, navigation }) {
     cycleTokenRef.current += 1;
     const myCycleToken = cycleTokenRef.current;
 
+    // ── Advance past this letter ───────────────────────────────────────────
+    // Extracted verbatim from this function's own tail so BOTH the "letter
+    // mastered" path and the new "two cycles used" path move on the same way:
+    // same category celebrations, same end-of-run celebration, same index
+    // step. A letter set aside after two failed cycles is NOT mastered - only
+    // the unchanged pass logic sets mastered_at - it simply stops being
+    // presented for the rest of this practice date.
+    const advancePastLetter = () => {
+      if (isLastLetter) {
+        showCelebrationFor(ALL_DONE_CELEBRATION, null, true);
+        resetCanvas();
+        return;
+      }
+
+      const currentCat = sequence[letterIdx]?.category;
+      const nextCat    = sequence[letterIdx + 1]?.category;
+
+      if (currentCat !== nextCat) {
+        showCelebrationFor(
+          CATEGORY_CELEBRATION[currentCat] ?? CATEGORY_CELEBRATION.mixed,
+          nextCat,
+          false
+        );
+        resetCanvas();
+      } else {
+        setLetterIdx(i => i + 1);
+        setAttempt(1);
+        resetCanvas();
+      }
+    };
+
+    /**
+     * One 3-attempt cycle just failed. Decides between the immediate retry
+     * (cycle 2) and moving on (the ceiling).
+     *
+     * `serverCyclesToday` is the backend's own count for this practice date,
+     * returned on the blocked response. It is what stops a restarted app from
+     * buying a third cycle: the guard seeds from it, and the two combine by
+     * maximum, never by trusting either alone.
+     */
+      /** What handleFailedCycle is about to decide - for the log only. */
+      const recordedCyclesWillReachCap = (serverCyclesToday) => {
+        const local = getCyclesUsed({ studentId: student?.sid, letter, caseType, interactionId }) + 1;
+        const known = Number.isInteger(serverCyclesToday) && serverCyclesToday > local
+          ? serverCyclesToday : local;
+        return known >= MAX_CYCLES_PER_LETTER_PER_DATE;
+      };
+
+      // DEV-ONLY: the single line that explains WHY this cycle ended the way
+      // it did. Never rendered, never shipped to a child.
+      const logCycleOutcome = (branch, res) => {
+        if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+        console.log('[NORMAL_LETTER_CYCLE]', JSON.stringify({
+          student_id: student?.sid, letter, case_type: caseType,
+          category: letterObj?.category ?? null,
+          mode: collectionMode ? (writingCheckId ? 'writing_check' : 'research_collection') : 'normal',
+          collectionMode, writingCheckId, collectionSessionId,
+          interactionId,
+          client_attempt_scores: attemptScoresRef.current,
+          attempts_in_payload: sessionAttemptsRef.current.length,
+          attempt_numbers: sessionAttemptsRef.current.map(a => a.attempt_number),
+          support_levels: sessionAttemptsRef.current.map(a => a.support_level),
+          // The server's own verdict. bestScore is computed BACKEND-side from
+          // the captured strokes; client scores above are diagnostic only.
+          server_completed: res?.completed ?? null,
+          server_bestScore: res?.bestScore ?? null,
+          server_threshold: res?.threshold ?? null,
+          server_thresholdSource: res?.thresholdSource ?? null,
+          // bestScore null means EVERY attempt failed the coverage/geometry
+          // check - not that the writing scored low.
+          coverage_rejected_all: res?.completed === false && res?.bestScore == null,
+          cycle_usage: res?.cycle_usage ?? null,
+          branch,
+          letterIdx, next_letterIdx: branch === 'FAILED_START_CYCLE_2' ? letterIdx : letterIdx + 1,
+        }));
+      };
+
+    /**
+     * A TECHNICAL capture fault on attempt 3 — the device recorded no strokes
+     * (or no features), so the server had nothing to judge and explicitly
+     * told us `cycle_consumed: false`.
+     *
+     * This is NOT a handwriting outcome, so none of the failed-cycle
+     * machinery runs: no cycle is spent, no spaced repetition is scheduled,
+     * no homework is created, the child does not advance, and they are not
+     * told they need more practice. They simply retry ATTEMPT 3 of the SAME
+     * cycle — attempts 1 and 2 stay exactly as captured, because a device
+     * fault must never cost a child their valid guided practice.
+     *
+     * Only the failed attempt-3 record is dropped from the payload, so the
+     * retry resends [attempt1, attempt2, newAttempt3].
+     */
+    const handleCaptureIncomplete = (retrySessionKey) => {
+      // The server-issued key for THIS partial cycle. Sending it back on the
+      // retry makes the backend complete the same session instead of opening
+      // a second one — which is what stopped attempts 1 and 2 being stored
+      // twice in the research data. Purely a courier: the server re-validates
+      // it (student, letter, case, practice date, still unfinished) before
+      // honouring it, and ignores it if anything fails.
+      retrySessionKeyRef.current = retrySessionKey ?? null;
+
+      // Drop ONLY the attempt-3 record this cycle just appended. The two
+      // guided attempts are kept verbatim.
+      sessionAttemptsRef.current = sessionAttemptsRef.current.slice(0, MASTERY_ATTEMPT_INDEX);
+      attemptScoresRef.current   = attemptScoresRef.current.slice(0, MASTERY_ATTEMPT_INDEX);
+
+      if (__DEV__) {
+        console.log('[NORMAL_LETTER_CYCLE] capture incomplete — retrying attempt 3 only', {
+          letter, caseType,
+          attempts_kept: sessionAttemptsRef.current.length,
+          case_label: 'lowercase',
+        });
+      }
+
+      // Neutral, child-friendly, and deliberately says nothing about how
+      // they wrote — because nothing about their writing was measured.
+      show('We couldn’t record that attempt. Please try once more.', 'info');
+
+      // Stay on THIS cycle, at attempt 3. Never setAttempt(1).
+      setAttempt(MASTERY_ATTEMPT_NUMBER);
+      resetCanvas();
+    };
+
+    const handleFailedCycle = (serverCyclesToday) => {
+      attemptScoresRef.current   = [];
+      sessionAttemptsRef.current = [];
+      // This cycle is over (evaluated). The retry key belonged to it and must
+      // never leak into the next one.
+      retrySessionKeyRef.current = null;
+
+      const used = recordCycleCompleted({
+        studentId: student.sid, letter, caseType, interactionId, serverCyclesToday,
+      });
+
+      if (used >= MAX_CYCLES_PER_LETTER_PER_DATE) {
+        // The ceiling. No cycle 3 today, by immediate retry or any other
+        // route - Feature 5's spaced repetition is blocked by the same rule
+        // on the server side, so it cannot reinsert this letter either.
+        if (__DEV__) {
+          console.log('[cycle cap] letter set aside for this practice date', { letter, caseType, used });
+        }
+        advancePastLetter();
+        return;
+      }
+
+      // Cycle 2, immediately, on the same letter - attempt numbering restarts
+      // at 1, exactly as cycle 1 did.
+      setAttempt(1);
+      resetCanvas();
+    };
+
+
     // Feature 5 Step 3 — evaluates whether the cycle that is ABOUT TO FAIL
     // should schedule ONE spaced repetition later in `sequence`. Fire-and-
     // forget: never awaited by either failure branch below — the existing
@@ -1280,6 +1427,9 @@ export default function LetterWritingScreen({ route, navigation }) {
           template_version:      TEMPLATE_VERSION,
           normalization_version: NORMALIZATION_VERSION,
           task_order:            LOWERCASE_TASK_ORDER_OFFSET + letterIdx,
+          // Null except immediately after a capture fault — see
+          // handleCaptureIncomplete.
+          retry_session_key:     retrySessionKeyRef.current,
           ...getDeviceMetadata(),
         });
 
@@ -1297,6 +1447,14 @@ export default function LetterWritingScreen({ route, navigation }) {
         // per-attempt badge above (setAttemptFeedback) — it just can't force
         // a retry the database already recorded as complete.
         if (!collectionMode && response.data.completed === false) {
+          // P1 — a technical capture fault is not a failed cycle. The server
+          // states this explicitly rather than us inferring it from the cycle
+          // count, because "I did not count this" and "my count read failed"
+          // must never be confused.
+          if (response.data.cycle_consumed === false) {
+            handleCaptureIncomplete(response.data.retry_session_key);
+            return;
+          }
           if (response.data.completed === false) {
             show('Keep practising — try again!', 'info');
           }
@@ -1305,10 +1463,12 @@ export default function LetterWritingScreen({ route, navigation }) {
           // repetition evaluation before the existing immediate retry
           // proceeds exactly as it always has.
           scheduleAdaptiveRepetitionIfEligible();
-          attemptScoresRef.current   = [];
-          sessionAttemptsRef.current = [];
-          setAttempt(1);
-          resetCanvas();
+          logCycleOutcome(
+            recordedCyclesWillReachCap(response.data?.cycle_usage?.cycles_today ?? null)
+              ? 'FAILED_ADVANCE_AFTER_CYCLE_2' : 'FAILED_START_CYCLE_2',
+            response.data,
+          );
+          handleFailedCycle(response.data?.cycle_usage?.cycles_today ?? null);
           return;
         }
       } catch {
@@ -1319,10 +1479,13 @@ export default function LetterWritingScreen({ route, navigation }) {
           // cycle failed locally and will immediately retry exactly as
           // before.
           scheduleAdaptiveRepetitionIfEligible();
-          attemptScoresRef.current   = [];
-          sessionAttemptsRef.current = [];
-          setAttempt(1);
-          resetCanvas();
+          // No server opinion on a network failure - the in-interaction guard
+          // is the whole limit here, which is the safe direction.
+          logCycleOutcome(
+            recordedCyclesWillReachCap(null) ? 'FAILED_ADVANCE_AFTER_CYCLE_2' : 'FAILED_START_CYCLE_2',
+            null,
+          );
+          handleFailedCycle(null);
           return;
         }
       }
@@ -1397,7 +1560,13 @@ export default function LetterWritingScreen({ route, navigation }) {
     const isAllDone = celebration?.isAllDone;
     setCelebration(null);
     if (isAllDone) {
-      if (collectionMode && caseType === 'lowercase') {
+      if (writingCheckId) {
+        // A Writing Check batch is finished. Go back to the check, which
+        // re-reads progress and either hands over the uppercase batch or
+        // completes. Never into the research data-collection protocol, whose
+        // uppercase list is a different set of letters entirely.
+        navigation.navigate('WritingCheck', { student, theme });
+      } else if (collectionMode && caseType === 'lowercase') {
         navigation.navigate('UppercaseWriting', {
           student,
           theme,
@@ -1445,7 +1614,7 @@ export default function LetterWritingScreen({ route, navigation }) {
         setAttempt(1);
       }
     }
-  }, [celebration, collectionMode, collectionSessionId, caseType, navigation, student, theme, sequence, letterIdx, interactionId]);
+  }, [celebration, collectionMode, collectionSessionId, caseType, navigation, student, theme, sequence, letterIdx, interactionId, writingCheckId]);
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Render
@@ -1497,223 +1666,37 @@ export default function LetterWritingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* â”€â”€ Main area: letter card LEFT · content RIGHT â”€â”€ */}
-        <View style={styles.mainRow}>
-
-          {/* Left column — large letter card */}
-          <View style={styles.letterCol}>
-            <View style={[styles.letterCard, { backgroundColor: theme.button }]}>
-              <Text style={[styles.letterCardText, { color: theme.buttonText }]}>
-                {letter}
-              </Text>
-            </View>
-          </View>
-
-          {/* Right column — title + phonetic + badge + canvas */}
-          <View style={styles.contentCol}>
-
-            {/* Title card: "Write 'A'" + filled sound button */}
-            <View style={[styles.titleCard, {
-              backgroundColor: theme.button + '14',
-              borderColor:     theme.button + '35',
-            }]}>
-              <Text style={[styles.writeLabel, { color: theme.headingText }]}>
-                Write '{letter.toUpperCase()}'
-              </Text>
-              <TouchableOpacity
-                style={[styles.soundBtn, { backgroundColor: theme.button }]}
-                onPress={() => playLetterSound()}
-                activeOpacity={0.75}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <Ionicons name="volume-high" size={18} color={theme.buttonText} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Phonetic symbol */}
-            <Text style={[styles.phoneticText, { color: theme.headingText }]}>
-              {phonetic}
-            </Text>
-
-            {/* Attempt badge */}
-            <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-              <Text style={[styles.attemptTitle, { color: badge.text }]}>
-                {`Attempt ${attempt} · ${SUPPORT_INSTRUCTIONS[supportLevel]}`}
-              </Text>
-              <Text style={[styles.attemptHint, { color: badge.text }]}>
-                {SUPPORT_HINTS[supportLevel]}
-              </Text>
-            </View>
-
-            {/* Writing canvas — canvasOuter wraps the card so the tracer dot
-                is never clipped by overflow:hidden */}
-            <View style={styles.canvasOuter}>
-              <View
-                style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
-                pointerEvents={attemptFeedback ? 'none' : 'auto'}
-                ref={canvasRef}
-                onLayout={measureCanvasOrigin}
-                {...panResponder.panHandlers}
-              >
-                <Svg width={CANVAS_W} height={CANVAS_H}>
-
-                  {/* 4-line ruling */}
-                  <Line x1={0} y1={LINE_1} x2={CANVAS_W} y2={LINE_1} stroke="#90CAF9" strokeWidth={1.5} />
-                  <Line x1={0} y1={LINE_2} x2={CANVAS_W} y2={LINE_2} stroke="#90CAF9" strokeWidth={1} />
-                  <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3} stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
-                  <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#90CAF9" strokeWidth={1.5} />
-
-                  {/* Ghost letter: drawn from LETTER_PATHS so the ghost,
-                      tracer dot, and DTW template all share one shape. */}
-                  {guideOpacity > 0 && LETTER_PATHS[letter] && (
-                    <>
-                      <Path
-                        d={ANGULAR_LETTERS.has(letter) ? toStraightPath(LETTER_PATHS[letter]) : toSmoothPath(LETTER_PATHS[letter])}
-                        stroke={`rgba(80,80,80,${guideOpacity})`}
-                        strokeWidth={7}
-                        strokeLinecap="round"
-                        strokeLinejoin={ANGULAR_LETTERS.has(letter) ? 'miter' : 'round'}
-                        fill="none"
-                      />
-                      {getGhostDots(LETTER_PATHS[letter]).map((dot, idx) => (
-                        <Circle
-                          key={`ghost-dot-${idx}`}
-                          cx={dot.cx}
-                          cy={dot.cy}
-                          r={5}
-                          fill={`rgba(80,80,80,${guideOpacity})`}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {/* MEDIUM support: numbered stroke-order start dot.
-                      Originally gated on `attempt === 2` — now on
-                      supportPresentation.showStartMarker, which is true for
-                      the exact same cases (medium, in both normal and
-                      collection mode; see handwritingSupportLevels.js). */}
-                  {supportPresentation?.showStartMarker
-                    && activeGuideStart
-                    && (
-                    <>
-                      <Circle
-                        cx={aspectX(activeGuideStart.fx) * CANVAS_W}
-                        cy={activeGuideStart.fy * CANVAS_H}
-                        r={12}
-                        fill="none"
-                        stroke={theme.button}
-                        strokeWidth={2}
-                        opacity={0.72}
-                      />
-                      <Circle
-                        cx={aspectX(activeGuideStart.fx) * CANVAS_W}
-                        cy={activeGuideStart.fy * CANVAS_H}
-                        r={9} fill={theme.button} opacity={0.80}
-                      />
-                      <SvgText
-                        x={aspectX(activeGuideStart.fx) * CANVAS_W}
-                        y={activeGuideStart.fy * CANVAS_H + 5}
-                        fontSize={12}
-                        fill={theme.buttonText ?? '#FFFFFF'}
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {activeGuideStroke + 1}
-                      </SvgText>
-                    </>
-                  )}
-                  {/* MEDIUM support: stroke-direction arrows + end markers.
-                      Originally nested inside the same `attempt === 2` block
-                      above, gated a second time on `activeDirectionHint`
-                      truthiness — now on supportPresentation.showDirectionHint
-                      (same true/false cases as showStartMarker today), still
-                      independently null-guarded by activeDirectionHint. */}
-                  {supportPresentation?.showDirectionHint
-                    && activeGuideStart
-                    && activeDirectionHint
-                    && (
-                    <>
-                      {activeDirectionHint.endGuides.map((guide, index) => (
-                        <Circle
-                          key={`stroke-end-${index}`}
-                          cx={guide.x}
-                          cy={guide.y}
-                          r={index === activeDirectionHint.endGuides.length - 1 ? 7 : 5}
-                          fill="none"
-                          stroke={theme.button}
-                          strokeWidth={2.5}
-                          opacity={0.72}
-                        />
-                      ))}
-                      {activeDirectionHint.arrows.map((arrow, index) => (
-                        <React.Fragment key={`stroke-arrow-${index}`}>
-                          <Line
-                            x1={arrow.shaftStart.x}
-                            y1={arrow.shaftStart.y}
-                            x2={arrow.tip.x}
-                            y2={arrow.tip.y}
-                            stroke={theme.button}
-                            strokeWidth={4}
-                            strokeLinecap="round"
-                          />
-                          <Polygon points={arrow.arrowHead} fill={theme.button} />
-                        </React.Fragment>
-                      ))}
-                    </>
-                  )}
-
-                  {/* Completed strokes */}
-                  {allPaths.map((stroke, i) => (
-                    <Polyline
-                      key={i}
-                      points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
-                      stroke={theme.button}
-                      strokeWidth={5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
-                    />
-                  ))}
-
-                  {/* Live stroke */}
-                  {currentPath.length > 1 && (
-                    <Polyline
-                      points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
-                      stroke={theme.button}
-                      strokeWidth={5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
-                      opacity={0.75}
-                    />
-                  )}
-
-                </Svg>
-              </View>
-
-              {/* Tracer dot lives outside overflow:hidden.
-                  tracerXInterp/tracerYInterp are Animated.interpolation nodes
-                  derived from tracerProgress — they follow the exact bezier curve
-                  that the ghost Path renders, not the raw waypoint chords. */}
-              {supportPresentation?.showAnimatedTracer && !hasDrawn && tracerVisible && tracerXInterp && (
-                <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                  <Animated.View
-                    style={[
-                      styles.tracerDot,
-                      {
-                        backgroundColor: theme.button,
-                        transform: [
-                          { translateX: tracerXInterp },
-                          { translateY: tracerYInterp },
-                        ],
-                      },
-                    ]}
-                  />
-                </View>
-              )}
-            </View>
-
-          </View>
-        </View>
+        {/* Main area: letter card LEFT | content RIGHT.
+            Rendered by the SHARED LetterWritingStage so the "watch first"
+            demonstration and this practice screen are the same layout from
+            the same file, never two copies that can drift apart. */}
+        <LetterWritingStage
+          mode="practice"
+          letter={letter}
+          phonetic={phonetic}
+          theme={theme}
+          rawPath={LETTER_PATHS[letter]}
+          isAngular={ANGULAR_LETTERS.has(letter)}
+          guideOpacity={guideOpacity}
+          supportPresentation={supportPresentation}
+          activeGuideStart={activeGuideStart}
+          activeGuideStroke={activeGuideStroke}
+          activeDirectionHint={activeDirectionHint}
+          allPaths={allPaths}
+          currentPath={currentPath}
+          hasDrawn={hasDrawn}
+          tracerVisible={tracerVisible}
+          tracerXInterp={tracerXInterp}
+          tracerYInterp={tracerYInterp}
+          badge={badge}
+          badgeTitle={`Attempt ${attempt} · ${SUPPORT_INSTRUCTIONS[supportLevel]}`}
+          badgeHint={SUPPORT_HINTS[supportLevel]}
+          onPlaySound={() => playLetterSound()}
+          canvasRef={canvasRef}
+          onCanvasLayout={measureCanvasOrigin}
+          panHandlers={panResponder.panHandlers}
+          canvasPointerEvents={attemptFeedback ? 'none' : 'auto'}
+        />
 
         {/* â”€â”€ Feedback pill â”€â”€ */}
         {/* â”€â”€ Action buttons â”€â”€ */}
@@ -1877,125 +1860,12 @@ const styles = StyleSheet.create({
   },
 
   // â”€â”€ Main two-column layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  mainRow: {
-    flexDirection: 'row',
-    flex: 1,
-    paddingHorizontal: PAD,
-    paddingBottom: 4,
-  },
-
   // Left: letter card column
-  letterCol: {
-    width: COL_L,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingRight: 8,
-  },
-  letterCard: {
-    width: LETTER_CARD_SIZE,
-    height: LETTER_CARD_SIZE,
-    borderRadius: Math.round(LETTER_CARD_SIZE * 0.22),
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  letterCardText: {
-    fontSize: Math.round(LETTER_CARD_SIZE * 0.60),
-    fontWeight: '900',
-    lineHeight: Math.round(LETTER_CARD_SIZE * 0.75),
-  },
-
   // Right: stacked content column
-  contentCol: {
-    flex: 1,
-    gap: 8,
-    justifyContent: 'center',
-  },
-
   // Title card: "Write 'A'" + sound button
-  titleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  writeLabel: {
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-    flexShrink: 1,
-  },
-  soundBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    marginLeft: 8,
-  },
-  phoneticText: {
-    fontSize: 13,
-    fontStyle: 'italic',
-    fontWeight: '600',
-    opacity: 0.65,
-    paddingLeft: 2,
-  },
-
   // Attempt badge (inside right column)
-  attemptBadge: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    alignItems: 'center',
-  },
-  attemptTitle: { fontSize: 12, fontWeight: '800' },
-  attemptHint:  { fontSize: 10, marginTop: 2, textAlign: 'center', opacity: 0.85 },
-
   // Canvas
-  canvasOuter: {
-    width:  CANVAS_W,
-    height: CANVAS_H,
-  },
-  canvasCard: {
-    width: CANVAS_W,
-    height: CANVAS_H,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
   // â”€â”€ Tracer dot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  tracerDot: {
-    position: 'absolute',
-    left: -15,
-    top: -15,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.30,
-    shadowRadius: 4,
-  },
-
   // â”€â”€ Feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   feedbackBadge: {
     alignSelf: 'center',

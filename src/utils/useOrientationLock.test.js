@@ -104,6 +104,8 @@ describe('useLockPortrait', () => {
 describe('wiring', () => {
   const screen = fs.readFileSync(
     path.resolve(__dirname, '../screens/handwriting/reports/TeacherReportScreen.js'), 'utf8');
+  const progressScreen = fs.readFileSync(
+    path.resolve(__dirname, '../screens/handwriting/ProgressReportScreen.js'), 'utf8');
 
   function stripComments(source) {
     return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -113,6 +115,13 @@ describe('wiring', () => {
     const code = stripComments(screen);
     expect(code).toMatch(/import \{ useLockPortrait \} from '\.\.\/\.\.\/\.\.\/utils\/useOrientationLock'/);
     expect(code).toMatch(/useLockPortrait\(\);/);
+  });
+
+  it('ProgressReportScreen imports and calls the portrait hook', () => {
+    const code = stripComments(progressScreen);
+    expect(code).toMatch(/import \{ useLockPortrait \} from '\.\.\/\.\.\/utils\/useOrientationLock'/);
+    expect(code).toMatch(/useLockPortrait\(\);/);
+    expect(code).not.toMatch(/useLockLandscape\(\);/);
   });
 
   it('the lock lives in the screen, not in one navigator', () => {
@@ -193,10 +202,12 @@ describe('module-wide orientation coverage', () => {
     expect(unlocked).toEqual([]);
   });
 
-  it('exactly one screen locks portrait — the teacher progress report', () => {
+  it('both report screens lock portrait', () => {
     const portrait = screens.filter((f) => fsMod.readFileSync(f, 'utf8').includes('useLockPortrait()'));
-    expect(portrait).toHaveLength(1);
-    expect(pathMod.basename(portrait[0])).toBe('TeacherReportScreen.js');
+    expect(portrait.map((f) => pathMod.basename(f)).sort()).toEqual([
+      'ProgressReportScreen.js',
+      'TeacherReportScreen.js',
+    ]);
   });
 
   it('no screen locks both orientations', () => {

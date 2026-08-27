@@ -31,6 +31,20 @@ import { ENDPOINTS } from '../constants/api';
 
 const FAILSAFE = Object.freeze({ status: 'unavailable', profile: null, debug: null });
 
+
+/**
+ * True for a 404 from api/client.js.
+ *
+ * The client's response interceptor rejects with a PLAIN `Error` carrying
+ * `.status` — it never re-exposes axios's `.response`. Checking
+ * `err.response.status` therefore never matched, so a legitimate 404 fell
+ * through to the read_failed branch and logged as if the server had broken.
+ * Both shapes are accepted so this keeps working either way.
+ */
+function isNotFound(err) {
+  return err?.status === 404 || err?.response?.status === 404;
+}
+
 /**
  * @param {*} data — response.data, or undefined/null.
  * @returns {{
@@ -87,7 +101,12 @@ export async function fetchMotorClusterProfile(studentId) {
     const response = await client.get(ENDPOINTS.MOTOR_CLUSTER(studentId));
     return normalizeMotorClusterResponse(response?.data);
   } catch (err) {
-    if (err?.response?.status === 404) return { status: 'not_found', profile: null, debug: null };
+    if (isNotFound(err)) {
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        console.log('[motorClusterProfile] no profile recorded for this student yet');
+      }
+      return { status: 'not_found', profile: null, debug: null };
+    }
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.log('[motorClusterProfile] fetch failed — treating as unavailable:', err?.message ?? err);
     }

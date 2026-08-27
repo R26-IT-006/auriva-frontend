@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle, Ellipse } from 'react-native-svg';
+import Svg, { Circle, Ellipse, Line, Path } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
@@ -47,13 +47,19 @@ import { useGatedHardwareBack } from '../../utils/useGatedBack';
 // Feature 1 baseline that many real assessments never reach).
 import { fetchInitialAssessmentShapes } from '../../utils/initialAssessmentShapes';
 import { isWordsUnlocked } from '../../utils/wordUnlockGate';
+// Demo preview switch - see constants/demoAccess.js. Does NOT change
+// isWordsUnlocked(); it only decides whether a not-yet-earned card can be
+// opened, and makes that state visible rather than silent.
+import {
+  canOpen, isPreview, PREVIEW_BADGE,
+} from '../../constants/demoAccess';
 import { useLockLandscape } from '../../utils/useOrientationLock';
 
 const AVATAR_MAP = {
-  boba:     require('../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../assets/avatar-images/Megatron.png'),
+  boba:     require('../../../assets/handwriting-avatars/Boba.png'),
+  glitter:  require('../../../assets/handwriting-avatars/Glitter.png'),
+  lily:     require('../../../assets/handwriting-avatars/Lily.png'),
+  megatron: require('../../../assets/handwriting-avatars/Megatron.png'),
 };
 
 const SHAPE_ICONS = {
@@ -153,21 +159,56 @@ function OverallScoreCard({ theme, label, score, note }) {
       <View style={[styles.overallIconWrap, { backgroundColor: theme.button + '20' }]}>
         <Ionicons name="analytics-outline" size={22} color={theme.button} />
       </View>
-      <View style={{ flex: 1 }}>
+      <View style={styles.overallContent}>
         <Text style={styles.overallLabel}>{label}</Text>
-        <Text style={[styles.overallValue, { color: theme.headingText }]}>
-          {score != null ? `${score}%` : 'N/A'} · {badge.label}
-        </Text>
+        <View style={styles.overallResultRow}>
+          <Text style={[styles.overallValue, { color: theme.headingText }]}>
+            {score != null ? `${score}%` : 'N/A'}
+          </Text>
+          <View style={[styles.overallBadge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.overallBadgeText, { color: badge.color }]}>{badge.label}</Text>
+          </View>
+        </View>
         {note ? <Text style={styles.overallNote}>{note}</Text> : null}
       </View>
     </View>
   );
 }
 
+// Calm, consistent line drawings for the six assessment shapes. These are
+// presentation-only and use the existing shapeId without changing results.
+function AssessmentShapeIcon({ shapeId, color }) {
+  const common = { stroke: color, strokeWidth: 2.4, strokeLinecap: 'round', fill: 'none' };
+  let mark;
+  switch (shapeId) {
+    case 'horizontal_line':
+      mark = <Line x1="4" y1="12" x2="20" y2="12" {...common} />;
+      break;
+    case 'vertical_line':
+      mark = <Line x1="12" y1="4" x2="12" y2="20" {...common} />;
+      break;
+    case 'full_circle':
+      mark = <Circle cx="12" cy="12" r="8" {...common} />;
+      break;
+    case 'half_circle':
+      mark = <Path d="M4 16 A8 8 0 0 1 20 16" {...common} />;
+      break;
+    case 'zigzag':
+      mark = <Path d="M3 17 L7.5 7 L12 17 L16.5 7 L21 17" {...common} />;
+      break;
+    case 'curve_wave':
+      mark = <Path d="M3 13 C6 6 9 6 12 13 C15 20 18 20 21 13" {...common} />;
+      break;
+    default:
+      return <Ionicons name={SHAPE_ICONS[shapeId] ?? 'brush-outline'} size={18} color={color} />;
+  }
+  return <Svg width={24} height={24} viewBox="0 0 24 24">{mark}</Svg>;
+}
+
 // Circular "Overall Progress" ring — same underlying progressPercent value
 // the old inline header/bar showed, just presented as a ring in the new
 // side panel instead of a straight bar. No new data source.
-function ProgressRing({ percent, size = 124, strokeWidth = 12, color = '#F5A623', trackColor = '#FCEACB' }) {
+function ProgressRing({ percent, size = 112, strokeWidth = 11, color = '#F5A623', trackColor = '#FCEACB' }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.max(0, Math.min(100, percent ?? 0));
@@ -205,24 +246,24 @@ function progressEncouragement(percent) {
 // SVG shapes rather than an image asset. 'letters' keeps green tones and
 // the small flower accent; 'words' reuses this app's existing purple Words
 // theming instead of introducing a new color identity for just this card.
-function CardLandscape({ variant }) {
+function CardLandscape({ variant, locked = false }) {
   const isLetters = variant === 'letters';
-  const hillBack  = isLetters ? '#BFE3B8' : '#DCC7EF';
-  const hillFront = isLetters ? '#9ED895' : '#C7A3E0';
-  const bush      = isLetters ? '#5CA85A' : '#9B62C4';
+  const hillBack  = isLetters ? '#BFE3B8' : (locked ? '#DDD7E2' : '#DCC7EF');
+  const hillFront = isLetters ? '#9ED895' : (locked ? '#C9C1CE' : '#C7A3E0');
+  const bush      = isLetters ? '#5CA85A' : (locked ? '#A59DAA' : '#9B62C4');
 
   return (
     // Anchored to just the bottom band of the card (not the full height) —
     // stretching a wide, flat scene across the whole card distorted it
     // against the card's actual (taller, narrower) proportions. A shorter
     // band close to the viewBox's own 300:160 aspect stretches cleanly.
-    <Svg
-      width="100%" height="100%"
-      viewBox="0 0 300 160"
-      preserveAspectRatio="none"
-      style={styles.cardLandscapeSvg}
-      pointerEvents="none"
-    >
+    <View style={styles.cardLandscapeBand} pointerEvents="none">
+      <Svg
+        width="100%" height="100%"
+        viewBox="0 0 300 160"
+        preserveAspectRatio="none"
+        style={StyleSheet.absoluteFillObject}
+      >
       {/* Clouds */}
       <Ellipse cx={46}  cy={22} rx={24} ry={12} fill="#FFFFFF" opacity={0.75} />
       <Ellipse cx={252} cy={16} rx={20} ry={10} fill="#FFFFFF" opacity={0.6} />
@@ -246,7 +287,8 @@ function CardLandscape({ variant }) {
           <Circle cx={269} cy={131} r={2.5} fill="#FFD966" />
         </>
       )}
-    </Svg>
+      </Svg>
+    </View>
   );
 }
 
@@ -341,13 +383,24 @@ export default function LetterHomeScreen({ route, navigation }) {
     }, [student.sid])
   );
 
-  const progressPercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
+  // Display-only rollup of the two existing authoritative 26-letter counts.
+  // The underlying progress API and unlock rule remain unchanged.
+  const completedLetterCount = Math.min(
+    52,
+    Math.max(0, lowercaseProgress) + Math.max(0, uppercaseProgress),
+  );
+  const progressPercent = Math.min(100, Math.round((completedLetterCount / 52) * 100));
+  const avatarSource = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
   // Pre-device P0 fix — previously hardcoded `true`, meaning Words was
   // never actually gated regardless of letter progress. See
   // utils/wordUnlockGate.js for the full audit of which unlock rule
   // applies and why (lowercase AND uppercase, both authoritatively
   // mastered — never AsyncStorage, never a local/client-only flag).
   const wordsUnlocked   = isWordsUnlocked(lowercaseProgress, uppercaseProgress);
+  // `wordsUnlocked` still means EARNED, and still drives how the card looks.
+  // These two only decide whether it opens, and whether it says so.
+  const wordsOpen       = canOpen(wordsUnlocked);
+  const wordsPreview    = isPreview(wordsUnlocked);
 
   // Assessment Summary modal's shape data — the just-completed session's
   // in-memory assessmentData when available, otherwise the same per-shape
@@ -386,7 +439,9 @@ export default function LetterHomeScreen({ route, navigation }) {
     setGateVisible(false);
     if (pendingGateAction === 'why') setShowWhyModal(true);
     else if (pendingGateAction === 'assessment') setShowSummary(true);
-    else if (pendingGateAction === 'progress') navigation.navigate('TeacherReport', { student, theme });
+    // originRoute tells the report where back should return to, so it can
+    // never land on a stale WritingCheck — see utils/backToOrigin.js.
+    else if (pendingGateAction === 'progress') navigation.navigate('TeacherReport', { student, theme, originRoute: 'LetterHome' });
     else if (pendingGateAction === 'dashboard') navigation.navigate('TeacherMain');
     // Writing Check is a TEACHER-initiated assessment, so it goes through the
     // same ParentGateModal as every other teacher-facing action here. A child
@@ -485,15 +540,16 @@ export default function LetterHomeScreen({ route, navigation }) {
                 tapping Dashboard instead of Back. */}
             <TouchableOpacity
               style={[styles.dashboardBtn, {
-                backgroundColor: theme.button + '14',
-                borderColor: theme.button + '40',
+                backgroundColor: theme.button,
+                borderColor: theme.button,
               }]}
               onPress={() => requestGatedAction('dashboard')}
               activeOpacity={0.8}
+              accessibilityState={{ selected: true }}
               accessibilityLabel="Dashboard — needs a code"
             >
-              <Ionicons name="home-outline" size={15} color={theme.button} />
-              <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Dashboard</Text>
+              <Ionicons name="home" size={17} color={theme.buttonText} />
+              <Text style={[styles.dashboardBtnText, { color: theme.buttonText }]}>Dashboard</Text>
             </TouchableOpacity>
 
             {/* Assessment + Progress — same pill style as Dashboard above,
@@ -502,40 +558,40 @@ export default function LetterHomeScreen({ route, navigation }) {
                 only the visual treatment matches Dashboard now. */}
             <TouchableOpacity
               style={[styles.dashboardBtn, {
-                backgroundColor: theme.button + '14',
-                borderColor: theme.button + '40',
+                backgroundColor: theme.button + '20',
+                borderColor: theme.button + '70',
               }]}
               onPress={() => requestGatedAction('writingCheck')}
               activeOpacity={0.8}
               accessibilityLabel="Writing Check — needs a code"
             >
-              <Ionicons name="create-outline" size={15} color={theme.button} />
+              <Ionicons name="create-outline" size={17} color={theme.button} />
               <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Writing Check</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.dashboardBtn, {
-                backgroundColor: theme.button + '14',
-                borderColor: theme.button + '40',
+                backgroundColor: theme.button + '20',
+                borderColor: theme.button + '70',
               }]}
               onPress={() => requestGatedAction('assessment')}
               activeOpacity={0.8}
               accessibilityLabel="Assessment — needs a code"
             >
-              <Ionicons name="clipboard-outline" size={15} color={theme.button} />
+              <Ionicons name="clipboard-outline" size={17} color={theme.button} />
               <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Assessment</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.dashboardBtn, {
-                backgroundColor: theme.button + '14',
-                borderColor: theme.button + '40',
+                backgroundColor: theme.button + '20',
+                borderColor: theme.button + '70',
               }]}
               onPress={() => requestGatedAction('progress')}
               activeOpacity={0.8}
               accessibilityLabel="Progress report — needs a code"
             >
-              <Ionicons name="document-text-outline" size={15} color={theme.button} />
+              <Ionicons name="document-text-outline" size={17} color={theme.button} />
               <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Progress</Text>
             </TouchableOpacity>
           </View>
@@ -568,7 +624,7 @@ export default function LetterHomeScreen({ route, navigation }) {
                   new illustration asset, sitting behind the text as a quiet
                   bit of personality in the corner. */}
               <Image
-                source={AVATAR_MAP[student?.avatar_key]}
+                source={avatarSource}
                 style={styles.learningPathAvatar}
                 resizeMode="contain"
                 pointerEvents="none"
@@ -608,7 +664,7 @@ export default function LetterHomeScreen({ route, navigation }) {
 
               {/* Letters card */}
               <TouchableOpacity
-                style={styles.lettersCard}
+                style={[styles.learningModeCard, styles.lettersCard]}
                 onPress={() => navigation.navigate('LetterPractice', {
                   student,
                   theme,
@@ -628,7 +684,7 @@ export default function LetterHomeScreen({ route, navigation }) {
                   <Text style={styles.aaIconText}>Aa</Text>
                 </View>
                 <Text style={styles.lettersTitle}>Letters</Text>
-                <Text style={styles.modeSubLabel}>{lowercaseProgress} / 26 done</Text>
+                <Text style={styles.modeSubLabel}>{completedLetterCount} / 52 done</Text>
                 <View style={[styles.startBtn, { backgroundColor: '#2E7D32' }]}>
                   <Text style={styles.startBtnText}>Start Practice</Text>
                   <View style={styles.startBtnChevronWrap}>
@@ -645,29 +701,48 @@ export default function LetterHomeScreen({ route, navigation }) {
                   "locked" but still navigated on every tap regardless of
                   wordsUnlocked. */}
               <TouchableOpacity
-                style={styles.wordsCard}
-                activeOpacity={wordsUnlocked ? 0.9 : 0.5}
-                onPress={() => wordsUnlocked && navigation.navigate('WordLetterSelect', { student, theme })}
+                style={[styles.learningModeCard, styles.wordsCard, wordsPreview && styles.previewCard]}
+                activeOpacity={wordsOpen ? 0.9 : 0.5}
+                onPress={() => wordsOpen && navigation.navigate('WordLetterSelect', { student, theme })}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  wordsUnlocked ? 'Words, unlocked'
+                    : `Words, locked. Complete all 52 letters to unlock words.${wordsPreview ? ' Preview available.' : ''}`
+                }
               >
                 <LinearGradient
-                  colors={wordsUnlocked ? ['#F6EEFC', '#E8D6F5'] : ['#F2F2F2', '#E6E6E6']}
+                  colors={wordsUnlocked
+                    ? ['#F6EEFC', '#E8D6F5']
+                    : (wordsPreview ? ['#FBF8FD', '#F2EAF8'] : ['#F2F2F2', '#E6E6E6'])}
                   style={StyleSheet.absoluteFillObject}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                 />
-                {wordsUnlocked && <CardLandscape variant="words" />}
-                <View style={[styles.modeIconCircle, { backgroundColor: wordsUnlocked ? '#EDE7F6' : '#EEEEEE' }]}>
+                <CardLandscape variant="words" locked={!wordsUnlocked} />
+                <View style={[styles.modeIconCircle, {
+                  backgroundColor: wordsUnlocked ? '#EDE7F6' : (wordsPreview ? '#F0E7F6' : '#EEEEEE'),
+                }]}>
                   <Ionicons
                     name={wordsUnlocked ? 'book-outline' : 'lock-closed'}
                     size={38}
-                    color={wordsUnlocked ? '#7B1FA2' : '#AAAAAA'}
+                    color={wordsUnlocked ? '#7B1FA2' : (wordsPreview ? '#9575CD' : '#AAAAAA')}
                   />
                 </View>
-                <Text style={[styles.wordsTitle, !wordsUnlocked && { color: '#AAAAAA' }]}>
+                <Text style={[
+                  styles.wordsTitle,
+                  !wordsUnlocked && !wordsPreview && { color: '#AAAAAA' },
+                  wordsPreview && { color: '#7E57C2' },
+                ]}>
                   Words
                 </Text>
-                <Text style={[styles.modeSubLabel, !wordsUnlocked && { color: '#AAAAAA' }]}>
-                  {wordsUnlocked ? 'Unlocked!' : 'Finish letters first'}
+                {/* One short line, present tense, says what comes first
+                    rather than what is forbidden. */}
+                <Text style={[
+                  styles.modeSubLabel,
+                  !wordsUnlocked && !wordsPreview && { color: '#AAAAAA' },
+                  wordsPreview && styles.previewCaption,
+                ]}>
+                  {wordsUnlocked ? 'Ready to practise words' : 'Complete all 52 letters to unlock words'}
                 </Text>
                 {wordsUnlocked ? (
                   <View style={[styles.startBtn, { backgroundColor: '#7B1FA2' }]}>
@@ -675,6 +750,11 @@ export default function LetterHomeScreen({ route, navigation }) {
                     <View style={styles.startBtnChevronWrap}>
                       <Ionicons name="chevron-forward" size={13} color="#FFFFFF" />
                     </View>
+                  </View>
+                ) : wordsPreview ? (
+                  <View style={[styles.startBtn, styles.previewBtn]}>
+                    <Ionicons name="eye-outline" size={13} color="#7E57C2" />
+                    <Text style={[styles.startBtnText, { color: '#7E57C2' }]}>{PREVIEW_BADGE}</Text>
                   </View>
                 ) : (
                   <View style={[styles.startBtn, { backgroundColor: '#BBBBBB' }]}>
@@ -697,7 +777,7 @@ export default function LetterHomeScreen({ route, navigation }) {
                 above "Your Progress". No frame/border — just the image. */}
             <View style={styles.sideAvatarCard}>
               <Image
-                source={AVATAR_MAP[student?.avatar_key]}
+                source={avatarSource}
                 style={styles.sideAvatarImg}
                 resizeMode="contain"
               />
@@ -719,7 +799,17 @@ export default function LetterHomeScreen({ route, navigation }) {
 
               <View style={styles.progressPanelStat}>
                 <Ionicons name="book-outline" size={14} color={theme.button} />
-                <Text style={styles.progressPanelStatText}>{lowercaseProgress} of 26 letters done</Text>
+                <Text style={styles.progressPanelStatText}>{completedLetterCount} of 52 letters done</Text>
+              </View>
+              <View style={[styles.progressPanelStat, styles.wordsProgressStat]}>
+                <Ionicons
+                  name={wordsUnlocked ? 'book-outline' : 'lock-closed-outline'}
+                  size={14}
+                  color={wordsUnlocked ? '#7B1FA2' : '#7A7280'}
+                />
+                <Text style={styles.progressPanelStatText}>
+                  {wordsUnlocked ? 'Words are unlocked' : (wordsPreview ? 'Words locked · Preview available' : 'Words unlock after 52 letters')}
+                </Text>
               </View>
             </View>
 
@@ -745,7 +835,7 @@ export default function LetterHomeScreen({ route, navigation }) {
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleRow}>
                   <View style={[styles.modalTitleIcon, { backgroundColor: theme.button + '20' }]}>
-                    <Ionicons name="clipboard-outline" size={18} color={theme.button} />
+                    <Ionicons name="clipboard-outline" size={20} color={theme.button} />
                   </View>
                   <Text style={[styles.modalTitle, { color: theme.headingText }]}>
                     Assessment Summary
@@ -756,7 +846,7 @@ export default function LetterHomeScreen({ route, navigation }) {
                   style={[styles.modalCloseBtn, { backgroundColor: theme.button + '15' }]}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close" size={20} color={theme.headingText} />
+                  <Ionicons name="close" size={24} color={theme.headingText} />
                 </TouchableOpacity>
               </View>
 
@@ -766,7 +856,7 @@ export default function LetterHomeScreen({ route, navigation }) {
                 {/* Student banner */}
                 <View style={[styles.modalStudentBanner, { backgroundColor: theme.button + '0F' }]}>
                   <Image
-                    source={AVATAR_MAP[student?.avatar_key]}
+                    source={avatarSource}
                     style={styles.modalStudentAvatar}
                     resizeMode="contain"
                   />
@@ -798,15 +888,23 @@ export default function LetterHomeScreen({ route, navigation }) {
                       {summaryShapes.map((item, index) => {
                         const score    = shapeScores[index];
                         const badge    = getScoreBadge(score);
-                        const iconName = SHAPE_ICONS[item.shapeId] ?? 'brush-outline';
+                        const indicatorPercent = Math.max(0, Math.min(100, score ?? 0));
                         return (
                           <View key={item.shapeId ?? index} style={styles.shapeRow}>
                             <View style={[styles.shapeIconWrap, { backgroundColor: badge.bg }]}>
-                              <Ionicons name={iconName} size={18} color={badge.color} />
+                              <AssessmentShapeIcon shapeId={item.shapeId} color={badge.color} />
                             </View>
-                            <Text style={styles.shapeName}>
-                              {formatShapeName(item.shapeId ?? '')}
-                            </Text>
+                            <View style={styles.shapeMetricColumn}>
+                              <Text style={styles.shapeName} numberOfLines={1}>
+                                {formatShapeName(item.shapeId ?? '')}
+                              </Text>
+                              <View style={styles.shapeProgressTrack}>
+                                <View style={[
+                                  styles.shapeProgressFill,
+                                  { width: `${indicatorPercent}%`, backgroundColor: badge.color },
+                                ]} />
+                              </View>
+                            </View>
                             <Text style={styles.shapeScoreText}>{score != null ? `${score}%` : 'N/A'}</Text>
                             <View style={[styles.badge, { backgroundColor: badge.bg }]}>
                               <Text style={[styles.badgeText, { color: badge.color }]}>
@@ -957,20 +1055,21 @@ const styles = StyleSheet.create({
   topBtnGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   dashboardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    gap: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 20,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    minHeight: 40,
   },
   dashboardBtnText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   // Grown-ups-only cluster (Assessment + Progress, both gated) — quiet grey,
   // deliberately smaller and less colorful than Dashboard or the Letters/
@@ -1114,6 +1213,21 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
+  learningModeCard: {
+    flex: 1,
+    borderRadius: 26,
+    paddingVertical: 26,
+    paddingHorizontal: 18,
+    minHeight: 300,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 2,
+    overflow: 'hidden',
+    position: 'relative',
+    elevation: 2,
+  },
+
   lettersCard: {
     flex: 1,
     backgroundColor: '#F1F8E9',
@@ -1134,12 +1248,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  cardLandscapeSvg: {
+  cardLandscapeBand: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     height: '40%',
+    overflow: 'hidden',
   },
   modeIconCircle: {
     width: 82,
@@ -1166,7 +1281,11 @@ const styles = StyleSheet.create({
   modeSubLabel: {
     fontSize: 13,
     color: '#555555',
-    fontWeight: '500',
+    fontWeight: '600',
+    lineHeight: 18,
+    minHeight: 36,
+    maxWidth: '94%',
+    textAlign: 'center',
     zIndex: 1,
   },
   // The card's real, filled "Start Practice" button — a visual affordance
@@ -1182,6 +1301,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 24,
     marginTop: 4,
+    minWidth: 150,
+    justifyContent: 'center',
     zIndex: 1,
   },
   startBtnText: {
@@ -1197,6 +1318,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // Preview state: a soft, unalarming middle ground between unlocked and
+  // locked. Same size and position as both, so the layout never shifts.
+  previewCard: {
+    borderWidth: 1.5,
+    borderColor: '#DFCDEC',
+    borderStyle: 'dashed',
+  },
+  previewBtn: {
+    backgroundColor: '#F0E7F6',
+    borderWidth: 1,
+    borderColor: '#DFCDEC',
+  },
+  previewCaption: { color: '#8A7B96', textAlign: 'center' },
 
   wordsCard: {
     flex: 1,
@@ -1229,19 +1364,20 @@ const styles = StyleSheet.create({
   sideColumn: {
     width: 260,
     gap: 18,
+    justifyContent: 'space-between',
   },
   // Fills the vertical gap above the progress panel — roughly level with
   // the hero section on the left, so the side column doesn't start empty.
   // No border/background/shadow — just the image, no card frame around it.
   sideAvatarCard: {
     width: '100%',
-    aspectRatio: 1,
+    height: 210,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sideAvatarImg: {
-    width: '85%',
-    height: '85%',
+    width: '100%',
+    height: '100%',
   },
   // flex:1 (matching the left column's stretched height) turned out
   // unreliable here — a flex-grow child inside a column whose own height
@@ -1314,13 +1450,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#555555',
   },
+  wordsProgressStat: {
+    marginTop: 6,
+    backgroundColor: '#F7F1FA',
+  },
   // ── Assessment Summary Modal ───────────────────────────────────────────────
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingVertical: 16,
+    paddingHorizontal: 26,
+    paddingVertical: 12,
   },
   modalTitleRow: {
     flexDirection: 'row',
@@ -1328,31 +1468,33 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   modalTitleIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalTitle: {
-    fontSize: 22,
+    fontSize: 23,
     fontWeight: '900',
   },
   modalCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalCard: {
     flex: 1,
-    marginHorizontal: 18,
-    marginBottom: 18,
+    width: '94%',
+    maxWidth: 920,
+    alignSelf: 'center',
+    marginBottom: 14,
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 20,
-    gap: 14,
+    padding: 16,
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -1362,17 +1504,17 @@ const styles = StyleSheet.create({
   modalStudentBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     borderRadius: 16,
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   modalStudentAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
   },
   modalChildName: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '900',
   },
   modalChildSub: {
@@ -1382,41 +1524,65 @@ const styles = StyleSheet.create({
   },
   modalShapeList: {
     flex: 1,
-    justifyContent: 'space-evenly',
+    justifyContent: 'center',
+    gap: 6,
   },
   shapeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: '#FAFAFA',
+    gap: 10,
+    height: 52,
+    paddingHorizontal: 11,
+    borderRadius: 13,
+    backgroundColor: '#F8F9FB',
+    borderWidth: 1,
+    borderColor: '#EEF0F3',
   },
   shapeIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   shapeName: {
-    flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#333333',
   },
+  shapeMetricColumn: {
+    flex: 1,
+    minWidth: 120,
+    gap: 5,
+  },
+  shapeProgressTrack: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E7E9ED',
+    overflow: 'hidden',
+  },
+  shapeProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+    opacity: 0.72,
+  },
   shapeScoreText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#666666',
-    marginRight: 4,
+    width: 58,
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#3F4550',
+    textAlign: 'right',
   },
   badge: {
-    paddingHorizontal: 12,
+    width: 120,
+    minHeight: 28,
+    paddingHorizontal: 9,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badgeText: {
     fontSize: 12,
@@ -1425,28 +1591,48 @@ const styles = StyleSheet.create({
   overallCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 13,
     borderRadius: 16,
     borderWidth: 1,
-    padding: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 11,
   },
   overallIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   overallLabel: {
-    fontSize: 12,
-    color: '#888888',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#6D7280',
+    fontWeight: '700',
+  },
+  overallContent: {
+    flex: 1,
+  },
+  overallResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 2,
   },
   overallValue: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '900',
-    marginTop: 2,
+  },
+  overallBadge: {
+    minWidth: 112,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  overallBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   overallNote: {
     fontSize: 11,

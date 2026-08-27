@@ -58,7 +58,13 @@ describe('gesture termination is handled (not just release)', () => {
 
 describe('canvas accessibility label present on both screens', () => {
   test('WordWritingScreen canvas has a useful accessibility label', () => {
-    expect(writing).toContain('accessibilityLabel="Word handwriting practice area"');
+    // The canvas JSX moved into the shared WordWritingStage when the "watch
+    // first" demonstration began rendering this same screen; the assertion
+    // follows the code, the guarantee is unchanged.
+    const stage = fs.readFileSync(
+      path.resolve(__dirname, '../components/handwriting/WordWritingStage.js'), 'utf8');
+    expect(stage).toContain('accessibilityLabel="Word handwriting practice area"');
+    expect(writing).toContain('<WordWritingStage');
   });
 
   test('ExerciseE_WriteWord canvas has a useful accessibility label', () => {

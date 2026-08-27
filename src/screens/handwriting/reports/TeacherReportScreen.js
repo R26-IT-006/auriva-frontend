@@ -97,6 +97,7 @@ import {
   REVIEW_OPTIONS, INTENSITY_OPTIONS, PRACTICE_SEQUENCE_TEXT, WORKSHEET_SUPPORTING_TEXT,
   EMPTY_NO_RECOMMENDATION, EMPTY_NO_HISTORY, EMPTY_NO_SUBMISSION,
   PENDING_REVIEW_TEXT, ALREADY_ASSIGNED_TEXT, UNMAPPED_LETTER_TEXT,
+  isTwoCycleCandidate, TWO_CYCLE_SECTION_LABEL, TWO_CYCLE_STATUS_LABEL, TWO_CYCLE_DEFER_LABEL,
 } from '../../../utils/worksheetLabels';
 import { generateWorksheetPdf, shareWorksheetPdf } from '../../../utils/worksheetPdf';
 // Reuses the existing preview modal rather than building a second preview
@@ -105,6 +106,7 @@ import { generateWorksheetPdf, shareWorksheetPdf } from '../../../utils/workshee
 import ReportPreviewModal from '../../../components/handwriting/reports/ReportPreviewModal';
 import * as ImagePicker from 'expo-image-picker';
 import useGatedBack from '../../../utils/useGatedBack';
+import { goBackToOrigin } from '../../../utils/backToOrigin';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -338,7 +340,13 @@ export default function TeacherReportScreen({ route, navigation }) {
   // Leaving a learning activity is an adult decision — the back button
   // opens the parent gate first, exactly as LetterHomeScreen and the
   // Concept screens do. Cancelling navigates nowhere.
-  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
+  // Returns to the screen this report was OPENED FROM (route param
+  // `originRoute`), not to whatever sits directly below it in the stack —
+  // see utils/backToOrigin.js. Falls back to goBack() when no origin was
+  // passed, so an older navigation behaves exactly as before.
+  const { requestBack, gateModal } = useGatedBack(
+    () => goBackToOrigin(navigation, route.params?.originRoute)
+  );
 
   const [loading,  setLoading]  = useState(true);
   const [report,   setReport]   = useState(null);
@@ -698,7 +706,14 @@ export default function TeacherReportScreen({ route, navigation }) {
             </Text>
             <TouchableOpacity
               style={[s.retryBtn, { backgroundColor: theme.button }]}
-              onPress={() => navigation.replace('TeacherReport', { student, theme })}
+              // route.name, not a hardcoded 'TeacherReport': this same
+              // component is also registered as 'StudentHandwritingReport'
+              // in TeacherNavigator, where the literal name is wrong. Also
+              // carries originRoute through, so a retry does not lose the
+              // back destination.
+              onPress={() => navigation.replace(route.name, {
+                ...route.params, student, theme,
+              })}
               accessibilityRole="button"
               accessibilityLabel="Retry loading the report"
             >
@@ -2305,14 +2320,28 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
     <SectionCard title="Homework Practice" icon="document-text-outline" accentColor="#7C3AED">
       <View style={{ gap: 14 }}>
 
-        {/* ── A. Current recommendation ── */}
+        {/* ── A. Current recommendation ──
+            Two sources land here. The exact-letter one (two failed cycles on
+            one practice date) is titled "Additional Home Practice" and shows
+            the letter's mastery status; the family-level
+            one (from the broader family-level analysis) keeps its existing
+            presentation. Neither ever shows a cycle count, a threshold, a
+            score or an internal identifier. */}
         {!active && recommendation && !dismissed ? (
           <View>
-            <Text style={mda.sectionLabel}>Homework Recommendation</Text>
+            <Text style={mda.sectionLabel}>
+              {isTwoCycleCandidate(recommendation) ? TWO_CYCLE_SECTION_LABEL : 'Homework Recommendation'}
+            </Text>
             <View style={hw.row}>
-              <Text style={hw.rowLabel}>Target Letter</Text>
+              <Text style={hw.rowLabel}>Letter</Text>
               <Text style={hw.rowValueBig}>{targetLetter ?? '—'}</Text>
             </View>
+            {isTwoCycleCandidate(recommendation) ? (
+              <View style={hw.row}>
+                <Text style={hw.rowLabel}>Status</Text>
+                <Text style={hw.rowValue}>{TWO_CYCLE_STATUS_LABEL}</Text>
+              </View>
+            ) : null}
             <View style={hw.row}>
               <Text style={hw.rowLabel}>Reason</Text>
               <Text style={hw.rowValue}>{recommendation.rationale}</Text>
@@ -2386,7 +2415,9 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
                 onPress={() => setDismissed(true)}
                 accessibilityLabel="Dismiss recommendation"
               >
-                <Text style={hw.secondaryBtnText}>Dismiss</Text>
+                <Text style={hw.secondaryBtnText}>
+                  {isTwoCycleCandidate(recommendation) ? TWO_CYCLE_DEFER_LABEL : 'Dismiss'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -43,7 +43,14 @@ test('the report body only renders once `report` is actually set, not just when 
 
 test('the failure state offers a retry rather than a permanent dead end', () => {
   expect(screen).toContain("Couldn't load this report");
-  expect(screen).toContain("navigation.replace('TeacherReport', { student, theme })");
+  // Re-mounts THIS route by name rather than a hardcoded 'TeacherReport'.
+  // The same component is registered twice — as 'TeacherReport' in the
+  // handwriting stack and as 'StudentHandwritingReport' in the teacher stack
+  // — so the literal name used to be wrong in one of the two. The retry also
+  // carries route.params through, so it does not lose the back destination
+  // (originRoute, see utils/backToOrigin.js).
+  expect(screen).toContain('navigation.replace(route.name');
+  expect(screen).not.toContain("navigation.replace('TeacherReport'");
 });
 
 test('loadError is reset at the start of every load, so a retry can succeed', () => {

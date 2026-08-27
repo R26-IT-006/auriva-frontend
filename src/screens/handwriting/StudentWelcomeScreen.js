@@ -12,6 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+// One-time "watch first" demonstration before the child's FIRST real
+// assessment — see utils/demoPolicy.js for why it is once and not six times.
+import { claimDemoIfDue } from '../../utils/demoDetour';
+import { DEMO_KEYS } from '../../utils/demoPolicy';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/handwriting-avatars/Boba.png'),
@@ -28,6 +32,41 @@ export default function StudentWelcomeScreen({ route, navigation }) {
   useLockLandscape();
 
   const { student, theme } = route.params;
+
+  /**
+   * Start the assessment — via the demonstration the first time only.
+   *
+   * The demo animates ONE representative shape (the horizontal line) to
+   * teach the interaction itself: follow the path with your finger. The six
+   * shapes share that one interaction, and each already carries its own
+   * looping pointer and spoken instruction inside ShapeAssessmentScreen, so
+   * a demo per shape would be five repetitions of a lesson already learned.
+   *
+   * Nothing here records anything: the demo screen replaces itself with the
+   * assessment, which then begins exactly as it always has.
+   */
+  const startAssessment = async () => {
+    const assessmentParams = { student, theme };
+    const due = await claimDemoIfDue({
+      studentId: student?.sid,
+      demoKey: DEMO_KEYS.INITIAL_SHAPE_ASSESSMENT,
+    });
+
+    if (!due) {
+      navigation.navigate('ShapeAssessment', assessmentParams);
+      return;
+    }
+
+    navigation.navigate('HandwritingDemo', {
+      student, theme,
+      demoKey: DEMO_KEYS.INITIAL_SHAPE_ASSESSMENT,
+      // The same template the assessment's own pointer follows and the
+      // unified motor score is computed against — never a demo-only shape.
+      shapeId: 'horizontal_line',
+      nextRoute: 'ShapeAssessment',
+      nextParams: assessmentParams,
+    });
+  };
   const { width, height } = useWindowDimensions();
 
   const avatarSize = Math.min(width, height) * 0.50;
@@ -176,7 +215,7 @@ export default function StudentWelcomeScreen({ route, navigation }) {
           <View style={styles.btnWrapper}>
             <TouchableOpacity
               style={[styles.startButton, { backgroundColor: theme.button }]}
-              onPress={() => navigation.navigate('ShapeAssessment', { student, theme })}
+              onPress={startAssessment}
               activeOpacity={0.85}
             >
               <Text style={[styles.startText, { color: theme.buttonText }]}>

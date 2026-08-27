@@ -41,22 +41,50 @@ describe('LetterHomeScreen — hardcoded bypass removed', () => {
 });
 
 describe('LetterHomeScreen — the Words card press is actually gated, not just visually dimmed', () => {
-  it('onPress checks wordsUnlocked before navigating (a locked tap does nothing)', () => {
+  it('onPress is gated - a tap only navigates when the card is open', () => {
+    // The tap site now reads `wordsOpen`, which is `wordsUnlocked` OR the
+    // explicit demo-preview switch, and NOTHING else.
     expect(letterHome).toContain(
-      "onPress={() => wordsUnlocked && navigation.navigate('WordLetterSelect', { student, theme })}"
+      "onPress={() => wordsOpen && navigation.navigate('WordLetterSelect', { student, theme })}"
     );
+    expect(letterHome).toMatch(/const wordsOpen\s+= canOpen\(wordsUnlocked\);/);
+    expect(letterHome).toMatch(/from '\.\.\/\.\.\/constants\/demoAccess'/);
   });
 
   it('an unlocked tap still navigates normally (the gate does not remove the working path)', () => {
-    // Same line proves both: `wordsUnlocked && navigate(...)` evaluates to
-    // the navigate call whenever wordsUnlocked is truthy.
-    expect(letterHome).toMatch(/wordsUnlocked && navigation\.navigate\('WordLetterSelect'/);
+    expect(letterHome).toMatch(/wordsOpen && navigation\.navigate\('WordLetterSelect'/);
+  });
+
+  it('the EARNED rule is untouched - the card still asks isWordsUnlocked how it looks', () => {
+    expect(letterHome).toMatch(/const wordsUnlocked\s+= isWordsUnlocked\(lowercaseProgress, uppercaseProgress\);/);
+    // Every visual "you have earned this" cue is still keyed off the real
+    // gate, never off the demo switch.
+    expect(letterHome).toMatch(/<CardLandscape variant="words" locked=\{!wordsUnlocked\} \/>/);
+    expect(letterHome).toMatch(/wordsUnlocked \? 'Ready to practise words'/);
+  });
+
+  it('with the demo switch OFF the gate is strict again - one boolean, nothing else', () => {
+    const { canOpen, isPreview } = require('../constants/demoAccess');
+    // Whatever the switch is set to right now, the composition is the same.
+    expect(canOpen(true)).toBe(true);
+    expect(isPreview(true)).toBe(false);
+    const access = fs.readFileSync(
+      path.resolve(__dirname, '../constants/demoAccess.js'), 'utf8');
+    // The flag is no longer a hand-edited literal - it comes from an
+    // explicit environment variable and defaults to false.
+    expect(access).toMatch(/process\.env\.EXPO_PUBLIC_DEMO_PREVIEW_UNLOCK/);
+    expect(access).toMatch(/return Boolean\(earned\) \|\| DEMO_PREVIEW_UNLOCK;/);
+    // The switch cannot mark anything mastered or touch the real rule.
+    // Scanned as CODE - the file's header explains at length what it does
+    // not touch, and that explanation must not read as a violation.
+    const code = access.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).not.toMatch(/isWordsUnlocked|LetterProgress|mastered|lowercaseProgress/);
   });
 
   it('no long-press or secondary handler bypasses the gate on the Words card', () => {
     const cardBlock = letterHome.slice(
-      letterHome.indexOf("style={styles.wordsCard}"),
-      letterHome.indexOf("style={styles.wordsCard}") + 1200
+      letterHome.indexOf("styles.wordsCard"),
+      letterHome.indexOf("styles.wordsCard") + 1600
     );
     expect(cardBlock).not.toMatch(/onLongPress/);
   });
