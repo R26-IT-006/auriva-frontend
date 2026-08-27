@@ -18,10 +18,10 @@ import { MasteryRing } from '../../../components/charts/MasteryRing';
 import { TierBar, TierLegend } from '../../../components/charts/TierBar';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
+import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
 import { conceptApi } from '../../../api/concept';
 import { formatDate, ageFrom } from '../../../utils/formatters';
-import { formatPct } from '../../../utils/scoreColor';
 import { getConceptItem } from '../../../data/conceptData';
 
 // Same tinted pairs the teacher dashboard uses for its section panels, so a
@@ -125,40 +125,35 @@ function StatLine({ label, value }) {
   );
 }
 
-function HeroStat({ value, label }) {
+/** One fact on the hero gradient: a translucent tile with the label above the
+ *  value, so the eye reads a grid of short blocks instead of a stack of rows. */
+function HeroFact({ icon, label, value, wide }) {
   return (
-    <View style={styles.heroStat}>
-      <Text style={styles.heroStatValue}>{value}</Text>
-      <Text style={styles.heroStatLabel}>{label}</Text>
-    </View>
-  );
-}
-
-/** Detail rows sitting on the hero gradient, so they get their own translucent
- *  treatment rather than the tinted-on-white one the panels use. */
-function HeroInfoRow({ icon, label, value }) {
-  return (
-    <View style={styles.heroInfoRow}>
-      <View style={styles.heroInfoIcon}>
-        <Ionicons name={icon} size={14} color="#FFFFFF" />
+    <View style={[styles.factTile, wide && styles.factTileWide]}>
+      <View style={styles.factLabelRow}>
+        <Ionicons name={icon} size={12} color="rgba(255,255,255,0.78)" />
+        <Text style={styles.factLabel} numberOfLines={1}>{label}</Text>
       </View>
-      <Text style={styles.heroInfoLabel}>{label}</Text>
-      <Text style={styles.heroInfoValue} numberOfLines={2}>{value}</Text>
+      <Text style={styles.factValue} numberOfLines={2}>{value}</Text>
     </View>
   );
 }
 
-function HeroInfoList({ rows }) {
+/**
+ * Lays the filled-in facts out as a wrapping grid.
+ *
+ * Short facts take half a row and grow to fill whatever is left, so one missing
+ * field re-flows the rest instead of leaving a gap; anything marked `wide` (an
+ * address, which is the one value that reliably runs long) claims a full row.
+ */
+function HeroFacts({ rows }) {
   const visible = rows.filter((r) => r.value);
   if (visible.length === 0) return null;
 
   return (
-    <View style={styles.heroInfo}>
-      {visible.map((r, i) => (
-        <React.Fragment key={r.label}>
-          {i > 0 ? <View style={styles.heroInfoDivider} /> : null}
-          <HeroInfoRow icon={r.icon} label={r.label} value={r.value} />
-        </React.Fragment>
+    <View style={styles.heroFacts}>
+      {visible.map((r) => (
+        <HeroFact key={r.label} icon={r.icon} label={r.label} value={r.value} wide={r.wide} />
       ))}
     </View>
   );
@@ -234,6 +229,19 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const firstName  = student.full_name.split(' ')[0];
   const hasProgress = concepts && concepts.totals.started > 0;
 
+  // Code and age were two pill chips; as one quiet line under the name they read
+  // as a caption on the name rather than as two more things to look at.
+  const identityMeta = [
+    student.student_code,
+    age != null ? `${age} years old` : null,
+  ].filter(Boolean).join('  ·  ');
+
+  // The hero wears the child's own avatar colours, so a teacher who knows Lily
+  // from Boba recognises whose profile this is before reading the name — and it
+  // matches what the child sees in the concept activities.
+  const heroColors = getAvatarTheme(student.avatar_key).heroGradient;
+  const heroDeep   = heroColors[heroColors.length - 1];
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView
@@ -241,63 +249,65 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetch(); }} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero */}
-        <LinearGradient
-          colors={Colors.primaryGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.heroTop}>
-            <View style={styles.avatarRing}>
-              <Avatar name={student.full_name} uri={student.profile_photo_url} size={72} />
-            </View>
+        {/* Hero — shadow on the wrapper, clipping on the gradient: the gradient
+            has to clip so the soft highlight circles stay inside its corners,
+            and a clipping view swallows its own shadow on iOS. */}
+        <View style={[
+          styles.heroShadowWrap,
+          // Backing colour and shadow both take the deep end of the gradient:
+          // the backing only shows through the rounded corners, and a shadow in
+          // the card's own hue keeps a warm avatar from casting a blue one.
+          { backgroundColor: heroDeep, shadowColor: heroDeep },
+        ]}>
+          <LinearGradient
+            colors={heroColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.hero}
+          >
+            <View style={styles.heroGlowTop} pointerEvents="none" />
+            <View style={styles.heroGlowBottom} pointerEvents="none" />
 
-            <View style={styles.heroMeta}>
-              <Text style={styles.heroName} numberOfLines={2}>{student.full_name}</Text>
-              <View style={styles.heroChips}>
-                {student.student_code ? (
-                  <View style={styles.heroChip}>
-                    <Ionicons name="card-outline" size={11} color="#FFFFFF" />
-                    <Text style={styles.heroChipText}>{student.student_code}</Text>
-                  </View>
-                ) : null}
-                {age != null ? (
-                  <View style={styles.heroChip}>
-                    <Ionicons name="balloon-outline" size={11} color="#FFFFFF" />
-                    <Text style={styles.heroChipText}>{age} years old</Text>
-                  </View>
+            <View style={styles.heroTop}>
+              <View style={styles.avatarRing}>
+                {/* Initials fall back to the deep end rather than Avatar's own
+                    name-hashed palette, which would drop an unrelated colour
+                    into a card that is otherwise all one hue. */}
+                <Avatar
+                  name={student.full_name}
+                  uri={student.profile_photo_url}
+                  size={72}
+                  style={{ backgroundColor: heroDeep }}
+                />
+              </View>
+
+              <View style={styles.heroMeta}>
+                <Text style={styles.heroName} numberOfLines={2}>{student.full_name}</Text>
+                {identityMeta ? (
+                  <Text style={styles.heroSub} numberOfLines={1}>{identityMeta}</Text>
                 ) : null}
               </View>
             </View>
-          </View>
 
-          {/* The child's details live on the identity card itself rather than in a
-              panel of their own — it is all the same "who is this student?"
-              answer, and splitting it across two blocks made the reader hunt. */}
-          <HeroInfoList
-            rows={[
-              { icon: 'calendar-outline', label: 'Date of Birth', value: formatDate(student.date_of_birth) },
-              { icon: 'medical-outline',  label: 'Disability',    value: student.disability },
-              { icon: 'home-outline',     label: 'Address',       value: student.address },
-            ]}
-          />
-
-          {/* Headline numbers up top: opening a profile is usually a "how is this
-              child doing?" question, and the answer shouldn't need a scroll. */}
-          {hasProgress ? (
-            <View style={styles.heroStats}>
-              <HeroStat value={formatPct(concepts.totals.mastery_pct)} label="Mastery" />
-              <View style={styles.heroStatDivider} />
-              <HeroStat
-                value={`${concepts.totals.mastered}/${concepts.totals.catalogue_concepts}`}
-                label="Mastered"
-              />
-              <View style={styles.heroStatDivider} />
-              <HeroStat value={String(needsAttention)} label="Needs work" />
-            </View>
-          ) : null}
-        </LinearGradient>
+            {/* The child's details live on the identity card itself rather than in a
+                panel of their own — it is all the same "who is this student?"
+                answer, and splitting it across two blocks made the reader hunt.
+                Progress deliberately stays out of here: the hero answers "who is
+                this?", and "how are they doing?" is the Module Progress panel's
+                job — duplicating its numbers up top only split the reader's
+                attention between two places showing the same thing. */}
+            <HeroFacts
+              rows={[
+                // Guarded rather than leaning on formatDate, which answers "—" for
+                // a missing date — a tile that says nothing is the clutter we're
+                // cutting, so it should just not be there.
+                { icon: 'calendar-outline', label: 'Date of Birth', value: student.date_of_birth ? formatDate(student.date_of_birth) : null },
+                { icon: 'medical-outline',  label: 'Disability',    value: student.disability },
+                { icon: 'home-outline',     label: 'Address',       value: student.address, wide: true },
+              ]}
+            />
+          </LinearGradient>
+        </View>
 
         {/* Contact */}
         {(student.father_name || student.mother_name || student.mobile_number || student.home_number) && (
@@ -467,101 +477,99 @@ const styles = StyleSheet.create({
   },
 
   // ── Hero ──────────────────────────────────────────────────────────────────
-  hero: {
+  // backgroundColor and shadowColor are both supplied at the call site from the
+  // student's avatar theme; everything else about the card is fixed.
+  heroShadowWrap: {
     borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.lg,
     ...Layout.shadow.md,
   },
+  hero: {
+    borderRadius: Layout.radius.xl,
+    overflow: 'hidden',
+    padding: Layout.spacing.lg,
+    // One rhythm for the whole card: identity → facts → numbers all sit a full
+    // step apart, instead of each block bringing its own margin.
+    gap: Layout.spacing.lg,
+  },
+  // Two barely-there highlights bled off the corners. They give the flat
+  // gradient some depth without adding anything the reader has to look at.
+  heroGlowTop: {
+    position: 'absolute',
+    top: -54,
+    right: -34,
+    width: 172,
+    height: 172,
+    borderRadius: 86,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+  heroGlowBottom: {
+    position: 'absolute',
+    bottom: -70,
+    left: -46,
+    width: 158,
+    height: 158,
+    borderRadius: 79,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
   heroTop: { flexDirection: 'row', alignItems: 'center' },
+  // A thin ring rather than the old fat halo — it frames the photo instead of
+  // competing with it.
   avatarRing: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.28)',
-  },
-  heroMeta:  { flex: 1, marginLeft: Layout.spacing.lg },
-  heroName:  {
-    fontSize: Layout.fontSize.xl,
-    fontFamily: 'DMSans_800ExtraBold',
-    color: '#FFFFFF',
-    lineHeight: Layout.fontSize.xl * 1.25,
-  },
-  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  heroChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    padding: 3,
     borderRadius: Layout.radius.full,
     backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
   },
-  heroChipText: {
-    fontSize: Layout.fontSize.xs,
+  heroMeta:  { flex: 1, marginLeft: Layout.spacing.md },
+  heroName:  {
+    fontSize: Layout.fontSize.xxl,
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#FFFFFF',
-    fontFamily: 'DMSans_700Bold',
-    maxWidth: 150,
+    lineHeight: Layout.fontSize.xxl * 1.2,
+    letterSpacing: -0.3,
   },
-  heroInfo: {
-    marginTop: Layout.spacing.lg,
-    borderRadius: Layout.radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: Layout.spacing.md,
-  },
-  heroInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.sm,
-    paddingVertical: Layout.spacing.sm + 2,
-  },
-  heroInfoIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
-  heroInfoLabel: {
-    fontSize: Layout.fontSize.xs,
-    color: 'rgba(255,255,255,0.82)',
+  heroSub: {
+    marginTop: 5,
+    fontSize: Layout.fontSize.sm,
+    color: 'rgba(255,255,255,0.85)',
     fontFamily: 'DMSans_600SemiBold',
+    letterSpacing: 0.2,
   },
-  // Pushed right and given the slack: the label is a fixed short string, the
-  // value is the part that can run long (an address especially).
-  heroInfoValue: {
-    flex: 1,
-    textAlign: 'right',
+
+  // ── Hero facts ────────────────────────────────────────────────────────────
+  heroFacts: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.sm },
+  // flexBasis just under half leaves room for the gap, and flexGrow lets a lone
+  // tile take the whole row rather than sitting stranded at 46%.
+  factTile: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    gap: 5,
+    paddingHorizontal: Layout.spacing.md - 4,
+    paddingVertical: 11,
+    borderRadius: Layout.radius.md,
+    // A dark scrim rather than a white one. Now that the gradient follows the
+    // child's avatar, the tiles sit on anything from deep indigo to bright
+    // orange; darkening always helps the white text, where a white wash would
+    // wipe it out on the lighter themes.
+    backgroundColor: 'rgba(0,0,0,0.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  factTileWide: { flexBasis: '100%' },
+  factLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  factLabel: {
+    fontSize: Layout.fontSize.xs - 1,
+    color: 'rgba(255,255,255,0.80)',
+    fontFamily: 'DMSans_600SemiBold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  factValue: {
     fontSize: Layout.fontSize.sm,
     color: '#FFFFFF',
     fontFamily: 'DMSans_700Bold',
-  },
-  heroInfoDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)' },
-  heroStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Layout.spacing.lg,
-    paddingTop: Layout.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.25)',
-  },
-  heroStat: { flex: 1, alignItems: 'center', gap: 2 },
-  heroStatValue: {
-    fontSize: Layout.fontSize.lg,
-    fontFamily: 'DMSans_800ExtraBold',
-    color: '#FFFFFF',
-  },
-  heroStatLabel: {
-    fontSize: Layout.fontSize.xs,
-    color: 'rgba(255,255,255,0.82)',
-    fontFamily: 'DMSans_600SemiBold',
-  },
-  heroStatDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    lineHeight: Layout.fontSize.sm * 1.35,
   },
 
   // ── Panels ────────────────────────────────────────────────────────────────

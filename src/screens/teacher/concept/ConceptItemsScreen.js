@@ -48,6 +48,15 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
   const isProgress   = item.tier1_status === 'in_progress';
   const isPriority   = item.is_priority && !isPassed;
 
+  // A confusion node: this concept gets mixed up with at least one other.
+  //
+  // Deliberately NOT gated on !isPassed, unlike every other badge here. A pair
+  // has two ends and the child usually passes one of them — in `animals`, dog and
+  // sparrow are the closest-looking pair in the category, the child confused them,
+  // and both ended up passed. The star could never mark either, so the one real
+  // signal on the screen was invisible while ten displaced concepts wore stars.
+  const isConfused = (item.confused_with || []).length > 0;
+
   return (
     <Animated.View style={{ transform: [{ scale: popAnim }] }}>
       <TouchableOpacity
@@ -64,7 +73,10 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
                            : isResume    ? theme.button
                            : isLocked    ? '#D0D0D0'
                            : theme.cardOutline,
-            borderWidth: isResume || isPriority ? 5 : 4,
+            // Passed sits above resume/priority here for the same reason it does
+            // in borderColor above: once a concept is green, that is the state
+            // worth reading across a grid of 11 at a glance.
+            borderWidth: isPassed ? 5 : isResume || isPriority ? 4 : 3,
           },
         ]}
         onPress={onPress}
@@ -101,6 +113,15 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
         {isPriority && !isResume && (
           <View style={styles.priorityBadge}>
             <Ionicons name="star" size={13} color="#FF9800" />
+          </View>
+        )}
+
+        {/* Confusion badge — this concept gets mixed up with another one.
+            Bottom-left: the other three corners are taken, and it must be able to
+            sit alongside the passed tick rather than replace it. */}
+        {isConfused && !isLocked && (
+          <View style={styles.confusedBadge}>
+            <Ionicons name="swap-horizontal" size={13} color="#7B1FA2" />
           </View>
         )}
 
@@ -179,6 +200,8 @@ export default function ConceptItemsScreen({ route, navigation }) {
       // as a field so the server can reintroduce locking without a client change.
       is_unlocked:  true,
       is_priority:  s?.is_priority  || false,
+      // Both ends of every confusion pair this child has produced in the category.
+      confused_with: s?.confused_with || [],
       tier1_status: s?.tier1_status || 'not_started',
       tier1_score:  s?.tier1_score  ?? null,
       tier2_status: s?.tier2_status || 'not_started',
@@ -630,6 +653,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
+  },
+  confusedBadge: {
+    position: 'absolute',
+    bottom: 5,
+    left: 5,
   },
   priorityBadge: {
     position: 'absolute',
