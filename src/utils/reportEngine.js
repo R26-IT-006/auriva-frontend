@@ -256,6 +256,20 @@ export function computeLetterMetrics(letterProgressMap) {
  * @param {Object} wordProgress  { [letter]: [{ word, status }] }
  * @returns {{ byLetter, overall, explanation }}
  */
+/**
+ * The five word exercises, in order, with their teacher-facing names.
+ *
+ * Canonical: WordActivityScreen renders exactly these five (A -> Write First,
+ * B -> Circle Image, C -> Fill Blank, D -> Spell Word, E -> Write Word), and
+ * the teacher report reads the SAME map rather than keeping its own copy —
+ * which is how the report came to render only A-D and silently drop E, the
+ * exercise where the child writes the whole word.
+ */
+export const WORD_EXERCISE_KEYS = ['A', 'B', 'C', 'D', 'E'];
+export const WORD_EXERCISE_NAMES = Object.freeze({
+  A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It', E: 'Write the Word',
+});
+
 export function computeWordMastery(wordProgress) {
   const entries = Object.entries(wordProgress ?? {});
   if (entries.length === 0) {
@@ -268,7 +282,7 @@ export function computeWordMastery(wordProgress) {
     };
   }
 
-  const EXERCISE_NAMES = { A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It', E: 'Write the Word' };
+  const EXERCISE_NAMES = WORD_EXERCISE_NAMES;
 
   const byLetter = entries.map(([letter, words]) => {
     let correct = 0, good = 0, total = 0;

@@ -42,7 +42,7 @@ function StatRow({ label, value }) {
   );
 }
 
-export default function LiveSessionCard({ studentId }) {
+export default function LiveSessionCard({ studentId, compactWhenInactive = false }) {
   const [snapshot, setSnapshot] = useState(undefined); // undefined = not fetched yet
   const intervalRef = useRef(null);
 
@@ -71,6 +71,20 @@ export default function LiveSessionCard({ studentId }) {
   );
 
   if (snapshot === undefined) {
+    // While compact, the "checking" state occupies the SAME one-line row the
+    // inactive state will settle into, so the surrounding layout never jumps
+    // as the first poll resolves.
+    if (compactWhenInactive) {
+      return (
+        <View style={styles.compactRow}>
+          <View style={styles.compactLeft}>
+            <Ionicons name="radio-outline" size={14} color={Colors.icon.muted} />
+            <Text style={styles.compactLabel}>Live Session</Text>
+          </View>
+          <ActivityIndicator size="small" color={Colors.primary} />
+        </View>
+      );
+    }
     return (
       <Card style={styles.card}>
         <View style={styles.loadingRow}>
@@ -82,6 +96,28 @@ export default function LiveSessionCard({ studentId }) {
   }
 
   const display = describeLiveSession(snapshot);
+
+  // ── Compact inactive state ──────────────────────────────────────────────
+  // Opt-in via `compactWhenInactive`, so the default full-card rendering is
+  // untouched for any other consumer. Nothing about polling, the snapshot,
+  // describeLiveSession() or the ACTIVE rendering below changes — only how
+  // much room "nothing is happening" is allowed to take up. A full-width
+  // card announcing an empty state was the single largest block on the
+  // Writing tab.
+  if (compactWhenInactive && !display.active) {
+    return (
+      <View style={styles.compactRow}>
+        <View style={styles.compactLeft}>
+          <Ionicons name="radio-outline" size={14} color={Colors.icon.muted} />
+          <Text style={styles.compactLabel}>Live Session</Text>
+        </View>
+        <View style={styles.compactRight}>
+          <View style={[styles.dot, { backgroundColor: CONNECTION_DOT[display.connection] ?? CONNECTION_DOT.not_active }]} />
+          <Text style={styles.compactValue}>Not Active</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <Card style={styles.card}>
@@ -156,6 +192,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text.secondary,
   },
+  // One-line inactive/loading row — deliberately not a Card: no elevation,
+  // no card padding, no empty vertical space.
+  compactRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 9, paddingHorizontal: 4, marginBottom: 8,
+  },
+  compactLeft:  { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  compactRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  compactLabel: { fontSize: 12.5, color: Colors.text.secondary },
+  compactValue: { fontSize: 12.5, fontWeight: '600', color: Colors.text.muted },
   notActiveText: {
     fontSize: 13,
     color: Colors.text.muted,

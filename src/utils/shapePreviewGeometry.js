@@ -16,10 +16,48 @@
 //   translated to fit inside [padding, viewW-padding] × [padding, viewH-padding],
 //   preserving the original aspect ratio and centered. Empty input (no
 //   strokes, or strokes with fewer than 2 usable points total) returns [].
+/**
+ * ONE normalizer for both legitimate stored stroke formats.
+ *
+ * ── The bug this closes ──────────────────────────────────────────────────
+ * computeShapePreviewPaths() accepted only `Array<Array<{x,y}>>` — a plain
+ * array of point arrays. But GET /handwriting/initial-report sends each
+ * shape's strokes in the form they are STORED:
+ *
+ *   [{ stroke_id: 0, points: [{x, y, t, ...}] }]
+ *
+ * `Array.isArray(stroke)` is false for `{stroke_id, points}`, so every
+ * stroke collapsed to `[]`, `allPoints.length < 2` short-circuited, and the
+ * function returned no paths — the preview fell through to its neutral
+ * placeholder icon for EVERY server-sourced assessment. Verified against
+ * three students' real stored assessments (sid 51, 10 and 40): all six
+ * canonical shapes returned zero paths for each, and all six render once
+ * normalized.
+ *
+ * The flat form is not wrong either — it is what the on-device assessment
+ * snapshot holds — so this accepts both rather than picking a winner. The
+ * backend's own flattenStrokePoints() has always tolerated both; only this
+ * util did not.
+ *
+ * @param {Array} strokes — either format, or anything malformed
+ * @returns {Array<Array<{x,y}>>} always the flat form
+ */
+export function normalizeStoredShapeTrajectory(strokes) {
+  if (!Array.isArray(strokes)) return [];
+  return strokes.map((stroke) => {
+    // Nested: { stroke_id, points: [...] }
+    if (stroke && !Array.isArray(stroke) && Array.isArray(stroke.points)) return stroke.points;
+    // Flat: [{x, y}, ...]
+    if (Array.isArray(stroke)) return stroke;
+    // Anything else contributes nothing rather than throwing.
+    return [];
+  });
+}
+
 export function computeShapePreviewPaths(strokes, viewW, viewH, padding = 6) {
   if (!Array.isArray(strokes) || strokes.length === 0) return [];
 
-  const cleanStrokes = strokes
+  const cleanStrokes = normalizeStoredShapeTrajectory(strokes)
     .map(stroke => (Array.isArray(stroke) ? stroke.filter(p => Number.isFinite(p?.x) && Number.isFinite(p?.y)) : []))
     .filter(stroke => stroke.length > 0);
 

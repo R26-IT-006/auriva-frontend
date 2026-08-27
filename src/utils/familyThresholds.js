@@ -76,3 +76,66 @@ export async function fetchFamilyThresholds({ studentId } = {}) {
     return { ...FAILSAFE };
   }
 }
+
+// ── Effective teacher-override provenance ────────────────────────────────
+//
+// normalizeFamilyThresholdsResponse() above flattens each family to a bare
+// number, which is all its own callers ever needed. The EFFECTIVE source of
+// that number — which the endpoint does send — is discarded there, so this
+// is a second, ADDITIVE reader rather than a change to the existing one:
+// nothing that already depends on the flattened shape is affected.
+//
+// "Effective" is the whole point. The endpoint's per-family `source` comes
+// from the CURRENT ThresholdHistory row (getCurrentFamilyThreshold's
+// sourceEvent), so a teacher override that was later superseded by an
+// automatic or initial_from_baseline row does NOT appear here. Historical
+// existence is never enough.
+
+const TEACHER_OVERRIDE_SOURCE = 'teacher_override';
+
+/**
+ * @param {*} data — the raw GET /handwriting/family-thresholds body
+ * @returns {{status: 'resolved'|'unavailable', families: string[]}}
+ *   families = the families whose CURRENTLY EFFECTIVE target is a teacher
+ *   override. Empty array when none — never null, so callers need no guard.
+ */
+export function extractTeacherOverrideFamilies(data) {
+  if (!data || typeof data !== 'object') return { status: 'unavailable', families: [] };
+  // Array.isArray is checked explicitly: `typeof [] === 'object'`, so an
+  // array body would otherwise be accepted as "resolved with no overrides"
+  // — reporting success for a malformed payload.
+  if (data.status !== 'resolved'
+      || !data.families
+      || typeof data.families !== 'object'
+      || Array.isArray(data.families)) {
+    return { status: 'unavailable', families: [] };
+  }
+
+  const families = VALID_FAMILIES.filter((family) => {
+    const entry = data.families[family];
+    return !!entry
+      && typeof entry === 'object'
+      && entry.status === 'available'
+      && entry.source === TEACHER_OVERRIDE_SOURCE;
+  });
+
+  return { status: 'resolved', families };
+}
+
+/**
+ * Fetches the effective teacher-override families. Fails closed: any error
+ * resolves to "unavailable, none", so a failed request can never make the
+ * report claim a target is teacher-protected when it is not.
+ */
+export async function fetchTeacherOverrideFamilies(studentId) {
+  if (!studentId) return { status: 'unavailable', families: [] };
+  try {
+    const response = await client.get(ENDPOINTS.FAMILY_THRESHOLDS(studentId));
+    return extractTeacherOverrideFamilies(response?.data);
+  } catch (err) {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log('[familyThresholds] override provenance fetch failed:', err?.message ?? err);
+    }
+    return { status: 'unavailable', families: [] };
+  }
+}

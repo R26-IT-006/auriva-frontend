@@ -59,6 +59,11 @@ export const MILESTONE_LABELS = Object.freeze({
   UPPERCASE_STRAIGHT_14: 'Uppercase Straight',
   UPPERCASE_CURVED_17:   'Uppercase Curved',
   FULL_REFERENCE_20:     'Full Reference',
+  // A pattern observed from a dedicated Writing Check. Display label only —
+  // the stored milestone value is untouched. Without this entry the raw enum
+  // fell through the lookup below and the teacher report literally rendered
+  // "Milestone: WRITING_CHECK".
+  WRITING_CHECK:         'Writing Check',
 });
 
 // Size of the complete reference-letter set. Used ONLY as a presentation
@@ -84,7 +89,18 @@ function isNotFound(err) {
 }
 
 export function formatMilestoneLabel(milestone) {
-  return MILESTONE_LABELS[milestone] ?? milestone ?? 'Unknown milestone';
+  const known = MILESTONE_LABELS[milestone];
+  if (known) return known;
+  if (typeof milestone !== 'string' || milestone.length === 0) return 'Unknown milestone';
+  // Never echo a raw enum at a teacher. An unmapped value is humanised
+  // (SOME_NEW_SOURCE -> "Some New Source") so a future backend value degrades
+  // to readable text instead of leaking internal vocabulary.
+  return milestone
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
 
 // ─── Metric labels (spec §11) ───────────────────────────────────────────────

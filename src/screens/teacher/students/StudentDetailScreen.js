@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
@@ -24,15 +25,18 @@ import { formatDate } from '../../../utils/formatters';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 // Teacher Dashboard integration fix — Feature 2's own current family
 // thresholds, never the legacy student.personal_thresholds field.
-import { fetchFamilyThresholds } from '../../../utils/familyThresholds';
 // Read-only EXPLANATION of the current progression decision. Server-derived
 // rule trace is authoritative; when it is unavailable the panel simply does
 // not render. It changes no decision and writes nothing.
-import { fetchThresholdTrace } from '../../../utils/thresholdTrace';
 // Proposal FR-16, Phase 7B — compact "Live Handwriting Session" card, only
 // rendered while the Writing tab is open (spec §14: "most appropriate
 // teacher/student screen", "do not redesign TeacherReport completely").
 import LiveSessionCard from '../../../components/teacher/LiveSessionCard';
+import {
+  fetchWritingSummary, buildWritingSummary,
+  TOTAL_LOWERCASE as TOTAL_LOWERCASE_FORMS,
+  TOTAL_UPPERCASE as TOTAL_UPPERCASE_FORMS,
+} from '../../../utils/writingModuleSummary';
 
 function InfoRow({ icon, label, value }) {
   if (!value) return null;
@@ -54,153 +58,7 @@ function InfoRow({ icon, label, value }) {
 // and displayed a hardcoded 55/100 fallback whenever no `.default` key was
 // set — completely disconnected from Feature 2's real family thresholds.
 // It now renders exactly what GET /handwriting/family-thresholds/:studentId
-// (Feature 2's own current target per family) returns, via
-// utils/familyThresholds.js — never personal_thresholds, never a
-// hardcoded number standing in for a real adaptive target.
-const FAMILY_LABELS = { straight: 'Straight', curved: 'Curved', complex: 'Complex' };
-const FAMILY_ORDER = ['straight', 'curved', 'complex'];
 
-function ThresholdCard({ status, families, trace }) {
-  if (status === 'loading') {
-    return (
-      <Card style={styles.infoCard}>
-        <View style={styles.thresholdLoadingRow}>
-          <ActivityIndicator size="small" color={Colors.primary} />
-          <Text style={styles.thresholdLoadingText}>Loading learning targets…</Text>
-        </View>
-      </Card>
-    );
-  }
-
-  const anyAvailable = FAMILY_ORDER.some((family) => typeof families?.[family] === 'number');
-
-  if (!anyAvailable) {
-    return (
-      <Card style={styles.infoCard}>
-        <View style={styles.thresholdHeader}>
-          <View style={styles.thresholdIconWrap}>
-            <Ionicons name="stats-chart-outline" size={16} color="#94A3B8" />
-          </View>
-          <View style={{ flex: 1 }}>
-            {/* Deliberately NOT "55/100" or any other number — an
-                unavailable target is never presented as though it were a
-                real adaptive value (final integration audit §4). */}
-            <Text style={styles.thresholdUnavailableText}>Learning targets not available yet</Text>
-            <Text style={styles.thresholdNote}>
-              Targets appear automatically once the student completes their initial assessment.
-            </Text>
-          </View>
-        </View>
-      </Card>
-    );
-  }
-
-  return (
-    <Card style={styles.infoCard}>
-      <Text style={styles.thresholdCardTitle}>Current Learning Targets</Text>
-      {FAMILY_ORDER.map((family) => {
-        const value = families?.[family];
-        return (
-          <View key={family} style={styles.thresholdFamilyRow}>
-            <Text style={styles.thresholdFamilyLabel}>{FAMILY_LABELS[family]}</Text>
-            <Text style={typeof value === 'number' ? styles.thresholdFamilyValue : styles.thresholdFamilyValueUnavailable}>
-              {typeof value === 'number' ? `${value} / 100` : 'Not available yet'}
-            </Text>
-          </View>
-        );
-      })}
-      <Text style={styles.thresholdHint}>
-        Each motor family's target adjusts automatically as the student practices.
-      </Text>
-
-      {/* Explanation only — collapsed by default, and absent entirely when the
-          server trace is unavailable. */}
-      {trace?.status === 'found' && <ThresholdWhyPanel families={trace.families} />}
-    </Card>
-  );
-}
-
-// ─── "Why this target?" ─────────────────────────────────────────────────────
-//
-// Collapsed by default. Shows only teacher-useful information: the current
-// target, each recent eligible attempt and whether it met the target, the
-// decision, the rule that produced it, and what would satisfy the progression
-// condition. Every string comes from the backend trace verbatim — no wording,
-// decision or counterfactual is re-derived here.
-//
-// Internal identifiers (attempt ids, evidence fingerprints, ThresholdHistory
-// row ids, rule ids) are not present in the payload and are never rendered.
-
-function ThresholdWhyPanel({ families }) {
-  const [open, setOpen] = useState(false);
-  const entries = FAMILY_ORDER.map((f) => [f, families?.[f]]).filter(([, t]) => !!t);
-  if (entries.length === 0) return null;
-
-  return (
-    <View style={styles.whyWrap}>
-      <TouchableOpacity onPress={() => setOpen((o) => !o)} style={styles.whyBtn} activeOpacity={0.7}>
-        <Ionicons name="information-circle" size={15} color={Colors.primary} />
-        <Text style={styles.whyBtnLabel}>Why this target?</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color={Colors.primary} />
-      </TouchableOpacity>
-
-      {open && (
-        <View style={styles.whyPanel}>
-          {entries.map(([family, t]) => (
-            <View key={family} style={styles.whyFamily}>
-              <Text style={styles.whyFamilyTitle}>{FAMILY_LABELS[family]}</Text>
-
-              {t.teacher_override?.protected && (
-                <View style={styles.whyProtected}>
-                  <Ionicons name="lock-closed-outline" size={13} color="#92400E" />
-                  <Text style={styles.whyProtectedText}>
-                    {t.persistence?.note
-                      ?? 'Automatic updating was not applied because the current target is protected by a teacher-defined setting.'}
-                  </Text>
-                </View>
-              )}
-
-              {typeof t.target?.current === 'number' && (
-                <Text style={styles.whyLine}>Current target: {t.target.current}</Text>
-              )}
-
-              {t.evidence_window?.attempts?.length > 0 && (
-                <View style={styles.whyAttempts}>
-                  <Text style={styles.whySubLabel}>Recent eligible attempts</Text>
-                  {t.evidence_window.attempts.map((a, i) => (
-                    <View key={`${family}-${i}`} style={styles.whyAttemptRow}>
-                      <Text style={styles.whyAttemptScore}>{a.score}</Text>
-                      <Text style={a.met_target ? styles.whyMet : styles.whyNotMet}>
-                        {a.met_target ? 'Met target' : 'Did not meet target'}
-                      </Text>
-                    </View>
-                  ))}
-                  <Text style={styles.whyLine}>
-                    {t.evidence_window.met_target_count} of {t.evidence_window.required_count} met the target.
-                  </Text>
-                </View>
-              )}
-
-              {t.explanation?.summary && (
-                <>
-                  <Text style={styles.whySubLabel}>Why</Text>
-                  <Text style={styles.whyLine}>{t.explanation.summary}</Text>
-                </>
-              )}
-
-              {t.explanation?.counterfactual && (
-                <>
-                  <Text style={styles.whySubLabel}>What would satisfy the progression condition</Text>
-                  <Text style={styles.whyLine}>{t.explanation.counterfactual}</Text>
-                </>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
 
 function StatLine({ label, value }) {
   return (
@@ -249,6 +107,174 @@ function ageFrom(dateStr) {
   return years >= 0 && years < 130 ? years : null;
 }
 
+/**
+ * A compact bar for one mastery row. Deliberately small: this is an
+ * at-a-glance overview, not the report's charts.
+ */
+function MiniBar({ percent }) {
+  const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+  return (
+    <View style={styles.wsBarTrack}>
+      <View style={[styles.wsBarFill, { width: `${pct}%` }]} />
+    </View>
+  );
+}
+
+function WsRow({ label, value, percent }) {
+  return (
+    <View style={styles.wsRow}>
+      <View style={styles.wsRowHead}>
+        <Text style={styles.wsRowLabel}>{label}</Text>
+        <Text style={styles.wsRowValue}>{value}</Text>
+      </View>
+      <MiniBar percent={percent} />
+    </View>
+  );
+}
+
+function WsStatus({ icon, label, value, muted }) {
+  return (
+    <View style={styles.wsStatus}>
+      <Ionicons name={icon} size={14} color={muted ? Colors.text.muted : Colors.text.link} />
+      <View style={styles.wsStatusText}>
+        <Text style={styles.wsStatusLabel}>{label}</Text>
+        <Text style={[styles.wsStatusValue, muted && styles.wsStatusValueMuted]}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * WRITING PROGRESS summary.
+ *
+ * Information priority, top to bottom: overall letters mastered, the two
+ * case breakdowns, word status, then two or three teacher-relevant statuses,
+ * then the single report action.
+ *
+ * Every value comes from utils/writingModuleSummary.js, which reads only
+ * backend-authoritative counts. Nothing here is derived from a demo/preview
+ * flag, and nothing shows raw DTW, motor features, thresholds, cycle counts
+ * or clustering terminology.
+ */
+function WritingSummaryCard({ state, onOpenReport, onRetry }) {
+  const s = state.summary;
+  // Tablet landscape: let the headline and the two case rows share the width
+  // instead of stacking into a tall column. One breakpoint, no horizontal
+  // scrolling, and the hierarchy is identical in both layouts.
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+
+  return (
+    <Card style={styles.wsCard} padding="none">
+      {state.status === 'loading' ? (
+        <View style={styles.wsLoading}>
+          <ActivityIndicator color={Colors.icon.active} />
+        </View>
+      ) : state.status === 'partial' ? (
+        // Core letter progress did not load. Secondary items degrade on their
+        // own (a missing Writing Check simply reads "Not checked yet"), but
+        // without the letter counts there is no summary to show — and a made-up
+        // 0/52 would read as real. Never a status code, never "read_failed".
+        <View style={styles.wsUnavailable}>
+          <Ionicons name="cloud-offline-outline" size={20} color={Colors.text.muted} />
+          <Text style={styles.wsUnavailableText}>
+            Writing progress isn&apos;t available right now.
+          </Text>
+          <TouchableOpacity onPress={onRetry} activeOpacity={0.7}>
+            <Text style={styles.wsRetryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* Priority 1 — the headline. 52 letter FORMS (26 lowercase +
+              26 uppercase); words are a separate module and never counted
+              into this percentage. */}
+          <View style={[styles.wsBody, wide && styles.wsBodyWide]}>
+          <View style={[styles.wsHeadline, wide && styles.wsHeadlineWide]}>
+            <View>
+              <Text style={styles.wsHeadlineLabel}>Letters Mastered</Text>
+              <Text style={styles.wsHeadlineValue}>
+                {s.totalMastered}
+                <Text style={styles.wsHeadlineTotal}> / {s.totalLetterForms}</Text>
+              </Text>
+            </View>
+            <View style={styles.wsPercentPill}>
+              <Text style={styles.wsPercentText}>{s.masteredPercent}%</Text>
+            </View>
+          </View>
+
+          {/* Priority 2 — the two cases, counted independently. */}
+          <View style={[styles.wsRows, wide && styles.wsRowsWide]}>
+            <WsRow
+              label="Lowercase Letters"
+              value={`${s.lowercaseMastered} / ${TOTAL_LOWERCASE_FORMS}`}
+              percent={s.lowercasePercent}
+            />
+            <WsRow
+              label="Uppercase Letters"
+              value={`${s.uppercaseMastered} / ${TOTAL_UPPERCASE_FORMS}`}
+              percent={s.uppercasePercent}
+            />
+          </View>
+
+          </View>
+
+          {/* Priority 3 — words. Locked until BOTH cases are complete; the
+              same rule the child-facing gate uses. */}
+          <View style={styles.wsDivider} />
+          <View style={styles.wsStatusGrid}>
+            <WsStatus
+              icon={s.wordsUnlocked ? 'text-outline' : 'lock-closed-outline'}
+              label="Word Practice"
+              value={s.wordsUnlocked ? 'Available' : 'Locked'}
+              muted={!s.wordsUnlocked}
+            />
+            {!s.wordsUnlocked ? (
+              <Text style={styles.wsLockedHint}>
+                Complete all lowercase and uppercase letters first.
+              </Text>
+            ) : null}
+
+            {/* Priority 5 — home practice, counted rather than listed. */}
+            {s.homePracticeCount != null && s.homePracticeCount > 0 ? (
+              <WsStatus
+                icon="home-outline"
+                label="Home Practice"
+                value={
+                  s.homePracticeCount === 1 && s.homePracticeLetters.length === 1
+                    ? `${s.homePracticeLetters[0]} needs additional practice`
+                    : `${s.homePracticeCount} letters recommended`
+                }
+              />
+            ) : null}
+
+            {/* Priority 6 — latest Writing Check status only. Never a
+                cluster id, never a chart, never framed as good or bad. */}
+            <WsStatus
+              icon="pulse-outline"
+              label="Writing Pattern"
+              value={s.writingPatternLabel}
+              muted={s.writingPatternLabel === 'Not checked yet'}
+            />
+          </View>
+
+          {/* The single action out to the existing report. */}
+          <TouchableOpacity
+            style={styles.wsReportBtn}
+            activeOpacity={0.75}
+            onPress={onOpenReport}
+            accessibilityRole="button"
+            accessibilityLabel="View Writing Progress Report"
+          >
+            <Text style={styles.wsReportText}>View Writing Progress Report</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.text.link} />
+          </TouchableOpacity>
+        </>
+      )}
+    </Card>
+  );
+}
+
 export default function TeacherStudentDetailScreen({ route, navigation }) {
   const initialStudent = route.params?.student;
   const [student, setStudent] = useState(initialStudent);
@@ -256,18 +282,20 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
   const [activeModule, setActiveModule] = useState('concept');
-  // Teacher Dashboard integration fix — Feature 2's current family
-  // thresholds, fetched lazily (only once the Writing tab is actually
-  // open, since ThresholdCard only renders there) rather than on every
-  // screen load. `families: null` means "not fetched yet" (renders the
-  // loading state); `{straight: null, ...}` after a resolved/failed fetch
-  // means "genuinely unavailable" (renders the neutral message) — the two
-  // are deliberately distinct so a slow network never flashes "not
-  // available yet" before the real values arrive.
-  const [familyThresholds, setFamilyThresholds] = useState({ status: 'loading', families: null });
-  // Independent of the threshold load: an explanation failure must never
-  // hide the targets themselves.
-  const [thresholdTrace, setThresholdTrace] = useState({ status: 'loading', families: null });
+  // The per-family "Writing Standard" targets are NOT shown in this compact
+  // summary — a threshold is report-level detail, not an at-a-glance status.
+  // The request, state and effect that fed that card were removed with it, so
+  // opening the Writing tab no longer costs a call whose result is never
+  // rendered. Nothing about threshold logic changed: the resolver, history,
+  // family mapping and teacher overrides all keep operating internally.
+
+  // Writing tab summary. Lazy — fetched only once the Writing tab is
+  // actually open, matching the existing threshold-loading convention on
+  // this screen. Seeded with the neutral empty summary so a brand-new child
+  // reads 0/52 and "Locked" rather than blank or an error.
+  const [writingSummary, setWritingSummary] = useState({
+    status: 'loading', summary: buildWritingSummary({}),
+  });
 
   const fetch = useCallback(async () => {
     if (!initialStudent?.sid) { setRefreshing(false); return; }
@@ -292,12 +320,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
-  const loadFamilyThresholds = useCallback(async () => {
+  const loadWritingSummary = useCallback(async () => {
     if (!initialStudent?.sid) return;
-    setFamilyThresholds((prev) => ({ ...prev, status: 'loading' }));
-    const result = await fetchFamilyThresholds({ studentId: initialStudent.sid });
-    setFamilyThresholds({ status: result.status, families: result.families });
+    setWritingSummary((prev) => ({ ...prev, status: 'loading' }));
+    setWritingSummary(await fetchWritingSummary(initialStudent.sid));
   }, [initialStudent?.sid]);
+
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -309,8 +337,8 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   // convention) — fetched once per (student, module-becomes-writing), not
   // on every render or every tab switch back to Writing.
   useEffect(() => {
-    if (activeModule === 'writing') loadFamilyThresholds();
-  }, [activeModule, loadFamilyThresholds]);
+    if (activeModule === 'writing') loadWritingSummary();
+  }, [activeModule, loadWritingSummary]);
 
   if (!student) return null;
 
@@ -335,6 +363,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     navigation.navigate('StudentHandwritingReport', {
       student,
       theme: getAvatarTheme(student.avatar_key),
+      // Where the report's back button returns to. Without it the report
+      // fell through to a bare goBack(), which lands wherever the stack
+      // happens to point rather than on the profile the teacher opened it
+      // from — see utils/backToOrigin.js. `activeModule` is preserved for
+      // free: this screen is not unmounted, so Writing is still selected.
+      originRoute: route.name,
     });
   }
 
@@ -454,50 +488,24 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                 not biometric) live handwriting-session monitoring. Polls on
                 its own focus-gated interval; entirely independent of the
                 other Writing-tab sections above/below it. */}
-            <LiveSessionCard studentId={initialStudent?.sid} />
+            <LiveSessionCard studentId={initialStudent?.sid} compactWhenInactive />
 
-            {/* Writing Standard — Feature 2's current per-family adaptive
-                targets, never the legacy personal_thresholds field. */}
-            <SectionHeader icon="speedometer-outline" title="Writing Standard" />
-            <ThresholdCard status={familyThresholds.status} families={familyThresholds.families} trace={thresholdTrace} />
-
-            {/* Handwriting Report */}
-            <SectionHeader icon="document-text-outline" title="Handwriting Report" />
-            <TouchableOpacity
-              style={styles.reportCard}
-              activeOpacity={0.75}
-              onPress={openHandwritingReport}
-            >
-              <LinearGradient
-                colors={['#6366F1', '#7C3AED']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.reportIconWrap}
-              >
-                <Ionicons name="document-text" size={22} color="#FFF" />
-              </LinearGradient>
-
-              <View style={styles.reportContent}>
-                <Text style={styles.reportTitle}>Handwriting Report</Text>
-                <Text style={styles.reportDesc}>
-                  Motor analysis · Letter mastery · AI recommendations
-                </Text>
-                <View style={styles.reportTagRow}>
-                  <View style={styles.reportTag}>
-                    <Ionicons name="analytics-outline" size={10} color="#6366F1" />
-                    <Text style={styles.reportTagText}>XAI Powered</Text>
-                  </View>
-                  <View style={styles.reportTag}>
-                    <Ionicons name="school-outline" size={10} color="#6366F1" />
-                    <Text style={styles.reportTagText}>End-of-Day</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.reportArrow}>
-                <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
-              </View>
-            </TouchableOpacity>
+            {/* WRITING PROGRESS — a compact OVERVIEW only, following the
+                Concepts pattern: a small summary here, the detail behind a
+                single report action.
+                Deliberately NOT here: the motor performance chart, initial
+                shape assessment, difficulty analysis, Writing Check history,
+                per-letter history, worksheet history and periodic charts —
+                all of which live in the Writing Progress Report this card
+                links to. The per-family "Writing Standard" targets moved
+                there too: a threshold is report-level detail, not an
+                at-a-glance status. */}
+            <SectionHeader icon="create-outline" title="Writing Progress" />
+            <WritingSummaryCard
+              state={writingSummary}
+              onOpenReport={openHandwritingReport}
+              onRetry={loadWritingSummary}
+            />
           </>
         ) : (
           <Card style={styles.infoCard} padding="none">
@@ -655,101 +663,65 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
   infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
   divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 58 },
-  reportCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    padding: Layout.spacing.md,
-    borderWidth: 1, borderColor: Colors.borderLight,
-    gap: Layout.spacing.md,
-    ...Layout.shadow.sm,
-    marginBottom: Layout.spacing.md,
-  },
-  reportIconWrap: {
-    width: 46, height: 46, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  reportContent: { flex: 1 },
-  reportTitle: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-  },
-  reportDesc: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted, marginTop: 2,
-  },
-  reportTagRow: { flexDirection: 'row', gap: 6, marginTop: 6 },
-  reportTag: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 7, paddingVertical: 3,
-    borderRadius: 8,
-  },
-  reportTagText: { fontSize: 10, color: '#6366F1', fontWeight: '700' },
-  reportArrow: { paddingLeft: 4 },
+  // ── Writing Progress summary ─────────────────────────────────────────
+  // Compact by design: the whole card sits inside the Module Progress area
+  // without turning it into the full report. No fixed heights and no nested
+  // ScrollView — the Student Profile already owns scrolling.
+  wsCard: { marginBottom: 12, overflow: 'hidden' },
+  wsLoading: { paddingVertical: 28, alignItems: 'center' },
+  wsUnavailable: { paddingVertical: 24, paddingHorizontal: 18, alignItems: 'center', gap: 7 },
+  wsUnavailableText: { fontSize: 12.5, color: Colors.text.muted, textAlign: 'center' },
+  wsRetryText: { fontSize: 12.5, fontWeight: '600', color: Colors.text.link },
 
-  // ── Threshold card (Feature 2 — Current Learning Targets) ─────────────────
-  thresholdHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: Layout.spacing.md, gap: Layout.spacing.sm,
-  },
-  thresholdIconWrap: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
-  },
-  thresholdNote: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-  thresholdLoadingRow: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: Layout.spacing.md, gap: Layout.spacing.sm,
-  },
-  thresholdLoadingText: { fontSize: Layout.fontSize.sm, color: Colors.text.muted },
-  thresholdUnavailableText: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.primary,
-  },
-  thresholdCardTitle: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.semibold,
-    color: Colors.text.primary, padding: Layout.spacing.md, paddingBottom: Layout.spacing.xs,
-  },
-  thresholdFamilyRow: {
+  wsHeadline: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.md, paddingVertical: Layout.spacing.xs,
+    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12,
   },
-  thresholdFamilyLabel: { fontSize: Layout.fontSize.sm, color: Colors.text.primary },
-  thresholdFamilyValue: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#6366F1',
+  wsHeadlineLabel: { fontSize: 12, color: Colors.text.muted, marginBottom: 2 },
+  wsHeadlineValue: { fontSize: 26, fontWeight: '700', color: Colors.text.primary },
+  wsHeadlineTotal: { fontSize: 15, fontWeight: '600', color: Colors.text.muted },
+  wsPercentPill: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+    backgroundColor: 'rgba(99,102,241,0.10)',
   },
-  thresholdFamilyValueUnavailable: {
-    fontSize: Layout.fontSize.xs, color: Colors.text.muted, fontStyle: 'italic',
-  },
-  whyWrap:     { marginTop: 10 },
-  whyBtn:      { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
-  whyBtnLabel: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
-  whyPanel: {
-    marginTop: 8, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12,
-    borderLeftWidth: 3, borderLeftColor: Colors.primary, gap: 12,
-  },
-  whyFamily:      { gap: 3 },
-  whyFamilyTitle: { fontSize: 12, fontWeight: '800', color: Colors.text.primary },
-  whySubLabel:    { fontSize: 9.5, fontWeight: '800', color: Colors.text.muted, textTransform: 'uppercase', marginTop: 4 },
-  whyLine:        { fontSize: 11.5, color: Colors.text.secondary, lineHeight: 17 },
-  whyAttempts:    { gap: 2, marginTop: 2 },
-  whyAttemptRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  whyAttemptScore:{ fontSize: 11.5, fontWeight: '800', color: Colors.text.primary, minWidth: 26 },
-  whyMet:         { fontSize: 11.5, color: Colors.text.primary },
-  whyNotMet:      { fontSize: 11.5, color: Colors.text.muted },
-  whyProtected: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: '#FEF3C7',
-    borderRadius: 10, padding: 9, marginTop: 2, marginBottom: 2,
-  },
-  whyProtectedText: { flex: 1, fontSize: 11, color: '#92400E', lineHeight: 16, fontWeight: '600' },
+  wsPercentText: { fontSize: 15, fontWeight: '700', color: '#6366F1' },
 
-  thresholdHint: {
-    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
-    paddingHorizontal: Layout.spacing.md, paddingBottom: Layout.spacing.md,
-    marginTop: Layout.spacing.xs, fontStyle: 'italic',
+  wsBody: {},
+  wsBodyWide: { flexDirection: 'row', alignItems: 'center', gap: 18, paddingRight: 14 },
+  wsHeadlineWide: { paddingRight: 0, flexShrink: 0, minWidth: 190 },
+  wsRows: { paddingHorizontal: 14, gap: 10 },
+  wsRowsWide: { flex: 1, paddingLeft: 0 },
+  wsRow: { gap: 5 },
+  wsRowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  wsRowLabel: { fontSize: 12.5, color: Colors.text.secondary },
+  wsRowValue: { fontSize: 12.5, fontWeight: '600', color: Colors.text.primary },
+  wsBarTrack: {
+    height: 6, borderRadius: 3, backgroundColor: 'rgba(99,102,241,0.12)', overflow: 'hidden',
   },
+  wsBarFill: { height: '100%', borderRadius: 3, backgroundColor: '#6366F1' },
+
+  wsDivider: {
+    height: StyleSheet.hairlineWidth, backgroundColor: Colors.border ?? 'rgba(0,0,0,0.08)',
+    marginTop: 14, marginHorizontal: 14,
+  },
+  wsStatusGrid: { paddingHorizontal: 14, paddingTop: 12, gap: 10 },
+  wsStatus: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  wsStatusText: { flex: 1 },
+  wsStatusLabel: { fontSize: 11.5, color: Colors.text.muted },
+  wsStatusValue: { fontSize: 13, fontWeight: '600', color: Colors.text.primary, marginTop: 1 },
+  wsStatusValueMuted: { color: Colors.text.secondary, fontWeight: '500' },
+  wsLockedHint: {
+    fontSize: 11.5, color: Colors.text.muted, marginTop: -4, marginLeft: 23, lineHeight: 16,
+  },
+
+  wsReportBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: 14, paddingVertical: 13,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border ?? 'rgba(0,0,0,0.08)',
+  },
+  wsReportText: { fontSize: 13.5, fontWeight: '600', color: Colors.text.link },
+
 
   // ── Module selector ───────────────────────────────────────────────────────
   moduleTabs: {

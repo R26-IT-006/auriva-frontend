@@ -36,6 +36,37 @@ function slice(source, startMarker, endMarker) {
   return source.slice(start, end);
 }
 
+/**
+ * ONE function's body, by brace matching.
+ *
+ * Preferred over slice() whenever the assertion is about a single component:
+ * a marker-to-marker slice silently widens as unrelated code is added
+ * between the two markers, so it can start failing for something that is not
+ * the component under test.
+ */
+function functionBody(source, startMarker) {
+  const start = source.indexOf(startMarker);
+  expect(start).toBeGreaterThan(-1);
+
+  // Skip the PARAMETER LIST first. A destructured signature — ({ history }) —
+  // opens a brace of its own, and matching from that one returns the
+  // signature instead of the body.
+  let i = source.indexOf('(', start);
+  let paren = 0;
+  for (; i < source.length; i++) {
+    if (source[i] === '(') paren += 1;
+    else if (source[i] === ')') { paren -= 1; if (paren === 0) { i += 1; break; } }
+  }
+
+  i = source.indexOf('{', i);
+  let depth = 0;
+  for (; i < source.length; i++) {
+    if (source[i] === '{') depth += 1;
+    else if (source[i] === '}') { depth -= 1; if (depth === 0) break; }
+  }
+  return source.slice(start, i + 1);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. Feature 11A renders independently
 // ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +80,7 @@ describe('Initial Motor Baseline Summary section renders independently', () => {
   });
 
   it('InitialMotorBaselineSummaryCard is rendered unconditionally in the main scroll body (not behind a Feature 11B check)', () => {
-    expect(screen).toContain('<InitialMotorBaselineSummaryCard result={motorBaseline} />');
+    expect(screen).toContain('<InitialMotorBaselineSummaryCard result={motorBaseline} assessment={assessmentEvidence} />');
   });
 });
 
@@ -115,7 +146,10 @@ describe('State A/B is never mapped to good/bad/high/low severity language', () 
 
 describe('History rendering trusts the backend\'s chronological order', () => {
   it('LetterMotorHistoryList maps over the history array directly, with no .sort()/.reverse() call', () => {
-    const fn = slice(screen, 'function LetterMotorHistoryList(', 'function LetterMotorDevelopmentCard(');
+    // THIS component's body only. A marker-to-marker slice spanned ~780 lines
+    // and swept in unrelated helpers that may legitimately sort their own data
+    // (e.g. picking the latest worksheet submission by date).
+    const fn = functionBody(screen, 'function LetterMotorHistoryList(');
     expect(fn).toContain('history.map(');
     expect(fn).not.toMatch(/\.sort\(|\.reverse\(/);
   });
@@ -174,20 +208,27 @@ describe('Feature 11A and Feature 11B are visually and textually distinct', () =
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('Feature 11A and Feature 11B results are never cross-compared', () => {
-  it('the two cards are rendered back-to-back in the ScrollView with no shared variable/condition between them', () => {
-    // The render call sites themselves (not the component definitions,
-    // which live elsewhere in the file) — proves the two are two
-    // independent, side-by-side JSX elements, never one conditioned on or
-    // interpolated with the other's data.
-    const tag1 = '<InitialMotorBaselineSummaryCard result={motorBaseline} />';
-    const tag2Start = '<LetterMotorDevelopmentCard';
-    const start = screen.indexOf(tag1);
-    expect(start).toBeGreaterThan(-1);
-    const between = screen.slice(start + tag1.length, screen.indexOf(tag2Start, start));
-    // Only whitespace/JSX-comment-braces between the two render calls — no
-    // shared variable, condition, or string interpolation.
-    const codeOnly = stripComments(between).replace(/[{}]/g, '').trim();
-    expect(codeOnly).toBe('');
+  it('the two cards are independent siblings — neither conditioned on the other', () => {
+    // They are no longer physically adjacent: the agreed report order places
+    // Writing Check between the Initial Handwriting Skills Summary and the
+    // Letter Motor Patterns card. Adjacency was only ever a proxy for the
+    // real property, which is that neither card reads, conditions on, or
+    // interpolates the other's data.
+    const tag1 = '<InitialMotorBaselineSummaryCard result={motorBaseline} assessment={assessmentEvidence} />';
+    const tag2 = '<LetterMotorDevelopmentCard';
+    const i1 = screen.indexOf(tag1);
+    const i2 = screen.indexOf(tag2, i1);
+    expect(i1).toBeGreaterThan(-1);
+    expect(i2).toBeGreaterThan(i1);
+
+    // Each is a self-contained JSX element fed only by its own state.
+    expect(screen).toMatch(/<InitialMotorBaselineSummaryCard result=\{motorBaseline\} assessment=\{assessmentEvidence\} \/>/);
+    // Neither card's props mention the other's state.
+    const card1Props = tag1;
+    expect(card1Props).not.toMatch(/letterMotor|latest|trend|evaluations/);
+    const card2Start = screen.indexOf(tag2);
+    const card2Props = screen.slice(card2Start, screen.indexOf('/>', card2Start));
+    expect(card2Props).not.toMatch(/motorBaseline|assessmentEvidence/);
   });
 
   it('no string in either component literally says "changed to" / "improved from" / "Cluster X to Y" style comparison text', () => {

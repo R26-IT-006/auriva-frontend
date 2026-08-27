@@ -19,17 +19,34 @@ function stateRow(overrides = {}) {
 }
 
 describe('research-safe labels', () => {
-  it('MILESTONE_LABELS covers exactly the 3 known milestones with teacher-friendly names', () => {
+  it('MILESTONE_LABELS covers every known milestone with teacher-friendly names', () => {
     expect(MILESTONE_LABELS).toEqual({
       UPPERCASE_STRAIGHT_14: 'Uppercase Straight',
       UPPERCASE_CURVED_17:   'Uppercase Curved',
       FULL_REFERENCE_20:     'Full Reference',
+      // Added because a pattern observed from a dedicated Writing Check has
+      // this milestone, had no label, and therefore rendered as the raw enum
+      // "WRITING_CHECK" in the teacher report.
+      WRITING_CHECK:         'Writing Check',
     });
   });
 
-  it('formatMilestoneLabel falls back gracefully for an unknown code', () => {
-    expect(formatMilestoneLabel('SOMETHING_NEW')).toBe('SOMETHING_NEW');
+  it('every label is teacher-readable — no raw enum ever reaches a label', () => {
+    for (const label of Object.values(MILESTONE_LABELS)) {
+      expect(label).not.toMatch(/_/);
+      expect(label).not.toMatch(/^[A-Z0-9_]+$/);
+    }
+  });
+
+  it('formatMilestoneLabel humanises an unknown code rather than echoing it', () => {
+    // The old behaviour returned the raw code, which is how "WRITING_CHECK"
+    // reached the teacher report. An unmapped future value must degrade to
+    // readable text, never to internal vocabulary.
+    expect(formatMilestoneLabel('SOMETHING_NEW')).toBe('Something New');
+    expect(formatMilestoneLabel('WRITING_CHECK')).toBe('Writing Check');
     expect(formatMilestoneLabel(null)).toBe('Unknown milestone');
+    expect(formatMilestoneLabel(undefined)).toBe('Unknown milestone');
+    expect(formatMilestoneLabel('')).toBe('Unknown milestone');
   });
 
   it('METRIC_LABELS never uses good/bad/high/low language, and captions direction only for dtw/speedCv', () => {

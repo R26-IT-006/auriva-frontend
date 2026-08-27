@@ -9,6 +9,9 @@ import {
   Share,
   ActivityIndicator,
   Dimensions,
+  Modal,
+  Image,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,7 +25,7 @@ import { getSessionProgress, getAssessmentSnapshot, getSessionDurationMinutes } 
 import { getMotorProfile, getCompletedLetters, getLetterProgress } from '../../../utils/storage';
 import { computeShapePreviewPaths } from '../../../utils/shapePreviewGeometry';
 import { fetchWordReport } from '../../../utils/wordApi';
-import { generateReport } from '../../../utils/reportEngine';
+import { generateReport , WORD_EXERCISE_KEYS, WORD_EXERCISE_NAMES } from '../../../utils/reportEngine';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
@@ -106,6 +109,8 @@ import { generateWorksheetPdf, shareWorksheetPdf } from '../../../utils/workshee
 import ReportPreviewModal from '../../../components/handwriting/reports/ReportPreviewModal';
 import * as ImagePicker from 'expo-image-picker';
 import useGatedBack from '../../../utils/useGatedBack';
+import { fetchTeacherOverrideFamilies } from '../../../utils/familyThresholds';
+import { navigateToWritingCheck } from '../../../utils/writingCheckNavigation';
 import { goBackToOrigin } from '../../../utils/backToOrigin';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -289,18 +294,39 @@ const pill = StyleSheet.create({
 
 // ─── Score bar ────────────────────────────────────────────────────────────────
 
+/**
+ * Visual polish only — the SCORE and its colour thresholds are unchanged.
+ *
+ * `pct` is clamped to 0-100 before it becomes a width: a value outside that
+ * range would otherwise render a fill wider than its own track (or a negative
+ * one), which reads as a broken bar rather than a wrong number. A
+ * non-numeric score renders an empty track instead of `NaN%`.
+ */
 function ScoreBar({ pct, height = 8 }) {
-  const color = pct >= 75 ? '#22C55E' : pct >= 50 ? '#F59E0B' : '#EF4444';
+  const value = Number(pct);
+  const safe = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+  const color = safe >= 75 ? '#22C55E' : safe >= 50 ? '#F59E0B' : '#EF4444';
+  const radius = height / 2;
   return (
-    <View style={[bar.bg, { height, borderRadius: height / 2 }]}>
-      <View style={[bar.fill, { width: `${pct}%`, backgroundColor: color, height, borderRadius: height / 2 }]} />
+    <View style={[bar.bg, { height, borderRadius: radius }]}>
+      <View style={[
+        bar.fill,
+        // Width is exactly the score. Both track and fill are rounded, and
+        // the track clips, so a full bar cannot spill past its corners.
+        { width: `${safe}%`, backgroundColor: color, height, borderRadius: radius },
+      ]} />
     </View>
   );
 }
 
 const bar = StyleSheet.create({
-  bg:   { backgroundColor: '#E2E8F0', overflow: 'hidden', flex: 1 },
-  fill: {},
+  // The track read as a separate grey box behind the fill because it was a
+  // solid #E2E8F0 slab. A much lighter neutral makes the two parts read as
+  // ONE component — coloured portion, then the remaining track — rather than
+  // a bar floating on a box. Height and radius come from the same props on
+  // both, so they always match exactly, and the track clips the fill's ends.
+  bg:   { backgroundColor: '#F1F5F9', overflow: 'hidden', flex: 1 },
+  fill: { minWidth: 0 },
 });
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
@@ -326,6 +352,51 @@ const em = StyleSheet.create({
 //  Main screen
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Teacher-set practice target notice.
+ *
+ * Shown ONLY when a family's CURRENTLY EFFECTIVE practice target is a teacher
+ * override — never from historical existence. A teacher override that was
+ * later superseded by an automatic or initial target is not effective, so no
+ * notice appears (see utils/familyThresholds.js's extractTeacherOverrideFamilies).
+ *
+ * Small inline callout by design: visible but secondary. No card, no modal,
+ * no navigation, and no numeric threshold — this report does not otherwise
+ * show family target values, and this notice does not introduce them.
+ *
+ * It lives in Teacher Recommendations because that is the section that
+ * already explains AUTOMATIC adjustment; "protected from automatic
+ * adjustment" is only meaningful next to it.
+ */
+function TeacherTargetNotice({ families }) {
+  if (!Array.isArray(families) || families.length === 0) return null;
+
+  return (
+    <View style={tov.wrap}>
+      <Ionicons name="lock-closed" size={14} color="#92400E" style={tov.icon} />
+      <View style={tov.body}>
+        <Text style={tov.title}>Teacher-set practice target</Text>
+        <Text style={tov.text}>
+          This practice target was set by the teacher and is protected from
+          automatic adjustment.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const tov = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row', gap: 9, alignItems: 'flex-start',
+    backgroundColor: '#FFFBEB', borderRadius: 10, padding: 11,
+    borderLeftWidth: 3, borderLeftColor: '#F59E0B', marginBottom: 12,
+  },
+  icon:  { marginTop: 1 },
+  body:  { flex: 1 },
+  title: { fontSize: 12.5, fontWeight: '700', color: '#92400E', marginBottom: 2 },
+  text:  { fontSize: 11.5, color: '#78350F', lineHeight: 16 },
+});
+
 export default function TeacherReportScreen({ route, navigation }) {
   const { student, theme } = route.params;
 
@@ -349,6 +420,16 @@ export default function TeacherReportScreen({ route, navigation }) {
   );
 
   const [loading,  setLoading]  = useState(true);
+  // Effective teacher-override provenance for the notice below. Fails closed
+  // to "none", so a failed request never claims a target is protected.
+  const [overrideFamilies, setOverrideFamilies] = useState([]);
+  // The letter tile whose details are open, if any.
+  const [letterDetail, setLetterDetail] = useState(null);
+
+  // Tablet portrait and up. One breakpoint, used only for layout density —
+  // never for what data is shown.
+  const { width: viewportWidth } = useWindowDimensions();
+  const isWideLayout = viewportWidth >= 600;
   const [report,   setReport]   = useState(null);
   const [duration, setDuration] = useState(0);
   const [letterProgressReport, setLetterProgressReport] = useState(null);
@@ -370,6 +451,14 @@ export default function TeacherReportScreen({ route, navigation }) {
         setLoading(true);
         setLoadError(false);
         try {
+          // 0. Effective practice-target provenance. Independent and
+          // non-fatal: it only decides whether one small notice appears, so a
+          // failure must never affect the rest of the report. Fails closed to
+          // an empty list — no notice — rather than to a claim of protection.
+          fetchTeacherOverrideFamilies(student?.sid)
+            .then((r) => setOverrideFamilies(r.families))
+            .catch(() => setOverrideFamilies([]));
+
           // 1. Fetch stored initial assessment + analysis from the server
           let serverData = null;
           try {
@@ -401,6 +490,8 @@ export default function TeacherReportScreen({ route, navigation }) {
             serverData?.assessment?.motor_profile ??
             getAssessmentSnapshot().motorProfile ??
             (await getMotorProfile(student?.sid));
+
+          setAssessmentEvidence({ motorProfile: motorProfile ?? null });
 
           // 4. Local letter / word / session data (unchanged — these accumulate per session)
           let serverWordReport = { progress: {}, words: [], summary: {} };
@@ -529,6 +620,10 @@ export default function TeacherReportScreen({ route, navigation }) {
   // state, its own loading indicator, same stale-response `active` guard.
   // Strictly read-only: fetchMotorBaseline only ever GETs.
   const [motorBaseline, setMotorBaseline] = useState({ status: 'loading', baseline: null, summary: null });
+  // Assessment-derived evidence, kept SEPARATE from the baseline above so the
+  // Initial Handwriting Skills Summary can answer "was an assessment done?"
+  // without asking "does a baseline row exist?" — see the card's own note.
+  const [assessmentEvidence, setAssessmentEvidence] = useState({ motorProfile: null });
 
   useFocusEffect(
     useCallback(() => {
@@ -766,16 +861,14 @@ export default function TeacherReportScreen({ route, navigation }) {
                     <ShapeRow key={shape.shapeId} shape={shape} />
                   ))}
 
-                  {report.letterMetrics.avgDeviation !== null && (
-                    <>
-                      <View style={s.divider} />
-                      <View style={s.metricsRow}>
-                        <MetricTile icon="move-outline"  label="Avg deviation" value={`${report.letterMetrics.avgDeviation} px`} />
-                        <MetricTile icon="hand-left-outline" label="Avg pauses"  value={report.letterMetrics.avgPauses ?? '—'} />
-                        <MetricTile icon="timer-outline" label="Avg time"     value={report.letterMetrics.avgTime !== null ? `${report.letterMetrics.avgTime}s` : '—'} />
-                      </View>
-                    </>
-                  )}
+                  {/* The Avg deviation / Avg pauses / Avg time tiles were
+                      removed from this teacher-facing report: raw pixel
+                      deviation, pause counts and seconds are engineering
+                      detail without enough teacher value beside the per-shape
+                      results above.
+                      report.letterMetrics is still computed and still carries
+                      them, and nothing was removed from storage, the backend
+                      or the research path — only this rendering. */}
                   <WhyPanel label="How is this measured?" explanation={report.letterMetrics.explanation} />
                 </>
               ) : (
@@ -783,8 +876,24 @@ export default function TeacherReportScreen({ route, navigation }) {
               )}
             </SectionCard>
 
-            {/* ══ 4. Motor Difficulty Analysis ════════════════════════════ */}
-            <MotorDifficultyCard analysis={report.difficultyAnalysis} />
+            {/* ══ Initial Motor Baseline Summary ═══════════════════════════ */}
+            <InitialMotorBaselineSummaryCard result={motorBaseline} assessment={assessmentEvidence} />
+
+            {/* ══ Writing Check history ═══════════════════════════════════ */}
+            <WritingCheckHistoryCard
+              result={writingChecks}
+              student={student}
+              theme={theme}
+              navigation={navigation}
+            />
+
+            {/* ══ Feature 11B — Letter Motor Development ═══════════════════ */}
+            <LetterMotorDevelopmentCard
+              latest={letterMotorLatest}
+              history={letterMotorHistory}
+              trend={letterMotorTrend}
+              evaluations={letterMotorEvaluations}
+            />
 
             {/* ══ Motor Pattern Progress ══════════════════════════════════ */}
             <SectionCard title="Motor Pattern Progress" icon="git-network" accentColor="#0891B2">
@@ -799,17 +908,6 @@ export default function TeacherReportScreen({ route, navigation }) {
               )}
             </SectionCard>
 
-            {/* ══ Initial Motor Baseline Summary ═══════════════════════════ */}
-            <InitialMotorBaselineSummaryCard result={motorBaseline} />
-
-            {/* ══ Feature 11B — Letter Motor Development ═══════════════════ */}
-            <LetterMotorDevelopmentCard
-              latest={letterMotorLatest}
-              history={letterMotorHistory}
-              trend={letterMotorTrend}
-              evaluations={letterMotorEvaluations}
-            />
-
             {/* ══ Homework Practice ══════════════════════════════════════ */}
             <HomeworkPracticeCard
               student={student}
@@ -819,19 +917,11 @@ export default function TeacherReportScreen({ route, navigation }) {
               onChanged={refreshWorksheets}
             />
 
-            {/* ══ Writing Check history ═══════════════════════════════════ */}
-            <WritingCheckHistoryCard
-              result={writingChecks}
-              student={student}
-              theme={theme}
-              navigation={navigation}
-            />
-
             {/* ══ 5. Letters Mastery ══════════════════════════════════════ */}
             <SectionCard title="Letters Mastery" icon="text" accentColor="#059669">
               {report.letterMetrics.letters.length > 0 ? (
                 <>
-                  <LetterMasteryGrid letters={report.letterMetrics.letters} />
+                  <LetterMasteryGrid letters={report.letterMetrics.letters} onSelect={setLetterDetail} />
                   <WhyPanel label="How is mastery measured?" explanation={report.letterMetrics.explanation} />
                 </>
               ) : (
@@ -839,9 +929,15 @@ export default function TeacherReportScreen({ route, navigation }) {
               )}
             </SectionCard>
 
-            {/* ══ 6. Word Activities ══════════════════════════════════════ */}
-            <SectionCard title="Word Activities" icon="book" accentColor="#D97706">
-              {report.wordMastery.byLetter.length > 0 ? (
+            {/* ══ Word Practice (merged) ═════════════════════
+                One section replacing the previous "Word Activities" and
+                "Word Writing Performance" cards, which showed the SAME words
+                twice under two headings. Both data sources are unchanged and
+                still read separately (report.wordMastery for activity
+                accuracy, report.wordWritingHistory for writing performance) —
+                only the presentation is merged. No backend model is touched. */}
+            <SectionCard title="Word Practice" icon="book" accentColor="#D97706">
+              {(report.wordMastery.byLetter.length > 0 || report.wordWritingHistory?.words?.length > 0) ? (
                 <>
                   {report.wordMastery.overall && (
                     <View style={s.overallBar}>
@@ -857,29 +953,31 @@ export default function TeacherReportScreen({ route, navigation }) {
                       </Text>
                     </View>
                   )}
-                  <View style={s.divider} />
-                  {report.wordMastery.byLetter.map(l => (
-                    <WordLetterRow key={l.letter} data={l} />
-                  ))}
+
+                  {report.wordMastery.byLetter.length > 0 ? (
+                    <>
+                      <View style={s.divider} />
+                      <Text style={mda.sectionLabel}>Word activities</Text>
+                      {report.wordMastery.byLetter.map(l => (
+                        <WordLetterRow key={l.letter} data={l} />
+                      ))}
+                    </>
+                  ) : null}
+
+                  {report.wordWritingHistory?.words?.length > 0 ? (
+                    <>
+                      <View style={s.divider} />
+                      <Text style={mda.sectionLabel}>Word writing</Text>
+                      {report.wordWritingHistory.words.map(w => (
+                        <WordWritingRow key={w.word} data={w} />
+                      ))}
+                    </>
+                  ) : null}
+
                   <WhyPanel label="How is word accuracy measured?" explanation={report.wordMastery.explanation} />
                 </>
               ) : (
-                <Empty message="No word activities completed yet" />
-              )}
-            </SectionCard>
-
-            {/* ══ 6b. Word Writing Performance (final-completion-pass task) ══
-                Read-only detail: per-word writing score + letter-size/
-                spacing consistency labels, sourced from the backend's own
-                word-report (report.wordWritingHistory.words) — nothing
-                recomputed here, no raw DTW/CV/gap-ratio numbers shown. */}
-            <SectionCard title="Word Writing Performance" icon="create" accentColor="#0891B2">
-              {report.wordWritingHistory?.words?.length > 0 ? (
-                report.wordWritingHistory.words.map(w => (
-                  <WordWritingRow key={w.word} data={w} />
-                ))
-              ) : (
-                <Empty message="No word-writing attempts yet" />
+                <Empty message="No word practice recorded yet." />
               )}
             </SectionCard>
 
@@ -888,7 +986,7 @@ export default function TeacherReportScreen({ route, navigation }) {
               {report.progressIndicators.length > 0 ? (
                 <View style={s.progressGrid}>
                   {report.progressIndicators.map((ind, i) => (
-                    <ProgressTile key={i} item={ind} />
+                    <ProgressTile key={i} item={ind} wide={isWideLayout} />
                   ))}
                 </View>
               ) : (
@@ -904,10 +1002,16 @@ export default function TeacherReportScreen({ route, navigation }) {
                 ))}
               </View>
 
+              {/* Teacher-set practice target — rendered only when a family's
+                  CURRENTLY EFFECTIVE target is a teacher override. Placed
+                  immediately above the adaptive subsection because that is
+                  what "protected from automatic adjustment" refers to. */}
+              <View style={arp.divider} />
+              <TeacherTargetNotice families={overrideFamilies} />
+
               {/* ── Feature 8 Step 4 — a second, clearly-attributed recommendation
                   source: longitudinal practice evidence, never conflated with the
                   general recommendations above (Step 4 spec §3/§15). ── */}
-              <View style={arp.divider} />
               <View style={arp.subHeader}>
                 <Ionicons name="analytics-outline" size={15} color="#0D9488" />
                 <Text style={arp.subTitle}>Adaptive Practice Recommendations</Text>
@@ -952,6 +1056,8 @@ export default function TeacherReportScreen({ route, navigation }) {
 
       {/* Parent gate for the back button above. Rendered once, at the
           end of the tree, so it overlays the whole screen. */}
+      <LetterDetailSheet letter={letterDetail} onClose={() => setLetterDetail(null)} />
+
       {gateModal}
     </LinearGradient>
   );
@@ -1016,7 +1122,9 @@ function ShapeRow({ shape }) {
           {shape.shapeId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
         </Text>
         <View style={{ flex: 1, paddingHorizontal: 10 }}>
-          <ScoreBar pct={shape.score} height={10} />
+          {/* 8px: thin enough not to read as a block, tall enough to see the
+              colour. Track and fill share this height and its radius. */}
+          <ScoreBar pct={shape.score} height={8} />
         </View>
         <Text style={[sr.pct, { color }]}>{shape.score}%</Text>
         <View style={[sr.labelWrap, {
@@ -1030,7 +1138,9 @@ function ShapeRow({ shape }) {
   );
 }
 const sr = StyleSheet.create({
-  wrap:       { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
+  // minHeight keeps every shape row the same height whether or not its
+  // status pill wraps, so the column of bars reads as one aligned group.
+  wrap:       { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10, minHeight: SHAPE_PREVIEW_SIZE },
   previewBox: {
     width: SHAPE_PREVIEW_SIZE, height: SHAPE_PREVIEW_SIZE, borderRadius: 8,
     backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
@@ -1038,8 +1148,15 @@ const sr = StyleSheet.create({
   },
   row:       { flex: 1, flexDirection: 'row', alignItems: 'center' },
   name:      { width: 110, fontSize: 13, color: TEXT_2, fontWeight: '500' },
-  pct:       { width: 38, fontSize: 13, fontWeight: '800', textAlign: 'right' },
-  labelWrap: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1 },
+  // Fixed widths so the score column and the status pill line up down the
+  // whole list rather than drifting with each shape's name length.
+  pct:       { width: 40, fontSize: 13, fontWeight: '800', textAlign: 'right' },
+  // A fixed width right-aligns every status pill into one column; centring
+  // the text keeps 'Excellent' and 'Good' visually balanced inside it.
+  labelWrap: {
+    marginLeft: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+    borderWidth: 1, width: 72, alignItems: 'center',
+  },
   labelText: { fontSize: 10, fontWeight: '700' },
 });
 
@@ -1058,10 +1175,73 @@ const mt = StyleSheet.create({
   label: { fontSize: 10, color: TEXT_3, fontWeight: '500', textAlign: 'center' },
 });
 
-function LetterMasteryGrid({ letters }) {
-  const mastered    = letters.filter(l => l.status === 'Mastered').length;
-  const progressing = letters.filter(l => l.status === 'Progressing').length;
-  const needs       = letters.filter(l => l.status === 'Needs Practice').length;
+const LOWERCASE_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const UPPERCASE_ALPHABET = LOWERCASE_ALPHABET.map((c) => c.toUpperCase());
+
+/**
+ * One case's tiles.
+ *
+ * The grid used to render a single mixed list and call .toUpperCase() on
+ * every tile, so lowercase 'c' and uppercase 'C' were visually identical and
+ * a teacher could not tell which form a score belonged to. The two cases are
+ * counted and shown independently now — 26 forms each, as everywhere else in
+ * the product.
+ *
+ * Statuses, colours and the accuracy calculation behind them are UNCHANGED;
+ * this only groups and labels what was already computed.
+ */
+function LetterCaseGrid({ title, alphabet, letters, onSelect }) {
+  const byLetter = new Map(letters.map((l) => [l.letter, l]));
+  const practised = alphabet.map((ch) => byLetter.get(ch)).filter(Boolean);
+  const mastered = practised.filter((l) => l.status === 'Mastered').length;
+
+  return (
+    <View style={lg.caseBlock}>
+      <View style={lg.caseHead}>
+        <Text style={lg.caseTitle}>{title}</Text>
+        <Text style={lg.caseCount}>{mastered} / {alphabet.length} mastered</Text>
+      </View>
+
+      <View style={lg.grid}>
+        {alphabet.map((ch) => {
+          const l = byLetter.get(ch);
+          // Not practised yet: a neutral placeholder tile, never a fabricated
+          // score and never omitted (the alphabet stays complete and aligned).
+          if (!l) {
+            return (
+              <View key={ch} style={[lg.chip, lg.chipEmpty]}>
+                <Text style={[lg.chipLetter, { color: '#CBD5E1' }]}>{ch}</Text>
+                <Text style={[lg.chipPct, { color: '#CBD5E1' }]}>—</Text>
+              </View>
+            );
+          }
+          const t = statusToken(l.status === 'Mastered' ? 'good' : l.status === 'Progressing' ? 'moderate' : 'needs-work');
+          return (
+            <TouchableOpacity
+              key={ch}
+              style={[lg.chip, { backgroundColor: t.bg, borderColor: t.border }]}
+              activeOpacity={0.7}
+              onPress={() => onSelect(l)}
+              accessibilityRole="button"
+              accessibilityLabel={`${ch} — ${l.status}. Open letter details`}
+            >
+              {/* The stored letter verbatim: never .toUpperCase(), which is
+                  what made the two cases indistinguishable. */}
+              <Text style={[lg.chipLetter, { color: t.text }]}>{l.letter}</Text>
+              <Text style={[lg.chipPct, { color: t.text }]}>{l.accuracy}%</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function LetterMasteryGrid({ letters, onSelect }) {
+  const all = Array.isArray(letters) ? letters : [];
+  const mastered    = all.filter(l => l.status === 'Mastered').length;
+  const progressing = all.filter(l => l.status === 'Progressing').length;
+  const needs       = all.filter(l => l.status === 'Needs Practice').length;
 
   return (
     <View>
@@ -1072,21 +1252,137 @@ function LetterMasteryGrid({ letters }) {
         <LegendDot color={T.needs.dot}    label={`${needs} Needs Practice`} />
       </View>
 
-      {/* Letter chips */}
-      <View style={lg.grid}>
-        {letters.map(l => {
-          const t = statusToken(l.status === 'Mastered' ? 'good' : l.status === 'Progressing' ? 'moderate' : 'needs-work');
-          return (
-            <View key={l.letter} style={[lg.chip, { backgroundColor: t.bg, borderColor: t.border }]}>
-              <Text style={[lg.chipLetter, { color: t.text }]}>{l.letter.toUpperCase()}</Text>
-              <Text style={[lg.chipPct, { color: t.text }]}>{l.accuracy}%</Text>
-            </View>
-          );
-        })}
-      </View>
+      <LetterCaseGrid
+        title="Lowercase Letters"
+        alphabet={LOWERCASE_ALPHABET}
+        letters={all}
+        onSelect={onSelect}
+      />
+      <LetterCaseGrid
+        title="Uppercase Letters"
+        alphabet={UPPERCASE_ALPHABET}
+        letters={all}
+        onSelect={onSelect}
+      />
     </View>
   );
 }
+/**
+ * Letter Details — PROVABLE FIELDS ONLY.
+ *
+ * Deliberately absent: "Mastered in Cycle X" and "Mastered on Attempt Y".
+ * `letter_progress` stores no cycle or attempt column, so those could only be
+ * reconstructed by matching a mastery timestamp against session ordering —
+ * approximate for recent rows and simply wrong for letters mastered under the
+ * older best-of-3 policy. An invented attribution on a teacher-facing report
+ * is worse than an absent one.
+ *
+ * Where policy provenance is unknown the evidence is labelled neutrally
+ * ("Recorded practice evidence") rather than claimed for any policy.
+ */
+function LetterDetailSheet({ letter, onClose }) {
+  if (!letter) return null;
+
+  const t = statusToken(
+    letter.status === 'Mastered' ? 'good' : letter.status === 'Progressing' ? 'moderate' : 'needs-work',
+  );
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={ld.backdrop}>
+        <View style={ld.sheet}>
+          <View style={ld.head}>
+            <View style={[ld.letterBadge, { backgroundColor: t.bg, borderColor: t.border }]}>
+              <Text style={[ld.letterBadgeText, { color: t.text }]}>{letter.letter}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={ld.title}>Letter Details</Text>
+              <Text style={[ld.status, { color: t.text }]}>{letter.status}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={onClose}
+              accessibilityLabel="Close letter details"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={20} color="#475569" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={ld.body} contentContainerStyle={{ paddingBottom: 4 }}>
+            <View style={ld.rows}>
+              <DetailRow label="Letter" value={letter.letter} />
+              <DetailRow label="Status" value={letter.status} />
+              <DetailRow
+                label="Score"
+                value={Number.isFinite(letter.accuracy) ? `${letter.accuracy}%` : null}
+              />
+              <DetailRow
+                label="Practice attempts"
+                value={Number.isFinite(letter.attempts) ? String(letter.attempts) : null}
+              />
+            </View>
+
+            <Text style={ld.sectionLabel}>Student writing</Text>
+            {/* The stored trajectory is not part of this report's payload, so
+                no drawing is shown rather than a fabricated one. */}
+            <View style={ld.previewEmpty}>
+              <Ionicons name="image-outline" size={20} color="#CBD5E1" />
+              <Text style={ld.previewEmptyText}>No writing evidence available yet.</Text>
+            </View>
+
+            <Text style={ld.note}>
+              Recorded practice evidence. Practice history is summarised from this
+              learner's recorded attempts for this letter.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/** A label/value row that simply omits itself when the value is not provable. */
+function DetailRow({ label, value }) {
+  if (value === null || value === undefined || value === '') return null;
+  return (
+    <View style={ld.row}>
+      <Text style={ld.rowLabel}>{label}</Text>
+      <Text style={ld.rowValue}>{value}</Text>
+    </View>
+  );
+}
+
+const ld = StyleSheet.create({
+  backdrop: {
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.6)',
+    alignItems: 'center', justifyContent: 'center', padding: 20,
+  },
+  // Bounded height with the scroll INSIDE, so a tall sheet never pushes its
+  // close button off a tablet screen.
+  sheet: { width: '100%', maxWidth: 460, maxHeight: '80%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16 },
+  head:  { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  letterBadge: {
+    width: 46, height: 46, borderRadius: 12, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  letterBadgeText: { fontSize: 22, fontWeight: '900' },
+  title:  { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  status: { fontSize: 12.5, fontWeight: '600', marginTop: 1 },
+  body:   { flexGrow: 0 },
+  rows:   { gap: 8 },
+  row:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  rowLabel: { fontSize: 12.5, color: TEXT_2 },
+  rowValue: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
+  sectionLabel: { fontSize: 11.5, fontWeight: '700', color: TEXT_2, marginTop: 16, marginBottom: 8 },
+  previewEmpty: {
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 22, borderRadius: 10, backgroundColor: '#F8FAFC',
+    borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  previewEmptyText: { fontSize: 11.5, color: '#94A3B8' },
+  note: { fontSize: 11, color: '#94A3B8', marginTop: 14, lineHeight: 15 },
+});
+
 function LegendDot({ color, label }) {
   return (
     <View style={lg.legendItem}>
@@ -1097,6 +1393,13 @@ function LegendDot({ color, label }) {
 }
 const lg = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: 14, marginBottom: 14, flexWrap: 'wrap' },
+  caseBlock:  { marginBottom: 16 },
+  caseHead:   { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 },
+  caseTitle:  { fontSize: 13, fontWeight: '700', color: TEXT_2 },
+  caseCount:  { fontSize: 12, fontWeight: '600', color: TEXT_2 },
+  // A not-yet-practised form: present and aligned, visibly inactive, never a
+  // fabricated score.
+  chipEmpty:  { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot:        { width: 8, height: 8, borderRadius: 4 },
   legendLabel:{ fontSize: 11, color: TEXT_2, fontWeight: '600' },
@@ -1109,11 +1412,17 @@ const lg = StyleSheet.create({
   chipPct:    { fontSize: 9,  fontWeight: '700' },
 });
 
-function ProgressTile({ item }) {
+/**
+ * `wide` = tablet portrait or larger. There the four indicators sit in ONE
+ * row (minWidth ~22% lets four tiles plus gaps fit); below that they fall
+ * back to the previous two-up wrap rather than becoming unreadably narrow.
+ * No horizontal scrolling in either case.
+ */
+function ProgressTile({ item, wide }) {
   const [open, setOpen] = useState(false);
   const t = statusToken(item.status);
   return (
-    <View style={[pt.tile, { backgroundColor: t.bg, borderColor: t.border }]}>
+    <View style={[pt.tile, wide && pt.tileWide, { backgroundColor: t.bg, borderColor: t.border }]}>
       <View style={[pt.iconCircle, { backgroundColor: t.dot + '22' }]}>
         <Text style={{ fontSize: 18 }}>{item.icon}</Text>
       </View>
@@ -1138,6 +1447,10 @@ const pt = StyleSheet.create({
     flex: 1, borderRadius: 16, borderWidth: 1.5, padding: 12,
     alignItems: 'center', gap: 6, minWidth: '47%',
   },
+  // Four equal columns in one row: 4 x 22% + three 10px gaps fits inside the
+  // card. Padding and label size tighten slightly so the text stays readable
+  // rather than wrapping to three lines.
+  tileWide: { minWidth: '22%', maxWidth: '25%', padding: 10, gap: 5 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   label:      { fontSize: 13, fontWeight: '800', textAlign: 'center' },
   badge:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
@@ -1180,12 +1493,20 @@ function WordLetterRow({ data }) {
               <WordImageDisplay imageKey={w.imageKey ?? ''} emoji={w.emoji} size={30} />
               <Text style={wl.wordText}>{w.word}</Text>
               <View style={wl.exerciseChips}>
-                {['A', 'B', 'C', 'D'].map(ex => {
+                {/* All FIVE exercises, from the canonical map. The list was
+                    hardcoded to A-D, so 'E — Write the Word' (the exercise
+                    that actually produces the written-word evidence) never
+                    appeared for any word. */}
+                {WORD_EXERCISE_KEYS.map(ex => {
                   const s = w.status[ex];
                   const col = s === 'correct' ? '#15803D' : s === 'good' ? '#B45309' : '#CBD5E1';
                   const ic  = s === 'correct' ? 'checkmark' : s === 'good' ? 'remove' : 'ellipse-outline';
                   return (
-                    <View key={ex} style={[wl.exChip, { backgroundColor: col + '18', borderColor: col + '55' }]}>
+                    <View
+                      key={ex}
+                      style={[wl.exChip, { backgroundColor: col + '18', borderColor: col + '55' }]}
+                      accessibilityLabel={`${WORD_EXERCISE_NAMES[ex]}: ${s ?? 'not attempted'}`}
+                    >
                       <Text style={[wl.exLabel, { color: col }]}>{ex}</Text>
                       <Ionicons name={ic} size={9} color={col} />
                     </View>
@@ -1954,8 +2275,36 @@ function formatScore(value) {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : '—';
 }
 
-function InitialMotorBaselineSummaryCard({ result }) {
+/**
+ * `assessment` is the ASSESSMENT-derived evidence, deliberately separate from
+ * `result` (which is baseline-derived).
+ *
+ * Bug this closes: the card was gated entirely on StudentMotorBaseline, so a
+ * learner with a valid recorded assessment but no baseline row was told
+ * "Complete the initial motor assessment to see the baseline summary" — a
+ * statement that is simply false. Four learners in the live cohort are in
+ * exactly that position (their baselines predate automatic baseline
+ * creation); one of them has 59 fully eligible assessments.
+ *
+ * "An assessment exists" and "a baseline exists" are now answered separately:
+ *   assessment, no baseline -> show the assessment's own family scores
+ *   baseline                -> show the baseline block, unchanged
+ *   neither                 -> the honest "not done yet" empty state
+ *
+ * The captured shape drawings themselves are already rendered by the Motor
+ * Performance section immediately above this one (ShapeRow -> ShapePreview,
+ * from the same stored strokes), so they are not duplicated here.
+ */
+function InitialMotorBaselineSummaryCard({ result, assessment }) {
   const { status, baseline, summary } = result;
+  const profile = assessment?.motorProfile ?? null;
+  // A profile with at least one usable family score is real evidence that the
+  // assessment happened, independently of any baseline row.
+  const profileScores = profile ? {
+    straight: profile.straightScore, curved: profile.curvedScore, complex: profile.complexScore,
+  } : null;
+  const hasAssessmentEvidence = !!profileScores
+    && Object.values(profileScores).some(v => typeof v === 'number' && Number.isFinite(v));
 
   // Visible title only — aligned with the Periodic Report's own "Initial
   // Handwriting Skills Summary" card so the same screen does not show two
@@ -1968,6 +2317,26 @@ function InitialMotorBaselineSummaryCard({ result }) {
         <View style={f11.loadingRow}>
           <ActivityIndicator size="small" color="#7C3AED" />
           <Text style={f11.loadingText}>Loading initial motor baseline…</Text>
+        </View>
+      ) : status === 'baseline_not_found' && hasAssessmentEvidence ? (
+        // Assessment recorded, no baseline row. Show what the assessment
+        // itself measured rather than asking for work already done.
+        <View style={{ gap: 14 }}>
+          <View>
+            <Text style={mda.sectionLabel}>Movement-family results</Text>
+            <View style={{ gap: 6 }}>
+              {FAMILY_ROW_LABELS.map(([key, label]) => (
+                <View key={key} style={imb.familyRow}>
+                  <Text style={imb.familyLabel}>{label}</Text>
+                  <Text style={imb.familyValue}>{formatScore(profileScores[key])}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+          <Text style={imb.disclosure}>
+            These values summarize performance during the initial motor assessment and are
+            intended for educational monitoring. They are not diagnostic or ASD-severity measures.
+          </Text>
         </View>
       ) : status === 'baseline_not_found' ? (
         <Empty message="Complete the initial motor assessment to see the baseline summary" />
@@ -2120,6 +2489,25 @@ function LetterMotorHistoryList({ history }) {
 // uses. Nothing in this card changes mastery, Motor Score, thresholds, the
 // practice sequence, word unlock, or the Letter Motor Pattern — and an
 // uploaded photo is stored and shown, never analysed or scored.
+/**
+ * The most recent submission for a worksheet that actually carries a stored
+ * proof artifact.
+ *
+ * `HandwritingWorksheetSubmission.file_reference` is the child's uploaded
+ * evidence; `HandwritingWorksheet.worksheet_file_url` is the generated sheet.
+ * They are different columns and different artifacts — returning null here
+ * (rather than falling back to the worksheet) is what stops the report
+ * offering a "proof" action that would open the blank worksheet.
+ */
+function historyProofOf(worksheet) {
+  const subs = Array.isArray(worksheet?.submissions) ? worksheet.submissions : [];
+  const withFile = subs.filter((s) => typeof s?.file_reference === 'string' && s.file_reference.length > 0);
+  if (withFile.length === 0) return null;
+  return [...withFile].sort(
+    (a, b) => new Date(b.submitted_at ?? 0) - new Date(a.submitted_at ?? 0),
+  )[0];
+}
+
 function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }) {
   const [selectedLetter, setSelectedLetter] = useState(null);
   const [intensity, setIntensity] = useState('standard');
@@ -2135,6 +2523,9 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
   // A history row the teacher asked to view/reprint. Held in state so the gate
   // confirms before the historical sheet is rendered.
   const [reprintTarget, setReprintTarget] = useState(null);
+  // The submitted proof being viewed, if any. Separate from reprintTarget so
+  // the two artifacts can never be confused for one another.
+  const [proofTarget, setProofTarget] = useState(null);
 
   const loading = candidates.status === 'loading' || history.status === 'loading';
   const active = history.active ?? null;
@@ -2142,6 +2533,28 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
   // The recommendation to act on: the first persistent stream that does not
   // already have a live worksheet out.
   const recommendation = (candidates.candidates ?? []).find((c) => !c.alreadyAssigned) ?? null;
+
+  // DISPLAY-STATE fix (report only — no backend rule is touched).
+  //
+  // worksheetService's LIVE_STATUSES are ['generated','assigned','submitted'];
+  // 'reviewed' is deliberately NOT live there, because a reviewed worksheet
+  // has finished its workflow. But that also means `alreadyAssigned` goes
+  // false and `active` goes null the moment a teacher reviews — so the report
+  // offered "Generate Worksheet" again for a letter that already has a
+  // complete worksheet on file.
+  //
+  // This set answers the narrower DISPLAY question — "is there already a
+  // worksheet for this exact letter and case?" — from history the report has
+  // already fetched. It never relaxes duplicate-active protection; it only
+  // stops re-offering generation for work that visibly exists.
+  const worksheetLetterKeys = new Set(
+    worksheets
+      .filter((w) => ['generated', 'assigned', 'submitted', 'reviewed'].includes(w.status))
+      .map((w) => `${w.target_letter}|${w.case_type}`),
+  );
+  const recommendationAlreadyCovered = !!recommendation
+    && !!recommendation.suggestedLetter
+    && worksheetLetterKeys.has(`${recommendation.suggestedLetter}|${recommendation.caseType}`);
   const targetLetter = selectedLetter ?? recommendation?.suggestedLetter ?? null;
 
   const latestSubmission = active && Array.isArray(active.submissions) && active.submissions.length > 0
@@ -2327,7 +2740,7 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
             one (from the broader family-level analysis) keeps its existing
             presentation. Neither ever shows a cycle count, a threshold, a
             score or an internal identifier. */}
-        {!active && recommendation && !dismissed ? (
+        {!active && recommendation && !dismissed && !recommendationAlreadyCovered ? (
           <View>
             <Text style={mda.sectionLabel}>
               {isTwoCycleCandidate(recommendation) ? TWO_CYCLE_SECTION_LABEL : 'Homework Recommendation'}
@@ -2541,15 +2954,31 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
                 <Text style={f11.historyDate}>
                   {formatWorksheetDate(w.assigned_at ?? w.generated_at) || '—'}
                 </Text>
-                {/* Reprint is READ-ONLY: it renders from the worksheet's frozen
-                    plan and changes no date, status or review. */}
+                {/* TWO distinct artifacts, two distinct actions.
+                    Previously a single "View" always reprinted the GENERATED
+                    worksheet, so after a teacher uploaded photo proof there
+                    was no way to see it — tapping View showed the blank
+                    worksheet instead of the child's work.
+                    Reprint stays READ-ONLY: it renders from the worksheet's
+                    frozen plan and changes no date, status or review. */}
                 <TouchableOpacity
                   style={hw.linkBtn}
                   onPress={() => setReprintTarget(w)}
                   accessibilityLabel={`View worksheet for ${w.target_letter} — needs a code`}
                 >
-                  <Text style={hw.linkBtnText}>View</Text>
+                  <Text style={hw.linkBtnText}>
+                    {historyProofOf(w) ? 'Worksheet' : 'View'}
+                  </Text>
                 </TouchableOpacity>
+                {historyProofOf(w) ? (
+                  <TouchableOpacity
+                    style={hw.linkBtn}
+                    onPress={() => setProofTarget({ worksheet: w, submission: historyProofOf(w) })}
+                    accessibilityLabel={`View submitted proof for ${w.target_letter}`}
+                  >
+                    <Text style={hw.linkBtnText}>Proof</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             ))
           )}
@@ -2575,6 +3004,46 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
         onClose={closePreview}
       />
 
+      {/* Submitted proof viewer — the child's actual uploaded photo, never
+          the generated worksheet. Read-only: opening it changes no status,
+          no review and no date. */}
+      <Modal
+        visible={!!proofTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProofTarget(null)}
+      >
+        <View style={pv.backdrop}>
+          <View style={pv.sheet}>
+            <View style={pv.head}>
+              <Text style={pv.title} numberOfLines={1}>
+                Submitted proof · {proofTarget?.worksheet?.target_letter ?? ''}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setProofTarget(null)}
+                accessibilityLabel="Close submitted proof"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={20} color="#475569" />
+              </TouchableOpacity>
+            </View>
+            {proofTarget?.submission?.file_reference ? (
+              <Image
+                source={{ uri: proofTarget.submission.file_reference }}
+                style={pv.image}
+                resizeMode="contain"
+                accessibilityLabel="Submitted practice photo"
+              />
+            ) : (
+              <Text style={pv.missing}>This proof image is no longer available.</Text>
+            )}
+            <Text style={pv.meta}>
+              {formatWorksheetDate(proofTarget?.submission?.submitted_at) || ''}
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
       {gGenerate.gateModal}
       {gPreview.gateModal}
       {gReprint.gateModal}
@@ -2584,6 +3053,23 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
     </SectionCard>
   );
 }
+
+const pv = StyleSheet.create({
+  backdrop: {
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.62)',
+    alignItems: 'center', justifyContent: 'center', padding: 20,
+  },
+  sheet: {
+    width: '100%', maxWidth: 520, backgroundColor: '#FFFFFF',
+    borderRadius: 16, padding: 14, gap: 10,
+  },
+  head:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  title: { flex: 1, fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  // Bounded so a tall photo cannot push the sheet off a tablet screen.
+  image: { width: '100%', aspectRatio: 3 / 4, maxHeight: 460, borderRadius: 10, backgroundColor: '#F1F5F9' },
+  missing: { fontSize: 12.5, color: '#64748B', textAlign: 'center', paddingVertical: 30 },
+  meta:  { fontSize: 11.5, color: '#94A3B8', textAlign: 'center' },
+});
 
 const hw = StyleSheet.create({
   row:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 5, gap: 12 },
@@ -2631,7 +3117,12 @@ function WritingCheckHistoryCard({ result, student, theme, navigation }) {
   // it goes through the SAME ParentGateModal every other teacher-facing action
   // on this screen uses — no new authentication concept.
   const { requestBack: requestStartCheck, gateModal } = useGatedBack(
-    () => navigation.navigate('WritingCheck', { student, theme })
+    // This report is registered in TWO navigators (as 'TeacherReport' inside
+    // HandwritingNavigator, and as 'StudentHandwritingReport' inside
+    // TeacherNavigator), and only the first owns the WritingCheck screen.
+    // navigateToWritingCheck picks the direct or nested form accordingly —
+    // see utils/writingCheckNavigation.js.
+    () => navigateToWritingCheck(navigation, { student, theme })
   );
 
   if (result.status === 'loading') {
@@ -2785,7 +3276,7 @@ function LetterMotorDevelopmentCard({ latest, history, trend, evaluations }) {
               <Text style={f11.currentLabel}>Current Letter Motor Pattern</Text>
               <Text style={[mda.bannerTitle, { color: '#0891B2' }]}>{currentState.patternLabel}</Text>
               <Text style={mda.bannerDesc}>
-                Milestone: {currentState.milestoneLabel} · Last updated {formatReviewDate(currentState.observedAt) || '—'}
+                Source: {currentState.milestoneLabel} · Last updated {formatReviewDate(currentState.observedAt) || '—'}
               </Text>
             </View>
           </View>

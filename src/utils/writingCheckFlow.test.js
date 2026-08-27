@@ -265,10 +265,15 @@ describe('routing', () => {
 
   it('the screen needs only the params its callers actually pass', () => {
     expect(screen).toMatch(/const \{ student, theme \} = route\.params \?\? \{\};/);
-    for (const caller of ['../screens/handwriting/LetterHomeScreen.js',
-      '../screens/handwriting/reports/TeacherReportScreen.js']) {
-      expect(read(caller)).toMatch(/navigation\.navigate\('WritingCheck', \{ student, theme \}\)/);
-    }
+    // Letter Home lives inside the handwriting stack and navigates directly.
+    expect(read('../screens/handwriting/LetterHomeScreen.js'))
+      .toMatch(/navigation\.navigate\('WritingCheck', \{ student, theme \}\)/);
+    // The report is registered in TWO navigators and only one owns the
+    // WritingCheck screen, so it resolves the destination through a helper —
+    // see utils/writingCheckNavigation.js. Same {student, theme} payload
+    // reaches the screen either way, which is what this test is about.
+    expect(read('../screens/handwriting/reports/TeacherReportScreen.js'))
+      .toMatch(/navigateToWritingCheck\(navigation, \{ student, theme \}\)/);
     // The check id is fetched, never expected as a param — so a missing param
     // cannot produce a permanent spinner.
     expect(screen).not.toMatch(/route\.params\??\.?\.?(checkId|writingCheckId|patternCheckId)/);

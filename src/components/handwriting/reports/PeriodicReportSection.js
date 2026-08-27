@@ -91,9 +91,22 @@ function SubCard({ title, children, note }) {
 // comes from the backend's own metadata (derived from req.user.id, the
 // authenticated teacher), never a value the frontend passes in.
 export default function PeriodicReportSection({ student, theme }) {
-  const [presetKey, setPresetKey] = useState(DEFAULT_REPORT_PRESET_KEY);
+  // Opens on Custom, so the teacher chooses a period deliberately rather than
+  // being handed a 30-day report they did not ask for. No dates are
+  // auto-filled: `customRange` stays null until Apply.
+  //
+  // Deliberately the INITIAL STATE only — the shared
+  // DEFAULT_REPORT_PRESET_KEY constant is untouched, because the PDF export
+  // and the period policy still resolve their own default from it.
+  const [presetKey, setPresetKey] = useState('custom');
   const [customRange, setCustomRange] = useState(null);
   const [customError, setCustomError] = useState(null);
+  // Has the teacher actually TRIED to apply a range yet? Before they have,
+  // an incomplete custom range is simply an unfinished form, not an error —
+  // showing "Select a valid date range" on open reads as a red warning about
+  // something the teacher has not done yet. Validation itself is unchanged;
+  // only its timing is.
+  const [applyAttempted, setApplyAttempted] = useState(false);
 
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error' | 'empty_range'
   const [report, setReport] = useState(null);
@@ -244,11 +257,19 @@ export default function PeriodicReportSection({ student, theme }) {
   }, [student?.sid, range?.startDate, range?.endDate]);
 
   function handleSelectPreset(key) {
+    // Leaving Custom resets the attempt: a preset can never be invalid, so a
+    // stale custom-range warning must not follow the teacher across.
+    setApplyAttempted(false);
+    setCustomError(null);
     setCustomError(null);
     setPresetKey(key);
   }
 
   function handleApplyCustomRange(candidate) {
+    // From here on an incomplete/invalid range IS an error worth showing —
+    // the teacher has asked for it to be applied. Validation itself is
+    // unchanged; this only records that they asked.
+    setApplyAttempted(true);
     const validation = validateCustomRange(candidate.startDate, candidate.endDate, undefined, registeredOn);
     if (!validation.ok) {
       setCustomError(validation.error);
@@ -330,7 +351,10 @@ export default function PeriodicReportSection({ student, theme }) {
         maxDate={today}
       />
 
-      <Text style={styles.periodLabel}>{periodLabel}</Text>
+      {/* Suppressed while Custom has no range yet: "Custom Range" alone
+          labels nothing, and the date fields directly above already say what
+          the teacher is choosing. */}
+      {range ? <Text style={styles.periodLabel}>{periodLabel}</Text> : null}
 
       {status === 'loading' && (
         <View style={styles.loadingRow}>
@@ -343,7 +367,7 @@ export default function PeriodicReportSection({ student, theme }) {
         <Text style={styles.errorText}>Couldn't load this report. Check the connection and try again.</Text>
       )}
 
-      {status === 'empty_range' && (
+      {status === 'empty_range' && applyAttempted && (
         <Text style={styles.errorText}>Select a valid date range to generate a report.</Text>
       )}
 

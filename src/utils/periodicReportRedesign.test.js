@@ -564,7 +564,10 @@ describe('Writing Check UI', () => {
 
   it('16. Start Writing Check goes through the existing parent gate', () => {
     const code = stripComments(screen);
-    expect(code).toMatch(/useGatedBack\(\s*\(\) => navigation\.navigate\('WritingCheck'/);
+    // The gate is what this test protects; the destination is now resolved by
+    // navigateToWritingCheck because this report is mounted in two navigators
+    // and only one owns the WritingCheck screen.
+    expect(code).toMatch(/useGatedBack\([\s\S]{0,400}?navigateToWritingCheck\(navigation/);
     expect(code).toMatch(/onPress=\{requestStartCheck\}/);
   });
 
