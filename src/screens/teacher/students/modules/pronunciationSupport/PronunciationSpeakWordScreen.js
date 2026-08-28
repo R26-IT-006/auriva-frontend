@@ -89,11 +89,14 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   );
 
   useEffect(() => {
-    if (word) {
+    // The word is normally already selected before this screen mounts. Do
+    // not select the same word again: setSelectedWord intentionally resets
+    // per-attempt evidence, including whether reference audio was heard.
+    if (word && sessionSelectedWord?.id !== word.id) {
       setSelectedWord(word);
     }
     setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
-  }, [setCurrentActivityStep, setSelectedWord, word]);
+  }, [sessionSelectedWord?.id, setCurrentActivityStep, setSelectedWord, word]);
 
   // Spoken instruction for the recording step — a child who cannot yet read
   // the on-screen helper text still knows what the microphone is for. Held

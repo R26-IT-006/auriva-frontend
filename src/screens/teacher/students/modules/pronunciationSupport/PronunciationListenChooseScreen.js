@@ -309,7 +309,9 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     let cancelled = false;
 
     teacherApi
-      .getPronunciationResults(studentId)
+      // Field-size progression needs the recent attempts for this target,
+      // not only the API's four-item history-screen default.
+      .getPronunciationResults(studentId, 50)
       .then((data) => {
         if (!cancelled) setResultsHistory(Array.isArray(data) ? data : []);
       })

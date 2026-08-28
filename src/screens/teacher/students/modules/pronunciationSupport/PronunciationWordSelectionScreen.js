@@ -156,7 +156,9 @@ export default function PronunciationWordSelectionScreen({
         }
 
         try {
-          const results = await teacherApi.getPronunciationResults(studentId);
+          // Completion badges span the whole available recent history; the
+          // four-item default is only appropriate for the history display.
+          const results = await teacherApi.getPronunciationResults(studentId, 50);
           if (!isMounted) return;
 
           const nextCompletedIds = new Set(

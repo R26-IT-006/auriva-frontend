@@ -7,6 +7,8 @@
   },
   "scripts": {
     "postinstall": "node scripts/patch-freeport-async.js",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
     "start": "node scripts/start-expo.js --go --lan --port 8081",
     "start:tunnel": "expo start --go --tunnel --port 8081",
     "start:local": "expo start --go --localhost --port 8081",
@@ -53,7 +55,10 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "babel-preset-expo": "~54.0.10"
+    "@testing-library/react-native": "^14.0.1",
+    "babel-preset-expo": "~54.0.10",
+    "jest-expo": "~54.0.18",
+    "react-test-renderer": "^19.1.0"
   },
   "private": true
 }
