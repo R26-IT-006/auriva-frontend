@@ -92,7 +92,7 @@ export default function ReportDateField({
 
 const styles = StyleSheet.create({
   field: { flex: 1 },
-  label: { fontSize: 11, color: '#5A5F7A', marginBottom: 4, fontWeight: '600' },
+  label: { fontSize: 11, color: '#5A5F7A', marginBottom: 4, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   input: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderWidth: 1, borderColor: '#E2E6F0', borderRadius: 10,

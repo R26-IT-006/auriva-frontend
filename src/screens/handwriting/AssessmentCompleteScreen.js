@@ -473,6 +473,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   headerSub: {
     fontSize: 13,
@@ -490,11 +491,13 @@ const styles = StyleSheet.create({
   scoreBadgeValue: {
     fontSize: 20,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     lineHeight: 24,
   },
   scoreBadgeLabel: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.5,
   },
 
@@ -534,6 +537,7 @@ const styles = StyleSheet.create({
   shapeName: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   diffBadge: {
     borderRadius: 50,
@@ -545,6 +549,7 @@ const styles = StyleSheet.create({
   diffText: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   // Result right
@@ -592,6 +597,7 @@ const styles = StyleSheet.create({
   retakeText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   doneButton: {
     flexDirection: 'row',
@@ -607,6 +613,7 @@ const styles = StyleSheet.create({
   doneText: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
 });

@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 18, paddingTop: 18, paddingBottom: 10,
   },
-  title: { fontSize: 17, fontWeight: '800', color: TEXT_1 },
+  title: { fontSize: 17, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
   subtitle: { fontSize: 11.5, color: TEXT_3, marginTop: 2 },
   closeBtn: {
     width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
@@ -157,8 +157,8 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingVertical: 13,
   },
   secondaryBtn: { backgroundColor: '#F1F2FB', borderWidth: 1, borderColor: '#E2E6F0' },
-  secondaryBtnText: { color: TEXT_2, fontSize: 13, fontWeight: '700' },
+  secondaryBtnText: { color: TEXT_2, fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   primaryBtn: { backgroundColor: ACCENT },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  primaryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   btnDisabled: { opacity: 0.7 },
 });

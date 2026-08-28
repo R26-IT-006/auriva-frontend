@@ -343,6 +343,7 @@ const styles = StyleSheet.create({
   topOutlineBtnText: {
     fontSize:   IS_TABLET ? 13 : 11,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   topFilledBtn: {
     flexDirection:     'row',
@@ -355,6 +356,7 @@ const styles = StyleSheet.create({
   topFilledBtnText: {
     fontSize:   IS_TABLET ? 13 : 11,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   // Header
@@ -376,10 +378,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize:   IS_TABLET ? 22 : 18,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   subtitle: {
     fontSize:   IS_TABLET ? 13 : 11,
     fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
   },
   progressPill: {
     borderRadius:      20,
@@ -389,6 +393,7 @@ const styles = StyleSheet.create({
   progressPillText: {
     fontSize:   IS_TABLET ? 12 : 10,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   // Motivation card
@@ -402,6 +407,7 @@ const styles = StyleSheet.create({
   motivationText: {
     fontSize:   IS_TABLET ? 14 : 12,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     textAlign:  'center',
   },
 
@@ -459,6 +465,7 @@ const styles = StyleSheet.create({
   progressBadgeText: {
     fontSize:   IS_TABLET ? 10 : 9,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
 
   // Letter text

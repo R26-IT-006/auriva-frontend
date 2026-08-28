@@ -455,6 +455,7 @@ const styles = StyleSheet.create({
   writeLabel: {
     fontSize: 26,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     letterSpacing: 0.3,
     flexShrink: 1,
   },
@@ -485,7 +486,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  attemptTitle: { fontSize: 12, fontWeight: '800' },
+  attemptTitle: { fontSize: 12, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 
   attemptHint:  { fontSize: 10, marginTop: 2, textAlign: 'center', opacity: 0.85 },
 

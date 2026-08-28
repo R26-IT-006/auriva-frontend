@@ -34,7 +34,7 @@ import { afterGuidedAttempt, buildWordRouteParams, resolveWordSession } from '..
 import { useDemoDetour } from '../../../utils/demoDetour';
 import { DEMO_KEYS } from '../../../utils/demoPolicy';
 import { childFeedbackMessage } from '../../../utils/wordFeedback';
-import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../../utils/touchPointSanitize';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../../utils/touchPointSanitize';
 import { useLearningSessionActivity } from '../../../context/LearningSessionContext';
 import { LIVE_ACTIVITY_TYPES } from '../../../constants/liveSessionPolicy';
 import { buildProgressPatch, buildScorePatch } from '../../../utils/liveSessionSnapshot';
@@ -48,6 +48,11 @@ import {
   WORD_SCREEN_W,
 } from '../../../constants/wordCanvasLayout';
 import useGatedBack from '../../../utils/useGatedBack';
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 1.5;
 
 // Canvas geometry (CANVAS_W/CANVAS_H, the 4-line ruling, the column split)
 // now lives in ONE place, imported above and shared with the "watch first"
@@ -229,15 +234,23 @@ export default function WordWritingScreen({ route, navigation }) {
   const allPathsRef    = useRef([]);
   const startTimeRef   = useRef(null);
   // Border-touch bug fix — the canvas's own on-screen origin, measured once
-  // on layout via measureInWindow(). Touch coordinates are derived from
+  // on layout via View.measure(). Touch coordinates are derived from
   // this + nativeEvent.pageX/Y (screen-absolute, always one stable frame)
   // instead of nativeEvent.locationX/Y, which can silently re-base mid-drag
   // right at a view boundary like the canvas's border — see
   // touchPointSanitize.js for the full explanation.
   const canvasRef       = useRef(null);
   const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
   const measureCanvasOrigin = useCallback(() => {
-    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
   }, []);
   const spellCancelRef = useRef(false);
   const spellTimersRef = useRef([]);
@@ -439,14 +452,22 @@ export default function WordWritingScreen({ route, navigation }) {
       onPanResponderGrant: (evt) => {
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        const { x, y } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         setCurrentPath([{ x, y, t: 0 }]);
         if (allPathsRef.current.length === 0) spellWordRef.current?.();
       },
       onPanResponderMove: (evt) => {
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        const { x, y } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         setCurrentPath(prev => {
           const last = prev[prev.length - 1];
           // Border-touch bug fix: a raw touch coordinate right at/near the
@@ -650,7 +671,7 @@ export default function WordWritingScreen({ route, navigation }) {
         )}
 
         {/* â”€â”€ Buttons â”€â”€ */}
-        {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', textAlign:'center' }}>{saveError}</Text>}
+        {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', fontFamily: 'Nunito_700Bold', textAlign:'center' }}>{saveError}</Text>}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
             style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
@@ -786,8 +807,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  letterBadgeText: { fontSize: 14, fontWeight: '900' },
-  counterText:     { fontSize: 13, fontWeight: '700' },
+  letterBadgeText: { fontSize: 14, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  counterText:     { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   headerDots: {
     flexDirection: 'row',
     gap: 6,
@@ -810,7 +831,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     marginBottom: 4,
   },
-  feedbackText: { fontSize: 13, fontWeight: '700' },
+  feedbackText: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 
   // â”€â”€ Child layout-feedback pill â”€â”€ deliberately neutral/calm (not a
   // pass/fail colour, not red/green) — an advisory, not a verdict.
@@ -822,7 +843,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     backgroundColor: '#F1EFFA',
   },
-  layoutFeedbackText: { fontSize: 12, fontWeight: '600', color: '#5B5470', textAlign: 'center' },
+  layoutFeedbackText: { fontSize: 12, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: '#5B5470', textAlign: 'center' },
 
   // â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buttonsRow: {
@@ -839,7 +860,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 50,
   },
-  clearText: { fontSize: 13, fontWeight: '600' },
+  clearText: { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   nextBtn: {
     paddingHorizontal: 24,
     paddingVertical: 11,
@@ -850,7 +871,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  nextText: { fontSize: 13, fontWeight: '800' },
+  nextText: { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 
   // â”€â”€ Attempt dots (bottom) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bottomDots: {
@@ -894,10 +915,10 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   celebEmoji:   { fontSize: 64, marginBottom: 16 },
-  celebTitle:   { fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
+  celebTitle:   { fontSize: 24, fontWeight: '900', fontFamily: 'Nunito_900Black', textAlign: 'center', marginBottom: 12 },
   celebMessage: { fontSize: 15, color: '#555555', textAlign: 'center', lineHeight: 24, marginBottom: 20 },
   celebStars:   { flexDirection: 'row', gap: 8, marginBottom: 24 },
   celebStar:    { fontSize: 28 },
   celebBtn:     { paddingHorizontal: 36, paddingVertical: 14, borderRadius: 50, width: '100%', alignItems: 'center' },
-  celebBtnText: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
+  celebBtnText: { fontSize: 17, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' },
 });

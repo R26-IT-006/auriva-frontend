@@ -210,6 +210,10 @@ export default function LetterPracticeScreen({ route, navigation }) {
               theme,
               lowercaseProgress,
               uppercaseProgress,
+              // The student's adaptive order. Without it the report can only
+              // fall back to the default category order — see
+              // ProgressReportScreen's next-letter derivation.
+              letterSequence,
               // Where back should return to — see utils/backToOrigin.js.
               originRoute: 'LetterPractice',
             })}
@@ -489,6 +493,7 @@ const styles = StyleSheet.create({
   studentName: {
     fontSize: 17,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   studentSubLabel: {
     fontSize: 12,
@@ -511,6 +516,7 @@ const styles = StyleSheet.create({
   reportBtnText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   // Main content
@@ -536,12 +542,14 @@ const styles = StyleSheet.create({
   heroGreeting: {
     fontSize: 28,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     textAlign: 'center',
     letterSpacing: 0.3,
   },
   heroSubtitle: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     textAlign: 'center',
     opacity: 0.85,
   },
@@ -578,11 +586,13 @@ const styles = StyleSheet.create({
   progressHeaderText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#444444',
   },
   progressPercent: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#4CAF50',
   },
   progressTrack: {
@@ -634,12 +644,14 @@ const styles = StyleSheet.create({
   lowercaseTitle: {
     fontSize: 22,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#2E7D32',
   },
   pillSubLabel: {
     fontSize: 13,
     color: '#555555',
     fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -679,7 +691,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#EDE0F3',
   },
-  previewBadgeText: { fontSize: 11, fontWeight: '800', color: '#7E57C2', letterSpacing: 0.3 },
+  previewBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: '#7E57C2', letterSpacing: 0.3 },
   previewCaption: {
     fontSize: 11,
     color: '#8A7B96',
@@ -697,6 +709,7 @@ const styles = StyleSheet.create({
   uppercaseTitle: {
     fontSize: 22,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#4A148C',
   },
   lockedText: {
@@ -728,6 +741,7 @@ const styles = StyleSheet.create({
   pickerTitle: {
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#333333',
     textAlign: 'center',
     marginBottom: 4,
@@ -745,12 +759,14 @@ const styles = StyleSheet.create({
   pickerBtnText: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     flex: 1,
   },
   pickerCount: {
     fontSize: 12,
     color: '#888888',
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   pickerCancel: {
     alignSelf: 'center',
@@ -761,6 +777,7 @@ const styles = StyleSheet.create({
   pickerCancelText: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#999999',
   },
   letterGrid: {
@@ -783,6 +800,7 @@ const styles = StyleSheet.create({
   letterTileText: {
     fontSize: 24,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#333333',
   },
 });

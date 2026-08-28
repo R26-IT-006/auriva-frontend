@@ -161,6 +161,7 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 17,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     lineHeight: 23,
     textAlign: 'center',
   },

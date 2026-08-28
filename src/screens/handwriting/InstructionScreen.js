@@ -390,18 +390,21 @@ const styles = StyleSheet.create({
   teacherBadgeText: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 0.8,
   },
 
   title: {
     fontSize: 30,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     lineHeight: 36,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     marginBottom: 6,
     letterSpacing: 0.3,
   },
@@ -454,6 +457,7 @@ const styles = StyleSheet.create({
   stepNumber: {
     fontSize: 16,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
 
   stepBody: {
@@ -468,6 +472,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 17,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     flexShrink: 1,
   },
   stepDesc: {
@@ -499,6 +504,7 @@ const styles = StyleSheet.create({
   beginBtnText: {
     fontSize: 19,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
   // ── Avatar — landscape (side column) ─────────────────────────────────────
@@ -531,6 +537,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#333333',
     fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     lineHeight: 25,
     textAlign: 'center',
   },

@@ -265,6 +265,7 @@ const styles = StyleSheet.create({
   assessBadgeText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.3,
   },
 
@@ -299,6 +300,7 @@ const styles = StyleSheet.create({
   instructionEn: {
     fontSize: 24,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#333333',
     textAlign: 'center',
     lineHeight: 30,
@@ -307,6 +309,7 @@ const styles = StyleSheet.create({
   instructionSi: {
     fontSize: 19,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#7B7B9E',
     textAlign: 'center',
     lineHeight: 26,

@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   backBtn:   { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
                backgroundColor: 'rgba(255,255,255,0.4)' },
   center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
-  title:     { fontSize: 30, fontWeight: '700', color: '#1E293B', textAlign: 'center' },
+  title:     { fontSize: 30, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#1E293B', textAlign: 'center' },
   subtitle:  { fontSize: 17, color: '#475569', textAlign: 'center' },
   countText: { fontSize: 15, color: '#475569', fontVariant: ['tabular-nums'] },
   dotRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 7, justifyContent: 'center', maxWidth: 420 },
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   errorRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
   secondaryBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 28, marginTop: 6,
                   backgroundColor: 'rgba(255,255,255,0.55)' },
-  secondaryBtnText: { fontSize: 18, fontWeight: '700', color: '#475569' },
+  secondaryBtnText: { fontSize: 18, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#475569' },
   startBtn:  { paddingHorizontal: 40, paddingVertical: 14, borderRadius: 28, marginTop: 6 },
-  startBtnText: { fontSize: 18, fontWeight: '700' },
+  startBtnText: { fontSize: 18, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 });

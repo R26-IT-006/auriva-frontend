@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 19,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#2A2A2A',
     textAlign: 'center',
     marginBottom: 8,
@@ -183,6 +184,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   secondaryButton: {
     backgroundColor: '#F2F8F9',
@@ -193,6 +195,7 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   teacherLink: {
     marginTop: 6,
@@ -202,6 +205,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#AAAAAA',
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     textDecorationLine: 'underline',
   },
 });

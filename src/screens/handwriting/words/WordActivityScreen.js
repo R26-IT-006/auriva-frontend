@@ -338,7 +338,7 @@ export default function WordActivityScreen({ route, navigation }) {
               <Ionicons name="volume-high-outline" size={22} color="#888888" />
             </TouchableOpacity>
             <View style={styles.divider} />
-            {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', textAlign:'center' }}>{saveError}</Text>}
+            {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', fontFamily: 'Nunito_700Bold', textAlign:'center' }}>{saveError}</Text>}
             {renderExercise()}
           </Animated.View>
         </View>
@@ -387,10 +387,10 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
   },
-  letterBadgeText: { fontSize: 16, fontWeight: '900' },
-  counterText:     { fontSize: 15, fontWeight: '700' },
+  letterBadgeText: { fontSize: 16, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  counterText:     { fontSize: 15, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   scoreBadge: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 50 },
-  scoreText:  { fontSize: 13, fontWeight: '700' },
+  scoreText:  { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 
   dotsRow: {
     flexDirection: 'row',
@@ -401,10 +401,10 @@ const styles = StyleSheet.create({
   dotItem:  { alignItems: 'center', gap: 3 },
   dot:      { width: 12, height: 12, borderRadius: 6 },
   dotActive:{ width: 22, borderRadius: 11 },
-  dotLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  dotLabel: { fontSize: 10, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.5 },
 
   exLabel: {
-    fontSize: 13, fontWeight: '700', textAlign: 'center',
+    fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', textAlign: 'center',
     letterSpacing: 0.5, marginBottom: 8, opacity: 0.7,
   },
 
@@ -440,15 +440,15 @@ const styles = StyleSheet.create({
     width: 80, height: 80, borderRadius: 40,
     alignItems: 'center', justifyContent: 'center',
   },
-  celebTitle: { fontSize: 22, fontWeight: '900', textAlign: 'center' },
+  celebTitle: { fontSize: 22, fontWeight: '900', fontFamily: 'Nunito_900Black', textAlign: 'center' },
   celebMsg:   { fontSize: 14, color: '#555555', textAlign: 'center', lineHeight: 21 },
-  celebScore: { fontSize: 13, fontWeight: '700', color: '#7B1FA2', marginTop: 2 },
+  celebScore: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#7B1FA2', marginTop: 2 },
   celebBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderRadius: 50, paddingHorizontal: 36, paddingVertical: 14,
     width: '100%', marginTop: 4,
   },
-  celebBtnText: { fontSize: 17, fontWeight: '800' },
+  celebBtnText: { fontSize: 17, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 
   // ── Simple group celebration card ─────────────────────────────────────────
   simpleCelebCard: {
@@ -470,8 +470,8 @@ const styles = StyleSheet.create({
     width: 60, height: 60, borderRadius: 30,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  ldTitle:  { fontSize: 20, fontWeight: '900', color: '#1A1A1A' },
-  ldScore:  { fontSize: 13, color: '#666666', marginTop: 2, fontWeight: '500' },
+  ldTitle:  { fontSize: 20, fontWeight: '900', fontFamily: 'Nunito_900Black', color: '#1A1A1A' },
+  ldScore:  { fontSize: 13, color: '#666666', marginTop: 2, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
   ldPills:  { flexDirection: 'row', gap: 10, marginBottom: 14 },
   ldDivider:{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 12 },
   ldScroll: { maxHeight: SCREEN_H * 0.38 },

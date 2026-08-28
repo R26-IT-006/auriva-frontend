@@ -33,9 +33,10 @@
 // ShapeAssessmentScreen, PreWritingActivityScreen, WordWritingScreen,
 // ExerciseE_WriteWord) — one fix, not six separate ones.
 
-// @param {number} pageX/pageY — nativeEvent.pageX/pageY (screen-absolute)
-// @param {{x: number, y: number}} origin — the canvas view's own screen
-//   position, from View.measureInWindow(), captured once on layout.
+// @param {number} pageX/pageY — nativeEvent.pageX/pageY (page space)
+// @param {{x: number, y: number}} origin — the canvas view's own position in
+//   THE SAME page space, from View.measure()'s pageX/pageY, captured on layout.
+//   Deliberately not measureInWindow(): see mapTouchToCanvas below.
 export function pageToLocal(pageX, pageY, origin) {
   return {
     x: pageX - (origin?.x ?? 0),
@@ -50,7 +51,7 @@ export function clampToCanvas(x, y, width, height) {
   };
 }
 
-// A fraction of the canvas's larger dimension — generous enough that fast,
+// A fraction of the canvas's larger dimension â€” generous enough that fast,
 // legitimate drawing is never mistaken for a glitch, tight enough to catch
 // an implausible single-event jump (e.g. from one edge clear across to the
 // other) right at a border.
@@ -60,4 +61,70 @@ export function isImplausibleJump(lastPoint, nextPoint, width, height) {
   if (!lastPoint || !nextPoint) return false;
   const maxJump = Math.max(width, height) * MAX_PLAUSIBLE_JUMP_FRACTION;
   return Math.hypot(nextPoint.x - lastPoint.x, nextPoint.y - lastPoint.y) > maxJump;
+}
+
+/**
+ * Maps a raw touch into the canvas's LOGICAL coordinate space — the space the
+ * SVG actually draws in.
+ *
+ * ── Why this is a subtraction and nothing more ───────────────────────────
+ * Every canvas has the identical structure: the responder, the measured view
+ * and the Svg's parent are ONE element, and the Svg is its direct child at
+ * its full logical size:
+ *
+ *     <View style={canvasCard} ref onLayout {...panHandlers}>   // border-box
+ *       <Svg width={CANVAS_W} height={CANVAS_H}>                // full size
+ *
+ * React Native's box model is border-box, so the card's CONTENT box is
+ * `CANVAS_H - 2*border` — but the Svg is not shrunk into it (flexShrink
+ * defaults to 0). It is laid out at the content origin at its FULL height and
+ * the overflow is clipped. So the Svg's coordinate space begins exactly
+ * `border` px inside the view and runs 1:1 from there.
+ *
+ * That makes the whole transform:  local - border.
+ *
+ * A scale by `logical / (measured - 2*border)` was tried here and was wrong in
+ * both directions: the denominator is the content box, which is not the size
+ * the Svg is drawn at, and on a device where the two agree it multiplied every
+ * coordinate by ~1.01 for nothing. Removed.
+ *
+ * ── The bug this fixes ───────────────────────────────────────────────────
+ * The origin used to come from `measureInWindow()` while the touches come from
+ * `nativeEvent.pageX/pageY`. On Android those are NOT the same coordinate
+ * space when the app draws under a translucent status bar — window space
+ * excludes the system inset, page space includes it. Subtracting a window-space
+ * origin from a page-space touch left a CONSTANT vertical offset, invisible on
+ * X because there is no equivalent horizontal inset. `View.measure()` reports
+ * the view's own pageX/pageY, so origin and touch are now read in one space and
+ * the difference is a true local coordinate.
+ *
+ * The renderer keeps drawing in CANVAS_W/CANVAS_H units, the stored point
+ * format is unchanged, and every reference path, guide and score still lives in
+ * the same logical space. Nothing downstream knows this happened.
+ *
+ * @param {{
+ *   pageX: number, pageY: number,
+ *   origin: {x: number, y: number},   // measure() pageX/pageY — page space
+ *   logical: {width: number, height: number},   // CANVAS_W / CANVAS_H
+ *   inset?: number,                   // the canvas's own borderWidth
+ * }} args
+ * @returns {{x: number, y: number}} clamped logical coordinates
+ */
+export function mapTouchToCanvas({ pageX, pageY, origin, logical, inset = 0 }) {
+  const local = pageToLocal(pageX, pageY, origin);
+
+  const border = Number.isFinite(inset) && inset > 0 ? inset : 0;
+
+  // A missing/unusable logical size clamps to 0 rather than producing NaN.
+  const logicalW = Number(logical?.width);
+  const logicalH = Number(logical?.height);
+  const w = Number.isFinite(logicalW) && logicalW > 0 ? logicalW : 0;
+  const h = Number.isFinite(logicalH) && logicalH > 0 ? logicalH : 0;
+
+  // A non-numeric touch coordinate would clamp to NaN and poison the stroke;
+  // treat it as the canvas origin instead. Infinities clamp normally.
+  const lx = Number.isNaN(local.x) ? 0 : local.x;
+  const ly = Number.isNaN(local.y) ? 0 : local.y;
+
+  return clampToCanvas(lx - border, ly - border, w, h);
 }

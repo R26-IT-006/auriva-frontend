@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F2FB', borderWidth: 1, borderColor: '#E2E6F0',
   },
   chipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
-  chipText: { fontSize: 12.5, fontWeight: '600', color: '#5A5F7A' },
+  chipText: { fontSize: 12.5, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: '#5A5F7A' },
   chipTextActive: { color: '#FFFFFF' },
   customBlock: { marginTop: 12 },
   customRow: { flexDirection: 'row', gap: 10 },
@@ -106,6 +106,6 @@ const styles = StyleSheet.create({
     marginTop: 10, alignSelf: 'flex-start', backgroundColor: ACCENT,
     paddingHorizontal: 18, paddingVertical: 9, borderRadius: 10,
   },
-  applyBtnText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '700' },
+  applyBtnText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   errorText: { marginTop: 8, fontSize: 11.5, color: '#DC2626' },
 });

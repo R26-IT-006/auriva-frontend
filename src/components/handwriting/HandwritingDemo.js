@@ -104,15 +104,15 @@ export default function HandwritingDemo({
 const styles = StyleSheet.create({
   root:        { flex: 1 },
   banner:      { alignItems: 'center', paddingTop: 6, paddingBottom: 2 },
-  title:       { fontSize: 24, fontWeight: '900' },
-  instruction: { fontSize: 15, color: '#475569', fontWeight: '600', marginTop: 1 },
+  title:       { fontSize: 24, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  instruction: { fontSize: 15, color: '#475569', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', marginTop: 1 },
 
   // The activity keeps its own sizing; this only gives it the room.
   stage:       { flex: 1, justifyContent: 'center' },
 
   buttonRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, paddingVertical: 8 },
   replayBtn:   { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 14, backgroundColor: '#FFFFFFCC' },
-  replayText:  { fontSize: 16, fontWeight: '700', color: '#475569' },
+  replayText:  { fontSize: 16, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#475569' },
   readyBtn:    { paddingHorizontal: 32, paddingVertical: 12, borderRadius: 16 },
-  readyText:   { fontSize: 18, fontWeight: '800' },
+  readyText:   { fontSize: 18, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 });

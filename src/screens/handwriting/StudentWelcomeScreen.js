@@ -278,12 +278,14 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 38,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     textAlign: 'center',
     letterSpacing: 0.3,
   },
   subtitle: {
     fontSize: 20,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     textAlign: 'center',
     opacity: 0.85,
   },
@@ -306,6 +308,7 @@ const styles = StyleSheet.create({
   startText: {
     fontSize: 20,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 0.3,
   },
 });

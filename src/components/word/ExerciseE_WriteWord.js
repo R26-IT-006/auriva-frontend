@@ -8,12 +8,17 @@ import { evaluateWordAttempt } from '../../utils/wordScoring';
 import { submitWordAttempt, newActionId } from '../../utils/wordApi';
 import { childFeedbackMessage } from '../../utils/wordFeedback';
 import { computeExerciseECanvasSize } from '../../utils/wordExerciseECanvas';
-import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../utils/touchPointSanitize';
 // Proposal FR-13, Phase 7A — the base (non-registering) hook: the parent
 // WordActivityScreen already registers/unregisters this whole A-E flow as
 // one active learning screen; this component only needs the stroke
 // notifiers so the break prompt never interrupts a stroke drawn here.
 import { useLearningSession } from '../../context/LearningSessionContext';
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 2;
 
 // Responsive canvas (final-completion-pass fix) — was a fixed ~490×220,
 // which could clip on a small phone or leave excessive empty width on a
@@ -47,8 +52,16 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
   // Border-touch bug fix — see touchPointSanitize.js / WordWritingScreen.js.
   const canvasRef       = useRef(null);
   const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
   const measureCanvasOrigin = useCallback(() => {
-    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
   }, []);
 
   const hasDrawn = allPaths.length > 0;
@@ -78,13 +91,21 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
       onPanResponderGrant: (evt) => {
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        const { x, y } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         setCurrentPath([{ x, y, t: 0 }]);
       },
       onPanResponderMove: (evt) => {
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x, y } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        const { x, y } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         setCurrentPath(prev => {
           const last = prev[prev.length - 1];
           // Border-touch bug fix — see touchPointSanitize.js.
@@ -324,6 +345,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
   },
   canvasCard: {
@@ -357,6 +379,7 @@ const styles = StyleSheet.create({
   clearText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   doneBtn: {
     flexDirection: 'row',
@@ -369,8 +392,9 @@ const styles = StyleSheet.create({
   doneText: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
-  retryText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', maxWidth: 210, textAlign: 'center' },
+  retryText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', maxWidth: 210, textAlign: 'center' },
   // Neutral (not red/error-styled) — an advisory, not a failure message.
-  layoutHintText: { color: '#5B5470', fontSize: 12, fontWeight: '600', maxWidth: 220, textAlign: 'center' },
+  layoutHintText: { color: '#5B5470', fontSize: 12, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', maxWidth: 220, textAlign: 'center' },
 });

@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Line, Circle, Polyline, Polygon, Path, Text as SvgText } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import { storeLetterProgress } from '../../utils/storage';
-import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../utils/touchPointSanitize';
 import { getAllLetters } from '../../constants/letterCategories';
 import { fetchMasteredLetters, filterUnmasteredSequence } from '../../utils/masteredLetterFiltering';
 import { useLearningSessionActivity } from '../../context/LearningSessionContext';
@@ -74,6 +74,11 @@ import {
   PAD, COL_L, LETTER_CARD_SIZE, CANVAS_W, CANVAS_H, ASPECT, aspectX,
   LINE_1, LINE_2, LINE_3, LINE_4,
 } from '../../constants/letterCanvasLayout';
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 1.5;
 
 // Shapes occupy task_order 0-5 in the collection protocol; lowercase
 // letters continue from 6, matching DATA_COLLECTION_PROTOCOL's fixed order.
@@ -581,8 +586,16 @@ export default function LetterWritingScreen({ route, navigation }) {
   // Border-touch bug fix — see touchPointSanitize.js.
   const canvasRef       = useRef(null);
   const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
   const measureCanvasOrigin = useCallback(() => {
-    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
   }, []);
   const attemptScoresRef   = useRef([]);   // accumulates featuresToScore result for each attempt
   // Server-issued retry key for a capture-fault cycle; null at all other times.
@@ -1022,8 +1035,12 @@ export default function LetterWritingScreen({ route, navigation }) {
       onPanResponderGrant: (evt) => {
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         setAttemptFeedback(null);
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         startTimeRef.current = now;
         strokeIdCounter.current += 1;  // ML: new stroke begins
@@ -1034,8 +1051,12 @@ export default function LetterWritingScreen({ route, navigation }) {
         }
       },
       onPanResponderMove: (evt) => {
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_W, CANVAS_H);
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         setCurrentPath(prev => {
           const last = prev[prev.length - 1];
@@ -1846,7 +1867,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  counterText: { fontSize: 13, fontWeight: '700' },
+  counterText: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   attemptDots: {
     flexDirection: 'row',
     gap: 6,
@@ -1874,7 +1895,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 4,
   },
-  feedbackText: { fontSize: 13, fontWeight: '700' },
+  feedbackText: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 
   // â”€â”€ Attempt dots (bottom) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bottomDots: {
@@ -1902,7 +1923,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 50,
   },
-  clearText: { fontSize: 14, fontWeight: '600' },
+  clearText: { fontSize: 14, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   nextBtn: {
     paddingHorizontal: 28,
     paddingVertical: 13,
@@ -1913,7 +1934,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  nextText: { fontSize: 14, fontWeight: '800' },
+  nextText: { fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 
   // â”€â”€ Celebration overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   celebOverlay: {
@@ -1948,7 +1969,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  celebTitle:    { fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
+  celebTitle:    { fontSize: 26, fontWeight: '900', fontFamily: 'Nunito_900Black', textAlign: 'center', marginBottom: 12 },
   celebMessage:  { fontSize: 15, color: '#555555', textAlign: 'center', lineHeight: 24, marginBottom: 20 },
   celebNextBadge:{
     flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -1956,11 +1977,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20,
   },
   celebNextLabel:{ fontSize: 13, color: '#777777' },
-  celebNextValue:{ fontSize: 13, fontWeight: '800' },
+  celebNextValue:{ fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   celebStars:    { flexDirection: 'row', gap: 8, marginBottom: 24 },
   celebBtn:      {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingHorizontal: 40, paddingVertical: 14, borderRadius: 50, width: '100%',
   },
-  celebBtnText:  { fontSize: 17, fontWeight: '800' },
+  celebBtnText:  { fontSize: 17, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 });

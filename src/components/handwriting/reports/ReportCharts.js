@@ -229,8 +229,8 @@ const styles = StyleSheet.create({
 
   progressRow: { marginBottom: 12 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 },
-  progressLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  progressValue: { fontSize: 13, fontWeight: '800', color: TEXT_2 },
+  progressLabel: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F172A' },
+  progressValue: { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_2 },
   progressTrack: { height: 10, borderRadius: 5, backgroundColor: '#EDF0F7', overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 5 },
   progressPct: { fontSize: 10.5, color: TEXT_3, marginTop: 3, textAlign: 'right' },

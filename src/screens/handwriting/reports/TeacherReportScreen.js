@@ -238,7 +238,7 @@ const sc = StyleSheet.create({
   inner:  { flex: 1, padding: 18 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 10 },
   iconWrap: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  title:  { fontSize: 15, fontWeight: '800', color: TEXT_1, letterSpacing: 0.2 },
+  title:  { fontSize: 15, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1, letterSpacing: 0.2 },
 });
 
 // ─── XAI toggle ───────────────────────────────────────────────────────────────
@@ -265,7 +265,7 @@ function WhyPanel({ label = 'Why this score?', explanation }) {
 const wp = StyleSheet.create({
   wrap:  { marginTop: 10 },
   btn:   { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
-  label: { fontSize: 12, color: '#6366F1', fontWeight: '700' },
+  label: { fontSize: 12, color: '#6366F1', fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   panel: {
     marginTop: 8, backgroundColor: '#EEF2FF', borderRadius: 12,
     padding: 13, borderLeftWidth: 3, borderLeftColor: '#6366F1',
@@ -289,7 +289,7 @@ const pill = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: 5,
           paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1.5 },
   dot:  { width: 6, height: 6, borderRadius: 3 },
-  text: { fontSize: 11, fontWeight: '700' },
+  text: { fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 });
 
 // ─── Score bar ────────────────────────────────────────────────────────────────
@@ -393,7 +393,7 @@ const tov = StyleSheet.create({
   },
   icon:  { marginTop: 1 },
   body:  { flex: 1 },
-  title: { fontSize: 12.5, fontWeight: '700', color: '#92400E', marginBottom: 2 },
+  title: { fontSize: 12.5, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#92400E', marginBottom: 2 },
   text:  { fontSize: 11.5, color: '#78350F', lineHeight: 16 },
 });
 
@@ -1075,8 +1075,8 @@ function StatTile({ value, label, color, bg }) {
 }
 const st = StyleSheet.create({
   tile:  { flex: 1, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4, minWidth: '22%' },
-  value: { fontSize: 30, fontWeight: '900' },
-  label: { fontSize: 11, color: TEXT_2, fontWeight: '600', textAlign: 'center' },
+  value: { fontSize: 30, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  label: { fontSize: 11, color: TEXT_2, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', textAlign: 'center' },
 });
 
 // Small preview of the child's actual traced strokes for one shape — see
@@ -1147,17 +1147,17 @@ const sr = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   row:       { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  name:      { width: 110, fontSize: 13, color: TEXT_2, fontWeight: '500' },
+  name:      { width: 110, fontSize: 13, color: TEXT_2, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
   // Fixed widths so the score column and the status pill line up down the
   // whole list rather than drifting with each shape's name length.
-  pct:       { width: 40, fontSize: 13, fontWeight: '800', textAlign: 'right' },
+  pct:       { width: 40, fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', textAlign: 'right' },
   // A fixed width right-aligns every status pill into one column; centring
   // the text keeps 'Excellent' and 'Good' visually balanced inside it.
   labelWrap: {
     marginLeft: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
     borderWidth: 1, width: 72, alignItems: 'center',
   },
-  labelText: { fontSize: 10, fontWeight: '700' },
+  labelText: { fontSize: 10, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 });
 
 function MetricTile({ icon, label, value }) {
@@ -1171,8 +1171,8 @@ function MetricTile({ icon, label, value }) {
 }
 const mt = StyleSheet.create({
   tile:  { flex: 1, alignItems: 'center', gap: 4, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10 },
-  value: { fontSize: 16, fontWeight: '800', color: TEXT_1 },
-  label: { fontSize: 10, color: TEXT_3, fontWeight: '500', textAlign: 'center' },
+  value: { fontSize: 16, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
+  label: { fontSize: 10, color: TEXT_3, fontWeight: '500', fontFamily: 'Nunito_600SemiBold', textAlign: 'center' },
 });
 
 const LOWERCASE_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
@@ -1365,15 +1365,15 @@ const ld = StyleSheet.create({
     width: 46, height: 46, borderRadius: 12, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
-  letterBadgeText: { fontSize: 22, fontWeight: '900' },
-  title:  { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  status: { fontSize: 12.5, fontWeight: '600', marginTop: 1 },
+  letterBadgeText: { fontSize: 22, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  title:  { fontSize: 15, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F172A' },
+  status: { fontSize: 12.5, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', marginTop: 1 },
   body:   { flexGrow: 0 },
   rows:   { gap: 8 },
   row:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   rowLabel: { fontSize: 12.5, color: TEXT_2 },
-  rowValue: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
-  sectionLabel: { fontSize: 11.5, fontWeight: '700', color: TEXT_2, marginTop: 16, marginBottom: 8 },
+  rowValue: { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: '#0F172A' },
+  sectionLabel: { fontSize: 11.5, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_2, marginTop: 16, marginBottom: 8 },
   previewEmpty: {
     alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 22, borderRadius: 10, backgroundColor: '#F8FAFC',
@@ -1395,21 +1395,21 @@ const lg = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: 14, marginBottom: 14, flexWrap: 'wrap' },
   caseBlock:  { marginBottom: 16 },
   caseHead:   { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 },
-  caseTitle:  { fontSize: 13, fontWeight: '700', color: TEXT_2 },
-  caseCount:  { fontSize: 12, fontWeight: '600', color: TEXT_2 },
+  caseTitle:  { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_2 },
+  caseCount:  { fontSize: 12, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: TEXT_2 },
   // A not-yet-practised form: present and aligned, visibly inactive, never a
   // fabricated score.
   chipEmpty:  { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot:        { width: 8, height: 8, borderRadius: 4 },
-  legendLabel:{ fontSize: 11, color: TEXT_2, fontWeight: '600' },
+  legendLabel:{ fontSize: 11, color: TEXT_2, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   grid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     width: 52, height: 56, borderRadius: 14, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center', gap: 2,
   },
-  chipLetter: { fontSize: 18, fontWeight: '900' },
-  chipPct:    { fontSize: 9,  fontWeight: '700' },
+  chipLetter: { fontSize: 18, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  chipPct:    { fontSize: 9,  fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 });
 
 /**
@@ -1452,11 +1452,11 @@ const pt = StyleSheet.create({
   // rather than wrapping to three lines.
   tileWide: { minWidth: '22%', maxWidth: '25%', padding: 10, gap: 5 },
   iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  label:      { fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  label:      { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', textAlign: 'center' },
   badge:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  badgeText:  { fontSize: 11, fontWeight: '700' },
+  badgeText:  { fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   whyBtn:     { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  whyText:    { fontSize: 11, color: '#6366F1', fontWeight: '600' },
+  whyText:    { fontSize: 11, color: '#6366F1', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   panel:      {
     marginTop: 4, backgroundColor: '#EEF2FF', borderRadius: 8,
     padding: 8, width: '100%',
@@ -1529,16 +1529,16 @@ const wl = StyleSheet.create({
   wrap:         { marginBottom: 8 },
   row:          { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   letterBubble: { width: 40, height: 40, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  letterText:   { fontSize: 18, fontWeight: '900' },
+  letterText:   { fontSize: 18, fontWeight: '900', fontFamily: 'Nunito_900Black' },
   metaRow:      { flexDirection: 'row', justifyContent: 'space-between' },
-  metaText:     { fontSize: 11, color: TEXT_3, fontWeight: '500' },
-  pctText:      { fontSize: 11, fontWeight: '700' },
+  metaText:     { fontSize: 11, color: TEXT_3, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
+  pctText:      { fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   expanded:     { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, gap: 8, marginTop: 2, marginLeft: 52 },
   wordRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  wordText:     { flex: 1, fontSize: 13, fontWeight: '700', color: TEXT_1, textTransform: 'capitalize' },
+  wordText:     { flex: 1, fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_1, textTransform: 'capitalize' },
   exerciseChips:{ flexDirection: 'row', gap: 4 },
   exChip:       { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
-  exLabel:      { fontSize: 10, fontWeight: '800' },
+  exLabel:      { fontSize: 10, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   stars:        { flexDirection: 'row', gap: 1 },
 });
 
@@ -1595,12 +1595,12 @@ function WordWritingRow({ data }) {
 const wwp = StyleSheet.create({
   row:         { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 6 },
   topLine:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  word:        { fontSize: 14, fontWeight: '800', color: TEXT_1, textTransform: 'capitalize' },
+  word:        { fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1, textTransform: 'capitalize' },
   scoreLine:   { flexDirection: 'row', gap: 5 },
-  metaText:    { fontSize: 11, color: TEXT_3, fontWeight: '500' },
+  metaText:    { fontSize: 11, color: TEXT_3, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
   metricsRow:  { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   metricPill:  { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20, borderWidth: 1.5 },
-  metricLabel: { fontSize: 10, fontWeight: '700' },
+  metricLabel: { fontSize: 10, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 });
 
 function RecommendationCard({ rec }) {
@@ -1639,11 +1639,11 @@ const rc = StyleSheet.create({
   card:          { borderRadius: 14, borderLeftWidth: 4, padding: 14, gap: 8 },
   top:           { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   icon:          { fontSize: 20 },
-  text:          { flex: 1, fontSize: 13, fontWeight: '600', color: TEXT_1, lineHeight: 20 },
+  text:          { flex: 1, fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: TEXT_1, lineHeight: 20 },
   priorityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  priorityText:  { fontSize: 10, fontWeight: '800' },
+  priorityText:  { fontSize: 10, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   why:           { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
-  whyText:       { fontSize: 11, color: '#6366F1', fontWeight: '600' },
+  whyText:       { fontSize: 11, color: '#6366F1', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   panel:         { backgroundColor: '#EEF2FF', borderRadius: 8, padding: 10 },
   panelText:     { fontSize: 12, color: '#3730A3', lineHeight: 18 },
 });
@@ -1907,10 +1907,10 @@ const apc = StyleSheet.create({
   card:              { borderRadius: 14, borderLeftWidth: 4, borderLeftColor: '#0D9488', backgroundColor: '#F0FDFA', padding: 14, gap: 10 },
   top:               { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   iconWrap:          { width: 28, height: 28, borderRadius: 9, backgroundColor: '#CCFBF1', alignItems: 'center', justifyContent: 'center' },
-  title:             { fontSize: 13, fontWeight: '700', color: TEXT_1, lineHeight: 19 },
-  caseLabel:         { fontSize: 11, color: '#0F766E', fontWeight: '600', marginTop: 1 },
-  focusLetters:      { fontSize: 12, color: TEXT_2, fontWeight: '500' },
-  focusLettersValue: { fontWeight: '800', color: TEXT_1 },
+  title:             { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_1, lineHeight: 19 },
+  caseLabel:         { fontSize: 11, color: '#0F766E', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', marginTop: 1 },
+  focusLetters:      { fontSize: 12, color: TEXT_2, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
+  focusLettersValue: { fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
   activityList:      { gap: 5 },
   activityRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
   bullet:            { width: 5, height: 5, borderRadius: 3, backgroundColor: '#0D9488', marginTop: 6 },
@@ -1952,7 +1952,7 @@ function ActivityPreviewSection({ family, caseType, focusLetters }) {
 const aps = StyleSheet.create({
   wrap:            { marginTop: 2 },
   toggle:          { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 2 },
-  toggleLabel:     { fontSize: 12, color: '#0D9488', fontWeight: '700' },
+  toggleLabel:     { fontSize: 12, color: '#0D9488', fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   previewContainer:{ marginTop: 8 },
 });
 
@@ -1964,8 +1964,8 @@ const aps = StyleSheet.create({
 const trs = StyleSheet.create({
   wrap:            { marginTop: 2 },
   divider:         { height: 1, backgroundColor: '#CCFBF1', marginBottom: 10 },
-  label:           { fontSize: 11, fontWeight: '800', color: '#0F766E', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  statusText:      { fontSize: 13, fontWeight: '700', color: TEXT_1 },
+  label:           { fontSize: 11, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: '#0F766E', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  statusText:      { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_1 },
   dateText:        { fontSize: 11, color: TEXT_3, marginTop: 1, marginBottom: 8 },
   messageText:     { fontSize: 12, color: TEXT_2, lineHeight: 17, marginTop: 6, marginBottom: 6 },
   buttonsRow:      { flexDirection: 'row', gap: 8, marginTop: 8 },
@@ -1973,17 +1973,17 @@ const trs = StyleSheet.create({
   confirmButton:   { backgroundColor: '#0D9488' },
   dismissButton:   { backgroundColor: '#64748B' },
   buttonDisabled:  { opacity: 0.5 },
-  buttonText:      { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  buttonText:      { fontSize: 12, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#FFFFFF' },
   noteInput: {
     marginTop: 10, borderRadius: 10, borderWidth: 1, borderColor: '#CBD5E1',
     backgroundColor: '#FFFFFF', padding: 10, fontSize: 12, color: TEXT_1,
     minHeight: 44, textAlignVertical: 'top',
   },
   historyToggle:     { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'flex-start' },
-  historyToggleText: { fontSize: 11.5, color: '#0D9488', fontWeight: '700' },
+  historyToggleText: { fontSize: 11.5, color: '#0D9488', fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   historyList:       { marginTop: 8, gap: 8 },
   historyRow:        { backgroundColor: '#FFFFFF', borderRadius: 8, padding: 8 },
-  historyLine:       { fontSize: 11.5, color: TEXT_1, fontWeight: '600' },
+  historyLine:       { fontSize: 11.5, color: TEXT_1, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   historyNote:       { fontSize: 11, color: TEXT_2, marginTop: 2, lineHeight: 15 },
 });
 
@@ -1993,7 +1993,7 @@ const trs = StyleSheet.create({
 const arp = StyleSheet.create({
   divider:     { height: 1, backgroundColor: DIVIDER, marginVertical: 16 },
   subHeader:   { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 4 },
-  subTitle:    { fontSize: 13, fontWeight: '800', color: TEXT_1, letterSpacing: 0.1 },
+  subTitle:    { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1, letterSpacing: 0.1 },
   subSubtitle: { fontSize: 11.5, color: TEXT_3, lineHeight: 16, marginBottom: 12 },
   loadingRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
   loadingText: { fontSize: 12, color: TEXT_3 },
@@ -2134,16 +2134,16 @@ const mda = StyleSheet.create({
     borderRadius: 16, borderWidth: 1.5, padding: 14,
   },
   bannerIcon:  { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  bannerTitle: { fontSize: 15, fontWeight: '900', marginBottom: 3 },
+  bannerTitle: { fontSize: 15, fontWeight: '900', fontFamily: 'Nunito_900Black', marginBottom: 3 },
   bannerDesc:  { fontSize: 12, color: TEXT_2, lineHeight: 18 },
   confBadge:   { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minWidth: 62 },
-  confNum:     { fontSize: 20, fontWeight: '900' },
-  confLabel:   { fontSize: 9, fontWeight: '700', opacity: 0.8 },
+  confNum:     { fontSize: 20, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  confLabel:   { fontSize: 9, fontWeight: '700', fontFamily: 'Nunito_700Bold', opacity: 0.8 },
 
   secondary:     { flexDirection: 'row', alignItems: 'center', gap: 5 },
   secondaryText: { fontSize: 11, color: TEXT_3, flex: 1 },
 
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: TEXT_3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
 
   expRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   expDot:  { width: 6, height: 6, borderRadius: 3, marginTop: 6, flexShrink: 0 },
@@ -2154,16 +2154,16 @@ const mda = StyleSheet.create({
     width: 36, height: 36, borderRadius: 10, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
-  letterChipText: { fontSize: 15, fontWeight: '900' },
+  letterChipText: { fontSize: 15, fontWeight: '900', fontFamily: 'Nunito_900Black' },
 
   exerciseToggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   exRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
   },
-  exText:     { flex: 1, fontSize: 12, color: TEXT_1, fontWeight: '500', lineHeight: 18 },
+  exText:     { flex: 1, fontSize: 12, color: TEXT_1, fontWeight: '500', fontFamily: 'Nunito_600SemiBold', lineHeight: 18 },
   exPill:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
-  exPillText: { fontSize: 10, fontWeight: '800' },
+  exPillText: { fontSize: 10, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 });
 
 // ─── Rule condition trace ("Why this recommendation?") ─────────────────────
@@ -2229,17 +2229,17 @@ function ConditionTracePanel({ traces }) {
 const ct = StyleSheet.create({
   wrap:     { marginTop: 4 },
   btn:      { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
-  btnLabel: { fontSize: 12, color: '#6366F1', fontWeight: '700' },
+  btnLabel: { fontSize: 12, color: '#6366F1', fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   panel: {
     marginTop: 8, backgroundColor: '#EEF2FF', borderRadius: 12,
     padding: 12, borderLeftWidth: 3, borderLeftColor: '#6366F1', gap: 6,
   },
   row:        { flexDirection: 'row', alignItems: 'center', gap: 6 },
   headRow:    { borderBottomWidth: 1, borderBottomColor: '#C7D2FE', paddingBottom: 5, marginBottom: 2 },
-  headText:   { fontSize: 9.5, fontWeight: '800', color: '#4338CA', textTransform: 'uppercase' },
-  cellFactor: { flex: 2.2, fontSize: 11.5, color: TEXT_1, fontWeight: '600' },
+  headText:   { fontSize: 9.5, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: '#4338CA', textTransform: 'uppercase' },
+  cellFactor: { flex: 2.2, fontSize: 11.5, color: TEXT_1, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   cellNum:    { flex: 1.3, fontSize: 11.5, color: TEXT_2, textAlign: 'right' },
-  cellMet:    { flex: 1.2, fontSize: 11.5, textAlign: 'right', fontWeight: '700' },
+  cellMet:    { flex: 1.2, fontSize: 11.5, textAlign: 'right', fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   metYes:     { color: TEXT_1 },
   metNo:      { color: TEXT_3 },
   note:       { fontSize: 11, color: TEXT_2, lineHeight: 16, marginTop: 2 },
@@ -2385,15 +2385,15 @@ const imb = StyleSheet.create({
     backgroundColor: '#F5F3FF', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
     borderWidth: 1, borderColor: '#7C3AED30',
   },
-  overallLabel: { fontSize: 12.5, fontWeight: '800', color: '#5B21B6' },
-  overallValue: { fontSize: 24, fontWeight: '900', color: '#5B21B6' },
+  overallLabel: { fontSize: 12.5, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: '#5B21B6' },
+  overallValue: { fontSize: 24, fontWeight: '900', fontFamily: 'Nunito_900Black', color: '#5B21B6' },
 
   familyRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9,
   },
-  familyLabel: { fontSize: 12.5, fontWeight: '700', color: TEXT_1 },
-  familyValue: { fontSize: 15, fontWeight: '800', color: TEXT_1 },
+  familyLabel: { fontSize: 12.5, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_1 },
+  familyValue: { fontSize: 15, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
 
   summaryText: { fontSize: 12.5, color: TEXT_2, lineHeight: 19 },
   disclosure:  { fontSize: 10.5, color: TEXT_3, lineHeight: 15, fontStyle: 'italic' },
@@ -3064,7 +3064,7 @@ const pv = StyleSheet.create({
     borderRadius: 16, padding: 14, gap: 10,
   },
   head:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  title: { flex: 1, fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  title: { flex: 1, fontSize: 14, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F172A' },
   // Bounded so a tall photo cannot push the sheet off a tablet screen.
   image: { width: '100%', aspectRatio: 3 / 4, maxHeight: 460, borderRadius: 10, backgroundColor: '#F1F5F9' },
   missing: { fontSize: 12.5, color: '#64748B', textAlign: 'center', paddingVertical: 30 },
@@ -3074,28 +3074,28 @@ const pv = StyleSheet.create({
 const hw = StyleSheet.create({
   row:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 5, gap: 12 },
   rowLabel:     { fontSize: 13, color: '#64748B', flex: 1 },
-  rowValue:     { fontSize: 13, fontWeight: '600', color: '#0F172A', textAlign: 'right', flex: 1.4 },
-  rowValueBig:  { fontSize: 20, fontWeight: '700', color: '#0F172A', textAlign: 'right', flex: 1.4 },
+  rowValue:     { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: '#0F172A', textAlign: 'right', flex: 1.4 },
+  rowValueBig:  { fontSize: 20, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F172A', textAlign: 'right', flex: 1.4 },
   chipRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 5 },
   chip:         { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#CBD5E1' },
   chipOn:       { backgroundColor: '#7C3AED14', borderColor: '#7C3AED' },
-  chipText:     { fontSize: 13, color: '#475569', fontWeight: '600' },
+  chipText:     { fontSize: 13, color: '#475569', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   chipTextOn:   { color: '#7C3AED' },
   input:        { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, padding: 9, minHeight: 58,
                   fontSize: 13, color: '#0F172A', marginTop: 5, textAlignVertical: 'top' },
   btnRow:       { flexDirection: 'row', gap: 9, marginTop: 10, flexWrap: 'wrap' },
   primaryBtn:   { flexGrow: 1, backgroundColor: '#7C3AED', borderRadius: 9, paddingVertical: 11, alignItems: 'center' },
-  primaryBtnText:{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  primaryBtnText:{ color: '#FFFFFF', fontSize: 14, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   secondaryBtn: { flexGrow: 1, borderWidth: 1, borderColor: '#7C3AED', borderRadius: 9, paddingVertical: 11, alignItems: 'center' },
-  secondaryBtnText:{ color: '#7C3AED', fontSize: 14, fontWeight: '700' },
+  secondaryBtnText:{ color: '#7C3AED', fontSize: 14, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   btnDisabled:  { opacity: 0.5 },
   radioRow:     { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 7 },
   radio:        { width: 17, height: 17, borderRadius: 9, borderWidth: 1.5, borderColor: '#94A3B8' },
   radioOn:      { borderColor: '#7C3AED', backgroundColor: '#7C3AED' },
   radioText:    { fontSize: 13, color: '#0F172A' },
   linkBtn:      { paddingHorizontal: 10, paddingVertical: 5, marginLeft: 8 },
-  linkBtnText:  { fontSize: 12.5, color: '#7C3AED', fontWeight: '700' },
-  message:      { fontSize: 12.5, color: '#7C3AED', fontWeight: '600', marginTop: 4 },
+  linkBtnText:  { fontSize: 12.5, color: '#7C3AED', fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  message:      { fontSize: 12.5, color: '#7C3AED', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', marginTop: 4 },
 });
 
 // ─── Writing Check history ────────────────────────────────────────────────
@@ -3233,10 +3233,10 @@ function WritingCheckHistoryCard({ result, student, theme, navigation }) {
 const wc = StyleSheet.create({
   row:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 5 },
   rowLabel:    { fontSize: 13, color: '#64748B', flex: 1 },
-  rowValue:    { fontSize: 13, fontWeight: '600', color: '#0F172A', textAlign: 'right', flex: 1 },
+  rowValue:    { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: '#0F172A', textAlign: 'right', flex: 1 },
   startBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
                  borderWidth: 1, borderRadius: 10, paddingVertical: 11, marginTop: 2 },
-  startBtnText:{ fontSize: 14, fontWeight: '700', color: '#0891B2' },
+  startBtnText:{ fontSize: 14, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0891B2' },
 });
 
 function LetterMotorDevelopmentCard({ latest, history, trend, evaluations }) {
@@ -3391,29 +3391,29 @@ function LetterMotorDevelopmentCard({ latest, history, trend, evaluations }) {
 
 const f11 = StyleSheet.create({
   loadingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
-  loadingText: { fontSize: 12, color: TEXT_3, fontWeight: '600' },
+  loadingText: { fontSize: 12, color: TEXT_3, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   coverageBadge: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  coverageNum:   { fontSize: 22, fontWeight: '900', color: TEXT_1 },
-  coverageDenom: { fontSize: 12, color: TEXT_2, fontWeight: '600' },
+  coverageNum:   { fontSize: 22, fontWeight: '900', fontFamily: 'Nunito_900Black', color: TEXT_1 },
+  coverageDenom: { fontSize: 12, color: TEXT_2, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   metricCaption: { fontSize: 10, color: TEXT_3, marginTop: 6, textAlign: 'center' },
 
-  currentLabel: { fontSize: 10, fontWeight: '800', color: '#0891B2', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  currentLabel: { fontSize: 10, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: '#0891B2', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
 
   accumulatingBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: '#ECFEFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#0891B230',
   },
-  accumulatingText: { flex: 1, fontSize: 12.5, color: '#0E7490', lineHeight: 18, fontWeight: '600' },
+  accumulatingText: { flex: 1, fontSize: 12.5, color: '#0E7490', lineHeight: 18, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   historyRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
     backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
   },
-  historyMilestone: { fontSize: 12.5, fontWeight: '800', color: TEXT_1 },
+  historyMilestone: { fontSize: 12.5, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
   historyMeta:       { fontSize: 11, color: TEXT_2, marginTop: 1 },
-  historyDate:       { fontSize: 11, color: TEXT_3, fontWeight: '600' },
+  historyDate:       { fontSize: 11, color: TEXT_3, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   patternCaption: { fontSize: 10.5, color: TEXT_3, lineHeight: 15, fontStyle: 'italic' },
 
@@ -3421,7 +3421,7 @@ const f11 = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#CBD5E1',
   },
-  notReportedTitle: { fontSize: 13, fontWeight: '800', color: TEXT_1 },
+  notReportedTitle: { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
   notReportedText:  { fontSize: 12, color: TEXT_2, lineHeight: 18, marginTop: 2 },
 });
 
@@ -3455,11 +3455,11 @@ function MotorPatternRow({ pattern }) {
 
 const mp = StyleSheet.create({
   row:       { gap: 4 },
-  label:     { fontSize: 13, fontWeight: '800', color: TEXT_1 },
+  label:     { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
   noData:    { fontSize: 12, color: TEXT_3, fontStyle: 'italic' },
   scoreLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  scoreText: { fontSize: 14, fontWeight: '700', color: TEXT_2 },
-  delta:     { fontSize: 13, fontWeight: '900', marginLeft: 4 },
+  scoreText: { fontSize: 14, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_2 },
+  delta:     { fontSize: 13, fontWeight: '900', fontFamily: 'Nunito_900Black', marginLeft: 4 },
   message:   { fontSize: 12, lineHeight: 17 },
 });
 
@@ -3475,8 +3475,8 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
   },
-  topTitle: { fontSize: 17, fontWeight: '900', letterSpacing: 0.2 },
-  topDate:  { fontSize: 11, opacity: 0.65, fontWeight: '500', marginTop: 1 },
+  topTitle: { fontSize: 17, fontWeight: '900', fontFamily: 'Nunito_900Black', letterSpacing: 0.2 },
+  topDate:  { fontSize: 11, opacity: 0.65, fontWeight: '500', fontFamily: 'Nunito_600SemiBold', marginTop: 1 },
 
   heroStrip: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -3488,14 +3488,14 @@ const s = StyleSheet.create({
     elevation: 3,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6,
   },
-  heroInitialText: { fontSize: 22, fontWeight: '900', color: '#FFF' },
-  heroName:        { fontSize: 20, fontWeight: '900' },
-  heroMeta:        { fontSize: 12, opacity: 0.7, fontWeight: '500', marginTop: 2 },
+  heroInitialText: { fontSize: 22, fontWeight: '900', fontFamily: 'Nunito_900Black', color: '#FFF' },
+  heroName:        { fontSize: 20, fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  heroMeta:        { fontSize: 12, opacity: 0.7, fontWeight: '500', fontFamily: 'Nunito_600SemiBold', marginTop: 2 },
 
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
-  loadingText: { fontSize: 14, fontWeight: '600', opacity: 0.75, textAlign: 'center' },
+  loadingText: { fontSize: 14, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', opacity: 0.75, textAlign: 'center' },
   retryBtn:     { paddingHorizontal: 24, paddingVertical: 11, borderRadius: 50 },
-  retryBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  retryBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 
   scrollArea: { flex: 1, backgroundColor: PAGE_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   scroll:     { padding: 16, paddingTop: 20 },
@@ -3507,8 +3507,8 @@ const s = StyleSheet.create({
   metricsRow: { flexDirection: 'row', gap: 8 },
 
   overallBar: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  overallLabel: { fontSize: 13, fontWeight: '600', color: TEXT_2 },
-  overallPct:   { fontSize: 18, fontWeight: '900', minWidth: 44 },
+  overallLabel: { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: TEXT_2 },
+  overallPct:   { fontSize: 18, fontWeight: '900', fontFamily: 'Nunito_900Black', minWidth: 44 },
 
   progressGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 });

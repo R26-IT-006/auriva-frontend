@@ -20,7 +20,7 @@ import BreakPromptModal from '../../components/handwriting/BreakPromptModal';
 import { LIVE_ACTIVITY_TYPES } from '../../constants/liveSessionPolicy';
 import { buildProgressPatch } from '../../utils/liveSessionSnapshot';
 import { computeDTW } from '../../utils/dtw';
-import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../utils/touchPointSanitize';
 import { normalizeStrokesForDTW } from '../../utils/dtwNormalization';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../utils/adaptiveSequencing';
 import { DEFAULT_N_POINTS, selectPreWritingActivities } from '../../constants/preWritingActivities';
@@ -28,6 +28,11 @@ import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 2;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -190,8 +195,16 @@ export default function PreWritingActivityScreen({ route, navigation }) {
   // Border-touch bug fix — see touchPointSanitize.js.
   const canvasRef       = useRef(null);
   const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
   const measureCanvasOrigin = useCallback(() => {
-    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
   }, []);
   const strokeIdCounter   = useRef(0);
   const resultsRef        = useRef([]); // accumulated across all activities this session
@@ -262,14 +275,23 @@ export default function PreWritingActivityScreen({ route, navigation }) {
     () => (activity ? activity.target_shape.generatePoints(CANVAS_CX, CANVAS_CY, DEFAULT_N_POINTS).flat() : []),
     [activity]
   );
-  const inputRange = pathPoints.map((_, i) => i / Math.max(1, pathPoints.length - 1));
+  // Animated.interpolate requires at least two keyframes. pathPoints is empty
+  // on any frame without an activity — including the one frame that renders
+  // before the `activities.length === 0` effect navigates away — and the
+  // outputRange fallback below only ever covered half of that: inputRange was
+  // left as [], which is what threw "inputRange must have at least 2 elements".
+  // Both ranges now fall back together to an inert 2-point identity.
+  const hasPointerPath = pathPoints.length > 1;
+  const inputRange = hasPointerPath
+    ? pathPoints.map((_, i) => i / (pathPoints.length - 1))
+    : [0, 1];
   const pointerLeft = animValue.interpolate({
     inputRange,
-    outputRange: pathPoints.length ? pathPoints.map(p => p.x - POINTER_HALF) : [0, 0],
+    outputRange: hasPointerPath ? pathPoints.map(p => p.x - POINTER_HALF) : [0, 0],
   });
   const pointerTop = animValue.interpolate({
     inputRange,
-    outputRange: pathPoints.length ? pathPoints.map(p => p.y - POINTER_HALF) : [0, 0],
+    outputRange: hasPointerPath ? pathPoints.map(p => p.y - POINTER_HALF) : [0, 0],
   });
 
   useEffect(() => {
@@ -316,8 +338,12 @@ export default function PreWritingActivityScreen({ route, navigation }) {
 
       onPanResponderGrant: (evt) => {
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         startTimeRef.current = now;
         strokeIdCounter.current += 1;
@@ -325,8 +351,12 @@ export default function PreWritingActivityScreen({ route, navigation }) {
       },
 
       onPanResponderMove: (evt) => {
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         setCurrentPath(prev => {
           const last = prev[prev.length - 1];
@@ -645,6 +675,7 @@ const styles = StyleSheet.create({
   assessBadgeText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.3,
   },
 
@@ -660,12 +691,14 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#8A8AA0',
   },
 
   shapeTitle: {
     fontSize: 26,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -695,6 +728,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#444444',
     textAlign: 'center',
   },
@@ -773,6 +807,7 @@ const styles = StyleSheet.create({
   clearText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   nextButton: {
     flexDirection: 'row',
@@ -785,6 +820,7 @@ const styles = StyleSheet.create({
   nextText: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   avatarImage: {

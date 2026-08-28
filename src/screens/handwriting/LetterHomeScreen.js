@@ -1046,6 +1046,7 @@ const styles = StyleSheet.create({
   studentName: {
     fontSize: 17,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   studentSubLabel: {
     fontSize: 12,
@@ -1070,6 +1071,7 @@ const styles = StyleSheet.create({
   dashboardBtnText: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   // Grown-ups-only cluster (Assessment + Progress, both gated) — quiet grey,
   // deliberately smaller and less colorful than Dashboard or the Letters/
@@ -1122,12 +1124,14 @@ const styles = StyleSheet.create({
   heroGreeting: {
     fontSize: 30,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     textAlign: 'center',
     letterSpacing: 0.3,
   },
   heroSubtitle: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     textAlign: 'center',
     opacity: 0.85,
   },
@@ -1179,6 +1183,7 @@ const styles = StyleSheet.create({
   learningPathHeadline: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   learningPathDetail: {
     fontSize: 13,
@@ -1188,6 +1193,7 @@ const styles = StyleSheet.create({
   sequenceTag: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     marginTop: 2,
     letterSpacing: 0.3,
   },
@@ -1204,6 +1210,7 @@ const styles = StyleSheet.create({
   whyBtnText: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   // ── Letters / Words cards ──────────────────────────────────────────────────
@@ -1270,11 +1277,13 @@ const styles = StyleSheet.create({
   aaIconText: {
     fontSize: 34,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#2E7D32',
   },
   lettersTitle: {
     fontSize: 26,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#2E7D32',
     zIndex: 1,
   },
@@ -1282,6 +1291,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#555555',
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     lineHeight: 18,
     minHeight: 36,
     maxWidth: '94%',
@@ -1308,6 +1318,7 @@ const styles = StyleSheet.create({
   startBtnText: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#FFFFFF',
   },
   startBtnChevronWrap: {
@@ -1356,6 +1367,7 @@ const styles = StyleSheet.create({
   wordsTitle: {
     fontSize: 26,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#7B1FA2',
     zIndex: 1,
   },
@@ -1414,17 +1426,20 @@ const styles = StyleSheet.create({
   progressPanelTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#3A2E1F',
   },
   ringPercentText: {
     position: 'absolute',
     fontSize: 22,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#3A2E1F',
   },
   progressPanelLabel: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#3A2E1F',
     marginTop: 10,
   },
@@ -1448,6 +1463,7 @@ const styles = StyleSheet.create({
   progressPanelStatText: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#555555',
   },
   wordsProgressStat: {
@@ -1477,6 +1493,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 23,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   modalCloseBtn: {
     width: 44,
@@ -1516,6 +1533,7 @@ const styles = StyleSheet.create({
   modalChildName: {
     fontSize: 19,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   modalChildSub: {
     fontSize: 13,
@@ -1549,6 +1567,7 @@ const styles = StyleSheet.create({
   shapeName: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#333333',
   },
   shapeMetricColumn: {
@@ -1572,6 +1591,7 @@ const styles = StyleSheet.create({
     width: 58,
     fontSize: 15,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#3F4550',
     textAlign: 'right',
   },
@@ -1587,6 +1607,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   overallCard: {
     flexDirection: 'row',
@@ -1609,6 +1630,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6D7280',
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   overallContent: {
     flex: 1,
@@ -1622,6 +1644,7 @@ const styles = StyleSheet.create({
   overallValue: {
     fontSize: 24,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   overallBadge: {
     minWidth: 112,
@@ -1633,6 +1656,7 @@ const styles = StyleSheet.create({
   overallBadgeText: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   overallNote: {
     fontSize: 11,
@@ -1681,6 +1705,7 @@ const styles = StyleSheet.create({
   xaiTitle: {
     fontSize: 17,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#1A1A1A',
     flexShrink: 1,
     marginRight: 8,
@@ -1709,6 +1734,7 @@ const styles = StyleSheet.create({
   xaiScoreValue: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#1A1A1A',
   },
   xaiCloseBtn: {
@@ -1719,5 +1745,6 @@ const styles = StyleSheet.create({
   xaiCloseBtnText: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 });

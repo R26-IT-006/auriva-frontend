@@ -635,11 +635,13 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 2.4,
   },
   headline: {
     fontSize: 25,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
   },
 
@@ -649,6 +651,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 25,
     fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
   },
 
   sliderWrap: {
@@ -689,6 +692,7 @@ const styles = StyleSheet.create({
   sliderText: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
     letterSpacing: 0.2,
   },
@@ -758,6 +762,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1A1A1A',
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     lineHeight: 22,
     textAlign: 'center',
   },
@@ -774,6 +779,7 @@ const styles = StyleSheet.create({
   dataCollectionText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
 });

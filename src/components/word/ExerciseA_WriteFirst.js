@@ -130,6 +130,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
   },
   wordBox: {
@@ -141,12 +142,14 @@ const styles = StyleSheet.create({
   blank: {
     fontSize: 56,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#E53935',
     lineHeight: 64,
   },
   rest: {
     fontSize: 56,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#333333',
     lineHeight: 64,
   },

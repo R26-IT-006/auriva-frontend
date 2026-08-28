@@ -671,20 +671,20 @@ const styles = StyleSheet.create({
   wsLoading: { paddingVertical: 28, alignItems: 'center' },
   wsUnavailable: { paddingVertical: 24, paddingHorizontal: 18, alignItems: 'center', gap: 7 },
   wsUnavailableText: { fontSize: 12.5, color: Colors.text.muted, textAlign: 'center' },
-  wsRetryText: { fontSize: 12.5, fontWeight: '600', color: Colors.text.link },
+  wsRetryText: { fontSize: 12.5, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.link },
 
   wsHeadline: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12,
   },
   wsHeadlineLabel: { fontSize: 12, color: Colors.text.muted, marginBottom: 2 },
-  wsHeadlineValue: { fontSize: 26, fontWeight: '700', color: Colors.text.primary },
-  wsHeadlineTotal: { fontSize: 15, fontWeight: '600', color: Colors.text.muted },
+  wsHeadlineValue: { fontSize: 26, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
+  wsHeadlineTotal: { fontSize: 15, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.muted },
   wsPercentPill: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
     backgroundColor: 'rgba(99,102,241,0.10)',
   },
-  wsPercentText: { fontSize: 15, fontWeight: '700', color: '#6366F1' },
+  wsPercentText: { fontSize: 15, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#6366F1' },
 
   wsBody: {},
   wsBodyWide: { flexDirection: 'row', alignItems: 'center', gap: 18, paddingRight: 14 },
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   wsRow: { gap: 5 },
   wsRowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   wsRowLabel: { fontSize: 12.5, color: Colors.text.secondary },
-  wsRowValue: { fontSize: 12.5, fontWeight: '600', color: Colors.text.primary },
+  wsRowValue: { fontSize: 12.5, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
   wsBarTrack: {
     height: 6, borderRadius: 3, backgroundColor: 'rgba(99,102,241,0.12)', overflow: 'hidden',
   },
@@ -708,8 +708,8 @@ const styles = StyleSheet.create({
   wsStatus: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
   wsStatusText: { flex: 1 },
   wsStatusLabel: { fontSize: 11.5, color: Colors.text.muted },
-  wsStatusValue: { fontSize: 13, fontWeight: '600', color: Colors.text.primary, marginTop: 1 },
-  wsStatusValueMuted: { color: Colors.text.secondary, fontWeight: '500' },
+  wsStatusValue: { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary, marginTop: 1 },
+  wsStatusValueMuted: { color: Colors.text.secondary, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
   wsLockedHint: {
     fontSize: 11.5, color: Colors.text.muted, marginTop: -4, marginLeft: 23, lineHeight: 16,
   },
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.border ?? 'rgba(0,0,0,0.08)',
   },
-  wsReportText: { fontSize: 13.5, fontWeight: '600', color: Colors.text.link },
+  wsReportText: { fontSize: 13.5, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.link },
 
 
   // ── Module selector ───────────────────────────────────────────────────────

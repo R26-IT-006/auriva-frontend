@@ -125,6 +125,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
   },
   wordChip: {
@@ -170,6 +171,7 @@ const styles = StyleSheet.create({
   hintLabel: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#E65100',
   },
 });

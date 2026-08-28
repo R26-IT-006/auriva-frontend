@@ -36,12 +36,17 @@ import {
   calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
 } from '../../utils/trajectoryFeatures';
 import { buildDtwDebugExport } from '../../utils/dtwDebugExport';
-import { clampToCanvas, isImplausibleJump, pageToLocal } from '../../utils/touchPointSanitize';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../utils/touchPointSanitize';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../utils/collectionSession';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 2;
 
 // Canvas geometry now lives in ONE place, imported above and shared with the
 // "watch first" demonstration, so a demo can never render a shape at a
@@ -266,8 +271,16 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   // Border-touch bug fix — see touchPointSanitize.js.
   const canvasRef       = useRef(null);
   const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
   const measureCanvasOrigin = useCallback(() => {
-    canvasRef.current?.measureInWindow((x, y) => { canvasOriginRef.current = { x, y }; });
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
   }, []);
   const sessionStartTime     = useRef(Date.now());
   const currentShapeIndexRef = useRef(0);
@@ -349,14 +362,20 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
   // Precompute interpolation ranges for animated pointer
   const pathPoints = computePathPoints(currentShape.id);
-  const inputRange = pathPoints.map((_, i) => i / (pathPoints.length - 1));
+  // Same two-keyframe minimum as PreWritingActivityScreen: computeShapeTemplate
+  // returns [] for a shape id it does not recognise, which would divide by -1
+  // here and hand interpolate() an empty range.
+  const hasPointerPath = pathPoints.length > 1;
+  const inputRange = hasPointerPath
+    ? pathPoints.map((_, i) => i / (pathPoints.length - 1))
+    : [0, 1];
   const pointerLeft = animValue.interpolate({
     inputRange,
-    outputRange: pathPoints.map(p => p.x - POINTER_HALF),
+    outputRange: hasPointerPath ? pathPoints.map(p => p.x - POINTER_HALF) : [0, 0],
   });
   const pointerTop = animValue.interpolate({
     inputRange,
-    outputRange: pathPoints.map(p => p.y - POINTER_HALF),
+    outputRange: hasPointerPath ? pathPoints.map(p => p.y - POINTER_HALF) : [0, 0],
   });
 
   // Restart animations and speak on shape change
@@ -408,8 +427,12 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       onMoveShouldSetPanResponder:  () => true,
 
       onPanResponderGrant: (evt) => {
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         startTime.current = now;
         strokeIdCounter.current += 1;  // ML: new stroke starts
@@ -417,8 +440,12 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       },
 
       onPanResponderMove: (evt) => {
-        const local = pageToLocal(evt.nativeEvent.pageX, evt.nativeEvent.pageY, canvasOriginRef.current);
-        const { x: locationX, y: locationY } = clampToCanvas(local.x, local.y, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         setCurrentPath(prev => {
           const last = prev[prev.length - 1];
@@ -741,6 +768,7 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#2E7D32',
   },
 
@@ -779,6 +807,7 @@ const styles = StyleSheet.create({
   clearText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   nextButton: {
     flexDirection: 'row',
@@ -791,6 +820,7 @@ const styles = StyleSheet.create({
   nextText: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   // Avatar
@@ -828,6 +858,7 @@ const styles = StyleSheet.create({
   avatarBubbleText: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     lineHeight: 22,
     textAlign: 'center',
   },

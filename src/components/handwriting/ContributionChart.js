@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot:  { width: 8, height: 8, borderRadius: 4 },
-  legendLabel:{ fontSize: 10, color: '#888', fontWeight: '600' },
+  legendLabel:{ fontSize: 10, color: '#888', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   barRow: {
     flexDirection: 'row',
@@ -161,6 +161,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#333',
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     flexShrink: 1,
   },
   track: {
@@ -178,6 +179,7 @@ const styles = StyleSheet.create({
   pctText: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     minWidth: 34,
     textAlign: 'right',
   },

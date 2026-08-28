@@ -185,6 +185,6 @@ const ap = StyleSheet.create({
   letterCell: {
     flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 10, paddingVertical: 4,
   },
-  letterLabel: { fontSize: 11, fontWeight: '700', color: '#0F766E', marginTop: 2 },
-  hiddenFocusText: { fontSize: 11, color: '#64748B', fontWeight: '500' },
+  letterLabel: { fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F766E', marginTop: 2 },
+  hiddenFocusText: { fontSize: 11, color: '#64748B', fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
 });

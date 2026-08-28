@@ -382,6 +382,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
   },
   boxRow: {
@@ -408,6 +409,7 @@ const styles = StyleSheet.create({
   boxText: {
     fontSize: 26,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   boxTextDone: {
     color: '#2E7D32',
@@ -445,6 +447,7 @@ const styles = StyleSheet.create({
   tileText: {
     fontSize: 26,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   successRow: {
     flexDirection: 'row',
@@ -454,6 +457,7 @@ const styles = StyleSheet.create({
   successLabel: {
     fontSize: 18,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#2E7D32',
   },
 });
