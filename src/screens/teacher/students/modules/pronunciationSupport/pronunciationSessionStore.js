@@ -1,6 +1,13 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 
 import { WORD_BANK } from "./wordBank";
+import { DEFAULT_IMAGE_STYLE, IMAGE_STYLES } from "./wordImageStyles.js";
+
+// Picture style is a property of the child, not of one session, so it is
+// stored per student on the device and deliberately kept out of
+// `initialSessionState` — resetting a session must not undo it.
+const IMAGE_STYLE_STORAGE_PREFIX = "pronunciation_image_style_";
 
 export const PRONUNCIATION_STEPS = {
   SETUP: "setup",
@@ -308,6 +315,43 @@ function findWordById({ selectedCategory, selectedMode, wordId }) {
 
 export const usePronunciationSessionStore = create((set, get) => ({
   ...initialSessionState,
+  imageStyle: DEFAULT_IMAGE_STYLE,
+
+  /** Reads this student's saved picture style; falls back to photos. */
+  async loadImageStyle(studentId) {
+    if (!studentId) {
+      set({ imageStyle: DEFAULT_IMAGE_STYLE });
+      return DEFAULT_IMAGE_STYLE;
+    }
+
+    try {
+      const stored = await AsyncStorage.getItem(
+        `${IMAGE_STYLE_STORAGE_PREFIX}${studentId}`,
+      );
+      const style = stored === IMAGE_STYLES.CARTOON ? IMAGE_STYLES.CARTOON : DEFAULT_IMAGE_STYLE;
+      set({ imageStyle: style });
+      return style;
+    } catch (error) {
+      console.log("Image style load error:", error.message);
+      set({ imageStyle: DEFAULT_IMAGE_STYLE });
+      return DEFAULT_IMAGE_STYLE;
+    }
+  },
+
+  async setImageStyle(style, studentId) {
+    const nextStyle = style === IMAGE_STYLES.CARTOON ? IMAGE_STYLES.CARTOON : DEFAULT_IMAGE_STYLE;
+    set({ imageStyle: nextStyle });
+
+    if (!studentId) return;
+
+    try {
+      await AsyncStorage.setItem(`${IMAGE_STYLE_STORAGE_PREFIX}${studentId}`, nextStyle);
+    } catch (error) {
+      // A failed write only costs the preference on next launch — the session
+      // in progress keeps the style the teacher just picked.
+      console.log("Image style save error:", error.message);
+    }
+  },
 
   resetSession() {
     set(initialSessionState);

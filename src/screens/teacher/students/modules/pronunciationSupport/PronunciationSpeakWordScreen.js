@@ -22,6 +22,7 @@ import {
   readAudioClip,
 } from "./pronunciationRecording.js";
 import { buildPronunciationScoringPayload } from "./pronunciationPayloads.js";
+import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 import { ThemedGradientFill } from "./pronunciationDesignKit.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
 import { ConfirmDialog } from "../../../../../components/common/ConfirmDialog";
@@ -38,7 +39,8 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     (state) => state.selectedWord,
   );
   const word = route.params?.word || sessionSelectedWord;
-  const wordImageSource = getWordImageSource(word);
+  const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
+  const wordImageSource = getWordImageSource(word, imageStyle);
   const { width } = useWindowDimensions();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -63,6 +65,8 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const { isExitConfirmVisible, confirmExit, cancelExit } =
     useExitSessionGuard(navigation);
   const recordingRef = useRef(null);
+  const scoringAbortControllerRef = useRef(null);
+  const isScoringRef = useRef(false);
   const lastScoringResultRef = useRef(null);
   const promptShownAtRef = useRef(Date.now());
   const preRecordDelayRef = useRef(null);
@@ -90,6 +94,20 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     }
     setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
   }, [setCurrentActivityStep, setSelectedWord, word]);
+
+  // Spoken instruction for the recording step — a child who cannot yet read
+  // the on-screen helper text still knows what the microphone is for. Held
+  // back a beat so it does not collide with the screen transition.
+  useEffect(() => {
+    const promptTimer = setTimeout(() => {
+      playVoicePrompt("tapRecordAndSpeak");
+    }, 600);
+
+    return () => {
+      clearTimeout(promptTimer);
+      stopVoicePrompt();
+    };
+  }, [word?.id]);
 
   useEffect(() => {
     if (isRecording) {
@@ -166,10 +184,12 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       if (recordingRef.current) {
         recordingRef.current.stopAndUnloadAsync().catch(() => {});
       }
+      scoringAbortControllerRef.current?.abort();
     };
   }, []);
 
   async function startRecording() {
+    await stopVoicePrompt();
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
@@ -248,6 +268,8 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   }
 
   async function handleNext() {
+    if (isScoringRef.current) return;
+
     if (!studentId) {
       Alert.alert("Student unavailable", "Unable to score without a selected student.");
       return;
@@ -264,7 +286,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     const responseDuration = lastRecordingDuration || recordingSeconds || 2;
 
     try {
+      isScoringRef.current = true;
       setIsScoring(true);
+      const scoringAbortController = new AbortController();
+      scoringAbortControllerRef.current = scoringAbortController;
       const scoringResult = await teacherApi.scorePronunciationAttempt(
         studentId,
         buildPronunciationScoringPayload({
@@ -278,6 +303,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           preRecordDelaySeconds: preRecordDelayRef.current,
           heardReferenceAudio,
         }),
+        { signal: scoringAbortController.signal },
       );
 
       lastScoringResultRef.current = scoringResult;
@@ -286,7 +312,9 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
         responseDuration,
       });
     } catch (error) {
-      const errorCode = error.response?.data?.code;
+      if (error.code === "REQUEST_CANCELLED") return;
+
+      const errorCode = error.code;
       const isQualityError = errorCode === "AUDIO_QUALITY_FAILED";
       const isWordMismatch = errorCode === "WORD_MISMATCH";
       Alert.alert(
@@ -295,13 +323,13 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           : isQualityError
             ? "Recording quality issue"
             : "Scoring error",
-        error.response?.data?.error ||
-          error.response?.data?.message ||
-          error.message ||
+        error.message ||
           "Unable to score this pronunciation right now.",
       );
       return;
     } finally {
+      isScoringRef.current = false;
+      scoringAbortControllerRef.current = null;
       setIsScoring(false);
     }
 
@@ -471,7 +499,13 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           <ButtonFeedback
             activeOpacity={0.82}
             onPress={() => navigation.goBack()}
-            style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }]}
+            disabled={isScoring}
+            style={[
+              styles.backBtn,
+              isCompact && styles.backBtnCompact,
+              { borderColor: theme.cardOutline },
+              isScoring && styles.nextBtnDisabled,
+            ]}
           >
             <Ionicons name="arrow-back" size={26} color={theme.headingText} />
           </ButtonFeedback>

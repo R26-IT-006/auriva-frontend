@@ -1,6 +1,12 @@
 import client from './client';
 import { ENDPOINTS } from '../constants/api';
 
+// The scoring pipeline can run ffmpeg, Whisper, and the phoneme GOP worker,
+// then persist a comparatively large audio row. Real attempts regularly take
+// longer than the client's 15-second default, especially on the first run.
+const PRONUNCIATION_SCORING_TIMEOUT_MS = 120000;
+const PRONUNCIATION_BUSY_RETRY_DELAY_MS = 800;
+
 export const teacherApi = {
   async getDashboard() {
     const { data } = await client.get(ENDPOINTS.TEACHER_DASHBOARD);
@@ -45,18 +51,42 @@ export const teacherApi = {
     return data;
   },
 
-  async scorePronunciationAttempt(studentId, payload) {
-    const { data } = await client.post(
-      ENDPOINTS.TEACHER_PRONUNCIATION_SCORE(studentId),
-      payload
-    );
-    return data;
+  async scorePronunciationAttempt(studentId, payload, { signal } = {}) {
+    const submit = async () => {
+      const { data } = await client.post(
+        ENDPOINTS.TEACHER_PRONUNCIATION_SCORE(studentId),
+        payload,
+        {
+          signal,
+          timeout: PRONUNCIATION_SCORING_TIMEOUT_MS,
+          timeoutMessage:
+            'Pronunciation scoring is taking longer than expected. Please try again.',
+        }
+      );
+      return data;
+    };
+
+    try {
+      return await submit();
+    } catch (error) {
+      // DATABASE_BUSY is emitted only when Sequelize never acquired a DB
+      // connection, so the failed request performed no insert and one retry
+      // cannot duplicate an attempt.
+      if (error.code !== 'DATABASE_BUSY' || signal?.aborted) throw error;
+      await new Promise((resolve) =>
+        setTimeout(resolve, PRONUNCIATION_BUSY_RETRY_DELAY_MS)
+      );
+      return submit();
+    }
   },
 
   async savePronunciationResult(studentId, payload) {
     const { data } = await client.post(
       ENDPOINTS.TEACHER_PRONUNCIATION_RESULTS(studentId),
-      payload
+      payload,
+      // Completing an already-persisted result is idempotent and safe to
+      // retry if the network drops. The legacy create path is not.
+      payload?.result_id ? { retryOnNetworkError: true } : undefined
     );
     return data;
   },

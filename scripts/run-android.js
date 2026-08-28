@@ -1,5 +1,10 @@
 'use strict';
 
+const { relaunchWithSupportedNode } = require('./supported-node');
+
+if (relaunchWithSupportedNode(__filename)) {
+  // The supported Node child owns the Android build process lifecycle.
+} else {
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -87,3 +92,4 @@ child.on('exit', (code, signal) => {
   }
   process.exit(code ?? 1);
 });
+}

@@ -19,7 +19,12 @@ export function buildPronunciationScoringPayload({
     word_id: word?.id || "cat",
     word_label: getPronunciationWordLabel(word),
     difficulty: word?.difficulty || null,
-    target_phonemes: word?.sounds || [],
+    // Alphabet mode asks for the spoken letter name ("C" = /s i:/), while
+    // `word.sounds` describes the letter's common in-word sound (/k/). The
+    // backend owns the canonical A-Z letter-name profiles, so do not override
+    // them with the teaching-card sound. Word mode still sends its full sound
+    // breakdown as before.
+    target_phonemes: isAlphabetMode ? [] : word?.sounds || [],
     response_duration: responseDuration,
     attempt_number: attemptNumber,
     pre_record_delay_seconds: preRecordDelaySeconds ?? null,

@@ -60,7 +60,8 @@ function WordCard({
   isAlphabetMode,
 }) {
   const label = isAlphabetMode ? item.letter || item.word : item.word;
-  const imageSource = getWordImageSource(item);
+  const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
+  const imageSource = getWordImageSource(item, imageStyle);
 
   return (
     <EntranceItem index={index}>

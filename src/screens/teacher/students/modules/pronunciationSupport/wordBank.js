@@ -1,3 +1,9 @@
+import {
+  DEFAULT_IMAGE_STYLE,
+  getCartoonImageSource,
+  IMAGE_STYLES,
+} from "./wordImageStyles.js";
+
 const PHONEME_SUPPORT_CUES = {
   æ: "Open the mouth wide for the short /a/ sound.",
   ɒ: "Round the lips gently for the short /o/ sound.",
@@ -98,7 +104,13 @@ const WORD_IMAGE_ASSETS = {
   clap: require("../../../../../../assets/pronunciation-word-images/clap.jpg"),
 };
 
-export function getWordImageSource(word) {
+export function getWordImageSource(word, style = DEFAULT_IMAGE_STYLE) {
+  // Cartoon is a per-session teacher choice; a word with no cartoon drawn for
+  // it keeps its photo rather than showing an empty card.
+  if (style === IMAGE_STYLES.CARTOON) {
+    const cartoon = getCartoonImageSource(word);
+    if (cartoon) return cartoon;
+  }
   if (word?.imageAsset) return word.imageAsset;
   if (word?.imageUri) return { uri: word.imageUri };
   return null;
@@ -247,6 +259,82 @@ const WORD_SINHALA_TRANSLATIONS = {
   read: "කියවන්න",
   clap: "අත්පුඩි ගසන්න",
 };
+
+// The child-facing screens show English letters, not IPA symbols — a child
+// learning to read cannot decode /əl/, but recognises "le" from the written
+// word. Each entry splits the word's spelling into the letter group that
+// makes each sound, in order, so the groups joined together spell the word
+// exactly (apple: a + pp + le). Array length must match that word's
+// `sounds` length; `getSoundLetters` falls back to the IPA text if it
+// doesn't, so a mismatch degrades instead of misaligning the chips.
+const WORD_SOUND_LETTERS = {
+  cat: ["c", "a", "t"],
+  dog: ["d", "o", "g"],
+  fish: ["f", "i", "sh"],
+  bird: ["b", "ir", "d"],
+  worm: ["w", "or", "m"],
+  whale: ["wh", "a", "le"],
+  turtle: ["t", "ur", "t", "le"],
+  tiger: ["t", "i", "ger"],
+  snail: ["s", "n", "ai", "l"],
+  pigeon: ["p", "i", "ge", "on"],
+  penguin: ["p", "e", "n", "guin"],
+  mosquito: ["m", "o", "squ", "i", "to"],
+  leopard: ["l", "eo", "p", "ard"],
+  kangaroo: ["k", "a", "ng", "a", "roo"],
+  jellyfish: ["j", "e", "ll", "y", "f", "ish"],
+  horse: ["h", "or", "se"],
+  hippo: ["h", "i", "pp", "o"],
+  goose: ["g", "oo", "se"],
+  fox: ["f", "o", "x"],
+  elephant: ["e", "l", "e", "ph", "ant"],
+  eagle: ["ea", "g", "le"],
+  deer: ["d", "eer"],
+  crab: ["c", "r", "a", "b"],
+  cow: ["c", "ow"],
+  chick: ["ch", "i", "ck"],
+  butterfly: ["b", "u", "tt", "er", "fly"],
+  buffalo: ["b", "u", "ff", "a", "lo"],
+  ant: ["a", "n", "t"],
+  book: ["b", "oo", "k"],
+  desk: ["d", "e", "sk"],
+  bag: ["b", "a", "g"],
+  chair: ["ch", "air"],
+  door: ["d", "oor"],
+  pen: ["p", "e", "n"],
+  pencil: ["p", "e", "n", "c", "il"],
+  ruler: ["r", "u", "l", "er"],
+  apple: ["a", "pp", "le"],
+  mango: ["m", "a", "ngo"],
+  banana: ["b", "a", "n", "a", "n", "a"],
+  grape: ["gr", "a", "pe"],
+  orange: ["o", "r", "a", "nge"],
+  lemon: ["l", "e", "m", "on"],
+  papaya: ["p", "a", "p", "ay", "a"],
+  guava: ["gu", "a", "v", "a"],
+  walk: ["w", "al", "k"],
+  jump: ["j", "u", "mp"],
+  run: ["r", "u", "n"],
+  eat: ["ea", "t"],
+  drink: ["dr", "i", "nk"],
+  sleep: ["sl", "ee", "p"],
+  read: ["r", "ea", "d"],
+  clap: ["cl", "a", "p"],
+};
+
+/**
+ * English letter groups to show for a word's sounds, aligned one-to-one with
+ * `word.sounds`. Alphabet-mode entries carry a single sound and their own
+ * `letter`, so that is used directly. Anything unmapped keeps the IPA text
+ * rather than guessing a split.
+ */
+export function getSoundLetters(word) {
+  const sounds = word?.sounds || [];
+  const mapped = WORD_SOUND_LETTERS[word?.id];
+  if (mapped && mapped.length === sounds.length) return mapped;
+  if (word?.letter && sounds.length === 1) return [String(word.letter).toLowerCase()];
+  return sounds.map((sound) => sound.text);
+}
 
 function getSoundPosition(index, total) {
   if (total <= 1) return "single";

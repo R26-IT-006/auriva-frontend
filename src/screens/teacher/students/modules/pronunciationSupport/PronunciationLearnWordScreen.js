@@ -20,7 +20,8 @@ import { Audio, ResizeMode, Video } from "expo-av";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
-import { getWordImageSource, WORD_BANK } from "./wordBank.js";
+import { getSoundLetters, getWordImageSource, WORD_BANK } from "./wordBank.js";
+import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 import { WORD_AUDIO_ASSETS } from "./pronunciationAudioAssets.js";
 import {
   PRONUNCIATION_MODES,
@@ -88,8 +89,12 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     ? Math.max(240, height - 210)
     : Math.max(280, height * 0.48);
   const sounds = selectedWord?.sounds || [];
+  // Letter groups, not IPA symbols — /əl/ means nothing to a child, "le" is
+  // the part of the written word they can find.
+  const soundLetters = getSoundLetters(selectedWord);
   const canShowCatFlashcard = selectedWord?.id === "cat";
-  const selectedWordImageSource = getWordImageSource(selectedWord);
+  const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
+  const selectedWordImageSource = getWordImageSource(selectedWord, imageStyle);
   const sinhalaTranslation =
     !isAlphabetMode && selectedWord?.sinhalaTranslation
       ? selectedWord.sinhalaTranslation
@@ -127,7 +132,8 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     // Tap the Sounds is a segmentation warm-up: hear the word, then tap its
     // sounds in the order they occur. Needs 2+ sounds to be a real ordering
     // task and full-word audio to listen to first, so it only applies to
-    // word mode (alphabet letters are single sounds) with a reference clip.
+    // word mode (alphabet mode practises whole spoken letter names) with a
+    // reference clip.
     if (
       !isAlphabetMode &&
       (selectedWord?.sounds?.length || 0) >= 2 &&
@@ -150,6 +156,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     setHeardReferenceAudio(false);
 
     return () => {
+      stopVoicePrompt();
       if (pronunciationSoundRef.current) {
         pronunciationSoundRef.current.unloadAsync().catch(() => {});
         pronunciationSoundRef.current = null;
@@ -288,6 +295,8 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           if (pronunciationSoundRef.current === sound) {
             pronunciationSoundRef.current = null;
           }
+          // The model word has just played — invite the child to copy it.
+          playVoicePrompt("repeatAfterMe");
         }
       });
       await sound.replayAsync();
@@ -312,10 +321,10 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
       >
         <View style={[styles.centerStage, isCompact && styles.centerStageCompact]}>
           <Text style={[styles.headline, isCompact && styles.headlineCompact, { color: theme.headingText }]}>
-            {isAlphabetMode ? "Listen to the letter sound" : "Listen to the sounds"}
+            {isAlphabetMode ? "Listen to the letter name" : "Listen to the sounds"}
           </Text>
           <Text style={[styles.headlineSinhala, isCompact && styles.headlineSinhalaCompact, { color: theme.headingText }]}>
-            {isAlphabetMode ? "අකුරු ශබ්දයට සවන් දෙන්න" : "ශබ්ද වලට සවන් දෙන්න"}
+            {isAlphabetMode ? "අකුරේ නමට සවන් දෙන්න" : "ශබ්ද වලට සවන් දෙන්න"}
           </Text>
 
           <View
@@ -328,7 +337,9 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
             <View style={styles.soundStage}>
               {sounds.map((sound, index) => (
                 <View key={`${sound.text}-${index}`} style={styles.soundBlock}>
-                  <Text style={[styles.soundText, { color: theme.headingText }]}>{sound.text}</Text>
+                  <Text style={[styles.soundText, { color: theme.headingText }]}>
+                    {soundLetters[index] || sound.text}
+                  </Text>
                   <Text style={styles.soundType}>{sound.type}</Text>
                 </View>
               ))}
@@ -573,7 +584,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   soundBlock: {
-    width: 72,
+    minWidth: 88,
+    paddingHorizontal: 14,
     height: 92,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",

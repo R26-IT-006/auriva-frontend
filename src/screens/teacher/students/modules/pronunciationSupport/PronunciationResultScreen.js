@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Easing,
+  Image,
   View,
   Text,
   StyleSheet,
@@ -28,6 +29,12 @@ import {
 import { getStudentIdentifier } from "./studentIdentity.js";
 import { buildPronunciationResultPayload } from "./pronunciationPayloads.js";
 import { AvatarIdentityBadge, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import {
+  CORRECT_STAMP_GIF,
+  getCongratulationsImage,
+  WRONG_STAMP_GIF,
+} from "./pronunciationCelebrationAssets.js";
+import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 
 const EXPECTED_PRONUNCIATION_SCORE = 80;
 const WELL_DONE_AUDIO_ASSET = require("../../../../../../assets/pronounciation-audios/well-done-female.mp3");
@@ -171,6 +178,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
   // sound that motivates one kid can overwhelm another. Teacher-set per
   // student on the session setup screen; text-based praise stays either way.
   const reduceStimulation = Boolean(student?.reduce_stimulation);
+  const congratulationsImage = getCongratulationsImage(student?.avatar_key);
   const phonemeScores = mockPhonemeScores?.length
     ? mockPhonemeScores
     : null;
@@ -447,10 +455,14 @@ export default function PronunciationResultScreen({ navigation, route }) {
 
     pulseLoop.start();
     shakeLoop.start();
+    // Says out loud what the shaking retry card means, for a child who does
+    // not read the "Keep Practicing" heading.
+    playVoicePrompt("tryOneMoreTime");
 
     return () => {
       pulseLoop.stop();
       shakeLoop.stop();
+      stopVoicePrompt();
     };
   }, [confettiPieces, isHighScore, isNeutralFeedback, lowScorePulse, lowScoreShake, reduceStimulation]);
 
@@ -466,6 +478,9 @@ export default function PronunciationResultScreen({ navigation, route }) {
   }
 
   function handleTryAgain() {
+    // Encouragement on the way into the retry, not praise for the attempt
+    // just made — a calm student setting suppresses it.
+    playVoicePrompt("youCanDoIt", { reduceStimulation });
     setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
     // { pop: true } collapses the stack back to the existing LearnWord entry
     // instead of just moving it to the top — without it, this word's Tap
@@ -598,14 +613,32 @@ export default function PronunciationResultScreen({ navigation, route }) {
               </View>
             ) : isHighScore ? (
               <View style={styles.celebrationContent}>
-                <View
-                  style={[
-                    styles.resultIconWrap,
-                    { backgroundColor: theme.background },
-                  ]}
-                >
-                  <Ionicons name="sparkles" size={44} color={theme.button} />
-                </View>
+                {congratulationsImage ? (
+                  <View style={styles.congratsImageWrap}>
+                    <Image
+                      source={congratulationsImage}
+                      resizeMode="contain"
+                      style={styles.congratsImage}
+                      accessibilityLabel="Your buddy is celebrating with you"
+                    />
+                    {reduceStimulation ? null : (
+                      <Image
+                        source={CORRECT_STAMP_GIF}
+                        resizeMode="contain"
+                        style={styles.feedbackStamp}
+                      />
+                    )}
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.resultIconWrap,
+                      { backgroundColor: theme.background },
+                    ]}
+                  >
+                    <Ionicons name="sparkles" size={44} color={theme.button} />
+                  </View>
+                )}
                 <Text
                   style={[
                     styles.studentResultTitle,
@@ -638,7 +671,15 @@ export default function PronunciationResultScreen({ navigation, route }) {
                 ]}
               >
                 <View style={styles.lowScoreIconWrap}>
-                  <Ionicons name="refresh-circle" size={52} color={Colors.status.error} />
+                  {reduceStimulation ? (
+                    <Ionicons name="refresh-circle" size={52} color={Colors.status.error} />
+                  ) : (
+                    <Image
+                      source={WRONG_STAMP_GIF}
+                      resizeMode="contain"
+                      style={styles.lowScoreStamp}
+                    />
+                  )}
                 </View>
                 <Text
                   style={[
@@ -881,6 +922,27 @@ const styles = StyleSheet.create({
     borderRadius: 48,
     alignItems: "center",
     justifyContent: "center",
+  },
+  congratsImageWrap: {
+    width: 168,
+    height: 168,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  congratsImage: {
+    width: "100%",
+    height: "100%",
+  },
+  feedbackStamp: {
+    position: "absolute",
+    right: -4,
+    bottom: -4,
+    width: 62,
+    height: 62,
+  },
+  lowScoreStamp: {
+    width: 84,
+    height: 84,
   },
   lowScoreIconWrap: {
     width: 106,

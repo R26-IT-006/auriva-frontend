@@ -29,6 +29,8 @@ import {
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
 import { EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { getSoundLetters } from "./wordBank.js";
+import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
 import { ConfirmDialog } from "../../../../../components/common/ConfirmDialog";
 
@@ -86,10 +88,16 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
   const { isExitConfirmVisible, confirmExit, cancelExit } =
     useExitSessionGuard(navigation);
 
-  const orderedSounds = React.useMemo(
-    () => (word?.sounds || []).map((sound, index) => ({ ...sound, originalIndex: index })),
-    [word?.id],
-  );
+  const orderedSounds = React.useMemo(() => {
+    const letters = getSoundLetters(word);
+    return (word?.sounds || []).map((sound, index) => ({
+      ...sound,
+      // Children read letters, not IPA — the chip shows the letter group for
+      // this sound and keeps the phoneme only for the audio/scoring layers.
+      label: letters[index] || sound.text,
+      originalIndex: index,
+    }));
+  }, [word?.id]);
   const chips = React.useMemo(
     () => shuffleAvoidingIdentity(orderedSounds),
     [orderedSounds],
@@ -100,6 +108,10 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
   const [hasPlayedOnce, setHasPlayedOnce] = React.useState(false);
   const nudgeAnims = React.useRef({}).current;
   const chipEntranceIndex = React.useRef(new Map()).current;
+  // Each coaching line is spoken once per word: repeating it on every replay
+  // would talk over a child who is already working.
+  const hasPromptedReplayRef = React.useRef(false);
+  const hasPraisedRef = React.useRef(false);
 
   const isComplete = orderedSounds.length > 0 && nextIndex >= orderedSounds.length;
   const audioAsset = WORD_AUDIO_ASSETS[word?.id];
@@ -107,9 +119,16 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
   React.useEffect(() => {
     setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
     return () => {
+      stopVoicePrompt();
       unloadSoundRef(soundRef);
     };
   }, [setCurrentActivityStep]);
+
+  React.useEffect(() => {
+    if (!isComplete || hasPraisedRef.current) return;
+    hasPraisedRef.current = true;
+    playVoicePrompt("goodJob", { reduceStimulation });
+  }, [isComplete, reduceStimulation]);
 
   function getNudgeAnim(originalIndex) {
     if (!nudgeAnims[originalIndex]) {
@@ -147,6 +166,12 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
           setIsPlaying(false);
           sound.unloadAsync().catch(() => {});
           if (soundRef.current === sound) soundRef.current = null;
+          // First time through, point the child back at the button so they
+          // know the word can be heard as often as they need.
+          if (!hasPromptedReplayRef.current) {
+            hasPromptedReplayRef.current = true;
+            playVoicePrompt("listenAgain");
+          }
         }
       });
       await sound.replayAsync();
@@ -270,10 +295,10 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
                           isUpNext && !isDone && styles.soundChipUpNext,
                         ]}
                         accessibilityRole="button"
-                        accessibilityLabel={`Sound ${chip.text}`}
+                        accessibilityLabel={`Sound ${chip.label}`}
                       >
                         <Text style={[styles.soundChipText, isDone && styles.soundChipTextDone]}>
-                          {chip.text}
+                          {chip.label}
                         </Text>
                         {isDone ? (
                           <View style={styles.soundChipBadge}>
@@ -421,14 +446,14 @@ const styles = StyleSheet.create({
     fontFamily: Layout.fonts.bold,
   },
   chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
+    flexDirection: "column",
+    alignItems: "center",
     gap: 14,
   },
   soundChip: {
-    width: 84,
-    height: 96,
+    minWidth: 120,
+    paddingHorizontal: 18,
+    height: 86,
     borderRadius: 16,
     backgroundColor: "#FFFFFF",
     borderWidth: 2,

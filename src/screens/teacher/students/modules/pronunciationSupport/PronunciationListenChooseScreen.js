@@ -17,6 +17,7 @@ import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
 import { getWordImageSource, WORD_BANK } from "./wordBank.js";
+import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 import { WORD_AUDIO_ASSETS, WORD_AUDIO_IDS } from "./pronunciationAudioAssets.js";
 import {
   PRONUNCIATION_MODES,
@@ -188,7 +189,8 @@ function buildChoices(categoryId, targetWord, fieldSize = MAX_FIELD_SIZE, target
 function ChoiceCard({ item, index, state, onPress, width, disabled }) {
   const isCorrect = state === "correct";
   const isWrong = state === "wrong";
-  const imageSource = getWordImageSource(item);
+  const imageStyle = usePronunciationSessionStore((store) => store.imageStyle);
+  const imageSource = getWordImageSource(item, imageStyle);
 
   return (
     <EntranceItem index={index}>
@@ -237,6 +239,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
   const assessedWordId = route.params?.wordId || routeWord?.id;
   const targetPhoneme = route.params?.targetPhoneme || null;
   const theme = getAvatarTheme(student?.avatar_key);
+  const reduceStimulation = Boolean(student?.reduce_stimulation);
   const { isExitConfirmVisible, confirmExit, cancelExit } =
     useExitSessionGuard(navigation);
   const { width } = useWindowDimensions();
@@ -285,6 +288,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
 
     return () => {
+      stopVoicePrompt();
       if (soundRef.current) {
         soundRef.current.unloadAsync().catch(() => {});
         soundRef.current = null;
@@ -358,6 +362,15 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     choiceAttemptsRef.current = [...choiceAttemptsRef.current, item.id];
     setSelectedId(item.id);
     setAttempts(choiceAttemptsRef.current.length);
+
+    // Spoken feedback the moment the card is tapped — praise for the right
+    // picture, an invitation to retry for the wrong one. Never the word
+    // "wrong": the child can keep choosing until the round is right.
+    if (item.id === targetWord?.id) {
+      playVoicePrompt("goodJob", { reduceStimulation });
+    } else {
+      playVoicePrompt("tryOneMoreTime");
+    }
   }
 
   function handleNext() {

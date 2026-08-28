@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const LOCAL_API_HOST = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
-const DEFAULT_API_BASE_URL = `http://${LOCAL_API_HOST}:3000/api`;
+const DEFAULT_API_BASE_URL = `http://192.168.8.145:3000/api`;
 
 function normalizeApiBaseUrl(value) {
   if (!value) return DEFAULT_API_BASE_URL;
@@ -18,6 +18,16 @@ function getExpoHostApiBaseUrl() {
 
   if (!host || host === "localhost" || host === "127.0.0.1") {
     return DEFAULT_API_BASE_URL;
+  }
+
+  // Tunnel hosts (--tunnel) only proxy Metro, not the backend, so fall back to
+  // the explicitly configured base URL instead of pointing at :3000 there.
+  if (
+    /\.(exp\.direct|ngrok(-free)?\.app|ngrok\.io|trycloudflare\.com)$/.test(
+      host,
+    )
+  ) {
+    return null;
   }
 
   return `http://${host}:3000/api`;

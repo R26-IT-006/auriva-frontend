@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert, Switch } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert, Switch, Image } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,6 +15,7 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
+import { IMAGE_STYLES } from "./wordImageStyles.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
 import { AvatarIdentityBadge, EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
 
@@ -29,7 +30,7 @@ const PRONUNCIATION_MODE_OPTIONS = [
   {
     id: PRONUNCIATION_MODES.ALPHABET,
     title: "Alphabet Pronunciation",
-    subtitle: "Practise letter sounds one by one",
+    subtitle: "Practise spoken letter names one by one",
     icon: "text-outline",
     panelColor: "#DFF3E2",
   },
@@ -50,7 +51,11 @@ function CategoryCard({ item, index, selected, onPress, cardWidth, theme }) {
         <View
           style={[styles.categoryVisual, { backgroundColor: item.panelColor }]}
         >
-          <Ionicons name={item.icon} size={30} color={Colors.text.primary} />
+          {item.iconImage ? (
+            <Image source={item.iconImage} resizeMode="contain" style={styles.categoryIconImage} />
+          ) : (
+            <Ionicons name={item.icon} size={30} color={Colors.text.primary} />
+          )}
         </View>
         <View style={styles.categoryBody}>
           <Text style={styles.categoryTitle}>{item.title}</Text>
@@ -86,6 +91,9 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
   );
+  const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
+  const loadImageStyle = usePronunciationSessionStore((state) => state.loadImageStyle);
+  const setImageStyle = usePronunciationSessionStore((state) => state.setImageStyle);
   const { width } = useWindowDimensions();
   const isCompact = width < 720;
   // Downstream screens read `student` from navigation params, not the store,
@@ -101,6 +109,12 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
     setSelectedStudent(activeStudent);
     setCurrentActivityStep(PRONUNCIATION_STEPS.SETUP);
   }, [activeStudent, setCurrentActivityStep, setSelectedStudent]);
+
+  // Picture style is remembered per student on this device, so the teacher
+  // sets it once and every later session for that child starts the same way.
+  useEffect(() => {
+    loadImageStyle(studentId);
+  }, [loadImageStyle, studentId]);
 
   async function handleToggleReduceStimulation(value) {
     if (!studentId || savingSensorySetting) return;
@@ -261,6 +275,27 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
             />
           </View>
 
+          <View style={[styles.sensoryRow, styles.pictureStyleRow, { borderColor: theme.cardOutline }]}>
+            <View style={styles.sensoryIconWrap}>
+              <Ionicons name="color-palette-outline" size={20} color={theme.button} />
+            </View>
+            <View style={styles.sensoryCopy}>
+              <Text style={styles.sensoryTitle}>Cartoon pictures</Text>
+              <Text style={styles.sensorySubtitle}>
+                Swaps the photo on every word card for a simple cartoon drawing — easier to read
+                for a child who finds busy photos hard to follow. Words with no cartoon keep
+                their photo.
+              </Text>
+            </View>
+            <Switch
+              value={imageStyle === IMAGE_STYLES.CARTOON}
+              onValueChange={(value) =>
+                setImageStyle(value ? IMAGE_STYLES.CARTOON : IMAGE_STYLES.REAL, studentId)
+              }
+              trackColor={{ true: theme.button }}
+            />
+          </View>
+
           <View style={[styles.panelFooter, isCompact && styles.panelFooterCompact]}>
             <Text style={[styles.selectionText, { color: theme.headingText }]}>
               {selectedMode === PRONUNCIATION_MODES.ALPHABET
@@ -395,6 +430,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  categoryIconImage: {
+    width: 64,
+    height: 64,
+  },
   categoryBody: {
     paddingHorizontal: 10,
     paddingVertical: 10,
@@ -418,6 +457,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Layout.spacing.sm,
+  },
+  pictureStyleRow: {
+    marginTop: Layout.spacing.sm,
   },
   sensoryIconWrap: {
     width: 38,
