@@ -75,7 +75,10 @@ export default function LetterPracticeScreen({ route, navigation }) {
     // Feature 4 Step 3: a fresh interaction id per "start writing" action —
     // never per letter, never per render.
     const interactionId = createPreWritingInteractionId();
-    navigation.navigate(screen, { ...params, interactionId });
+    // Names this screen as where Back should return to, so a flow that
+    // detours through warm-ups still comes back HERE rather than to whatever
+    // stale frame the detours left behind. See utils/backToOrigin.js.
+    navigation.navigate(screen, { ...params, interactionId, originRoute: 'LetterPractice' });
   };
 
   const navigateToWriting = (ct, seq) => {

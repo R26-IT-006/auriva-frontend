@@ -72,6 +72,7 @@ import {
 } from '../../../utils/trajectoryFeatures';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import useGatedBack from '../../../utils/useGatedBack';
+import { goBackToOrigin } from '../../../utils/backToOrigin';
 // The shared letter-writing presentation - this screen and the demonstration
 // render the SAME component, in different modes.
 import LetterWritingStage from '../../../components/handwriting/LetterWritingStage';
@@ -80,6 +81,7 @@ import {
 } from '../../../components/handwriting/LetterWritingStage';
 import { instructionForSupport } from '../../../constants/childInstructions';
 import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
+import { hasCanvasDrawing } from '../../../utils/canvasDrawingState';
 import {
   PAD, COL_L, LETTER_CARD_SIZE, CANVAS_W, CANVAS_H, ASPECT, aspectX,
   LINE_1, LINE_2, LINE_3, LINE_4,
@@ -427,7 +429,25 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   // Leaving a learning activity is an adult decision — the back button
   // opens the parent gate first, exactly as LetterHomeScreen and the
   // Concept screens do. Cancelling navigates nowhere.
-  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
+  // Back returns to the interface this flow STARTED from, not one frame down.
+  //
+  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity'
+  // | 'HandwritingDemo') — a PUSH — and left with navigation.replace(nextRoute).
+  // replace() swaps the top frame, so each detour permanently leaves the frame
+  // it was pushed over behind it. After one category transition the stack reads
+  // [LetterPractice, UppercaseWriting, UppercaseWriting], and goBack() landed on that stale
+  // copy — a previous letter, mid-cycle, from before the detour. A second
+  // detour left two.
+  //
+  // goBackToOrigin pops to the named route instead, so the depth of the stack
+  // stops mattering. It falls back to goBack() when the origin is not below
+  // this screen (an assessment or Writing-Check entry), which is the previous
+  // behaviour and safe. Navigation only: nothing here writes an attempt,
+  // consumes a cycle, or replays a warm-up.
+  const backOrigin = route.params?.originRoute ?? 'LetterPractice';
+  const { requestBack, gateModal } = useGatedBack(
+    () => goBackToOrigin(navigation, backOrigin)
+  );
 
   const {
     student,
@@ -507,6 +527,11 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   const [attempt,      setAttempt]      = useState(1);
   const [currentPath,  setCurrentPath]  = useState([]);
   const [allPaths,     setAllPaths]     = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [hasDrawn,     setHasDrawn]     = useState(false);
   const [attemptFeedback, setAttemptFeedback] = useState(null);
   const [celebration,  setCelebration]  = useState(null);
@@ -1571,15 +1596,17 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         {/* Feedback pill */}
         {/* Action buttons */}
         <View style={styles.buttonsRow}>
-          <TouchableOpacity
-            style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
-            onPress={handleClear}
-            disabled={Boolean(attemptFeedback)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="refresh-outline" size={16} color={theme.headingText} />
-            <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
-          </TouchableOpacity>
+          {canClearCanvas && (
+            <TouchableOpacity
+              style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
+              onPress={handleClear}
+              disabled={Boolean(attemptFeedback)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="refresh-outline" size={16} color={theme.headingText} />
+              <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
+            </TouchableOpacity>
+          )}
 
           {hasDrawn && (
             <TouchableOpacity

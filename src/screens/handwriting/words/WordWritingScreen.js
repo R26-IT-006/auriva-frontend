@@ -49,7 +49,9 @@ import {
   WORD_SCREEN_W,
 } from '../../../constants/wordCanvasLayout';
 import useGatedBack from '../../../utils/useGatedBack';
+import { goBackToOrigin } from '../../../utils/backToOrigin';
 import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
+import { hasCanvasDrawing } from '../../../utils/canvasDrawingState';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -152,7 +154,25 @@ export default function WordWritingScreen({ route, navigation }) {
   // Leaving a learning activity is an adult decision — the back button
   // opens the parent gate first, exactly as LetterHomeScreen and the
   // Concept screens do. Cancelling navigates nowhere.
-  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
+  // Back returns to the interface this flow STARTED from, not one frame down.
+  //
+  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity'
+  // | 'HandwritingDemo') — a PUSH — and left with navigation.replace(nextRoute).
+  // replace() swaps the top frame, so each detour permanently leaves the frame
+  // it was pushed over behind it. After one category transition the stack reads
+  // [WordLetterSelect, WordWriting, WordWriting], and goBack() landed on that stale
+  // copy — a previous letter, mid-cycle, from before the detour. A second
+  // detour left two.
+  //
+  // goBackToOrigin pops to the named route instead, so the depth of the stack
+  // stops mattering. It falls back to goBack() when the origin is not below
+  // this screen (an assessment or Writing-Check entry), which is the previous
+  // behaviour and safe. Navigation only: nothing here writes an attempt,
+  // consumes a cycle, or replays a warm-up.
+  const backOrigin = route.params?.originRoute ?? 'WordLetterSelect';
+  const { requestBack, gateModal } = useGatedBack(
+    () => goBackToOrigin(navigation, backOrigin)
+  );
 
   const { student, theme } = route.params;
   const { selectedLetter, selectedWords, currentWordIndex, currentWord: wordEntry } = resolveWordSession(route.params);
@@ -167,6 +187,11 @@ export default function WordWritingScreen({ route, navigation }) {
   const [attempt,       setAttempt]       = useState(1);
   const [currentPath,   setCurrentPath]   = useState([]);
   const [allPaths,      setAllPaths]      = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [hasDrawn,      setHasDrawn]      = useState(false);
   const [feedbackData,  setFeedbackData]  = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -669,15 +694,17 @@ export default function WordWritingScreen({ route, navigation }) {
         {/* â”€â”€ Buttons â”€â”€ */}
         {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', fontFamily: 'Nunito_700Bold', textAlign:'center' }}>{saveError}</Text>}
         <View style={styles.buttonsRow}>
-          <TouchableOpacity
-            style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
-            onPress={resetCanvas}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Clear the canvas"
-          >
-            <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
-          </TouchableOpacity>
+          {canClearCanvas && (
+            <TouchableOpacity
+              style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
+              onPress={resetCanvas}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Clear the canvas"
+            >
+              <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
+            </TouchableOpacity>
+          )}
 
           {hasDrawn && (
             <TouchableOpacity

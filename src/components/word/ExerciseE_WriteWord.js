@@ -15,6 +15,7 @@ import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from 
 // notifiers so the break prompt never interrupts a stroke drawn here.
 import { useLearningSession } from '../../context/LearningSessionContext';
 import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
 
 // Shared with every other screen that asks for this action, so the child
 // hears one sentence for one task — and one future recording covers it.
@@ -48,6 +49,11 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
   const { notifyStrokeStart, notifyStrokeEnd } = useLearningSession();
   const [currentPath, setCurrentPath] = useState([]);
   const [allPaths, setAllPaths] = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [done, setDone] = useState(false);
   const [result, setResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -286,17 +292,19 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
             <Text style={styles.layoutHintText}>{result.layoutMessage}</Text>
           )}
           {saveError && <Text accessibilityRole="alert" style={styles.retryText}>{saveError}</Text>}
-          <TouchableOpacity
-            style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
-            onPress={handleClear}
-            activeOpacity={0.72}
-            disabled={done}
-            accessibilityRole="button"
-            accessibilityLabel="Clear the canvas"
-          >
-            <Ionicons name="refresh" size={16} color={theme.headingText} />
-            <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
-          </TouchableOpacity>
+          {canClearCanvas && (
+            <TouchableOpacity
+              style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
+              onPress={handleClear}
+              activeOpacity={0.72}
+              disabled={done}
+              accessibilityRole="button"
+              accessibilityLabel="Clear the canvas"
+            >
+              <Ionicons name="refresh" size={16} color={theme.headingText} />
+              <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[

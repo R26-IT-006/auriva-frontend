@@ -2481,6 +2481,18 @@ function LetterMotorHistoryList({ history }) {
 }
 
 // ─── Homework Practice ────────────────────────────────────────────────────
+
+/**
+ * The target letter in the case the child is practising it. `target_letter`
+ * is stored in that case already, but a worksheet row is only meaningful
+ * alongside its case_type — this pairs them so `c` is never shown where `C`
+ * was meant.
+ */
+function displayWorksheetLetter(worksheet) {
+  const raw = String(worksheet?.target_letter ?? '').replace(/[^A-Za-z]/g, '').slice(0, 1);
+  if (!raw) return '—';
+  return worksheet?.case_type === 'uppercase' ? raw.toUpperCase() : raw.toLowerCase();
+}
 //
 // Turns an approved adaptive practice recommendation into a printable
 // worksheet, then accepts the completed paper back for the teacher to read.
@@ -2526,6 +2538,11 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
   // The submitted proof being viewed, if any. Separate from reprintTarget so
   // the two artifacts can never be confused for one another.
   const [proofTarget, setProofTarget] = useState(null);
+  // The active worksheet's workflow lives behind View. The report card itself
+  // stays a summary: letter, case, status, date — the four things a teacher
+  // scans for. Upload and Review used to sit inline underneath it, so the
+  // section carried a whole workflow inside a progress report.
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const loading = candidates.status === 'loading' || history.status === 'loading';
   const active = history.active ?? null;
@@ -2840,100 +2857,42 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
           <Text style={f11.patternCaption}>{EMPTY_NO_RECOMMENDATION}</Text>
         ) : null}
 
-        {/* ── B. Active worksheet ── */}
+        {/* ── B. Active worksheet — SUMMARY ONLY ──
+            Four facts and one way in. Everything that DOES something —
+            preview, upload, review — moved behind View, into the detail
+            sheet below. Case is shown explicitly: `c` and `C` are different
+            worksheets and the letter alone cannot say which. */}
         {active ? (
           <View>
             <Text style={mda.sectionLabel}>Active Homework Worksheet</Text>
             <View style={hw.row}>
-              <Text style={hw.rowLabel}>Target Letter</Text>
-              <Text style={hw.rowValueBig}>{active.target_letter}</Text>
+              <Text style={hw.rowLabel}>Letter</Text>
+              <Text style={hw.rowValueBig}>{displayWorksheetLetter(active)}</Text>
             </View>
             <View style={hw.row}>
-              <Text style={hw.rowLabel}>Practice Type</Text>
-              <Text style={hw.rowValue}>{getIntensityLabel(active.worksheet_intensity)}</Text>
-            </View>
-            <View style={hw.row}>
-              <Text style={hw.rowLabel}>Assigned</Text>
-              <Text style={hw.rowValue}>
-                {formatWorksheetDate(active.assigned_at ?? active.generated_at) || 'Not available'}
-              </Text>
+              <Text style={hw.rowLabel}>Case</Text>
+              <Text style={hw.rowValue}>{formatCaseType(active.case_type)}</Text>
             </View>
             <View style={hw.row}>
               <Text style={hw.rowLabel}>Status</Text>
               <Text style={hw.rowValue}>{getWorksheetStatusLine(active)}</Text>
             </View>
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Generated</Text>
+              <Text style={hw.rowValue}>
+                {formatWorksheetDate(active.assigned_at ?? active.generated_at) || 'Not available'}
+              </Text>
+            </View>
 
             <View style={hw.btnRow}>
               <TouchableOpacity
-                style={[hw.primaryBtn, busy && hw.btnDisabled]}
-                onPress={gPreview.requestBack}
-                disabled={busy}
-                accessibilityLabel="Preview and print worksheet — needs a code"
+                style={hw.primaryBtn}
+                onPress={() => setDetailOpen(true)}
+                accessibilityLabel={`View homework worksheet for ${displayWorksheetLetter(active)}`}
               >
-                <Text style={hw.primaryBtnText}>Preview / Print</Text>
+                <Text style={hw.primaryBtnText}>View</Text>
               </TouchableOpacity>
             </View>
-
-            {active.status === 'submitted' && latestSubmission ? (
-              <Text style={f11.patternCaption}>{PENDING_REVIEW_TEXT}</Text>
-            ) : (
-              <>
-                <Text style={hw.rowLabel}>Upload Completed Worksheet</Text>
-                <View style={hw.btnRow}>
-                  <TouchableOpacity
-                    style={[hw.secondaryBtn, busy && hw.btnDisabled]}
-                    onPress={gCamera.requestBack}
-                    disabled={busy}
-                    accessibilityLabel="Take photo of completed worksheet — needs a code"
-                  >
-                    <Text style={hw.secondaryBtnText}>Take Photo</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[hw.secondaryBtn, busy && hw.btnDisabled]}
-                    onPress={gGallery.requestBack}
-                    disabled={busy}
-                    accessibilityLabel="Choose worksheet image from gallery — needs a code"
-                  >
-                    <Text style={hw.secondaryBtnText}>Choose from Gallery</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            {/* ── D. Teacher review of a returned worksheet ── */}
-            {latestSubmission && latestSubmission.review_status === 'pending_review' ? (
-              <View style={{ marginTop: 10 }}>
-                <Text style={mda.sectionLabel}>Teacher Review</Text>
-                {REVIEW_OPTIONS.map((o) => (
-                  <TouchableOpacity
-                    key={o.key}
-                    style={hw.radioRow}
-                    onPress={() => setReviewChoice(o.key)}
-                    accessibilityLabel={o.label}
-                  >
-                    <View style={[hw.radio, reviewChoice === o.key && hw.radioOn]} />
-                    <Text style={hw.radioText}>{o.label}</Text>
-                  </TouchableOpacity>
-                ))}
-                <TextInput
-                  style={hw.input}
-                  value={reviewComment}
-                  onChangeText={setReviewComment}
-                  placeholder="Teacher comment (optional)"
-                  placeholderTextColor="#94A3B8"
-                  multiline
-                  accessibilityLabel="Teacher comment"
-                />
-                <TouchableOpacity
-                  style={[hw.primaryBtn, busy && hw.btnDisabled]}
-                  onPress={gReview.requestBack}
-                  disabled={busy}
-                  accessibilityLabel="Save review — needs a code"
-                >
-                  <Text style={hw.primaryBtnText}>Save Review</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
           </View>
         ) : null}
 
@@ -3043,6 +3002,132 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
           </View>
         </View>
       </Modal>
+
+
+      {/* Homework worksheet detail — everything the summary card no longer
+          shows. Status-aware: Preview is always available, upload only while
+          the sheet is still out, and the review form only for a submission
+          actually awaiting review. All actions keep their existing parent
+          gate, so the permission model is unchanged. */}
+      {active ? (
+      <Modal
+        visible={detailOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDetailOpen(false)}
+      >
+        <View style={pv.backdrop}>
+          <View style={pv.sheet}>
+            <View style={pv.head}>
+              <Text style={pv.title} numberOfLines={1}>
+                Homework worksheet · {displayWorksheetLetter(active)}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setDetailOpen(false)}
+                accessibilityLabel="Close homework worksheet detail"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={20} color="#475569" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView>
+              <View style={hw.row}>
+                <Text style={hw.rowLabel}>Case</Text>
+                <Text style={hw.rowValue}>{formatCaseType(active?.case_type)}</Text>
+              </View>
+              <View style={hw.row}>
+                <Text style={hw.rowLabel}>Practice Type</Text>
+                <Text style={hw.rowValue}>{getIntensityLabel(active?.worksheet_intensity)}</Text>
+              </View>
+              <View style={hw.row}>
+                <Text style={hw.rowLabel}>Status</Text>
+                <Text style={hw.rowValue}>{active ? getWorksheetStatusLine(active) : ''}</Text>
+              </View>
+              <View style={hw.row}>
+                <Text style={hw.rowLabel}>Assigned</Text>
+                <Text style={hw.rowValue}>
+                  {formatWorksheetDate(active?.assigned_at ?? active?.generated_at) || 'Not available'}
+                </Text>
+              </View>
+
+            <View style={hw.btnRow}>
+              <TouchableOpacity
+                style={[hw.primaryBtn, busy && hw.btnDisabled]}
+                onPress={gPreview.requestBack}
+                disabled={busy}
+                accessibilityLabel="Preview and print worksheet — needs a code"
+              >
+                <Text style={hw.primaryBtnText}>Preview / Print</Text>
+              </TouchableOpacity>
+            </View>
+
+            {active?.status === 'submitted' && latestSubmission ? (
+              <Text style={f11.patternCaption}>{PENDING_REVIEW_TEXT}</Text>
+            ) : (
+              <>
+                <Text style={hw.rowLabel}>Upload Completed Worksheet</Text>
+                <View style={hw.btnRow}>
+                  <TouchableOpacity
+                    style={[hw.secondaryBtn, busy && hw.btnDisabled]}
+                    onPress={gCamera.requestBack}
+                    disabled={busy}
+                    accessibilityLabel="Take photo of completed worksheet — needs a code"
+                  >
+                    <Text style={hw.secondaryBtnText}>Take Photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[hw.secondaryBtn, busy && hw.btnDisabled]}
+                    onPress={gGallery.requestBack}
+                    disabled={busy}
+                    accessibilityLabel="Choose worksheet image from gallery — needs a code"
+                  >
+                    <Text style={hw.secondaryBtnText}>Choose from Gallery</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {/* ── D. Teacher review of a returned worksheet ── */}
+            {latestSubmission && latestSubmission.review_status === 'pending_review' ? (
+              <View style={{ marginTop: 10 }}>
+                <Text style={mda.sectionLabel}>Teacher Review</Text>
+                {REVIEW_OPTIONS.map((o) => (
+                  <TouchableOpacity
+                    key={o.key}
+                    style={hw.radioRow}
+                    onPress={() => setReviewChoice(o.key)}
+                    accessibilityLabel={o.label}
+                  >
+                    <View style={[hw.radio, reviewChoice === o.key && hw.radioOn]} />
+                    <Text style={hw.radioText}>{o.label}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TextInput
+                  style={hw.input}
+                  value={reviewComment}
+                  onChangeText={setReviewComment}
+                  placeholder="Teacher comment (optional)"
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  accessibilityLabel="Teacher comment"
+                />
+                <TouchableOpacity
+                  style={[hw.primaryBtn, busy && hw.btnDisabled]}
+                  onPress={gReview.requestBack}
+                  disabled={busy}
+                  accessibilityLabel="Save review — needs a code"
+                >
+                  <Text style={hw.primaryBtnText}>Save Review</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      ) : null}
 
       {gGenerate.gateModal}
       {gPreview.gateModal}

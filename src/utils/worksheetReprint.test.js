@@ -133,7 +133,12 @@ describe('frozen section settings are honoured', () => {
   it('the worksheet code and target letter still print', () => {
     const html = buildWorksheetHtml({ student: STUDENT, worksheet: frozenWorksheet(), plan: null });
     expect(html).toContain('HW-2026-0001');
-    expect(html).toContain('C c');
+    // A worksheet prints ONE case — the one the child is practising. This
+    // fixture is lowercase c, and the header used to read 'C c', which is
+    // exactly the mixing this task removed.
+    expect(html).toContain('>c</div>');
+    expect(html).not.toContain('C c');
+    expect(html).toContain('Lowercase');
     expect(html).toContain('Test Child');
   });
 });

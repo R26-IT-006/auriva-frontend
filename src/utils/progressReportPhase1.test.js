@@ -182,8 +182,11 @@ describe('M — the submitted proof is viewable, and distinct from the worksheet
   });
 
   it('the viewer is read-only — it triggers no review or status change', () => {
-    const modal = report.slice(report.indexOf('visible={!!proofTarget}'),
-                               report.indexOf('{gGenerate.gateModal}'));
+    // Bounded to the proof viewer's OWN modal. The homework-detail sheet was
+    // added after it and legitimately contains the review form, so slicing to
+    // the gate modals now swallows a different component's markup.
+    const start = report.indexOf('visible={!!proofTarget}');
+    const modal = report.slice(start, report.indexOf('</Modal>', start));
     expect(modal).not.toMatch(/apiReviewSubmission|doReview|setReviewChoice|markAssigned/);
   });
 

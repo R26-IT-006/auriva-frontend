@@ -92,7 +92,10 @@ describe('TeacherReport Homework Practice card', () => {
 
   it('shows the recommendation with target, reason and practice sequence', () => {
     expect(card).toContain('Homework Recommendation');
-    expect(card).toContain('Target Letter');
+    // The summary card is Letter / Case / Status / Generated. 'Target Letter'
+    // was its old label, before the workflow moved behind View.
+    expect(card).toContain('Letter');
+    expect(card).toContain('Case');
     expect(card).toContain('Reason');
     expect(card).toMatch(/recommendation\.rationale/);
     expect(card).toMatch(/PRACTICE_SEQUENCE_TEXT/);
@@ -121,13 +124,17 @@ describe('TeacherReport Homework Practice card', () => {
 
   it('shows the active worksheet with target, practice type, date and status', () => {
     expect(card).toContain('Active Homework Worksheet');
-    expect(card).toMatch(/getIntensityLabel\(active\.worksheet_intensity\)/);
+    // Practice Type moved into the detail sheet behind View, where `active`
+    // is read optionally because the modal renders alongside the summary.
+    expect(card).toMatch(/getIntensityLabel\(active\?\.worksheet_intensity\)/);
     expect(card).toMatch(/getWorksheetStatusLine\(active\)/);
     expect(card).toMatch(/formatWorksheetDate\(active\.assigned_at \?\? active\.generated_at\)/);
   });
 
   it('offers upload only while not yet submitted, and shows pending afterwards', () => {
-    expect(card).toMatch(/active\.status === 'submitted' && latestSubmission/);
+    // Optional-chained since the workflow moved into a modal, whose children
+    // React builds regardless of `visible`.
+    expect(card).toMatch(/active\?\.status === 'submitted' && latestSubmission/);
     expect(card).toMatch(/PENDING_REVIEW_TEXT/);
     expect(card).toContain('Take Photo');
     expect(card).toContain('Choose from Gallery');
@@ -255,7 +262,7 @@ describe('periodic report and PDF', () => {
   it('the PDF renders a Home Practice section with an activity table', () => {
     expect(pdf).toContain("'Home Practice'");
     expect(pdf).toMatch(/buildHomePracticeHtml/);
-    expect(pdf).toContain('Target Letter');
+    expect(pdf).toContain('Letter');
     expect(pdf).toContain('Activity');
   });
 

@@ -36,9 +36,13 @@ import { LOWERCASE_LETTER_PATHS, UPPERCASE_LETTER_PATHS } from '../constants/act
 // The shared expo-sharing wrapper + filename sanitizer. Dependency-free at
 // module level, so the pure builders above stay unit-testable.
 import { sharePdfFile, sanitizeForFilename } from './pdfShare';
+import { A4, REPEATS, resolveRowHeights } from './worksheetLayoutA4';
 
 // ─── Page geometry (A4 portrait, mm) ────────────────────────────────────────
-const PAGE = { width: 210, height: 297, margin: 14 };
+const PAGE = { width: A4.widthMm, height: A4.heightMm, margin: A4.marginMm };
+
+/** The letter grid. Geometry only — printed size is passed separately, in mm. */
+const GLYPH_UNITS = 24;
 
 // Guideline band: top / mid (x-height) / baseline, like ruled practice paper.
 const BAND = { top: 0.0, mid: 0.36, base: 0.64, descender: 0.92 };
@@ -72,9 +76,15 @@ function getLetterPath(letter, caseType) {
  * One letter glyph as SVG, drawn from the real waypoints.
  * `dotted` renders the tracing form; solid renders the model letter.
  */
-function letterGlyphSvg(letter, caseType, size, { dotted = true, showStart = true } = {}) {
+function letterGlyphSvg(letter, caseType, printMm, { dotted = true, showStart = true } = {}) {
   const strokes = getLetterPath(letter, caseType);
   if (strokes.length === 0) return '';
+
+  // Geometry stays on a fixed 24-unit grid — the canonical letter shape is
+  // untouched — while the PRINTED size is stated in millimetres. The old
+  // sheet used the same number for both, so a "24" glyph printed at 24px
+  // (~6mm) and no amount of layout work made it bigger.
+  const size = GLYPH_UNITS;
 
   const dash = dotted ? ' stroke-dasharray="2.2 2.6"' : '';
   const colour = dotted ? '#9AA3B2' : '#111827';
@@ -95,7 +105,7 @@ function letterGlyphSvg(letter, caseType, size, { dotted = true, showStart = tru
     ? `<circle cx="${(first.fx * size).toFixed(2)}" cy="${(first.fy * size).toFixed(2)}" r="${(size * 0.05).toFixed(2)}" fill="#111827"/>`
     : '';
 
-  return `<svg class="glyph" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${guidelinesSvg(size)}${paths}${start}</svg>`;
+  return `<svg class="glyph" width="${printMm}mm" height="${printMm}mm" viewBox="0 0 ${size} ${size}">${guidelinesSvg(size)}${paths}${start}</svg>`;
 }
 
 /** Faint top / x-height / baseline guides inside a glyph box. */
@@ -130,16 +140,19 @@ const SHAPE_MOTIFS = {
   curve_wave:      (x, u) => `M${x + u * 0.05},${u * 0.5} Q${x + u * 0.28},${u * 0.12} ${x + u * 0.5},${u * 0.5} Q${x + u * 0.72},${u * 0.88} ${x + u * 0.95},${u * 0.5}`,
 };
 
-function shapeRowSvg(shapeId, { count = 7, unit = 14 } = {}) {
+function shapeRowSvg(shapeId, { count = REPEATS.warmUpShapes, heightMm = 15 } = {}) {
   const motif = SHAPE_MOTIFS[shapeId];
   if (!motif) return '';
-  const width = count * unit;
+  // The motif is drawn in a square cell, so the cell's side IS the row height
+  // and the shape is as tall as the space allows. Height is stated in mm so
+  // the printed size is the size this module budgeted for.
+  const unit = 100 / count;
   const paths = Array.from({ length: count }, (_, i) =>
     `<path d="${motif(i * unit, unit)}" fill="none" stroke="#9AA3B2" stroke-width="1.1" stroke-linecap="round" stroke-dasharray="2.2 2.4"/>`
   ).join('');
   // The first motif gets a start dot so the child knows where to begin.
-  const startDot = `<circle cx="${unit * 0.5}" cy="${shapeId === 'horizontal_line' ? unit * 0.5 : unit * 0.15}" r="1.5" fill="#111827"/>`;
-  return `<svg class="shaperow" width="100%" height="${unit}" viewBox="0 0 ${width} ${unit}" preserveAspectRatio="xMinYMid meet">${paths}${startDot}</svg>`;
+  const startDot = `<circle cx="${unit * 0.5}" cy="${shapeId === 'horizontal_line' ? unit * 0.5 : unit * 0.15}" r="1.6" fill="#111827"/>`;
+  return `<svg class="shaperow" width="100%" height="${heightMm}mm" viewBox="0 0 100 ${unit}" preserveAspectRatio="xMidYMid meet">${paths}${startDot}</svg>`;
 }
 
 function section(number, title, instruction, body) {
@@ -215,18 +228,30 @@ export function buildWorksheetHtml({ student, worksheet, plan: livePlan = null }
   const plan = resolveWorksheetPlan({ worksheet, plan: livePlan });
   const letter = worksheet?.target_letter ?? '';
   const caseType = worksheet?.case_type === 'uppercase' ? 'uppercase' : 'lowercase';
-  // Both forms are shown together (C / c) — the child practises the letter, and
-  // the pairing is the light recognition step in Section 6.
-  const upper = letter.toUpperCase();
-  const lower = letter.toLowerCase();
+  // ONE case, and it is the one the child is struggling with.
+  //
+  // case_type was never lost on the way here — the report sends it, the row
+  // stores it, and it is read two lines above. This renderer simply used to
+  // override it, printing `C c` in the header and a row of each in sections 3
+  // and 4. A child sent home to practise lowercase `c` got half a sheet of
+  // `C`, and the sheet could not say which one mattered. `c` and `C` are
+  // different targets with different strokes; a worksheet is for one of them.
+  const target = caseType === 'uppercase' ? letter.toUpperCase() : letter.toLowerCase();
   const extended = worksheet?.worksheet_intensity === 'extended';
+
+  // The heights this sheet will really print at. A light plan gets the ideal
+  // sizes; a heavy one (two strokes, extended, an emphasised family) is scaled
+  // down evenly rather than spilling onto a second page.
+  const rowH = resolveRowHeights(plan, {
+    extended, hasTeacherNote: Boolean(worksheet?.teacher_note),
+  });
 
   // ── Section 1: motor warm-up ──
   const warmUp = (plan?.warmUp ?? []);
   const warmUpBody = warmUp.length
     ? warmUp.map((shape) => {
         const rows = Array.from({ length: shape.rows ?? 1 },
-          () => `<div class="rowbox">${shapeRowSvg(shape.id)}</div>`).join('');
+          () => `<div class="rowbox">${shapeRowSvg(shape.id, { heightMm: rowH.warmUpRow })}</div>`).join('');
         return `<div class="shapeblock"><div class="shapelabel">${escapeHtml(shape.label)}</div>${rows}</div>`;
       }).join('')
     : '<p class="ws-note">Movement practice for this letter is not set up yet.</p>';
@@ -234,23 +259,31 @@ export function buildWorksheetHtml({ student, worksheet, plan: livePlan = null }
   // ── Section 2: shape practice, large -> small ──
   const primary = plan?.primaryShape ?? null;
   const sizes = plan?.shapePracticeSizes ?? ['large', 'medium', 'small'];
-  const SIZE_UNIT = { large: 26, medium: 19, small: 14 };
+  // Large -> small still steps the movement down toward writing scale, but
+  // every step stays a usable motor space: `small` is 14mm tall with 5
+  // repetitions, not a row of eight thumbnails.
   const shapeBody = primary
-    ? `<div class="shapeblock">${sizes.map((s) =>
-        `<div class="rowbox">${shapeRowSvg(primary.id, { count: s === 'large' ? 4 : s === 'medium' ? 6 : 8, unit: SIZE_UNIT[s] ?? 16 })}</div>`
+    ? `<div class="shapeblock">${sizes.map((size) =>
+        `<div class="rowbox">${shapeRowSvg(primary.id, {
+          count: REPEATS.shapePractice[size] ?? REPEATS.shapePractice.medium,
+          heightMm: rowH.shapeRow[size] ?? rowH.shapeRow.medium,
+        })}</div>`
       ).join('')}</div>`
     : '';
 
   // ── Section 3: trace ── two rows, uppercase then lowercase.
-  const tracePerRow = plan?.trace?.per_row ?? 5;
-  const traceRow = (ch) =>
-    `<div class="glyphrow">${Array.from({ length: tracePerRow }, () => letterGlyphSvg(ch, ch === upper ? 'uppercase' : 'lowercase', 24)).join('')}</div>`;
+  const tracePerRow = plan?.trace?.per_row ?? REPEATS.traceGlyphs;
+  const traceRow = () =>
+    `<div class="glyphrow">${Array.from({ length: tracePerRow },
+      () => letterGlyphSvg(target, caseType, rowH.glyphRow)).join('')}</div>`;
 
   // ── Section 4: copy ── one solid model, then guided blanks.
-  const copyRow = (ch) => `<div class="glyphrow">
-      ${letterGlyphSvg(ch, ch === upper ? 'uppercase' : 'lowercase', 24, { dotted: false, showStart: false })}
+  const copyBlanks = plan?.copy?.blanks_per_row ?? REPEATS.copyBlanks;
+  const copyRow = () => `<div class="glyphrow">
+      ${letterGlyphSvg(target, caseType, rowH.glyphRow, { dotted: false, showStart: false })}
       <span class="copyarrow">&rarr;</span>
-      ${Array.from({ length: plan?.copy?.blanks_per_row ?? 4 }, () => `<svg class="glyph" width="24" height="24" viewBox="0 0 24 24">${guidelinesSvg(24)}</svg>`).join('')}
+      ${Array.from({ length: copyBlanks },
+        () => `<svg class="glyph" width="${rowH.glyphRow}mm" height="${rowH.glyphRow}mm" viewBox="0 0 ${GLYPH_UNITS} ${GLYPH_UNITS}">${guidelinesSvg(GLYPH_UNITS)}</svg>`).join('')}
     </div>`;
 
   // ── Section 5: independent ── guidelines only.
@@ -258,7 +291,7 @@ export function buildWorksheetHtml({ student, worksheet, plan: livePlan = null }
   // sheet keeps the exact number of rows it was printed with.
   const freeRowCount = plan?.independent?.rows ?? (extended ? 3 : 2);
   const freeRows = Array.from({ length: freeRowCount },
-    () => `<div class="rowbox">${writingRowSvg(100, 16)}</div>`).join('');
+    () => `<div class="rowbox">${writingRowSvg(100, rowH.writingRow)}</div>`).join('');
 
   const noteBlock = worksheet?.teacher_note
     ? `<div class="ws-teachernote"><strong>Note:</strong> ${escapeHtml(worksheet.teacher_note)}</div>`
@@ -268,27 +301,29 @@ export function buildWorksheetHtml({ student, worksheet, plan: livePlan = null }
   @page { size: A4 portrait; margin: ${PAGE.margin}mm; }
   * { box-sizing: border-box; }
   body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #111827; margin: 0; }
-  .ws-title { font-size: 20px; font-weight: 700; margin: 0 0 2px 0; }
-  .ws-sub { font-size: 11px; color: #6B7280; margin: 0 0 10px 0; }
-  .ws-fields { display: flex; gap: 14px; font-size: 11px; margin-bottom: 12px; }
-  .ws-fields div { flex: 1; border-bottom: 1px solid #9AA3B2; padding-bottom: 3px; }
-  .ws-target { display: flex; align-items: center; gap: 10px; border: 1.5px solid #111827;
-               border-radius: 6px; padding: 6px 12px; margin-bottom: 14px; }
-  .ws-target .big { font-size: 30px; font-weight: 700; letter-spacing: 4px; }
+  .ws-title { font-size: 22px; font-weight: 700; margin: 0 0 2px 0; }
+  .ws-sub { font-size: 11px; color: #6B7280; margin: 0 0 6px 0; }
+  .ws-fields { display: flex; gap: 16px; font-size: 12px; margin-bottom: 6px; }
+  .ws-fields div { flex: 1; border-bottom: 1px solid #9AA3B2; padding-bottom: 4px; }
+  .ws-target { display: flex; align-items: center; justify-content: space-between;
+               border: 1.5px solid #111827; border-radius: 6px;
+               padding: 4px 14px; margin-bottom: 6px; }
+  .ws-target .big { font-size: 40px; font-weight: 700; line-height: 1.1; }
   .ws-target .lbl { font-size: 10px; color: #6B7280; text-transform: uppercase; letter-spacing: 1px; }
-  .ws-section { margin-bottom: 13px; page-break-inside: avoid; }
-  .ws-head { display: flex; align-items: center; gap: 7px; border-bottom: 1px solid #E5E7EB; padding-bottom: 3px; }
-  .ws-num { width: 17px; height: 17px; border-radius: 50%; background: #111827; color: #fff;
-            font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-  .ws-head h2 { font-size: 12.5px; margin: 0; font-weight: 700; }
-  .ws-instr { font-size: 11px; color: #374151; margin: 4px 0 6px 0; }
+  .ws-case { font-size: 11px; color: #374151; text-transform: uppercase; letter-spacing: 1.5px; }
+  .ws-section { margin-bottom: 4px; page-break-inside: avoid; }
+  .ws-head { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #E5E7EB; padding-bottom: 3px; }
+  .ws-num { width: 18px; height: 18px; border-radius: 50%; background: #111827; color: #fff;
+            font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .ws-head h2 { font-size: 13px; margin: 0; font-weight: 700; }
+  .ws-instr { font-size: 11px; color: #374151; margin: 3px 0 3px 0; }
   .ws-note { font-size: 10.5px; color: #6B7280; font-style: italic; }
-  .shapeblock { margin-bottom: 5px; }
-  .shapelabel { font-size: 9.5px; color: #6B7280; margin-bottom: 1px; }
-  .rowbox { border-bottom: 0.5px solid #E5E7EB; padding: 2px 0; margin-bottom: 3px; }
-  .glyphrow { display: flex; align-items: center; gap: 13px; margin-bottom: 5px; }
+  .shapeblock { margin-bottom: 2px; }
+  .shapelabel { font-size: 10px; color: #6B7280; margin-bottom: 0; }
+  .rowbox { border-bottom: 0.5px solid #E5E7EB; margin-bottom: 1.5mm; }
+  .glyphrow { display: flex; align-items: center; gap: 8mm; margin-bottom: 1mm; }
   .glyph { display: block; }
-  .copyarrow { color: #9AA3B2; font-size: 13px; }
+  .copyarrow { color: #9AA3B2; font-size: 15px; }
   .ws-teachernote { font-size: 10.5px; border-left: 2.5px solid #111827; padding-left: 7px; margin-top: 10px; }
   .ws-foot { margin-top: 12px; font-size: 9px; color: #9AA3B2; display: flex; justify-content: space-between; }
   </style></head><body>
@@ -302,13 +337,14 @@ export function buildWorksheetHtml({ student, worksheet, plan: livePlan = null }
   </div>
 
   <div class="ws-target">
-    <div><div class="lbl">Today&rsquo;s letter</div><div class="big">${escapeHtml(upper)} ${escapeHtml(lower)}</div></div>
+    <div><div class="lbl">Today&rsquo;s letter</div><div class="big">${escapeHtml(target)}</div></div>
+    <div class="ws-case">${caseType === 'uppercase' ? 'Uppercase' : 'Lowercase'}</div>
   </div>
 
   ${section(1, 'Warm Up', 'Trace the shapes.', warmUpBody)}
   ${primary ? section(2, 'Shape Practice', 'Trace the shape. Start big, then smaller.', shapeBody) : ''}
-  ${section(3, 'Trace the Letter', 'Trace the letter. Start at the dot.', traceRow(upper) + traceRow(lower))}
-  ${section(4, 'Copy the Letter', 'Copy the letter in the spaces.', copyRow(upper) + copyRow(lower))}
+  ${section(3, 'Trace the Letter', 'Trace the letter. Start at the dot.', traceRow())}
+  ${section(4, 'Copy the Letter', 'Copy the letter in the spaces.', copyRow())}
   ${section(5, 'Write on Your Own', 'Write the letter yourself.', freeRows)}
 
   ${noteBlock}

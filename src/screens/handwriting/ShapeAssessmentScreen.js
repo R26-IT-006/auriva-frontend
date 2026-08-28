@@ -42,6 +42,7 @@ import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../utils/collectionSession';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -264,6 +265,11 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const [completedShapes,   setCompletedShapes]   = useState([]);
   const [currentPath,       setCurrentPath]       = useState([]);
   const [allPaths,          setAllPaths]          = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [showNext,          setShowNext]          = useState(false);
   const [reduceMotion,      setReduceMotion]      = useState(false);
 
@@ -667,14 +673,16 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
             </View>
 
             <View style={styles.buttonsRow}>
-              <TouchableOpacity
-                style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
-                onPress={handleClear}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="refresh" size={18} color={theme.button} />
-                <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
-              </TouchableOpacity>
+              {canClearCanvas && (
+                <TouchableOpacity
+                  style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
+                  onPress={handleClear}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="refresh" size={18} color={theme.button} />
+                  <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
+                </TouchableOpacity>
+              )}
 
               {showNext && (
                 <TouchableOpacity

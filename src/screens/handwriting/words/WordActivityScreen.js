@@ -46,6 +46,7 @@ import ExerciseD_SpellWord   from '../../../components/word/ExerciseD_SpellWord'
 import ExerciseE_WriteWord   from '../../../components/word/ExerciseE_WriteWord';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import useGatedBack from '../../../utils/useGatedBack';
+import { goBackToOrigin } from '../../../utils/backToOrigin';
 import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -87,7 +88,25 @@ export default function WordActivityScreen({ route, navigation }) {
   // Leaving a learning activity is an adult decision — the back button
   // opens the parent gate first, exactly as LetterHomeScreen and the
   // Concept screens do. Cancelling navigates nowhere.
-  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
+  // Back returns to the interface this flow STARTED from, not one frame down.
+  //
+  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity'
+  // | 'HandwritingDemo') — a PUSH — and left with navigation.replace(nextRoute).
+  // replace() swaps the top frame, so each detour permanently leaves the frame
+  // it was pushed over behind it. After one category transition the stack reads
+  // [WordLetterSelect, WordPractice, WordPractice], and goBack() landed on that stale
+  // copy — a previous letter, mid-cycle, from before the detour. A second
+  // detour left two.
+  //
+  // goBackToOrigin pops to the named route instead, so the depth of the stack
+  // stops mattering. It falls back to goBack() when the origin is not below
+  // this screen (an assessment or Writing-Check entry), which is the previous
+  // behaviour and safe. Navigation only: nothing here writes an attempt,
+  // consumes a cycle, or replays a warm-up.
+  const backOrigin = route.params?.originRoute ?? 'WordLetterSelect';
+  const { requestBack, gateModal } = useGatedBack(
+    () => goBackToOrigin(navigation, backOrigin)
+  );
 
   const { student, theme } = route.params;
   const { selectedLetter: letter, selectedWords: letterWords, currentWordIndex: wordIdx, currentWord } = resolveWordSession(route.params);

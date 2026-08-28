@@ -200,7 +200,9 @@ describe('session start goes straight to the letter', () => {
 
   it('it navigates to the writing screen directly, keeping the interaction id', () => {
     expect(code).toMatch(/const interactionId = createPreWritingInteractionId\(\);/);
-    expect(code).toMatch(/navigation\.navigate\(screen, \{ \.\.\.params, interactionId \}\);/);
+    // originRoute was added later so Back can pop past the frames the
+    // warm-up detours leave behind; the direct navigate is unchanged.
+    expect(code).toMatch(/navigation\.navigate\(screen, \{ \.\.\.params, interactionId, originRoute: 'LetterPractice' \}\);/);
     expect(code).toMatch(/caseType === 'lowercase' \? 'LetterWriting' : 'UppercaseWriting'/);
   });
 });
