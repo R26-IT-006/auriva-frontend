@@ -15,7 +15,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { LETTER_CATEGORIES } from '../../constants/letterCategories';
-import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../constants/preWritingActivities';
 import {
   createPreWritingInteractionId, markWarmupHandled, buildPreWritingNavigationParams, PRE_WRITING_REASON,
 } from '../../utils/preWritingSessionGuard';
@@ -60,44 +59,23 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
   const closePicker = () => { setPickerCase(null); setPickerCategory(null); };
 
-  // Before entering LetterWriting/UppercaseWriting, check whether the first
-  // letter the child is about to write shares a motor primitive (curved,
-  // diagonal, vertical/horizontal) with a pre-writing warm-up group — if so,
-  // detour through a short warm-up first. Falls straight through to the
-  // letter screen unchanged when there's nothing to warm up for (mixed
-  // letters, or an unrecognised/empty sequence), so a disabled/failed
-  // pre-writing feature never blocks normal practice.
-  const goToLetterScreen = (caseType, params, seq) => {
+  // Straight into the letter screen. A warm-up marks a CHANGE of motor
+  // primitive, and the first letter of a sequence changes from nothing — so
+  // index 0 never warms up, whatever category it happens to be.
+  //
+  // This used to detour unconditionally for sequence[0], and when the
+  // sequence was missing it invented a first letter from
+  // `categoryOrder?.[0] ?? 'straight'` — which is why a straight warm-up
+  // appeared at the start regardless of the real first category. A previous
+  // group is never inferred now; see utils/preWritingTransition.js. The
+  // mid-sequence transitions the writing screens detect are unaffected.
+  const goToLetterScreen = (caseType, params) => {
     const screen = caseType === 'lowercase' ? 'LetterWriting' : 'UppercaseWriting';
 
     // Feature 4 Step 3: a fresh interaction id per "start writing" action —
-    // never per letter, never per render. Folded into `params` so it
-    // reaches the letter screen whether or not a warm-up detour happens.
+    // never per letter, never per render.
     const interactionId = createPreWritingInteractionId();
-    const paramsWithInteraction = { ...params, interactionId };
-
-    const firstLetter = seq?.[0]?.letter
-      ?? LETTER_CATEGORIES[caseType]?.[params.motorProfile?.categoryOrder?.[0] ?? 'straight']?.[0]?.letter
-      ?? null;
-    const group = firstLetter ? getLetterPrimitiveGroup(firstLetter) : null;
-    const activities = group ? selectPreWritingActivities(group) : [];
-
-    if (activities.length > 0) {
-      // Mark BEFORE navigating (not on completion/skip/save-success) — see
-      // preWritingSessionGuard.js's markWarmupHandled doc comment for why.
-      markWarmupHandled({
-        studentId: student?.sid, caseType, letter: firstLetter, interactionId,
-        reason: PRE_WRITING_REASON.SESSION_START,
-      });
-      navigation.navigate('PreWritingActivity', buildPreWritingNavigationParams({
-        student, theme, activities,
-        targetLetter: firstLetter, targetCaseType: caseType, interactionId,
-        reason: PRE_WRITING_REASON.SESSION_START,
-        nextRoute: screen, nextParams: paramsWithInteraction,
-      }));
-    } else {
-      navigation.navigate(screen, paramsWithInteraction);
-    }
+    navigation.navigate(screen, { ...params, interactionId });
   };
 
   const navigateToWriting = (ct, seq) => {
@@ -105,7 +83,7 @@ export default function LetterPracticeScreen({ route, navigation }) {
     const params = ct === 'lowercase'
       ? { student, theme, caseType: 'lowercase', letterSequence: seq }
       : { student, theme, letterSequence: seq };
-    goToLetterScreen(ct, params, seq);
+    goToLetterScreen(ct, params);
   };
 
   const handleCategoryPick = (category) => {
@@ -115,7 +93,7 @@ export default function LetterPracticeScreen({ route, navigation }) {
       const params = ct === 'lowercase'
         ? { student, theme, caseType: 'lowercase', letterSequence, motorProfile }
         : { student, theme, letterSequence, motorProfile };
-      goToLetterScreen(ct, params, letterSequence);
+      goToLetterScreen(ct, params);
     } else {
       setPickerCategory(category);
     }

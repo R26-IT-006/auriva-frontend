@@ -769,10 +769,16 @@ describe('the demo renders the real activity, not a substitute', () => {
   });
 
   it('LETTER: the badge vocabulary is defined once', () => {
+    // Colours still belong to the stage; the WORDS moved to the shared
+    // bilingual instruction source, so the demo, lowercase, uppercase and word
+    // writing all say the same sentence for the same support level.
     expect(letterStage).toMatch(/export const SUPPORT_BADGE/);
+    expect(letterStage).not.toMatch(/export const SUPPORT_(INSTRUCTIONS|HINTS)/);
     for (const src of [letterScreen, upperScreen]) {
       expect(src).not.toMatch(/^const SUPPORT_BADGE = \{/m);
-      expect(src).toMatch(/SUPPORT_BADGE, SUPPORT_INSTRUCTIONS, SUPPORT_HINTS,/);
+      expect(src).toMatch(/SUPPORT_BADGE,/);
+      expect(src).toMatch(/import \{ instructionForSupport \} from '[^']*childInstructions'/);
+      expect(src).not.toMatch(/SUPPORT_INSTRUCTIONS|SUPPORT_HINTS/);
     }
   });
 

@@ -31,6 +31,7 @@ import Svg, { Line, Path, Circle, Polyline, Polygon, Rect, Text as SvgText } fro
 import { Ionicons } from '@expo/vector-icons';
 
 import WordImageDisplay from '../word/WordImageDisplay';
+import { writeWordInstruction } from '../../constants/childInstructions';
 import {
   PAD, COL_L, IMG_SIZE, CANVAS_W, CANVAS_H, LINE_1, LINE_2, LINE_3, LINE_4,
 } from '../../constants/wordCanvasLayout';
@@ -44,7 +45,7 @@ export const WORD_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'dem
  *   imageKey?: string, emoji?: string, imageScale?: any,
  *   displayWord: string, word: string, spelling?: string,
  *   badge: {bg: string, border: string, text: string},
- *   badgeTitle: string, badgeHint: string,
+ *   instruction: {en: string, si: string},
  *   guideOpacity?: number, guidePathD?: string|null, guideDots?: Array,
  *   letterBoxes?: Array,
  *   attempt?: number, showStrokeOrder?: boolean,
@@ -65,8 +66,7 @@ export default function WordWritingStage({
   word,
   spelling = '',
   badge,
-  badgeTitle,
-  badgeHint,
+  instruction,
   guideOpacity = 0,
   guidePathD = null,
   guideDots = [],
@@ -86,6 +86,10 @@ export default function WordWritingStage({
   onCanvasLayout,
   panHandlers = null,
 }) {
+
+  // The word is passed through unchanged — this only wraps it in the
+  // instruction the child is being given.
+  const targetInstruction = writeWordInstruction(displayWord);
   const isDemo = mode === WORD_STAGE_MODES.DEMO;
 
   // In demo mode the touch handlers are not merely disabled - they are never
@@ -115,13 +119,22 @@ export default function WordWritingStage({
           backgroundColor: theme.button + '14',
           borderColor:     theme.button + '35',
         }]}>
-          <Text
-            style={[styles.wordTitle, { color: theme.headingText }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {displayWord}
-          </Text>
+          <View style={styles.wordTexts}>
+            <Text
+              style={[styles.wordTitle, { color: theme.headingText }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {targetInstruction.en}
+            </Text>
+            <Text
+              style={[styles.wordTitleSi, { color: theme.headingText }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {targetInstruction.si}
+            </Text>
+          </View>
           <TouchableOpacity
             style={[styles.soundBtn, { backgroundColor: theme.button }]}
             onPress={onSpeakWord}
@@ -144,10 +157,11 @@ export default function WordWritingStage({
         <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
           {/* The wording is passed in, so the demonstration can say "Watch
               first" in the same badge the practice screen uses for its
-              attempt line. The screen supplies ATTEMPT_TITLES/ATTEMPT_HINTS,
-              which live with it and never moved here. */}
-          <Text style={[styles.attemptTitle, { color: badge.text }]}>{badgeTitle}</Text>
-          <Text style={[styles.attemptHint, { color: badge.text }]}>{badgeHint}</Text>
+              instruction line the practice screen uses. The screen resolves
+              it from constants/childInstructions.js, so both say the same
+              words for the same support level. */}
+          <Text style={[styles.attemptTitle, { color: badge.text }]}>{instruction?.en}</Text>
+          <Text style={[styles.attemptHint, { color: badge.text }]}>{instruction?.si}</Text>
         </View>
 
         {/* Writing canvas — canvasOuter wraps the card so the tracer dot
@@ -363,6 +377,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 
+  wordTexts: {
+    flexShrink: 1,
+  },
+  wordTitleSi: {
+    // Matches the spelling line under the card, so no existing size changes.
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.75,
+  },
   wordTitle: {
     fontSize: 30,
     fontWeight: '900',
@@ -397,9 +421,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  attemptTitle: { fontSize: 12, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
+  // Sub-instruction — the same size on every writing surface.
+  attemptTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+  },
 
-  attemptHint:  { fontSize: 10, marginTop: 2, textAlign: 'center', opacity: 0.85 },
+  // The Sinhala half of the same instruction — matched size, extra
+  // leading so the vowel signs are never clipped.
+  attemptHint: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    marginTop: 2,
+    textAlign: 'center',
+    opacity: 0.85,
+  },
 
   canvasOuter: {
     width:  CANVAS_W,

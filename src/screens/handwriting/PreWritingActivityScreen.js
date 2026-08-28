@@ -24,15 +24,28 @@ import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from 
 import { normalizeStrokesForDTW } from '../../utils/dtwNormalization';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../utils/adaptiveSequencing';
 import { DEFAULT_N_POINTS, selectPreWritingActivities } from '../../constants/preWritingActivities';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+import { PRE_WRITING_REASON } from '../../utils/preWritingSessionGuard';
 import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import { SPEECH_LOCALE_EN, ukSpeechOptions } from '../../constants/speechLocale';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
 // Kept next to the import so one file has one value.
 const CANVAS_BORDER_WIDTH = 2;
+
+// All 18 pre-writing activities ask for the same thing: trace the dotted path.
+// They used to carry a name AND a prompt each — 36 strings, two of them on
+// screen at once, for one action. One instruction, one future recording.
+const PRE_WRITING_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.FOLLOW_PATH];
+
+// Shown ONLY when this warm-up was reached from two failed cycles on one
+// letter. A category transition or an adaptive detour renders exactly what it
+// rendered before — no lead-in, no layout change.
+const REMEDIATION_LEAD_IN = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.PRACTISE_FIRST];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -163,11 +176,14 @@ export default function PreWritingActivityScreen({ route, navigation }) {
   const {
     student, theme,
     activities:    activitiesParam,
+    warmupReason,
     primitiveGroup,
     selectionOptions,
     nextRoute, nextParams,
     onComplete,
   } = route.params;
+
+  const isRemediation = warmupReason === PRE_WRITING_REASON.CYCLE_3_REMEDIATION;
 
   const activities = useMemo(() => {
     if (Array.isArray(activitiesParam)) return activitiesParam;
@@ -311,7 +327,7 @@ export default function PreWritingActivityScreen({ route, navigation }) {
     pulseLoopRef.current = pulseLoop;
     pulseLoop.start();
 
-    const t = setTimeout(() => { Speech.speak(activity.prompt_text); }, 300);
+    const t = setTimeout(() => { Speech.speak(PRE_WRITING_INSTRUCTION.en, ukSpeechOptions()); }, 300);
 
     return () => {
       pointerLoop.stop();
@@ -487,15 +503,20 @@ export default function PreWritingActivityScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.shapeTitle, { color: theme.headingText }]}>
-              {activity.name}
-            </Text>
-
             <View style={[styles.instructionCard, { borderLeftColor: theme.button }]}>
               <View style={styles.instructionInner}>
-                <Text style={styles.instructionEn}>{activity.prompt_text}</Text>
+                <View style={styles.instructionTexts}>
+                  {isRemediation && (
+                    <>
+                      <Text style={styles.leadInEn}>{REMEDIATION_LEAD_IN.en}</Text>
+                      <Text style={styles.leadInSi}>{REMEDIATION_LEAD_IN.si}</Text>
+                    </>
+                  )}
+                  <Text style={styles.instructionEn}>{PRE_WRITING_INSTRUCTION.en}</Text>
+                  <Text style={styles.instructionSi}>{PRE_WRITING_INSTRUCTION.si}</Text>
+                </View>
                 <TouchableOpacity
-                  onPress={() => Speech.speak(activity.prompt_text)}
+                  onPress={() => Speech.speak(PRE_WRITING_INSTRUCTION.en, ukSpeechOptions())}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   style={[styles.speakerBtn, { backgroundColor: theme.button + '18' }]}
                   activeOpacity={0.7}
@@ -724,11 +745,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  instructionEn: {
+  instructionTexts: {
     flex: 1,
-    fontSize: 16,
+    gap: 2,
+  },
+  leadInEn: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    color: '#6A6A85',
+    textAlign: 'center',
+  },
+  leadInSi: {
+    fontSize: 18,
+    lineHeight: 26,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
+    color: '#6A6A85',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  instructionSi: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    color: '#7B7B9E',
+    textAlign: 'center',
+  },
+  instructionEn: {
+    flex: 1,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#444444',
     textAlign: 'center',
   },

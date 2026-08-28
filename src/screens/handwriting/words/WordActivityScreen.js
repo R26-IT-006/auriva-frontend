@@ -46,6 +46,7 @@ import ExerciseD_SpellWord   from '../../../components/word/ExerciseD_SpellWord'
 import ExerciseE_WriteWord   from '../../../components/word/ExerciseE_WriteWord';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import useGatedBack from '../../../utils/useGatedBack';
+import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -166,7 +167,7 @@ export default function WordActivityScreen({ route, navigation }) {
     if (!currentWord) return;
     Speech.stop();
     if (currentWord.word === 'ant') {
-      Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: 'en-US' });
+      Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
     }
     return () => Speech.stop();
   }, [currentWord?.word]);
@@ -329,7 +330,7 @@ export default function WordActivityScreen({ route, navigation }) {
               onPress={() => {
                 if (currentWord.word === 'ant') {
                   Speech.stop();
-                  Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: 'en-US' });
+                  Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
                 }
               }}
               activeOpacity={0.7}

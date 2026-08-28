@@ -67,6 +67,7 @@ import {
 } from '../constants/learningSessionPolicy';
 import { LIVE_SESSION_HEARTBEAT_MS } from '../constants/liveSessionPolicy';
 import { pushLiveSessionSnapshot } from '../api/liveSession';
+import { SPEECH_LOCALE_EN } from '../constants/speechLocale';
 import {
   buildActivityEnteredPatch, buildHeartbeatPatch, buildBreakPatch, buildResumePatch, buildEndedPatch,
 } from '../utils/liveSessionSnapshot';
@@ -303,7 +304,7 @@ export function useLearningSessionActivity(options = {}) {
 // overlap with whatever the child navigates to next.
 export function speakBreakPrompt() {
   Speech.stop();
-  Speech.speak('Time for a short break.', { rate: 0.85, pitch: 1.0, language: 'en-US' });
+  Speech.speak('Time for a short break.', { rate: 0.85, pitch: 1.0, language: SPEECH_LOCALE_EN });
 }
 
 export function stopBreakPromptSpeech() {

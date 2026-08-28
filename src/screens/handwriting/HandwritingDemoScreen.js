@@ -52,13 +52,14 @@ import { markDemoShown } from '../../utils/storage';
 
 // The real activities' own presentation — never a substitute.
 import LetterWritingStage, {
-  SUPPORT_BADGE, SUPPORT_INSTRUCTIONS, SUPPORT_HINTS,
+  SUPPORT_BADGE,
 } from '../../components/handwriting/LetterWritingStage';
 import WordWritingStage from '../../components/handwriting/WordWritingStage';
 import ShapeAssessmentStage from '../../components/handwriting/ShapeAssessmentStage';
 import ExerciseD_SpellWord from '../../components/word/ExerciseD_SpellWord';
 
 import { SUPPORT_LEVELS, getSupportPresentation } from '../../constants/handwritingSupportLevels';
+import { instructionForSupport } from '../../constants/childInstructions';
 import { CANVAS_W as LETTER_CANVAS_W, CANVAS_H as LETTER_CANVAS_H } from '../../constants/letterCanvasLayout';
 import { CANVAS_W as WORD_CANVAS_W, CANVAS_H as WORD_CANVAS_H } from '../../constants/wordCanvasLayout';
 import {
@@ -85,8 +86,9 @@ const DEMO_SUPPORT = getSupportPresentation({
 // The badge keeps the real activity's chrome, with the demonstration's own
 // words in it — never an attempt number, which would be a lie here.
 const DEMO_BADGE = SUPPORT_BADGE[SUPPORT_LEVELS.HIGH];
-const DEMO_BADGE_TITLE = SUPPORT_INSTRUCTIONS[SUPPORT_LEVELS.HIGH];
-const DEMO_BADGE_HINT  = SUPPORT_HINTS[SUPPORT_LEVELS.HIGH];
+// The demonstration IS the high-support presentation, so it shows the same
+// bilingual instruction the child will see on their first attempt.
+const DEMO_INSTRUCTION = instructionForSupport(SUPPORT_LEVELS.HIGH);
 
 // One representative shape teaches the assessment's single interaction:
 // follow the path with your finger.
@@ -227,8 +229,7 @@ export default function HandwritingDemoScreen({ route, navigation }) {
           word={word}
           spelling={word.replace(/[^a-z]/gi, '').split('').join(' · ')}
           badge={DEMO_BADGE}
-          badgeTitle={DEMO_BADGE_TITLE}
-          badgeHint={DEMO_BADGE_HINT}
+          instruction={DEMO_INSTRUCTION}
           guideOpacity={DEMO_SUPPORT.guideOpacity}
           guidePathD={wordGuide ? wordGuideToSvgPath(wordGuide.strokeDescriptors, WORD_CANVAS_W, WORD_CANVAS_H) : null}
           guideDots={wordGuide ? wordGuideGhostDots(wordGuide.strokeDescriptors, WORD_CANVAS_W, WORD_CANVAS_H) : []}
@@ -254,8 +255,7 @@ export default function HandwritingDemoScreen({ route, navigation }) {
           guideOpacity={DEMO_SUPPORT.guideOpacity}
           supportPresentation={DEMO_SUPPORT}
           badge={DEMO_BADGE}
-          badgeTitle={DEMO_BADGE_TITLE}
-          badgeHint={DEMO_BADGE_HINT}
+          instruction={DEMO_INSTRUCTION}
           tracerVisible={tracerVisible}
           tracerXInterp={tracerX}
           tracerYInterp={tracerY}

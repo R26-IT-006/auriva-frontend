@@ -1,7 +1,7 @@
 /**
  * LetterWritingStage.js
  *
- * The letter-writing screen's main area — letter card, title card, phonetic,
+ * The letter-writing screen's main area — letter card, title card,
  * attempt badge, canvas, tracer — as ONE presentational component shared by
  * three callers:
  *
@@ -40,6 +40,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import Svg, { Line, Path, Circle, Polyline, Polygon, Text as SvgText } from 'react-native-svg';
+import { writeLetterInstruction } from '../../constants/childInstructions';
 import { Ionicons } from '@expo/vector-icons';
 
 import { normalizeStrokes } from '../../utils/dtw';
@@ -59,17 +60,11 @@ export const SUPPORT_BADGE = {
   [SUPPORT_LEVELS.LOW]:    { bg: '#A8E6A8', border: '#4CAF50', text: '#1B5E20' },  // fresh green
 };
 
-export const SUPPORT_INSTRUCTIONS = {
-  [SUPPORT_LEVELS.HIGH]:   'Watch & Trace',
-  [SUPPORT_LEVELS.MEDIUM]: 'Follow the Guide',
-  [SUPPORT_LEVELS.LOW]:    'Write Freely',
-};
-
-export const SUPPORT_HINTS = {
-  [SUPPORT_LEVELS.HIGH]:   'Watch the dot — then draw it yourself!',
-  [SUPPORT_LEVELS.MEDIUM]: 'Start at the number, then follow the arrow.',
-  [SUPPORT_LEVELS.LOW]:    'Write from memory — no guide this time!',
-};
+// The support wording and its Sinhala now live in constants/childInstructions.js
+// so lowercase, uppercase, word writing and the demonstration all say the same
+// sentence — and one future recording per key covers all four. The long second
+// hint that used to sit under each of these repeated the same instruction in
+// more words and has been removed from the child UI.
 
 // ─── Ghost-letter path builders ─────────────────────────────────────────
 // Moved verbatim from the two writing screens, which each held an identical
@@ -131,7 +126,6 @@ export const LETTER_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'd
  * @param {{
  *   mode?: 'practice'|'demo',
  *   letter: string,
- *   phonetic?: string,
  *   theme: object,
  *   rawPath: any,                 // this letter's entry from the screen's LETTER_PATHS
  *   isAngular?: boolean,
@@ -144,7 +138,7 @@ export const LETTER_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'd
  *   hasDrawn?: boolean,
  *   tracerVisible?: boolean, tracerXInterp?: any, tracerYInterp?: any,
  *   badge: {bg: string, border: string, text: string},
- *   badgeTitle: string, badgeHint: string,
+ *   instruction: {en: string, si: string},
  *   onPlaySound?: () => void,
  *   canvasRef?: any, onCanvasLayout?: () => void,
  *   panHandlers?: object,         // practice only — never spread in demo mode
@@ -155,7 +149,6 @@ export const LETTER_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'd
 export default function LetterWritingStage({
   mode = LETTER_STAGE_MODES.PRACTICE,
   letter,
-  phonetic = '',
   theme,
   rawPath,
   isAngular = false,
@@ -171,8 +164,7 @@ export default function LetterWritingStage({
   tracerXInterp = null,
   tracerYInterp = null,
   badge,
-  badgeTitle,
-  badgeHint,
+  instruction,
   onPlaySound,
   canvasRef = null,
   onCanvasLayout,
@@ -180,6 +172,11 @@ export default function LetterWritingStage({
   canvasPointerEvents = 'auto',
 }) {
   const isDemo = mode === LETTER_STAGE_MODES.DEMO;
+
+  // The character is passed through with its own case — 'a' and 'A' are
+  // different targets, and the old unconditional .toUpperCase() here made the
+  // lowercase screen tell the child to write 'A'.
+  const targetInstruction = writeLetterInstruction(letter);
 
   // In demo mode the touch handlers are not merely disabled — they are never
   // attached, so there is nothing to accidentally re-enable.
@@ -203,7 +200,7 @@ export default function LetterWritingStage({
         </View>
       </View>
 
-      {/* Right column — title + phonetic + badge + canvas */}
+      {/* Right column — title + badge + canvas */}
       <View style={styles.contentCol}>
 
         {/* Title card: "Write 'A'" + filled sound button */}
@@ -211,9 +208,14 @@ export default function LetterWritingStage({
           backgroundColor: theme.button + '14',
           borderColor:     theme.button + '35',
         }]}>
-          <Text style={[styles.writeLabel, { color: theme.headingText }]}>
-            Write '{String(letter ?? '').toUpperCase()}'
-          </Text>
+          <View style={styles.titleTexts}>
+            <Text style={[styles.writeLabel, { color: theme.headingText }]}>
+              {targetInstruction.en}
+            </Text>
+            <Text style={[styles.writeLabelSi, { color: theme.headingText }]}>
+              {targetInstruction.si}
+            </Text>
+          </View>
           <TouchableOpacity
             style={[styles.soundBtn, { backgroundColor: theme.button }]}
             onPress={onPlaySound}
@@ -225,15 +227,10 @@ export default function LetterWritingStage({
           </TouchableOpacity>
         </View>
 
-        {/* Phonetic symbol */}
-        <Text style={[styles.phoneticText, { color: theme.headingText }]}>
-          {phonetic}
-        </Text>
-
         {/* Attempt badge */}
         <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-          <Text style={[styles.attemptTitle, { color: badge.text }]}>{badgeTitle}</Text>
-          <Text style={[styles.attemptHint, { color: badge.text }]}>{badgeHint}</Text>
+          <Text style={[styles.attemptTitle, { color: badge.text }]}>{instruction?.en}</Text>
+          <Text style={[styles.attemptHint, { color: badge.text }]}>{instruction?.si}</Text>
         </View>
 
         {/* Writing canvas — canvasOuter wraps the card so the tracer dot
@@ -452,6 +449,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 
+  titleTexts: {
+    flexShrink: 1,
+  },
+  writeLabelSi: {
+    // Subordinate to the English line above it, so the Sinhala reads as the
+    // second line of one instruction rather than a competing heading.
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.75,
+  },
   writeLabel: {
     fontSize: 26,
     fontWeight: '900',
@@ -470,13 +478,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  phoneticText: {
-    fontSize: 13,
-    fontStyle: 'italic',
-    fontWeight: '600',
-    opacity: 0.65,
-    paddingLeft: 2,
-  },
 
   attemptBadge: {
     borderWidth: 1.5,
@@ -486,9 +487,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  attemptTitle: { fontSize: 12, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
+  // Sub-instruction — the same size on every writing surface.
+  attemptTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+  },
 
-  attemptHint:  { fontSize: 10, marginTop: 2, textAlign: 'center', opacity: 0.85 },
+  // The Sinhala half of the same instruction — matched size, extra
+  // leading so the vowel signs are never clipped.
+  attemptHint: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    marginTop: 2,
+    textAlign: 'center',
+    opacity: 0.85,
+  },
 
   canvasOuter: {
     width:  CANVAS_W,

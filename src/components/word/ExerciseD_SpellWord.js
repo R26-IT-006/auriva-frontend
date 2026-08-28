@@ -2,6 +2,11 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, Easing, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import WordImageDisplay from './WordImageDisplay';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+
+// Shared with every other screen that asks for this action, so the child
+// hears one sentence for one task — and one future recording covers it.
+const ACTIVITY_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.MAKE_WORD];
 
 function getLetters(word) {
   return word.replace(/[^a-z]/gi, '').toLowerCase().split('');
@@ -219,7 +224,10 @@ export default function ExerciseD_SpellWord({
       {/* Right: instruction + boxes + tiles */}
       <View style={styles.rightCol}>
         <Text style={[styles.instruction, { color: theme.headingText }]}>
-          Spell the word!
+          {ACTIVITY_INSTRUCTION.en}
+        </Text>
+        <Text style={[styles.instructionSi, { color: theme.headingText }]}>
+          {ACTIVITY_INSTRUCTION.si}
         </Text>
 
         {/* Letter boxes */}
@@ -379,10 +387,18 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   instruction: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+  },
+  instructionSi: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.75,
     textAlign: 'center',
   },
   boxRow: {

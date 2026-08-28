@@ -204,13 +204,28 @@ describe('an app restart cannot buy an extra cycle', () => {
   });
 });
 
+// The whole handleFailedCycle body, brace-matched and comment-stripped. A
+// fixed-width slice used to be enough; the function now also holds the
+// cycle-3 remediation detour, and its comments name the very things these
+// sentinels forbid — in the course of saying it never does them.
+function failedCycleBody(src) {
+  const start = src.indexOf('const handleFailedCycle');
+  expect(start).toBeGreaterThan(-1);
+  let i = src.indexOf('{', src.indexOf('=>', start));
+  let depth = 0;
+  for (;; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') { depth--; if (depth === 0) break; }
+  }
+  return stripComments(src.slice(start, i + 1));
+}
+
 // ─── Attempt numbering is untouched ─────────────────────────────────────
 
 describe('attempt numbering still restarts at 1 for each cycle', () => {
   it('cycle 2 begins at attempt 1, never attempt 4', () => {
     for (const src of [letterScreen, upperScreen]) {
-      const branch = src.slice(src.indexOf('const handleFailedCycle'),
-        src.indexOf('const handleFailedCycle') + 2000);
+      const branch = failedCycleBody(src);
       expect(branch).toMatch(/setAttempt\(1\);/);
       expect(branch).not.toMatch(/setAttempt\(4\)|setAttempt\(a => a \+ 3\)/);
     }
@@ -242,8 +257,7 @@ describe('a letter set aside moves on the same way a mastered one does', () => {
 
   it('setting a letter aside does NOT master it', () => {
     for (const src of [letterScreen, upperScreen]) {
-      const branch = src.slice(src.indexOf('const handleFailedCycle'),
-        src.indexOf('const handleFailedCycle') + 2000);
+      const branch = failedCycleBody(src);
       expect(branch).not.toMatch(/mastered|mastery|LetterProgress/i);
     }
   });

@@ -157,7 +157,7 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
   // (they keep today's appearance) while removing any judgement call about
   // which glyph a child might treat as a model.
   const GLYPH_STYLES = [
-    ['components/handwriting/LetterWritingStage.js', ['letterCardText', 'phoneticText']],
+    ['components/handwriting/LetterWritingStage.js', ['letterCardText']],
     ['components/word/ExerciseA_WriteFirst.js',      ['tileText']],
     ['components/word/ExerciseB_CircleImage.js',     ['wordText']],
     ['components/word/ExerciseC_FillBlank.js',       ['tileText']],
@@ -228,7 +228,7 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
 describe('every declared weight now resolves to its Nunito face', () => {
   const WRITING = [...WRITING_FILES, 'screens/teacher/students/StudentDetailScreen.js'];
   const GLYPH = {
-    'LetterWritingStage.js': ['letterCardText', 'phoneticText'],
+    'LetterWritingStage.js': ['letterCardText'],
     'ExerciseA_WriteFirst.js': ['tileText'],
     'ExerciseB_CircleImage.js': ['wordText'],
     'ExerciseC_FillBlank.js': ['tileText'],

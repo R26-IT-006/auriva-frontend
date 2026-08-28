@@ -14,6 +14,11 @@ import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from 
 // one active learning screen; this component only needs the stroke
 // notifiers so the break prompt never interrupts a stroke drawn here.
 import { useLearningSession } from '../../context/LearningSessionContext';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+
+// Shared with every other screen that asks for this action, so the child
+// hears one sentence for one task — and one future recording covers it.
+const ACTIVITY_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.WRITE_WORD];
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -171,7 +176,10 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
 
       <View style={styles.rightCol}>
         <Text style={[styles.instruction, { color: theme.headingText }]}>
-          Write the word
+          {ACTIVITY_INSTRUCTION.en}
+        </Text>
+        <Text style={[styles.instructionSi, { color: theme.headingText }]}>
+          {ACTIVITY_INSTRUCTION.si}
         </Text>
 
         <View
@@ -342,10 +350,18 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   instruction: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+  },
+  instructionSi: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.75,
     textAlign: 'center',
   },
   canvasCard: {

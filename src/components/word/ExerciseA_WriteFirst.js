@@ -1,6 +1,11 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import WordImageDisplay from './WordImageDisplay';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+
+// Shared with every other screen that asks for this action, so the child
+// hears one sentence for one task — and one future recording covers it.
+const ACTIVITY_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.CHOOSE_FIRST_LETTER];
 
 function makeChoices(correct) {
   const pool = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(c => c !== correct);
@@ -51,7 +56,10 @@ export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete }) {
 
       <View style={styles.taskPane}>
         <Text style={[styles.instruction, { color: theme.headingText }]}>
-          Tap the missing first letter
+          {ACTIVITY_INSTRUCTION.en}
+        </Text>
+        <Text style={[styles.instructionSi, { color: theme.headingText }]}>
+          {ACTIVITY_INSTRUCTION.si}
         </Text>
 
         <View style={styles.wordBox}>
@@ -127,10 +135,18 @@ const styles = StyleSheet.create({
     gap: 22,
   },
   instruction: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+  },
+  instructionSi: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.75,
     textAlign: 'center',
   },
   wordBox: {

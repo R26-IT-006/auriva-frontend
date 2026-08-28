@@ -33,9 +33,17 @@ import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../utils/collectionSession';
 import { getLetterPrimitiveGroup, selectPreWritingActivities, getPreWritingActivityById } from '../../constants/preWritingActivities';
+import { primitiveGroupOnEntering } from '../../utils/preWritingTransition';
+import { buildLetterRemediationActivities } from '../../utils/letterRemediationPlan';
 import {
-  createPreWritingInteractionId, markWarmupHandled, buildPreWritingNavigationParams, PRE_WRITING_REASON,
-  hasWarmupHandled, resolveAdaptivePreWritingDetour,
+  createPreWritingInteractionId,
+  markWarmupHandled,
+  buildPreWritingNavigationParams,
+  PRE_WRITING_REASON,
+  hasWarmupHandled,
+  resolveAdaptivePreWritingDetour,
+  hasRemediationHandled,
+  markRemediationHandled,
 } from '../../utils/preWritingSessionGuard';
 // One-time category demonstration — see utils/demoPolicy.js. Decides only;
 // writes nothing until the child presses "I'm Ready" on the demo screen.
@@ -68,8 +76,10 @@ import useGatedBack from '../../utils/useGatedBack';
 // render the SAME component, in different modes.
 import LetterWritingStage from '../../components/handwriting/LetterWritingStage';
 import {
-  SUPPORT_BADGE, SUPPORT_INSTRUCTIONS, SUPPORT_HINTS,
+  SUPPORT_BADGE,
 } from '../../components/handwriting/LetterWritingStage';
+import { instructionForSupport } from '../../constants/childInstructions';
+import { SPEECH_LOCALE_EN } from '../../constants/speechLocale';
 import {
   PAD, COL_L, LETTER_CARD_SIZE, CANVAS_W, CANVAS_H, ASPECT, aspectX,
   LINE_1, LINE_2, LINE_3, LINE_4,
@@ -95,7 +105,7 @@ const LOWERCASE_TASK_ORDER_OFFSET = 6;
 // attempt number — the badge describes the guidance being shown right now,
 // which is a support-level concept, not a session-position one. Values are
 // byte-identical to the pre-refactor ATTEMPT_BADGE/ATTEMPT_TITLES/
-// ATTEMPT_HINTS — only the lookup key changed (attempt → supportLevel).
+// the support instruction — only the lookup key changed (attempt → supportLevel).
 
 // â”€â”€â”€ Per-letter start positions (fraction of canvas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -128,13 +138,6 @@ const DEFAULT_START = { fx: 0.36, fy: 0.30 };
 
 // â”€â”€â”€ Phonetics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const PHONETICS = {
-  a:'[eÉª]', b:'[biË]', c:'[siË]', d:'[diË]', e:'[iË]',
-  f:'[É›f]',  g:'[dÊ’iË]', h:'[eÉªtÊƒ]', i:'[aÉª]', j:'[dÊ’eÉª]',
-  k:'[keÉª]', l:'[É›l]',  m:'[É›m]',  n:'[É›n]', o:'[oÊŠ]',
-  p:'[piË]', q:'[kjuË]', r:'[É‘Ër]', s:'[É›s]', t:'[tiË]',
-  u:'[juË]', v:'[viË]',  w:'[dÊŒbljuË]', x:'[É›ks]', y:'[waÉª]', z:'[zÉ›d]',
-};
 
 // â”€â”€â”€ Letter stroke waypoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Each array is an ordered list of (fx, fy) key points the animated tracer dot
@@ -704,7 +707,6 @@ export default function LetterWritingScreen({ route, navigation }) {
   // attempt 2→0.26, normal-mode attempt 3→0, collection-mode attempt 3→0.26)
   // — now resolved by getSupportPresentation() instead of an inline ternary.
   const guideOpacity  = supportPresentation?.guideOpacity ?? 0;
-  const phonetic      = PHONETICS[letter.toLowerCase()] ?? '';
   const badge         = SUPPORT_BADGE[supportLevel];
 
   // Proposal FR-16, Phase 7B — one bundled "meaningful event" push whenever
@@ -746,20 +748,34 @@ export default function LetterWritingScreen({ route, navigation }) {
   }, [tracerKeyframes, tracerProgress]);
 
   // â”€â”€ Speech â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Always the CURRENT letter — the same value the visible target renders
+  // from. The optional argument exists for callers that already hold it; it
+  // is never a cached or route-supplied character.
   const playLetterSound = useCallback((l = letter) => {
+    const spoken = String(l ?? letter ?? '');
+    if (!spoken) return;
     Speech.stop();
-    Speech.speak(l.toUpperCase(), { rate: 0.8, pitch: 1.0, language: 'en-US' });
+    Speech.speak(spoken.toUpperCase(), { rate: 0.8, pitch: 1.0, language: SPEECH_LOCALE_EN });
   }, [letter]);
 
   // Keep a stable ref so the PanResponder closure can call it without staling
   const playLetterSoundRef = useRef(playLetterSound);
   playLetterSoundRef.current = playLetterSound;
 
-  // Auto-announce the letter whenever it changes
+  // Announce the letter the child can actually SEE.
+  //
+  // `sequence` is `runtimeSequence ?? effectiveSequence ?? baseSequence`, and
+  // effectiveSequence is null until the mastered-letter filter resolves — so
+  // on mount `letter` is the first UNFILTERED letter, not the one that will
+  // be presented. The render is already gated on masteredSequenceReady, but
+  // an effect is not: this spoke the pre-filter letter ("L") and only then
+  // the real one ("O"). Gating the announcement on the same flag the render
+  // uses means the audio can never name a letter that was never shown.
   useEffect(() => {
-    Speech.speak(letter.toUpperCase(), { rate: 0.8, pitch: 1.0, language: 'en-US' });
+    if (!masteredSequenceReady || !letterObj) return undefined;
+    Speech.speak(letter.toUpperCase(), { rate: 0.8, pitch: 1.0, language: SPEECH_LOCALE_EN });
     return () => Speech.stop();
-  }, [letter]);
+  }, [letter, letterObj, masteredSequenceReady]);
 
   // â”€â”€ Feature 3 Step 6 — adaptive support recommendation fetch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Once per letter (never per render, never per stroke, never polled —
@@ -847,6 +863,12 @@ export default function LetterWritingScreen({ route, navigation }) {
         currentInteractionId: interactionId,
         currentAttempt: attemptRef.current,
         hasDrawn: hasDrawnRef.current,
+        // The first letter of this sequence starts by writing. Every OTHER
+        // route to index 0 (a category transition's slice(idx + 1), a
+        // remediation or adaptive detour's slice(idx)) has already marked
+        // that letter handled, so those were standing down here regardless —
+        // an unmarked index 0 is a fresh session entry and nothing else.
+        isSessionEntryLetter: letterIdx === 0,
       });
 
       if (!decision.shouldNavigate) return;
@@ -1284,6 +1306,44 @@ export default function LetterWritingScreen({ route, navigation }) {
         return;
       }
 
+      // Two consumed failed cycles on this exact letter — a short motor
+      // warm-up built from the letter's OWN strokeTypes, then cycle 3.
+      //
+      // This is NOT a cycle and NOT an attempt. Nothing below it touches the
+      // cycle counter (already incremented by recordCycleCompleted above),
+      // writes a LetterAttempt, or reaches mastery, Motor Score or the
+      // threshold. Cycle 3 begins at attempt 1 exactly as cycle 2 did.
+      //
+      // Reached only from the evaluated-failure path: a capture fault returns
+      // via handleCaptureIncomplete long before this, so a device fault can
+      // never trigger it.
+      if (used === MAX_CYCLES_PER_LETTER_PER_DATE - 1 && !collectionMode) {
+        const remediationActivities = buildLetterRemediationActivities(letter);
+        const alreadyRemediated = hasRemediationHandled({
+          studentId: student.sid, caseType, letter, interactionId,
+          cycleNumber: used + 1, collectionMode,
+        });
+
+        if (remediationActivities.length > 0 && !alreadyRemediated) {
+          // Mark on OPEN, so a navigation replace or a re-render cannot
+          // replay it — same discipline the other two triggers use.
+          markRemediationHandled({
+            studentId: student.sid, caseType, letter, interactionId,
+            cycleNumber: used + 1,
+          });
+          navigation.navigate('PreWritingActivity', buildPreWritingNavigationParams({
+            student, theme, activities: remediationActivities,
+            targetLetter: letter, targetCaseType: caseType, interactionId,
+            reason: PRE_WRITING_REASON.CYCLE_3_REMEDIATION,
+            nextRoute: 'LetterWriting',
+            // slice(letterIdx) — NOT letterIdx + 1 — so the SAME letter is
+            // still active[0] and cycle 3 is for the letter that failed.
+            nextParams: { student, theme, caseType, letterSequence: sequence.slice(letterIdx), interactionId },
+          }));
+          return;
+        }
+      }
+
       // Cycle 2, immediately, on the same letter - attempt numbering restarts
       // at 1, exactly as cycle 1 did.
       setAttempt(1);
@@ -1610,8 +1670,12 @@ export default function LetterWritingScreen({ route, navigation }) {
       // a fresh LetterWriting instance starting at the next letter rather
       // than continuing in place, since PreWritingActivityScreen is a
       // separate screen in the stack.
+      // A warm-up marks a CHANGE of motor primitive, never simply "a next
+      // letter exists". This used to compute the next letter's group alone
+      // and warm up before every letter whose group had activities, so a run
+      // like l → i → t warmed up three times instead of none.
       const nextLetterObj = sequence[letterIdx + 1];
-      const group      = nextLetterObj ? getLetterPrimitiveGroup(nextLetterObj.letter) : null;
+      const group      = primitiveGroupOnEntering(sequence, letterIdx + 1);
       const activities = group ? selectPreWritingActivities(group) : [];
 
       if (activities.length > 0) {
@@ -1694,7 +1758,6 @@ export default function LetterWritingScreen({ route, navigation }) {
         <LetterWritingStage
           mode="practice"
           letter={letter}
-          phonetic={phonetic}
           theme={theme}
           rawPath={LETTER_PATHS[letter]}
           isAngular={ANGULAR_LETTERS.has(letter)}
@@ -1710,8 +1773,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           tracerXInterp={tracerXInterp}
           tracerYInterp={tracerYInterp}
           badge={badge}
-          badgeTitle={`Attempt ${attempt} · ${SUPPORT_INSTRUCTIONS[supportLevel]}`}
-          badgeHint={SUPPORT_HINTS[supportLevel]}
+          instruction={instructionForSupport(supportLevel)}
           onPlaySound={() => playLetterSound()}
           canvasRef={canvasRef}
           onCanvasLayout={measureCanvasOrigin}

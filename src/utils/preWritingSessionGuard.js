@@ -46,6 +46,9 @@ export const PRE_WRITING_REASON = {
   SESSION_START: 'session_start',
   CATEGORY_TRANSITION: 'category_transition',
   ADAPTIVE_DIFFICULTY: 'adaptive_difficulty',
+  // Two consumed failed cycles on the SAME letter, shown once before cycle 3.
+  // Tracked in its own map below, not in handledWarmups — see why there.
+  CYCLE_3_REMEDIATION: 'cycle_3_remediation',
 };
 
 const VALID_REASONS = Object.values(PRE_WRITING_REASON);
@@ -56,6 +59,23 @@ const VALID_REASONS = Object.values(PRE_WRITING_REASON);
 // returning to LetterWriting/UppercaseWriting — a screen remount alone is
 // not a reason to reach for persistent storage.
 const handledWarmups = new Map(); // key -> { reason, markedAt }
+
+/**
+ * Cycle-3 remediation is tracked SEPARATELY, and deliberately so.
+ *
+ * makeWarmupKey is (student, case, letter, interaction) with no reason in it.
+ * If remediation shared that map, a category-transition warm-up shown when the
+ * child first entered this letter's group would already have marked the key —
+ * and the child who then failed two cycles on that very letter would be denied
+ * the remediation they had actually earned. Different trigger, different
+ * purpose, different bookkeeping.
+ *
+ * The relationship is one-directional on purpose: remediation ALSO marks the
+ * shared map when it opens, so the adaptive-difficulty detour does not fire a
+ * second warm-up the moment the child lands back on the letter. A category
+ * warm-up never reaches into this map.
+ */
+const handledRemediations = new Map(); // key -> { markedAt }
 
 /**
  * Creates a new opaque, collision-resistant interaction id. Call ONCE per
@@ -103,6 +123,52 @@ export function makeWarmupKey({ studentId, caseType, letter, interactionId } = {
   // so 'c' (lowercase) and 'C' (uppercase) are never collapsed into the
   // same key, even though the two literal characters already differ.
   return `${studentKey}::${caseType}::${letter}::${interactionId}`;
+}
+
+/**
+ * The identity of ONE remediation opportunity: the warm-up key plus the cycle
+ * it precedes. Cycle-scoped so a child who fails cycle 2 and later, on a
+ * different day or interaction, reaches the same point again is not denied it.
+ *
+ * @returns {string|null} null for any invalid ingredient — never a partial key.
+ */
+export function makeRemediationKey({ studentId, caseType, letter, interactionId, cycleNumber } = {}) {
+  const base = makeWarmupKey({ studentId, caseType, letter, interactionId });
+  if (!base) return null;
+  if (!Number.isInteger(cycleNumber) || cycleNumber <= 0) return null;
+  return `${base}::${PRE_WRITING_REASON.CYCLE_3_REMEDIATION}::${cycleNumber}`;
+}
+
+/**
+ * Has this exact remediation already been opened? Stops a navigation replace
+ * or a re-render from replaying it.
+ * @returns {boolean} false for collection mode or any invalid ingredient.
+ */
+export function hasRemediationHandled({ collectionMode = false, ...args } = {}) {
+  if (collectionMode) return false;
+  const key = makeRemediationKey(args);
+  return key ? handledRemediations.has(key) : false;
+}
+
+/**
+ * Marks a remediation as opened. Same "mark on open, not on completion"
+ * discipline as markWarmupHandled — a teacher skip or a failed save must
+ * still count as handled.
+ *
+ * Also marks the SHARED warm-up key, so the adaptive-difficulty detour does
+ * not immediately add a second warm-up when the child returns to the letter.
+ *
+ * @returns {boolean} true if it was recorded.
+ */
+export function markRemediationHandled({ studentId, caseType, letter, interactionId, cycleNumber } = {}) {
+  const key = makeRemediationKey({ studentId, caseType, letter, interactionId, cycleNumber });
+  if (!key) return false;
+  handledRemediations.set(key, { markedAt: Date.now() });
+  markWarmupHandled({
+    studentId, caseType, letter, interactionId,
+    reason: PRE_WRITING_REASON.CYCLE_3_REMEDIATION,
+  });
+  return true;
 }
 
 /**
@@ -155,6 +221,7 @@ export function markWarmupHandled({ studentId, caseType, letter, interactionId, 
  */
 export function resetPreWritingGuardStore() {
   handledWarmups.clear();
+  handledRemediations.clear();
 }
 
 /**
@@ -215,6 +282,7 @@ export const NAV_REASON = {
   STALE_INTERACTION:       'stale_interaction',
   NO_ACTIVITY_RESOLVED:    'no_activity_resolved',
   ALREADY_HANDLED:         'already_handled',
+  SESSION_ENTRY_LETTER:    'session_entry_letter',
   ATTEMPT_ADVANCED:        'attempt_advanced',
   ALREADY_DRAWING:         'already_drawing',
 };
@@ -225,6 +293,7 @@ export const NAV_REASON = {
  *   activity: object|null|undefined,
  *   alreadyHandled: boolean,
  *   collectionMode: boolean,
+ *   isSessionEntryLetter?: boolean,
  *   currentLetter: string,
  *   currentCaseType: string,
  *   currentInteractionId?: string|null,
@@ -236,7 +305,7 @@ export const NAV_REASON = {
 export function resolveAdaptivePreWritingDetour({
   recommendation, activity, alreadyHandled, collectionMode,
   currentLetter, currentCaseType, currentInteractionId,
-  currentAttempt, hasDrawn,
+  currentAttempt, hasDrawn, isSessionEntryLetter = false,
 } = {}) {
   // Feature 4 adaptivity never applies to collection mode — checked first,
   // before even looking at the recommendation shape (Step 5 spec §9).
@@ -271,6 +340,21 @@ export function resolveAdaptivePreWritingDetour({
   // activity.
   if (!activity) {
     return { shouldNavigate: false, reason: NAV_REASON.NO_ACTIVITY_RESOLVED };
+  }
+
+  // The child opens a practice session on the FIRST letter of the sequence.
+  // Nothing precedes it, so there is nothing to warm up from — normal
+  // practice starts by writing, whatever the backend recommends. This is the
+  // same product rule the category-transition trigger already follows at
+  // index 0, applied to the one remaining path that could still detour there.
+  //
+  // Scoped to THIS function on purpose. Cycle-3 remediation navigates from
+  // handleFailedCycle and never passes through here, so a letter that was the
+  // session's first still gets its remediation after two failed cycles —
+  // including when the sliced return sequence puts it back at index 0. A
+  // blanket "no pre-writing at index 0" rule would have broken exactly that.
+  if (isSessionEntryLetter) {
+    return { shouldNavigate: false, reason: NAV_REASON.SESSION_ENTRY_LETTER };
   }
 
   // The Step 3 guard — suppresses a second detour for a letter the fixed

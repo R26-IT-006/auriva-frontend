@@ -91,11 +91,13 @@ const LOWERCASE_CURVED = [
   // Open arc — simpler than full circle
   { letter: 'c', category: CATEGORIES.CURVED, complexity: 1, caseType: 'lowercase',
     strokeTypes: ['half_circle'],
+    strokeVariants: { half_circle: 'cap' },
     motorRequirements: CURVED_REQUIREMENTS },
 
   // Half circle with implied horizontal midline
   { letter: 'e', category: CATEGORIES.CURVED, complexity: 1, caseType: 'lowercase',
     strokeTypes: ['half_circle', 'horizontal_line'],
+    strokeVariants: { half_circle: 'cap' },
     motorRequirements: CURVED_REQUIREMENTS },
 
   // Simple symmetric curve (u-shape)
@@ -133,6 +135,7 @@ const LOWERCASE_MIXED = [
 
   { letter: 'r', category: CATEGORIES.MIXED, complexity: 2, caseType: 'lowercase',
     strokeTypes: ['vertical_line', 'half_circle'],
+    strokeVariants: { half_circle: 'cap' },
     motorRequirements: MIXED_REQUIREMENTS },
 
   { letter: 'h', category: CATEGORIES.MIXED, complexity: 2, caseType: 'lowercase',
@@ -164,6 +167,7 @@ const LOWERCASE_MIXED = [
 
   { letter: 'b', category: CATEGORIES.MIXED, complexity: 3, caseType: 'lowercase',
     strokeTypes: ['vertical_line', 'half_circle'],
+    strokeVariants: { half_circle: 'cup' },
     motorRequirements: MIXED_REQUIREMENTS },
 
   { letter: 'j', category: CATEGORIES.MIXED, complexity: 3, caseType: 'lowercase',
@@ -176,6 +180,7 @@ const LOWERCASE_MIXED = [
 
   { letter: 'p', category: CATEGORIES.MIXED, complexity: 3, caseType: 'lowercase',
     strokeTypes: ['vertical_line', 'half_circle'],
+    strokeVariants: { half_circle: 'cup' },
     motorRequirements: MIXED_REQUIREMENTS },
 
   { letter: 'q', category: CATEGORIES.MIXED, complexity: 3, caseType: 'lowercase',
@@ -231,6 +236,7 @@ const UPPERCASE_CURVED = [
 
   { letter: 'C', category: CATEGORIES.CURVED, complexity: 2, caseType: 'uppercase',
     strokeTypes: ['half_circle'],
+    strokeVariants: { half_circle: 'cap' },
     motorRequirements: CURVED_REQUIREMENTS },
 
   { letter: 'U', category: CATEGORIES.CURVED, complexity: 2, caseType: 'uppercase',
@@ -249,6 +255,7 @@ const UPPERCASE_CURVED = [
   // G requires C-shape + inward horizontal — precision-demanding
   { letter: 'G', category: CATEGORIES.CURVED, complexity: 3, caseType: 'uppercase',
     strokeTypes: ['half_circle', 'horizontal_line'],
+    strokeVariants: { half_circle: 'cap' },
     motorRequirements: CURVED_REQUIREMENTS },
 
   // Q = O with a crossing exit stroke
@@ -261,14 +268,17 @@ const UPPERCASE_MIXED = [
   // ── complexity 2 ──────────────────────────────────────────────────────────
   { letter: 'D', category: CATEGORIES.MIXED, complexity: 2, caseType: 'uppercase',
     strokeTypes: ['vertical_line', 'half_circle'],
+    strokeVariants: { half_circle: 'cup' },
     motorRequirements: MIXED_REQUIREMENTS },
 
   { letter: 'P', category: CATEGORIES.MIXED, complexity: 2, caseType: 'uppercase',
     strokeTypes: ['vertical_line', 'half_circle'],
+    strokeVariants: { half_circle: 'cup' },
     motorRequirements: MIXED_REQUIREMENTS },
 
   { letter: 'B', category: CATEGORIES.MIXED, complexity: 2, caseType: 'uppercase',
     strokeTypes: ['vertical_line', 'half_circle', 'half_circle'],
+    strokeVariants: { half_circle: 'cup' },
     motorRequirements: MIXED_REQUIREMENTS },
 
   // ── complexity 3 ──────────────────────────────────────────────────────────
@@ -299,6 +309,7 @@ const UPPERCASE_MIXED = [
 
   { letter: 'R', category: CATEGORIES.MIXED, complexity: 3, caseType: 'uppercase',
     strokeTypes: ['vertical_line', 'half_circle', 'zigzag'],
+    strokeVariants: { half_circle: 'cup' },
     motorRequirements: MIXED_REQUIREMENTS },
 
   { letter: 'W', category: CATEGORIES.MIXED, complexity: 3, caseType: 'uppercase',
@@ -316,6 +327,28 @@ const UPPERCASE_MIXED = [
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
+/**
+ * ── strokeVariants ────────────────────────────────────────────────────────
+ * A stroke id says WHICH primitive a letter is written with; for a curve it
+ * does not say which way that curve bows, and `c` and `b` bow opposite ways.
+ * `strokeVariants` carries that one missing fact, next to the strokeTypes it
+ * qualifies, so it stays exact-letter metadata rather than a second map.
+ *
+ *   cap  the curve bows LEFT of a downward stroke — the c / C family
+ *   cup  it bows RIGHT — the b / p / D bowl family
+ *
+ * Every value is READ OFF the letter's own reference waypoints in
+ * LETTER_PATHS: the sign of the curve's maximum perpendicular offset from its
+ * own chord. Nothing here is a visual guess, and no reference geometry was
+ * touched to produce it. letterRemediation.test.js recomputes the sign from
+ * those waypoints and fails if a value here disagrees.
+ *
+ * Optional and additive: a letter without it is simply undirected, and
+ * consumers must treat it that way rather than assuming a default. Only the
+ * interactive warm-up uses it — printed worksheets render an undirected row
+ * of curves and have no concept of bow direction, which is why the backend
+ * mirror does not carry it.
+ */
 export const LETTER_CATEGORIES = {
   lowercase: {
     straight: LOWERCASE_STRAIGHT,
@@ -363,4 +396,41 @@ export function getLetterComplexity(letter) {
 export function getLetterCategory(letter) {
   const all = [...getAllLetters('lowercase'), ...getAllLetters('uppercase')];
   return all.find(l => l.letter === letter)?.category ?? null;
+}
+
+/**
+ * Returns the ORDERED stroke ids this letter form is written with — its own
+ * `strokeTypes`, in source order, copied so a caller cannot mutate the
+ * catalogue.
+ *
+ * This is the single frontend source for letter decomposition. The backend's
+ * worksheetMotorMap.LETTER_STROKE_TYPES is a hand-kept mirror of these very
+ * arrays with a CI drift test; nothing else may hold a third copy.
+ *
+ * Case is significant and never assumed symmetric: 'a' is
+ * ['full_circle', 'vertical_line'] while 'A' is ['zigzag', 'horizontal_line'].
+ *
+ * @param {string} letter
+ * @returns {string[]|null} null for an unknown letter — never a guessed default.
+ */
+/**
+ * The optional per-stroke direction metadata for a letter — currently only
+ * `half_circle: 'cap' | 'cup'`. See the strokeVariants note above
+ * LETTER_CATEGORIES.
+ *
+ * @returns {Object|null} a copy, or null when this letter has none. Callers
+ *   must treat null as "undirected", never as a default direction.
+ */
+export function getLetterStrokeVariants(letter) {
+  if (typeof letter !== 'string' || letter.length !== 1) return null;
+  const all = [...getAllLetters('lowercase'), ...getAllLetters('uppercase')];
+  const variants = all.find(l => l.letter === letter)?.strokeVariants;
+  return variants ? { ...variants } : null;
+}
+
+export function getLetterStrokeTypes(letter) {
+  if (typeof letter !== 'string' || letter.length !== 1) return null;
+  const all = [...getAllLetters('lowercase'), ...getAllLetters('uppercase')];
+  const entry = all.find(l => l.letter === letter);
+  return Array.isArray(entry?.strokeTypes) ? [...entry.strokeTypes] : null;
 }

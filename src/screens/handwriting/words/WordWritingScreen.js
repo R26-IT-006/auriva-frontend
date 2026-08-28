@@ -43,11 +43,13 @@ import { useLockLandscape } from '../../../utils/useOrientationLock';
 // The shared word-writing presentation - this screen and the demonstration
 // render the SAME component, in different modes.
 import WordWritingStage from '../../../components/handwriting/WordWritingStage';
+import { instructionForSupport } from '../../../constants/childInstructions';
 import {
   PAD, COL_L, IMG_SIZE, CANVAS_W, CANVAS_H, LINE_1, LINE_2, LINE_3, LINE_4,
   WORD_SCREEN_W,
 } from '../../../constants/wordCanvasLayout';
 import useGatedBack from '../../../utils/useGatedBack';
+import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -72,17 +74,12 @@ const ATTEMPT_BADGE = {
   3: { bg: '#A8E6A8', border: '#4CAF50', text: '#1B5E20' },
 };
 
-const ATTEMPT_TITLES = {
-  1: 'Attempt 1 · Watch & Trace',
-  2: 'Attempt 2 · Follow the Guide',
-  3: 'Attempt 3 · Write Freely',
-};
-
-const ATTEMPT_HINTS = {
-  1: 'Listen to the letters — then trace the word!',
-  2: 'Trace the word — ① marks where to start.',
-  3: 'Write the word from memory — no guide this time!',
-};
+// Attempt 1/2/3 map onto the SAME three support levels the letter screens
+// use, so they now show the same words from the same file rather than a
+// second, differently-worded copy. The attempt number itself is unchanged and
+// still drives every guide, tracer and scoring decision — it just no longer
+// addresses the child.
+const ATTEMPT_SUPPORT_LEVEL = { 1: 'high', 2: 'medium', 3: 'low' };
 
 // â”€â”€â”€ Length-group celebrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const LENGTH_CELEBRATIONS = {
@@ -397,14 +394,14 @@ export default function WordWritingScreen({ route, navigation }) {
     letters.forEach(ltr => {
       const t = setTimeout(() => {
         if (!spellCancelRef.current)
-          Speech.speak(ltr.toUpperCase(), { rate: 0.8, language: 'en-US' });
+          Speech.speak(ltr.toUpperCase(), { rate: 0.8, language: SPEECH_LOCALE_EN });
       }, delay);
       spellTimersRef.current.push(t);
       delay += 750;
     });
     const ft = setTimeout(() => {
       if (!spellCancelRef.current)
-        Speech.speak(w.replace(/-/g, ' '), { rate: 0.82, language: 'en-US' });
+        Speech.speak(w.replace(/-/g, ' '), { rate: 0.82, language: SPEECH_LOCALE_EN });
     }, delay + 350);
     spellTimersRef.current.push(ft);
   }, [word]);
@@ -630,8 +627,7 @@ export default function WordWritingScreen({ route, navigation }) {
           word={word}
           spelling={spelling}
           badge={badge}
-          badgeTitle={ATTEMPT_TITLES[attempt]}
-          badgeHint={ATTEMPT_HINTS[attempt]}
+          instruction={instructionForSupport(ATTEMPT_SUPPORT_LEVEL[attempt])}
           guideOpacity={guideOpacity}
           guidePathD={guidePathD}
           guideDots={guideDots}

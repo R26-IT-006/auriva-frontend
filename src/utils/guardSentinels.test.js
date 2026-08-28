@@ -80,6 +80,9 @@ describe('SENTINEL — moving on is not mastering', () => {
   const letterScreen = read('../screens/handwriting/LetterWritingScreen.js');
   const upperScreen  = read('../screens/handwriting/uppercase/UppercaseWritingScreen.js');
 
+  const stripComments = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
   /** Just the handleFailedCycle body — brace-matched, not a wide slice. */
   function capBranch(src) {
     const start = src.indexOf('const handleFailedCycle');
@@ -94,10 +97,18 @@ describe('SENTINEL — moving on is not mastering', () => {
 
   it('the cap branch contains no mastery write of any kind', () => {
     for (const src of [letterScreen, upperScreen]) {
-      const branch = capBranch(src);
+      // CODE only. This function documents at length what it does NOT do,
+      // and a substring sentinel would otherwise fire on the word "mastery"
+      // inside a comment saying mastery is never reached.
+      const branch = stripComments(capBranch(src));
       // Sanity: the slice really is just that function.
       expect(branch).toMatch(/if \(used >= MAX_CYCLES_PER_LETTER_PER_DATE\)/);
-      expect(branch.split('\n').length).toBeLessThan(40);
+      // Two branches now: the cycle cap, and the cycle-3 remediation detour.
+      // Counting lines that actually hold CODE — stripComments leaves the
+      // blank lines its comments occupied, and this budget is about how much
+      // logic lives here, not how well it is explained.
+      const codeLines = branch.split('\n').filter((l) => l.trim().length > 0);
+      expect(codeLines.length).toBeLessThan(45);
       for (const forbidden of ['mastered', 'mastery', 'LetterProgress',
         'storeLetterProgress', 'completed: true', 'wroteCorrectly = true']) {
         expect(branch).not.toContain(forbidden);
