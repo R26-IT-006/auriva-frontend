@@ -68,11 +68,16 @@ const styles = StyleSheet.create({
   wrap:   { alignItems: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
   value:  { fontFamily: 'DMSans_800ExtraBold' },
+  // Small caps under the figure, matching every other label on the report. It was
+  // sentence case, which read as a word the number was part of rather than as its
+  // caption.
   label:  {
-    fontSize: Layout.fontSize.xs,
+    fontSize: 10,
     color: Colors.text.muted,
-    fontFamily: 'DMSans_600SemiBold',
-    marginTop: 1,
+    fontFamily: 'DMSans_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    marginTop: 3,
   },
   sublabel: {
     fontSize: Layout.fontSize.xs,

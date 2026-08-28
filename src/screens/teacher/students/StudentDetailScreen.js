@@ -14,13 +14,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../components/common/Avatar';
 import { MasteryRing } from '../../../components/charts/MasteryRing';
-import { TierBar, TierLegend } from '../../../components/charts/TierBar';
+import { GroupGrid } from '../../../components/charts/GroupGrid';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
 import { formatDate, ageFrom } from '../../../utils/formatters';
-import { countOf, ROUND } from '../../../constants/teacherWording';
+import { ROUND } from '../../../constants/teacherWording';
 
 // Same tinted pairs the teacher dashboard uses for its section panels, so a
 // profile opened from a dashboard card keeps the same visual language.
@@ -37,36 +37,75 @@ const SECTION = {
 };
 
 const PANEL_PAD = 16;
+// The module panel's own rhythm. Everything inside it — header, tab bar, cards,
+// the gaps between them — is a multiple of this, which is most of what makes the
+// section read as laid out rather than assembled.
+const PANEL_PAD_LG = 24;
+const CARD_GAP     = 16;
 
 // ── Panel shell ──────────────────────────────────────────────────────────────
 
-function Panel({ title, section, action, onAction, children, flush }) {
+/**
+ * `size="lg"` is the spacious variant, used for the one panel that carries a
+ * whole workspace rather than a list of fields.
+ *
+ * The difference is not only scale. The small panel wears its accent as a tinted
+ * header band, which is what tells a short list of contact details apart from the
+ * card above it. At the module panel's size that band became a coloured stripe
+ * across the widest thing on the screen and started competing with the content
+ * under it, so the large variant keeps the accent to the icon plate and the
+ * action, and lets the title carry the weight in plain ink.
+ */
+function Panel({ title, section, action, onAction, children, flush, size = 'md' }) {
   const accent = SECTION[section];
+  const lg = size === 'lg';
+
   return (
     // Shadow on the outer view, clipping on the inner one: a view with
     // overflow:hidden clips its own shadow on iOS, so the two can't be the same.
-    <View style={styles.panelShadowWrap}>
-      <View style={[styles.panel, { borderColor: accent.fg + '33' }]}>
+    <View style={[styles.panelShadowWrap, lg && styles.panelShadowWrapLg]}>
+      <View style={[
+        styles.panel,
+        lg ? styles.panelLg : { borderColor: accent.fg + '33' },
+      ]}>
         <View style={[
           styles.panelHeader,
-          { backgroundColor: accent.bg, borderBottomColor: accent.fg + '26' },
+          lg
+            ? styles.panelHeaderLg
+            : { backgroundColor: accent.bg, borderBottomColor: accent.fg + '26' },
         ]}>
-          <View style={styles.panelIcon}>
-            <Ionicons name={accent.icon} size={16} color={accent.fg} />
+          <View style={[
+            styles.panelIcon,
+            lg && [styles.panelIconLg, { backgroundColor: accent.bg }],
+          ]}>
+            <Ionicons name={accent.icon} size={lg ? 22 : 16} color={accent.fg} />
           </View>
-          <Text style={[styles.panelTitle, { color: accent.fg }]} numberOfLines={1}>
+
+          <Text
+            style={[styles.panelTitle, lg ? styles.panelTitleLg : { color: accent.fg }]}
+            numberOfLines={1}
+          >
             {title}
           </Text>
+
           {action ? (
             <TouchableOpacity
               onPress={onAction}
               activeOpacity={0.75}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
             >
-              <Text style={[styles.panelAction, { color: accent.fg }]}>{action}</Text>
+              <Text style={[
+                styles.panelAction,
+                lg && styles.panelActionLg,
+                { color: accent.fg },
+              ]}>
+                {action}
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>
+
         <View style={flush ? null : styles.panelBody}>{children}</View>
       </View>
     </View>
@@ -113,45 +152,30 @@ function InfoList({ rows, section }) {
   );
 }
 
-function StatLine({ label, value }) {
+/** One figure on the progress panel: a small-caps label over a large number. */
+function ProgressStat({ label, value, of, tint }) {
   return (
-    <View style={styles.statLine}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-    </View>
-  );
-}
-
-/** One fact on the hero gradient: a translucent tile with the label above the
- *  value, so the eye reads a grid of short blocks instead of a stack of rows. */
-function HeroFact({ icon, label, value, wide }) {
-  return (
-    <View style={[styles.factTile, wide && styles.factTileWide]}>
-      <View style={styles.factLabelRow}>
-        <Ionicons name={icon} size={12} color="rgba(255,255,255,0.78)" />
-        <Text style={styles.factLabel} numberOfLines={1}>{label}</Text>
+    <View style={styles.progressStat}>
+      <Text style={styles.progressStatLabel} numberOfLines={2}>{label}</Text>
+      <View style={styles.progressStatRow}>
+        <Text style={[styles.progressStatValue, tint ? { color: tint } : null]}>{value}</Text>
+        {of ? <Text style={styles.progressStatOf}>/ {of}</Text> : null}
       </View>
-      <Text style={styles.factValue} numberOfLines={2}>{value}</Text>
     </View>
   );
 }
 
-/**
- * Lays the filled-in facts out as a wrapping grid.
- *
- * Short facts take half a row and grow to fill whatever is left, so one missing
- * field re-flows the rest instead of leaving a gap; anything marked `wide` (an
- * address, which is the one value that reliably runs long) claims a full row.
- */
-function HeroFacts({ rows }) {
-  const visible = rows.filter((r) => r.value);
-  if (visible.length === 0) return null;
-
+/** One fact on the identity card: an icon plate, a small-caps label, the value. */
+function IdFact({ icon, label, value }) {
   return (
-    <View style={styles.heroFacts}>
-      {visible.map((r) => (
-        <HeroFact key={r.label} icon={r.icon} label={r.label} value={r.value} wide={r.wide} />
-      ))}
+    <View style={styles.idFact}>
+      <View style={styles.idFactIcon}>
+        <Ionicons name={icon} size={17} color="rgba(255,255,255,0.95)" />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.idFactLabel}>{label}</Text>
+        <Text style={styles.idFactValue} numberOfLines={2}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -172,6 +196,10 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
   const [activeModule, setActiveModule] = useState('concept');
+  // The newest note a teacher has written about this child, for the identity card.
+  // Null until it loads and null if it fails — the card simply shows the address
+  // instead, rather than an empty quote box.
+  const [latestNote, setLatestNote] = useState(null);
 
   const fetch = useCallback(async () => {
     if (!initialStudent?.sid) { setRefreshing(false); return; }
@@ -196,7 +224,19 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
+  const fetchNote = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    try {
+      const notes = await teacherApi.getStudentNotes(initialStudent.sid);
+      const newest = Array.isArray(notes) ? notes[0] : null;
+      setLatestNote(newest?.body ?? null);
+    } catch {
+      setLatestNote(null);
+    }
+  }, [initialStudent?.sid]);
+
   useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchNote(); }, [fetchNote]);
 
   // Refetch on focus so returning from the report reflects a session just played.
   useFocusEffect(useCallback(() => { fetchConcepts(); }, [fetchConcepts]));
@@ -214,18 +254,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const hasProgress = concepts && concepts.totals.started > 0;
 
 
-  // Code and age were two pill chips; as one quiet line under the name they read
-  // as a caption on the name rather than as two more things to look at.
-  const identityMeta = [
-    student.student_code,
-    age != null ? `${age} years old` : null,
-  ].filter(Boolean).join('  ·  ');
-
-  // The hero wears the child's own avatar colours, so a teacher who knows Lily
-  // from Boba recognises whose profile this is before reading the name — and it
-  // matches what the child sees in the concept activities.
-  const heroColors = getAvatarTheme(student.avatar_key).heroGradient;
-  const heroDeep   = heroColors[heroColors.length - 1];
+  // The card itself is the brand teal now, so the child's avatar theme survives
+  // as the badge on the photo — the deep end of their own pair. It is still the
+  // mark a teacher who knows Lily from Boba reads before the name, and it is
+  // still the colour the child sees in the concept activities.
+  const avatarPair = getAvatarTheme(student.avatar_key).heroGradient;
+  const avatarDeep = avatarPair[avatarPair.length - 1];
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -234,65 +268,96 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetch(); }} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero — shadow on the wrapper, clipping on the gradient: the gradient
-            has to clip so the soft highlight circles stay inside its corners,
-            and a clipping view swallows its own shadow on iOS. */}
-        <View style={[
-          styles.heroShadowWrap,
-          // Backing colour and shadow both take the deep end of the gradient:
-          // the backing only shows through the rounded corners, and a shadow in
-          // the card's own hue keeps a warm avatar from casting a blue one.
-          { backgroundColor: heroDeep, shadowColor: heroDeep },
-        ]}>
-          <LinearGradient
-            colors={heroColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}
-          >
-            <View style={styles.heroGlowTop} pointerEvents="none" />
-            <View style={styles.heroGlowBottom} pointerEvents="none" />
+        {/* The identity card, in the sign-in button's teal → green, on the same
+            diagonal as that button so it reads as the same surface rather than a
+            coincidence of hue. */}
+        <LinearGradient
+          colors={Colors.brandGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.idCard}
+        >
+          {/* Measured, not taste. The brand pair is a button colour: white on it
+              is 2.69:1 at the teal end and 2.29:1 at the green, which is fine for
+              four words on a control and fails everything on a card carrying a
+              name, two dates and an address. The scrim deepens the same two hues
+              to 5.16:1 and 4.56:1 — so the card keeps the brand colour and the
+              text on it can actually be read. */}
+          <View style={styles.idScrim} pointerEvents="none" />
 
-            <View style={styles.heroTop}>
-              <View style={styles.avatarRing}>
-                {/* Initials fall back to the deep end rather than Avatar's own
-                    name-hashed palette, which would drop an unrelated colour
-                    into a card that is otherwise all one hue. */}
+          <View style={styles.idBody}>
+            {/* Left: who they are. */}
+            <View style={styles.idLeft}>
+              <View style={styles.idAvatarWrap}>
                 <Avatar
                   name={student.full_name}
                   uri={student.profile_photo_url}
-                  size={72}
-                  style={{ backgroundColor: heroDeep }}
+                  size={104}
+                  style={styles.idAvatar}
                 />
+                {/* The child's own avatar colour, kept as a badge on the photo.
+                    It is the one thing a teacher recognises before reading, and
+                    it had nowhere left to live once the card went dark. */}
+                <View style={[styles.idAvatarBadge, { backgroundColor: avatarDeep }]}>
+                  <Ionicons name="school" size={14} color="#FFFFFF" />
+                </View>
               </View>
 
-              <View style={styles.heroMeta}>
-                <Text style={styles.heroName} numberOfLines={2}>{student.full_name}</Text>
-                {identityMeta ? (
-                  <Text style={styles.heroSub} numberOfLines={1}>{identityMeta}</Text>
+              <Text style={styles.idName} numberOfLines={2}>{student.full_name}</Text>
+
+              <View style={styles.idChips}>
+                {student.student_code ? (
+                  <View style={styles.idChip}>
+                    <Text style={styles.idChipText}>{student.student_code}</Text>
+                  </View>
+                ) : null}
+                {age != null ? (
+                  <>
+                    <View style={styles.idDot} />
+                    <Text style={styles.idAge}>{age} years old</Text>
+                  </>
                 ) : null}
               </View>
             </View>
 
-            {/* The child's details live on the identity card itself rather than in a
-                panel of their own — it is all the same "who is this student?"
-                answer, and splitting it across two blocks made the reader hunt.
-                Progress deliberately stays out of here: the hero answers "who is
-                this?", and "how are they doing?" is the Module Progress panel's
-                job — duplicating its numbers up top only split the reader's
-                attention between two places showing the same thing. */}
-            <HeroFacts
-              rows={[
-                // Guarded rather than leaning on formatDate, which answers "—" for
-                // a missing date — a tile that says nothing is the clutter we're
-                // cutting, so it should just not be there.
-                { icon: 'calendar-outline', label: 'Date of Birth', value: student.date_of_birth ? formatDate(student.date_of_birth) : null },
-                { icon: 'medical-outline',  label: 'Disability',    value: student.disability },
-                { icon: 'home-outline',     label: 'Address',       value: student.address, wide: true },
-              ]}
-            />
-          </LinearGradient>
-        </View>
+            {/* Right: the facts, as tiles on the dark. */}
+            <View style={styles.idRight}>
+              <View style={styles.idFactRow}>
+                {student.date_of_birth ? (
+                  <IdFact icon="gift-outline" label="Date of birth" value={formatDate(student.date_of_birth)} />
+                ) : null}
+                {student.disability ? (
+                  <IdFact icon="pulse-outline" label="Diagnosis" value={student.disability} />
+                ) : null}
+              </View>
+
+              {/* The most recent note a teacher wrote about this child. Real, not a
+                  placeholder — an invented line here would read as clinical record.
+                  Absent until one exists, and absent if the fetch fails. */}
+              {latestNote ? (
+                <View style={styles.idNote}>
+                  <View style={styles.idNoteBadge}>
+                    <Text style={styles.idNoteQuote}>“</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.idFactLabel}>Teacher's note</Text>
+                    <Text style={styles.idNoteText} numberOfLines={3}>{latestNote}</Text>
+                  </View>
+                </View>
+              ) : student.address ? (
+                <View style={styles.idNote}>
+                  <View style={styles.idNoteBadge}>
+                    <Ionicons name="home-outline" size={16} color="rgba(255,255,255,0.95)" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.idFactLabel}>Address</Text>
+                    <Text style={styles.idNoteText} numberOfLines={2}>{student.address}</Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </LinearGradient>
 
         {/* Contact */}
         {(student.father_name || student.mother_name || student.mobile_number || student.home_number) && (
@@ -313,15 +378,17 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         <Panel
           title="Module Progress"
           section="progress"
+          size="lg"
           flush
           action={activeModule === 'concept' && hasProgress ? 'Report' : null}
           onAction={() => navigation.navigate('ConceptReport', { student })}
         >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.moduleTabs}
-          >
+          {/* One track holding four equal tabs, rather than a scrolling row of
+              chips. There are exactly four modules and there always will be until
+              one ships, so the set is small enough to show whole — and a fixed
+              set shown whole is a segmented control, which says "these are the
+              four choices" where a scroller says "there may be more offscreen". */}
+          <View style={styles.tabBar} accessibilityRole="tablist">
             {MODULES.map((m) => {
               const active = m.key === activeModule;
               return (
@@ -331,22 +398,23 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                   activeOpacity={0.8}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: active }}
-                  style={[styles.moduleTab, active && styles.moduleTabActive]}
+                  style={[styles.tab, active && styles.tabActive]}
                 >
                   <Ionicons
                     name={m.icon}
-                    size={15}
+                    size={16}
                     color={active ? '#FFFFFF' : Colors.text.muted}
                   />
-                  <Text style={[styles.moduleTabText, active && styles.moduleTabTextActive]}>
+                  <Text
+                    style={[styles.tabText, active && styles.tabTextActive]}
+                    numberOfLines={1}
+                  >
                     {m.tab}
                   </Text>
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
-
-          <View style={styles.divider} />
+          </View>
 
           {activeModule !== 'concept' ? (
             <View style={styles.conceptEmpty}>
@@ -377,46 +445,67 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
             </View>
           ) : (
             <>
-              <View style={styles.conceptHeader}>
-                <MasteryRing value={concepts.totals.mastery_pct} size={92} label="learned" />
-                <View style={styles.conceptStats}>
-                  <StatLine
+              <View style={styles.conceptBody}>
+              {/* The ring beside a 2x2 of figures. It stays here — unlike the
+                  full report, where it restated the Learned tile — because this
+                  panel has no headline sentence, so the ring IS the summary.
+                  Both sides are cards on the same light fill so the row reads as
+                  one block of five surfaces rather than a chart with a list. */}
+              <View style={styles.statRow}>
+                <View style={styles.ringCard}>
+                  <MasteryRing value={concepts.totals.mastery_pct} size={168} label="learned" />
+                </View>
+
+                <View style={styles.statGrid}>
+                  <ProgressStat
                     label="Learned"
-                    value={countOf(concepts.totals.mastered, concepts.totals.catalogue_concepts)}
+                    value={String(concepts.totals.mastered)}
+                    of={concepts.totals.catalogue_concepts}
                   />
-                  <StatLine label="Tried so far" value={String(concepts.totals.started)} />
-                  <StatLine label={ROUND.tier1.label} value={String(concepts.totals.tier1_passed)} />
-                  <StatLine label="Worth another look" value={String(needsAttention)} />
+                  <ProgressStat label="Tried so far" value={String(concepts.totals.started)} />
+                  <ProgressStat label={ROUND.tier1.label} value={String(concepts.totals.tier1_passed)} />
+                  {/* Coral whatever the count, matching the Revisit tile on the
+                      report. The two show the same figure and had drifted to
+                      different rules for the zero case. */}
+                  <ProgressStat
+                    label="Worth another look"
+                    value={String(needsAttention)}
+                    tint="#C4674F"
+                  />
                 </View>
               </View>
 
-              <View style={styles.divider} />
-
-              <View style={styles.categoryBlock}>
-                {activeCategories.map((c) => (
-                  <TierBar
-                    key={c.category_key}
-                    label={c.label}
-                    total={c.total}
-                    tier1={c.tier1_passed}
-                    tier2={c.tier2_passed}
-                    tier3={c.tier3_passed}
-                    right={`${c.mastered}/${c.total}`}
-                  />
-                ))}
-                <TierLegend />
+              <View style={styles.breakdownHead}>
+                <Ionicons name="list-outline" size={16} color={Colors.text.secondary} />
+                <Text style={styles.breakdownTitle}>Category breakdown</Text>
               </View>
 
-              <TouchableOpacity
-                style={styles.reportLink}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('ConceptReport', { student })}
-              >
-                <Text style={[styles.reportLinkText, { color: SECTION.progress.fg }]}>
-                  View full report
-                </Text>
-                <Ionicons name="chevron-forward" size={16} color={SECTION.progress.fg} />
-              </TouchableOpacity>
+              {/* Cards two to a row rather than the report's full-width rows.
+                  Nothing opens here, so the row's horizontal space bought nothing
+                  and nine of them made this the tallest panel on the screen. Same
+                  faces and same three bands as the report, so it still reads as
+                  one chart across the two screens. */}
+              <GroupGrid
+                categories={concepts.categories || []}
+                showLegend
+                initialCount={6}
+              />
+
+              </View>
+
+              {/* On its own ruled footer. Floating at the end of the last bar it
+                  read as belonging to that category rather than to the panel. */}
+              <View style={styles.reportFooter}>
+                <TouchableOpacity
+                  style={styles.reportBtn}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('ConceptReport', { student })}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.reportBtnText}>View full report</Text>
+                  <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
             </>
           )}
         </Panel>
@@ -427,6 +516,232 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  // ── Module progress ────────────────────────────────────────────────────────
+  // The panel is `flush`, so the body supplies its own padding. Without it the
+  // progress bars ran to the card's edges and the whole section read as though it
+  // had been pasted in rather than laid out.
+  conceptBody: {
+    padding: PANEL_PAD_LG,
+    paddingTop: Layout.spacing.lg,
+    gap: Layout.spacing.lg,
+  },
+
+  reportFooter: {
+    alignItems: 'flex-end',
+    paddingHorizontal: PANEL_PAD_LG,
+    paddingBottom: PANEL_PAD_LG,
+    paddingTop: Layout.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  // Carries the same surface, radius and border as the four tiles beside it, so
+  // the row reads as five cards of one family. It used to be bare on the argument
+  // that the ring is already a closed shape — true of the ring alone, but with
+  // tiles either side the bare version read as a gap in the row rather than as a
+  // deliberate absence.
+  ringCard: {
+    flexGrow: 1,
+    flexBasis: 260,
+    minWidth: 220,
+    paddingVertical: Layout.spacing.xl,
+    paddingHorizontal: Layout.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Layout.radius.xl,
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  progressStat: {
+    // Just under half, so two sit per row with the gap between them. Fixed height
+    // rather than content-sized: "Worth another look" wraps to two lines and used
+    // to make its row taller than the one above it. Two of these plus the gap is
+    // what sets the height the ring card stretches to.
+    flexGrow: 1,
+    flexBasis: '46%',
+    // 130, not 140. On a portrait phone the grid is ~292 wide, so two cards plus
+    // the 16 gap have 138 each — a 140 floor tipped them onto separate rows and
+    // turned the 2x2 into a stack of four.
+    minWidth: 130,
+    height: 108,
+    justifyContent: 'center',
+    paddingHorizontal: Layout.spacing.lg,
+    borderRadius: Layout.radius.xl,
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  progressStatLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  progressStatRow:   { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8 },
+  progressStatValue: { fontSize: 30, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  progressStatOf:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold', color: Colors.text.muted },
+
+  // Margins rather than relying on conceptBody's gap alone: the breakdown is a
+  // second subject under the same tab, so it wants a wider gap above it than the
+  // one holding the stat row and the tabs together.
+  breakdownHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: Layout.spacing.md,
+    marginBottom: 0,
+  },
+  breakdownTitle: {
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: Colors.text.primary,
+  },
+
+  // Dark and filled, not a text link. It leaves this screen for another, which is
+  // a bigger move than anything else on the panel and should look like one.
+  reportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: Layout.radius.full,
+    backgroundColor: '#2B2E32',
+  },
+  reportBtnText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },
+
+  // ── Identity card ──────────────────────────────────────────────────────────
+  // Colour comes from the gradient at the call site; the shadow takes the brand
+  // teal so the card does not cast the app's default blue over a green surface.
+  idCard: {
+    borderRadius: 28,
+    padding: Layout.spacing.lg,
+    marginBottom: Layout.spacing.lg,
+    ...Layout.shadow.md,
+    shadowColor: Colors.brand,
+  },
+  // Radius repeated rather than clipping the gradient with overflow:hidden — a
+  // clipping view swallows its own shadow on iOS, and the card wants its lift.
+  // Near-black teal rather than neutral black, so it deepens the hue instead of
+  // greying it.
+  idScrim: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 28,
+    backgroundColor: 'rgba(11,42,40,0.40)',
+  },
+  idBody: { flexDirection: 'row', gap: Layout.spacing.lg, flexWrap: 'wrap' },
+
+  idLeft:  { minWidth: 200, justifyContent: 'flex-start' },
+  idRight: { flex: 1, minWidth: 260, gap: 12 },
+
+  idAvatarWrap: { alignSelf: 'flex-start' },
+  idAvatar: {
+    borderRadius: 26,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  // On the photo's corner, carrying the child's own avatar hue — the one thing a
+  // teacher recognises before reading, which the card's own colour would lose.
+  //
+  // Ringed in white rather than in the card's colour: the card is a gradient now,
+  // so no single value matches it at the badge's position, and two of the five
+  // avatar hues are greens that would sink into it without a break.
+  idAvatarBadge: {
+    position: 'absolute',
+    right: -4, bottom: -4,
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+
+  idName: {
+    fontSize: 26,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    marginTop: Layout.spacing.md,
+  },
+  idChips: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' },
+  idChip: {
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: Layout.radius.full,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  idChipText: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: 'rgba(255,255,255,0.95)',
+    letterSpacing: 0.5,
+  },
+  idDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.45)' },
+  idAge: { fontSize: Layout.fontSize.sm, color: 'rgba(255,255,255,0.90)' },
+
+  // Wraps, and the tiles are allowed to be narrow. Two 160px minimums in a
+  // non-wrapping row needed 328pt in a column that is 294 on a portrait phone,
+  // so the second tile ran off the card.
+  idFactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  idFact: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    minWidth: 130,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.sm,
+    padding: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+    // 0.06 was calibrated against the charcoal card it used to sit on. On a
+    // mid-tone teal it lifts the surface by 1.05x — invisible — so the tiles had
+    // stopped reading as tiles. 0.14 plus a hairline gives them their edge back.
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  idFactIcon: {
+    width: 38, height: 38, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.20)',
+  },
+  idFactLabel: {
+    fontSize: 10,
+    fontFamily: 'DMSans_700Bold',
+    color: 'rgba(255,255,255,0.90)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+  },
+  idFactValue: {
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_700Bold',
+    color: '#FFFFFF',
+    marginTop: 3,
+  },
+
+  // Same surface as the fact tiles either side of it, for the same reason.
+  idNote: {
+    flexDirection: 'row',
+    gap: Layout.spacing.sm,
+    padding: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  idNoteBadge: {
+    width: 38, height: 38, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.20)',
+  },
+  idNoteQuote: { fontSize: 20, lineHeight: 26, color: 'rgba(255,255,255,0.9)', fontFamily: 'DMSans_800ExtraBold' },
+  idNoteText: {
+    fontSize: Layout.fontSize.sm,
+    fontStyle: 'italic',
+    color: 'rgba(255,255,255,0.95)',
+    lineHeight: 20,
+    marginTop: 3,
+  },
+
 
   safe: { flex: 1, backgroundColor: Colors.background },
   scroll: {
@@ -438,101 +753,6 @@ const styles = StyleSheet.create({
   // ── Hero ──────────────────────────────────────────────────────────────────
   // backgroundColor and shadowColor are both supplied at the call site from the
   // student's avatar theme; everything else about the card is fixed.
-  heroShadowWrap: {
-    borderRadius: Layout.radius.xl,
-    ...Layout.shadow.md,
-  },
-  hero: {
-    borderRadius: Layout.radius.xl,
-    overflow: 'hidden',
-    padding: Layout.spacing.lg,
-    // One rhythm for the whole card: identity → facts → numbers all sit a full
-    // step apart, instead of each block bringing its own margin.
-    gap: Layout.spacing.lg,
-  },
-  // Two barely-there highlights bled off the corners. They give the flat
-  // gradient some depth without adding anything the reader has to look at.
-  heroGlowTop: {
-    position: 'absolute',
-    top: -54,
-    right: -34,
-    width: 172,
-    height: 172,
-    borderRadius: 86,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-  },
-  heroGlowBottom: {
-    position: 'absolute',
-    bottom: -70,
-    left: -46,
-    width: 158,
-    height: 158,
-    borderRadius: 79,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  heroTop: { flexDirection: 'row', alignItems: 'center' },
-  // A thin ring rather than the old fat halo — it frames the photo instead of
-  // competing with it.
-  avatarRing: {
-    padding: 3,
-    borderRadius: Layout.radius.full,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.45)',
-  },
-  heroMeta:  { flex: 1, marginLeft: Layout.spacing.md },
-  heroName:  {
-    fontSize: Layout.fontSize.xxl,
-    fontFamily: 'DMSans_800ExtraBold',
-    color: '#FFFFFF',
-    lineHeight: Layout.fontSize.xxl * 1.2,
-    letterSpacing: -0.3,
-  },
-  heroSub: {
-    marginTop: 5,
-    fontSize: Layout.fontSize.sm,
-    color: 'rgba(255,255,255,0.85)',
-    fontFamily: 'DMSans_600SemiBold',
-    letterSpacing: 0.2,
-  },
-
-  // ── Hero facts ────────────────────────────────────────────────────────────
-  heroFacts: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.sm },
-  // flexBasis just under half leaves room for the gap, and flexGrow lets a lone
-  // tile take the whole row rather than sitting stranded at 46%.
-  factTile: {
-    flexGrow: 1,
-    flexBasis: '46%',
-    gap: 5,
-    paddingHorizontal: Layout.spacing.md - 4,
-    paddingVertical: 11,
-    borderRadius: Layout.radius.md,
-    // A dark scrim rather than a white one. Now that the gradient follows the
-    // child's avatar, the tiles sit on anything from deep indigo to bright
-    // orange; darkening always helps the white text, where a white wash would
-    // wipe it out on the lighter themes.
-    backgroundColor: 'rgba(0,0,0,0.13)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-  },
-  factTileWide: { flexBasis: '100%' },
-  factLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  factLabel: {
-    fontSize: Layout.fontSize.xs - 1,
-    color: 'rgba(255,255,255,0.80)',
-    fontFamily: 'DMSans_600SemiBold',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  factValue: {
-    fontSize: Layout.fontSize.sm,
-    color: '#FFFFFF',
-    fontFamily: 'DMSans_700Bold',
-    lineHeight: Layout.fontSize.sm * 1.35,
-  },
-
-  // ── Panels ────────────────────────────────────────────────────────────────
-  // Shadow here, not on `panel` — overflow:hidden clips a view's own shadow.
   panelShadowWrap: {
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surface,
@@ -571,6 +791,27 @@ const styles = StyleSheet.create({
   },
   panelBody: { padding: PANEL_PAD },
 
+  // ── Panel, large variant ──────────────────────────────────────────────────
+  panelShadowWrapLg: { borderRadius: Layout.radius.xl, ...Layout.shadow.md },
+  panelLg: { borderRadius: Layout.radius.xl, borderWidth: 1, borderColor: Colors.borderLight },
+  // No tinted fill and no rule under it. At this width a coloured band read as a
+  // stripe across the panel; the space below the title is what separates the
+  // header from the tabs instead.
+  panelHeaderLg: {
+    gap: Layout.spacing.md,
+    paddingHorizontal: PANEL_PAD_LG,
+    paddingTop: PANEL_PAD_LG,
+    paddingBottom: Layout.spacing.lg,
+    borderBottomWidth: 0,
+  },
+  panelIconLg: { width: 52, height: 52, borderRadius: 16 },
+  panelTitleLg: {
+    fontSize: Layout.fontSize.xxl,
+    color: Colors.text.primary,
+    letterSpacing: -0.4,
+  },
+  panelActionLg: { fontSize: Layout.fontSize.md },
+
   // ── Info rows ─────────────────────────────────────────────────────────────
   infoRow: {
     flexDirection: 'row',
@@ -594,81 +835,93 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 64 },
 
   // ── Module selector ───────────────────────────────────────────────────────
-  moduleTabs: {
-    gap: Layout.spacing.sm,
-    padding: PANEL_PAD,
+  // A single recessed track with the four tabs inside it. The track is what makes
+  // the unselected tabs read as available rather than as disabled text — they
+  // have no fill or border of their own, so the group has to supply the edge.
+  tabBar: {
+    flexDirection: 'row',
+    gap: 4,
+    padding: 5,
+    marginHorizontal: PANEL_PAD_LG,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surfaceAlt,
   },
-  moduleTab: {
+  tab: {
+    // Equal shares of the track, so the four sit on a regular rhythm rather than
+    // each taking the width of its own label.
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.sm,
-    borderRadius: Layout.radius.full,
-    backgroundColor: Colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 13,
+    paddingHorizontal: 6,
+    borderRadius: Layout.radius.md,
   },
-  moduleTabActive: {
+  tabActive: {
     backgroundColor: SECTION.progress.fg,
-    borderColor: SECTION.progress.fg,
+    ...Layout.shadow.sm,
+    shadowColor: SECTION.progress.fg,
   },
-  moduleTabText: {
+  tabText: {
     fontSize: Layout.fontSize.sm,
     fontFamily: 'DMSans_700Bold',
     color: Colors.text.secondary,
   },
-  moduleTabTextActive: { color: '#FFFFFF' },
+  tabTextActive: { color: '#FFFFFF' },
 
   // ── Concept Learning ──────────────────────────────────────────────────────
-  conceptLoading: { paddingVertical: Layout.spacing.xl, alignItems: 'center' },
-  conceptEmpty: {
-    paddingVertical: Layout.spacing.xl,
-    paddingHorizontal: Layout.spacing.lg,
+  // Both sit in the same box the stat row would occupy, so switching to a module
+  // that has not shipped does not collapse the panel to a third of its height.
+  conceptLoading: {
+    minHeight: 232,
+    margin: PANEL_PAD_LG,
     alignItems: 'center',
-    gap: Layout.spacing.sm,
+    justifyContent: 'center',
+    borderRadius: Layout.radius.xl,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  conceptEmpty: {
+    minHeight: 232,
+    margin: PANEL_PAD_LG,
+    paddingHorizontal: Layout.spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Layout.spacing.md,
+    borderRadius: Layout.radius.xl,
+    backgroundColor: Colors.surfaceAlt,
   },
   conceptEmptyText: {
-    fontSize: Layout.fontSize.sm,
+    fontSize: Layout.fontSize.md,
     color: Colors.text.secondary,
     textAlign: 'center',
-    lineHeight: Layout.fontSize.sm * 1.5,
+    lineHeight: Layout.fontSize.md * 1.55,
+    maxWidth: 380,
   },
   retryText: {
     fontSize: Layout.fontSize.sm,
     color: Colors.text.link,
     fontFamily: 'DMSans_700Bold',
   },
-  conceptHeader: {
+  // `stretch` is what squares the two sides off against each other: the grid's
+  // two fixed-height rows set the row's height, and the ring card grows to match
+  // rather than ending short and leaving a notch beside it.
+  //
+  // Wrapping, not a hard breakpoint. On a portrait tablet the two bases fit side
+  // by side; on a phone the grid drops below the ring and both go full width,
+  // without either needing to know which device it is on.
+  statRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: PANEL_PAD,
-    gap: Layout.spacing.lg,
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+    gap: CARD_GAP,
   },
-  conceptStats: { flex: 1, gap: 8 },
-  statLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted },
-  statValue: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.primary,
-    fontFamily: 'DMSans_700Bold',
-  },
-  categoryBlock: {
-    paddingHorizontal: PANEL_PAD,
-    paddingVertical: Layout.spacing.md,
-    gap: Layout.spacing.sm,
-  },
-  reportLink: {
+  statGrid: {
+    flexGrow: 1.5,
+    flexBasis: 340,
+    minWidth: 280,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: PANEL_PAD,
-    paddingVertical: Layout.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.divider,
-  },
-  reportLinkText: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_700Bold',
+    flexWrap: 'wrap',
+    gap: CARD_GAP,
   },
 });

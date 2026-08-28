@@ -15,7 +15,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
 import { ImageViewerModal } from '../../../components/common/ImageViewerModal';
-import { MasteryRing } from '../../../components/charts/MasteryRing';
 import { AccuracyChart } from '../../../components/charts/AccuracyChart';
 import { GroupProgress } from '../../../components/charts/GroupProgress';
 import { ConceptThumb, conceptLabel } from '../../../components/charts/ConceptThumb';
@@ -189,6 +188,21 @@ function StatTile({ label, value, of, note, noteTone, icon, tone = 'neutral' }) 
   );
 }
 
+// One face per game. The icon names what the game IS — a puzzle piece for
+// matching, a brain for recall — so a row of four is scannable before any of the
+// titles are read. Keyed on activity_type, never on position.
+const GAME_FACE = {
+  pair_match: { icon: 'extension-puzzle-outline', bg: '#E6F4EA', fg: '#2A7146' },
+  memory:     { icon: 'sparkles-outline',         bg: '#E5EEF9', fg: '#27609F' },
+  practice:   { icon: 'shuffle-outline',          bg: '#FBE7E2', fg: '#C4674F' },
+};
+
+// The coral the "Wrong" segment of the response-time bar is drawn in. Named once
+// and shared, so the Revisit tile and that segment cannot drift apart — they are
+// deliberately the same colour, because they are the same idea: the part that is
+// not going well.
+const WRONG_CORAL = '#EE9080';
+
 const STAT_TONES = {
   good:    { bg: '#E6F4EA', fg: '#2A7146' },
   info:    { bg: '#E5EEF9', fg: '#27609F' },
@@ -204,7 +218,7 @@ const STAT_TONES = {
   // keeps the palette is dark ink on these fills rather than white.
   plain:      { bg: '#FFFFFF', fg: Colors.text.secondary, ink: Colors.text.primary, chip: Colors.surfaceAlt },
   solidBlue:  { bg: '#7A9DB0', fg: 'rgba(255,255,255,0.92)', ink: '#FFFFFF', chip: 'rgba(255,255,255,0.28)' },
-  solidCoral: { bg: '#EE9080', fg: 'rgba(255,255,255,0.92)', ink: '#FFFFFF', chip: 'rgba(255,255,255,0.28)' },
+  solidCoral: { bg: WRONG_CORAL, fg: 'rgba(255,255,255,0.92)', ink: '#FFFFFF', chip: 'rgba(255,255,255,0.28)' },
 };
 
 /** Kept for the rows that are genuinely a bare figure — game counts, time spent. */
@@ -224,13 +238,24 @@ function StatCell({ label, value, tint }) {
  * It also shows the size of the thing — a 3-round game and a 6-round game score
  * the same 100% but are not the same evidence, and the fraction hid that.
  */
-function ScorePips({ correct = 0, total = 0 }) {
+function ScorePips({ correct = 0, total = 0, tone }) {
   if (!total) return null;
   const capped = Math.min(total, 8);
   return (
     <View style={styles.pips}>
       {Array.from({ length: capped }, (_, i) => (
-        <View key={i} style={[styles.pip, i < correct ? styles.pipOn : styles.pipOff]} />
+        <View
+          key={i}
+          style={[
+            styles.pip,
+            // The filled pips take the card's own hue rather than a single green,
+            // so each card reads as one object instead of a tinted badge with an
+            // unrelated score under it.
+            i < correct
+              ? [styles.pipOn, tone ? { backgroundColor: tone } : null]
+              : styles.pipOff,
+          ]}
+        />
       ))}
     </View>
   );
@@ -349,6 +374,9 @@ export default function ConceptReportScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
+  // The game being looked at, or null. Holds the activity itself rather than an
+  // index, so the sheet keeps its contents while it animates out.
+  const [openGame, setOpenGame] = useState(null);
   // The drawing being looked at full-size, or null. Holding the artwork itself
   // rather than a boolean keeps the title and date in the modal correct while it
   // animates out.
@@ -593,10 +621,12 @@ export default function ConceptReportScreen({ route, navigation }) {
             can say things the template cannot; the template stays as the fallback
             for when the feature is off or the call failed, so the card never opens
             with a blank space where the summary should be. */}
+        {/* Three tiles, no ring. The donut restated the Learned tile beside it —
+            11 of 93 and 12% are the same fact twice, and the percentage was the
+            less useful half: a teacher acts on "11 of 93", not on 12%. Dropping it
+            gives the three figures the full width of the band. */}
         <View style={styles.band}>
           <View style={styles.overview}>
-            <MasteryRing value={totals.mastery_pct} size={104} label="learned" />
-
             <View style={styles.overviewStats}>
               {/* Each icon says what its number counts, not what the app is about.
                   A graduation cap on "Learned" and a picture frame on "Finds the
@@ -630,7 +660,7 @@ export default function ConceptReportScreen({ route, navigation }) {
                 label="Revisit"
                 value={String(struggling.length)}
                 note="Worth another look"
-                tone={struggling.length > 0 ? 'solidCoral' : 'plain'}
+                tone="solidCoral"
               />
             </View>
           </View>
@@ -862,7 +892,7 @@ export default function ConceptReportScreen({ route, navigation }) {
                   <SplitBar
                     parts={[
                       { key: 'right', ms: rt.correct_avg_ms,   color: '#8FB8A0', label: `Right (${shortSeconds(rt.correct_avg_ms)})` },
-                      { key: 'wrong', ms: rt.incorrect_avg_ms, color: '#EE9080', label: `Wrong (${shortSeconds(rt.incorrect_avg_ms)})` },
+                      { key: 'wrong', ms: rt.incorrect_avg_ms, color: WRONG_CORAL, label: `Wrong (${shortSeconds(rt.incorrect_avg_ms)})` },
                     ]}
                   />
 
@@ -1004,7 +1034,7 @@ export default function ConceptReportScreen({ route, navigation }) {
             collapsible
             defaultOpen={false}
           >
-            <View style={styles.padded}>
+            <View style={styles.gameGrid}>
               {/* Four, not eight. Older than the last handful is history rather
                   than information — the trend it would show is already the chart
                   in the summary card. */}
@@ -1014,47 +1044,42 @@ export default function ConceptReportScreen({ route, navigation }) {
                 // nothing. It is worth showing (a game started and left is real
                 // information) but it has to say what it is.
                 const done = a.status === 'passed' || a.status === 'failed';
+                const face = GAME_FACE[a.activity_type] || GAME_FACE.practice;
 
-                // The meta line is assembled from whatever exists rather than
-                // concatenated blind: card games carry no difficulty level, so the
-                // old version opened every one of those rows with a stray "· ".
+                // Assembled from whatever exists rather than concatenated blind:
+                // card games carry no difficulty level, so the old version opened
+                // every one of those rows with a stray "· ".
                 const meta = [
-                  done ? difficultyWord(a.difficulty_level) : null,
+                  done ? `Got ${countOf(a.correct_count, a.total_rounds)} right` : 'Not finished',
                   a.completed_at ? shortDate(a.completed_at) : null,
                 ].filter(Boolean).join(' · ');
 
                 return (
-                  <View key={`${a.category_key}-${a.activity_number}-${i}`} style={styles.activityRow}>
-                    {/* Which concepts the game covered, as the pictures themselves.
-                        A comma-separated list of names made the teacher reconstruct
-                        the game in their head; three thumbnails just show it. */}
-                    <View style={styles.activityThumbs}>
-                      {(a.concept_keys || []).slice(0, 3).map((k) => (
-                        <ConceptThumb key={k} categoryKey={a.category_key} conceptKey={k} size={30} />
-                      ))}
-                      {(a.concept_keys || []).length > 3 && (
-                        <Text style={styles.activityMore}>+{a.concept_keys.length - 3}</Text>
-                      )}
+                  <TouchableOpacity
+                    key={`${a.category_key}-${a.activity_number}-${i}`}
+                    style={styles.gameCard}
+                    activeOpacity={0.75}
+                    onPress={() => setOpenGame(a)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${GAME_NAME[a.activity_type] || GAME_NAME.practice}, ${meta}. Opens the details.`}
+                  >
+                    <View style={[styles.gameFace, { backgroundColor: face.bg }]}>
+                      <Ionicons name={face.icon} size={24} color={face.fg} />
                     </View>
 
-                    <View style={{ flex: 1 }}>
-                      {/* The game's name leads. Two rows with the same thumbnails
-                          and the same date were indistinguishable before — they were
-                          a memory game and a pair match, and the report drew them as
-                          twins because it never said which was which. */}
-                      <Text style={styles.activityTitle}>
-                        {GAME_NAME[a.activity_type] || GAME_NAME.practice}
-                      </Text>
-                      <Text style={styles.activityMeta}>
-                        {done ? `Got ${countOf(a.correct_count, a.total_rounds)} right` : 'Not finished'}
-                        {meta ? ` · ${meta}` : ''}
-                      </Text>
-                    </View>
+                    {/* The game's name leads. Two entries with the same thumbnails
+                        and the same date were indistinguishable before — they were
+                        a memory game and a pair match, and the report drew them as
+                        twins because it never said which was which. */}
+                    <Text style={styles.gameName} numberOfLines={2}>
+                      {GAME_NAME[a.activity_type] || GAME_NAME.practice}
+                    </Text>
+                    <Text style={styles.gameMeta} numberOfLines={1}>{meta}</Text>
 
                     {done
-                      ? <ScorePips correct={a.correct_count} total={a.total_rounds} />
-                      : <Ionicons name="ellipsis-horizontal" size={16} color={Colors.icon.muted} />}
-                  </View>
+                      ? <ScorePips correct={a.correct_count} total={a.total_rounds} tone={face.fg} />
+                      : <ScorePips correct={0} total={a.total_rounds || 4} tone={face.fg} />}
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -1134,6 +1159,102 @@ export default function ConceptReportScreen({ route, navigation }) {
                 )
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* What one game actually was. The card can only carry a name, a result and
+          a row of dots — this is where "which things did she practise?" gets
+          answered, which is the question a teacher asks when a score surprises
+          them. */}
+      <Modal
+        visible={!!openGame}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpenGame(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, styles.gameModalCard]}>
+            {openGame && (() => {
+              const face = GAME_FACE[openGame.activity_type] || GAME_FACE.practice;
+              const done = openGame.status === 'passed' || openGame.status === 'failed';
+              const keys = openGame.concept_keys || [];
+
+              return (
+                <>
+                  <View style={styles.modalHead}>
+                    <View style={[styles.gameFace, { backgroundColor: face.bg, marginBottom: 0 }]}>
+                      <Ionicons name={face.icon} size={24} color={face.fg} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalTitle}>
+                        {GAME_NAME[openGame.activity_type] || GAME_NAME.practice}
+                      </Text>
+                      <Text style={styles.modalSub}>
+                        {[
+                          openGame.completed_at ? shortDate(openGame.completed_at) : 'Not finished',
+                          done ? difficultyWord(openGame.difficulty_level) : null,
+                        ].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setOpenGame(null)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close"
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close" size={22} color={Colors.text.secondary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+                    <View style={styles.gameResult}>
+                      <Text style={[styles.gameResultValue, { color: face.fg }]}>
+                        {done ? countOf(openGame.correct_count, openGame.total_rounds) : 'Not finished'}
+                      </Text>
+                      <Text style={styles.gameResultLabel}>
+                        {done ? 'answered correctly' : 'this game was left part-way'}
+                      </Text>
+                      {done && (
+                        <View style={{ marginTop: Layout.spacing.sm }}>
+                          <ScorePips
+                            correct={openGame.correct_count}
+                            total={openGame.total_rounds}
+                            tone={face.fg}
+                          />
+                        </View>
+                      )}
+                    </View>
+
+                    <Text style={styles.subHeading}>
+                      What was in it{keys.length ? ` · ${keys.length}` : ''}
+                    </Text>
+
+                    {keys.length === 0 ? (
+                      <Text style={styles.muted}>
+                        This game did not record which things it covered.
+                      </Text>
+                    ) : (
+                      // The pictures, not a list of names. This is the one place
+                      // the report can show what a game actually put in front of
+                      // the child, and a teacher recognises those pictures faster
+                      // than they read the words for them.
+                      <View style={styles.gameConcepts}>
+                        {keys.map((k) => (
+                          <ConceptThumb
+                            key={k}
+                            categoryKey={openGame.category_key}
+                            conceptKey={k}
+                            size={56}
+                            showLabel
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </ScrollView>
+                </>
+              );
+            })()}
           </View>
         </View>
       </Modal>
@@ -1275,10 +1396,30 @@ const styles = StyleSheet.create({
   modalSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
   modalBody:  { padding: Layout.spacing.lg, gap: Layout.spacing.md },
 
+  // Narrower than the insights sheet: this holds one game's worth of pictures,
+  // and at 680 they spread into a thin band across the top of an empty box.
+  gameModalCard: { maxWidth: 520 },
+
+  gameResult: {
+    alignItems: 'center',
+    paddingVertical: Layout.spacing.lg,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  gameResultValue: { fontSize: 26, fontFamily: 'DMSans_800ExtraBold' },
+  gameResultLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
+
+  gameConcepts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Layout.spacing.md,
+    justifyContent: 'center',
+  },
+
   padded:  { padding: Layout.spacing.md },
   muted:   { fontSize: 12, color: Colors.text.muted },
 
-  overview:      { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md },
+  overview:      { flexDirection: 'row', alignItems: 'stretch' },
   // Three equal tiles that stay on one line. They wrapped before, so on a narrow
   // tablet the third dropped underneath and the row lost its shape.
   // The band: one tinted block holding the ring and the three tiles, so the
@@ -1291,49 +1432,46 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.md,
     marginBottom: Layout.spacing.md,
   },
-  statTilePlain: { borderWidth: 1, borderColor: Colors.borderLight },
-  overviewStats: { flex: 1, flexDirection: 'row', gap: Layout.spacing.sm },
+  overviewStats: { flex: 1, flexDirection: 'row', gap: Layout.spacing.md },
 
   // Tightened all round. These are three supporting figures beside the ring, and
   // at the old size they took more height than the ring itself — a summary card
   // where the summary was the smallest thing on it.
+  // One set of properties, not two. Successive edits had left this with
+  // paddingVertical, paddingHorizontal, alignItems and flexDirection all declared
+  // twice — the later ones won, so the tile looked right while the style read as
+  // a contradiction.
   statTile: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: Layout.spacing.sm,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    gap: 0,
-    alignItems: 'flex-start',
     flexDirection: 'column',
+    alignItems: 'flex-start',
+    paddingVertical: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+  },
+  statTilePlain: { borderWidth: 1, borderColor: Colors.borderLight },
+
+  statBadge: {
+    width: 36, height: 36, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Layout.spacing.md,
   },
   statBody: { alignSelf: 'stretch', gap: 0 },
-  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 1 },
-  // A rounded square rather than a circle: it echoes the tile it sits in, and the
-  // three of them read as a set of chips instead of three loose dots.
-  statBadge: {
-    width: 28, height: 28, borderRadius: 9,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 10,
-  },
-  statTileValue: {
-    fontSize: 20,
-    fontFamily: 'DMSans_800ExtraBold',
-    color: Colors.text.primary,
-    letterSpacing: -0.5,
-  },
-  statTileOf: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
-  statTileNote: { fontSize: 9, marginTop: 3 },
+
   statTileLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: 'DMSans_700Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.9,
   },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5, marginTop: 3 },
+  statTileValue: {
+    fontSize: 28,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.6,
+  },
+  statTileOf:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
+  statTileNote: { fontSize: 11, marginTop: 5 },
 
   // The glance sentence. Separated from the stats by a hairline rather than a gap:
   // it is a reading OF those numbers, not a separate fact alongside them.
@@ -1485,8 +1623,42 @@ const styles = StyleSheet.create({
   pipOn:  { backgroundColor: '#3FAE6F' },
   pipOff: { backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border },
 
-  activityThumbs: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  activityMore:   { fontSize: 10, color: Colors.text.muted, fontFamily: 'DMSans_700Bold' },
+  // A row of cards, not a list of rows. Four games as stacked rows filled the
+  // section with repeated left-aligned text; as cards they are four small objects
+  // a teacher takes in at once.
+  gameGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Layout.spacing.sm,
+    padding: Layout.spacing.md,
+  },
+  gameCard: {
+    // Just under a quarter, so four sit on one line with the gaps between them.
+    // Floored at 150 so they wrap to two rows on a phone rather than shrinking
+    // until the names break mid-word.
+    flexGrow: 1,
+    flexBasis: '22%',
+    minWidth: 150,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: Layout.spacing.lg,
+    paddingHorizontal: Layout.spacing.sm,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  gameFace: {
+    width: 52, height: 52, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  gameName: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.primary,
+    textAlign: 'center',
+  },
+  gameMeta: { fontSize: 11, color: Colors.text.muted, textAlign: 'center' },
+
   hint: {
     flexDirection: 'row',
     gap: 9,
@@ -1511,10 +1683,6 @@ const styles = StyleSheet.create({
   },
 
   engagementGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Layout.spacing.md },
-
-  activityRow:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm, paddingVertical: 7 },
-  activityTitle:   { fontSize: 12, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
-  activityMeta:    { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
 
   footnote: {
     fontSize: Layout.fontSize.xs,

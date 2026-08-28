@@ -4,6 +4,13 @@ export const Colors = {
   primaryLight: '#8BAAF0',
   primaryGradient: ['#7B9EF0', '#5B7EE0'],
 
+  // The teal → green pair on the sign-in button, and the flat teal that goes with
+  // it. This is the app's "primary action" colour and the first thing anyone sees
+  // of the product, so it is a shared token rather than a literal repeated at each
+  // surface that wants to look like the front door.
+  brand: '#3A9BA8',
+  brandGradient: ['#4AABB8', '#52C07C'],
+
   background: '#F0F2FA',
   surface: '#FFFFFF',
   surfaceAlt: '#F7F8FC',

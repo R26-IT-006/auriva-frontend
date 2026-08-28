@@ -20,8 +20,11 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { useAuthStore } from '../../store/authStore';
 
-const GREEN       = '#3A9BA8';
-const GREEN_GRAD  = ['#4AABB8', '#52C07C'];
+// Aliases onto the shared brand token. The sign-in button is where this colour
+// is defined for the product, so other screens borrow it from `Colors` — keeping
+// a second literal here is how the two would drift apart.
+const GREEN       = Colors.brand;
+const GREEN_GRAD  = Colors.brandGradient;
 const GREEN_LIGHT = '#E3F5F7';
 
 export default function LoginScreen({ navigation }) {
