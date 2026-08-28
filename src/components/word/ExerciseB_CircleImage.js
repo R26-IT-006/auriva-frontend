@@ -1,13 +1,16 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import WordImageDisplay from './WordImageDisplay';
 import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+import { ANSWER_IMAGE, BODY } from './wordActivityLayout';
+import { isHintUnlocked, unlocksHint, HINT_REVEAL_DELAY_MS, HINT_COLORS }
+  from './wordHintPolicy';
 
 // Shared with every other screen that asks for this action, so the child
 // hears one sentence for one task — and one future recording covers it.
 const ACTIVITY_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.CHOOSE_PICTURE];
 
-export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onComplete }) {
+export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onComplete, onWrongAnswer }) {
   const { word, emoji, imageKey } = wordEntry;
 
   const options = useMemo(() => {
@@ -20,6 +23,12 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
 
   const [wrongCount, setWrongCount] = useState(0);
   const [done,       setDone]       = useState(false);
+
+  // The hint waits for the second wrong answer's feedback to finish, so the
+  // child sees the verdict on their own answer before the support appears.
+  const [hintReady, setHintReady] = useState(false);
+  const hintTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(hintTimerRef.current), []);
 
   const scaleAnims = useRef(options.map(() => new Animated.Value(1))).current;
 
@@ -37,7 +46,7 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
     ]).start();
   }
 
-  const showHint = wrongCount >= 2;
+  const showHint = isHintUnlocked(wrongCount) && hintReady;
 
   function handlePress(opt, idx) {
     if (done) return;
@@ -47,7 +56,14 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
       setTimeout(() => onComplete(wrongCount === 0), 600);
     } else {
       shake(idx);
-      setWrongCount(w => w + 1);
+      onWrongAnswer?.();                    // verdict on THIS answer: wrong.gif
+      setWrongCount((w) => {
+        const next = w + 1;                 // answers only
+        if (unlocksHint(next)) {
+          hintTimerRef.current = setTimeout(() => setHintReady(true), HINT_REVEAL_DELAY_MS);
+        }
+        return next;
+      });
     }
   }
 
@@ -92,8 +108,12 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
                   onPress={() => handlePress(opt, idx)}
                   activeOpacity={0.8}
                   disabled={done}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt.word}
+                  accessibilityHint={isHinted ? 'Hint: this is the answer' : undefined}
+                  accessibilityState={{ disabled: done }}
                 >
-                  <WordImageDisplay imageKey={opt.imageKey} emoji={opt.emoji} size={118} />
+                  <WordImageDisplay imageKey={opt.imageKey} emoji={opt.emoji} size={ANSWER_IMAGE.imageSize} />
                 </TouchableOpacity>
               </Animated.View>
             );
@@ -114,7 +134,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 34,
+    gap: BODY.columnGap,
     width: '100%',
   },
   wordPane: {
@@ -161,15 +181,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 14,
-    maxWidth: 320,
+    gap: ANSWER_IMAGE.gap,
+    // Was 320 — a cap well under the room this column actually has, in the
+    // most image-dependent activity of the five. Two columns of four still
+    // fit without scrolling.
+    maxWidth: ANSWER_IMAGE.gridMaxWidth,
   },
   cell: {
-    borderRadius: 18,
-    borderWidth: 3,
-    borderColor: '#E0E0E0',
-    padding: 8,
-    backgroundColor: '#FAFAFA',
+    borderRadius: ANSWER_IMAGE.radius,
+    // Was a 3px #E0E0E0 border on a grey #FAFAFA fill — a heavy frame around
+    // every answer. A hairline on white lets the picture be the answer.
+    borderWidth: ANSWER_IMAGE.borderWidth,
+    borderColor: '#ECEFF3',
+    padding: ANSWER_IMAGE.cellPadding,
+    backgroundColor: '#FFFFFF',
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -181,13 +206,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E9',
   },
   cellHint: {
-    borderColor: '#FFB300',
-    backgroundColor: '#FFF9C4',
-  },
-  hintLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-    color: '#E65100',
+    borderColor: HINT_COLORS.border,
+    backgroundColor: HINT_COLORS.surface,
   },
 });

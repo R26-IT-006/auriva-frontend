@@ -16,6 +16,8 @@ import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from 
 import { useLearningSession } from '../../context/LearningSessionContext';
 import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
 import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
+import { SUPPORT_IMAGE_COMPACT, supportImageFrameStyle } from './wordActivityLayout';
+import { actionRowMinHeight } from '../../constants/writingActionRow';
 
 // Shared with every other screen that asks for this action, so the child
 // hears one sentence for one task — and one future recording covers it.
@@ -167,7 +169,10 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
       // decides authoritative.passed above.
       const nextResult={score:authoritative.score,passed:authoritative.passed,completed:authoritative.completion_passed,layoutMessage:childFeedbackMessage(authoritative.child_feedback)};setResult(nextResult);
       if (!authoritative.passed) { actionIdRef.current=null; return; }
-      setDone(true); setTimeout(() => onComplete(true), 500);
+      // The layout advisory rides up with the result so the AVATAR can say
+      // it. It used to be rendered again below, beside the avatar - one
+      // attempt, two messages for the child to read.
+      setDone(true); setTimeout(() => onComplete(true, nextResult.layoutMessage), 500);
     } catch { setSaveError('Could not save yet. Check the connection and try again.'); }
     finally { setSubmitting(false); }
   }
@@ -175,8 +180,8 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
   return (
     <View style={styles.wrap}>
       <View style={styles.leftCol}>
-        <View style={[styles.imageBg, { backgroundColor: theme.button + '10', borderColor: theme.button + '26' }]}>
-          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={130} />
+        <View style={[styles.imageBg, supportImageFrameStyle(theme, SUPPORT_IMAGE_COMPACT)]}>
+          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={SUPPORT_IMAGE_COMPACT.imageSize} />
         </View>
       </View>
 
@@ -279,18 +284,16 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
         <View style={styles.actions}>
           {result && !result.passed && (
             <Text accessibilityRole="alert" style={styles.retryText}>
-              {result.completed ? `Score ${result.score}/100 — try once more` : 'Finish every letter, then try Done again'}
-              {/* Layout advisory shown alongside retry feedback (section 4)
-                  only when the word was actually complete — an incomplete
-                  word has no meaningful size/spacing metrics to advise on. */}
-              {result.completed && result.layoutMessage ? `\n${result.layoutMessage}` : ''}
+              {/* The score is deliberately NOT shown: a raw number is not
+                  child-facing feedback, and the avatar overlay carries the
+                  encouragement. What stays is the one actionable thing —
+                  finish the word before trying Done. */}
+              {result.completed ? 'Try once more' : 'Finish every letter, then try Done again'}
             </Text>
           )}
-          {/* Passed + a layout advisory — optional, brief, neutral; never a
-              pass criterion (the checkmark/onComplete above already fired). */}
-          {result && result.passed && result.layoutMessage && (
-            <Text style={styles.layoutHintText}>{result.layoutMessage}</Text>
-          )}
+          {/* The layout advisory is not rendered here any more. It travels
+              through onComplete to the avatar, which is the one place this
+              activity speaks to the child. */}
           {saveError && <Text accessibilityRole="alert" style={styles.retryText}>{saveError}</Text>}
           {canClearCanvas && (
             <TouchableOpacity
@@ -337,20 +340,15 @@ const styles = StyleSheet.create({
     gap: 30,
     width: '100%',
   },
+  // MUST stay 170 — wordExerciseECanvas.IMAGE_COL_W derives CANVAS_W from it,
+  // and CANVAS_W/CANVAS_H are the coordinate space every stroke is stored in.
   leftCol: {
-    width: 170,
+    width: SUPPORT_IMAGE_COMPACT.paneWidth,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  imageBg: {
-    width: 150,
-    height: 150,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  imageBg: {},
   rightCol: {
     flex: 1,
     alignItems: 'center',
@@ -386,6 +384,14 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   actions: {
+    // Reserved BEFORE anything is in it. Clear appears on the first drawn
+    // point and Next when the finger lifts; without this the row grew twice
+    // mid-stroke and `mainRow` (flex: 1, centred) re-centred the canvas
+    // upward under the child's finger. See constants/writingActionRow.js.
+    minHeight: actionRowMinHeight({
+      // Clear is the taller child — 10px padding plus a 1.5px border.
+      maxButtonPaddingVertical: 10, maxButtonBorderWidth: 1.5,
+    }),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -420,5 +426,4 @@ const styles = StyleSheet.create({
   },
   retryText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', maxWidth: 210, textAlign: 'center' },
   // Neutral (not red/error-styled) — an advisory, not a failure message.
-  layoutHintText: { color: '#5B5470', fontSize: 12, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', maxWidth: 220, textAlign: 'center' },
 });

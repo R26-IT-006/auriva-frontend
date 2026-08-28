@@ -184,7 +184,12 @@ describe('per-word drill-down uses canonical per-word images', () => {
   });
 
   it('each word shows its OWN reference image, keyed per word', () => {
-    expect(report).toMatch(/<WordImageDisplay imageKey=\{w\.imageKey \?\? ''\} emoji=\{w\.emoji\}/);
+    // This used to assert imageKey={w.imageKey ?? ''} — which LOOKED
+    // per-word but resolved to '' for every row: these entries come from the
+    // backend word-progress payload and carry no imageKey or emoji at all.
+    // Resolving from w.word is what finally makes the intent true.
+    expect(report).toMatch(/imageKey=\{resolveWordImageKey\(w\.word\)\}/);
+    expect(report).toMatch(/emoji=\{resolveWordEmoji\(w\.word\)\}/);
   });
 
   it('the image map is the canonical one shared with the child UI', () => {

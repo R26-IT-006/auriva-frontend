@@ -1,7 +1,10 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import WordImageDisplay from './WordImageDisplay';
 import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+import { SUPPORT_IMAGE, BODY, supportImageFrameStyle } from './wordActivityLayout';
+import { isHintUnlocked, unlocksHint, HINT_REVEAL_DELAY_MS, HINT_COLORS }
+  from './wordHintPolicy';
 
 // Shared with every other screen that asks for this action, so the child
 // hears one sentence for one task — and one future recording covers it.
@@ -13,7 +16,7 @@ function makeChoices(correct) {
   return [correct, ...extras].sort(() => Math.random() - 0.5);
 }
 
-export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete }) {
+export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete, onWrongAnswer }) {
   const { word, emoji, imageKey } = wordEntry;
   const correct = word[0];
 
@@ -21,6 +24,11 @@ export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete }) {
 
   const [wrongCount, setWrongCount] = useState(0);
   const [done,       setDone]       = useState(false);
+  // The hint waits for the second wrong answer's feedback to finish, so the
+  // child sees the verdict on their own answer before the support appears.
+  const [hintReady, setHintReady] = useState(false);
+  const hintTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(hintTimerRef.current), []);
 
   const flashAnims = useRef(choices.map(() => new Animated.Value(1))).current;
 
@@ -39,18 +47,25 @@ export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete }) {
       setTimeout(() => onComplete(wrongCount === 0), 500);
     } else {
       flashButton(idx, false);
-      setWrongCount(w => w + 1);
+      onWrongAnswer?.();                    // verdict on THIS answer: wrong.gif
+      setWrongCount((w) => {
+        const next = w + 1;                 // answers only
+        if (unlocksHint(next)) {
+          hintTimerRef.current = setTimeout(() => setHintReady(true), HINT_REVEAL_DELAY_MS);
+        }
+        return next;
+      });
     }
   }
 
-  const showHint = wrongCount >= 2;
+  const showHint = isHintUnlocked(wrongCount) && hintReady;
   const rest = word.slice(1).toUpperCase();
 
   return (
     <View style={styles.wrap}>
       <View style={styles.imagePane}>
-        <View style={[styles.imageFrame, { backgroundColor: theme.button + '10', borderColor: theme.button + '26' }]}>
-          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={170} />
+        <View style={[styles.imageFrame, supportImageFrameStyle(theme)]}>
+          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={SUPPORT_IMAGE.imageSize} />
         </View>
       </View>
 
@@ -72,7 +87,7 @@ export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete }) {
             const isCorrect = letter === correct;
             const isHinted  = showHint && isCorrect;
             const bg = done && isCorrect ? '#4CAF50'
-                     : isHinted          ? '#FFF176'
+                     : isHinted          ? HINT_COLORS.surface
                      :                    '#F5F5F5';
 
             return (
@@ -80,13 +95,17 @@ export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete }) {
                 <TouchableOpacity
                   style={[styles.tile, {
                     backgroundColor: bg,
-                    borderColor: isHinted         ? '#F9A825'
+                    borderColor: isHinted         ? HINT_COLORS.border
                                : done && isCorrect ? '#388E3C'
                                :                    '#E0E0E0',
                   }]}
                   onPress={() => handlePress(letter, idx)}
                   activeOpacity={0.7}
                   disabled={done}
+                  accessibilityRole="button"
+                  accessibilityLabel={letter.toUpperCase()}
+                  accessibilityHint={isHinted ? 'Hint: this is the answer' : undefined}
+                  accessibilityState={{ disabled: done }}
                 >
                   <Text style={[
                     styles.tileText,
@@ -111,23 +130,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 34,
+    gap: BODY.columnGap,
     width: '100%',
   },
   imagePane: {
-    width: 240,
+    width: SUPPORT_IMAGE.paneWidth,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  imageFrame: {
-    width: 212,
-    height: 212,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // Size, radius, border and tint all come from the shared spec — see
+  // supportImageFrameStyle. Left here only so the style object exists.
+  imageFrame: {},
   taskPane: {
     flex: 1,
     alignItems: 'center',
@@ -194,6 +208,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#333333',
   },
-  hintText:    { color: '#E65100' },
+  hintText:    { color: HINT_COLORS.text },
   correctText: { color: '#FFFFFF' },
 });

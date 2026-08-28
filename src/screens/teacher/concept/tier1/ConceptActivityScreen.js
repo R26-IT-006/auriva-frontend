@@ -23,9 +23,8 @@ import { Layout } from '../../../../constants/layout';
 import ImageChoiceRound from '../../../../components/concept/ImageChoiceRound';
 import NameChoiceRound  from '../../../../components/concept/NameChoiceRound';
 import DragDropRound    from '../../../../components/concept/DragDropRound';
+import ResultGifFeedback from '../../../../components/feedback/ResultGifFeedback';
 
-const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
-const WRONG_GIF   = require('../../../../../assets/feedback/wrong.gif');
 
 const FEEDBACK_MS = 1200;
 // Distance the feedback GIF travels in from the right edge.
@@ -326,18 +325,13 @@ export default function ConceptActivityScreen({ route, navigation }) {
         )}
 
         {/* GIF feedback popup */}
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.gifPopup, { transform: [{ translateX: feedbackSlide }] }]}
-        >
-          {feedback && (
-            <ExpoImage
-              source={feedback.result === 'correct' ? CORRECT_GIF : WRONG_GIF}
-              style={styles.gifImage}
-              contentFit="contain"
-            />
-          )}
-        </Animated.View>
+        {/* Shared right/wrong feedback — components/feedback/ResultGifFeedback.
+            Five concept screens each carried their own copy of this popup,
+            with the same two requires and the same slide animation. */}
+        <ResultGifFeedback
+          visible={Boolean(feedback)}
+          correct={feedback?.result === 'correct'}
+        />
 
       </SafeAreaView>
 
@@ -455,15 +449,4 @@ const styles = StyleSheet.create({
 
   // Slides in from the right edge, vertically centred, so it never sits on top of
   // the answer cards the way a bottom-anchored popup did.
-  gifPopup: {
-    position: 'absolute',
-    right: 24,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
-  gifImage: {
-    width: 200,
-    height: 200,
-  },
 });

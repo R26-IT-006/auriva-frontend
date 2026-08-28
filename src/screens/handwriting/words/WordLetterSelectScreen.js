@@ -16,8 +16,10 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { fetchWordProgress } from '../../../utils/wordApi';
 import { buildWordRouteParams, getSelectedWords } from '../../../utils/wordWorkflow';
+import { filterUnfinishedWords } from '../../../utils/wordCompletionHistory';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import useGatedBack from '../../../utils/useGatedBack';
+import { useToast } from '../../../context/ToastContext';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,10 @@ const CARD_SIZE  = Math.floor(
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+// Shown when a letter has no unfinished words left. Neutral and final —
+// it is an achievement, not an error, and there is nothing to retry.
+const ALL_WORDS_COMPLETED = 'All words completed!';
 
 // ASD-friendly pastel palette — cycles per letter index
 const PALETTE = [
@@ -92,6 +98,7 @@ export default function WordLetterSelectScreen({ route, navigation }) {
 
   const { student, theme } = route.params;
 
+  const { show } = useToast();
   const [wordProgress, setWordProgress] = useState({});
   const globalPulse = useRef(new Animated.Value(1)).current;
   const pulseLoop   = useRef(null);
@@ -222,17 +229,31 @@ export default function WordLetterSelectScreen({ route, navigation }) {
                 globalPulse={globalPulse}
                 theme={theme}
                 onPress={() => {
-                  if (isUnlocked) {
-                    const selectedLetter = letter.toLowerCase();
-                    const selectedWords = getSelectedWords(selectedLetter);
-                    navigation.navigate('WordWriting', buildWordRouteParams({
-                      student,
-                      theme,
-                      selectedLetter,
-                      selectedWords,
-                      currentWordIndex: 0,
-                    }));
+                  if (!isUnlocked) return;
+                  const selectedLetter = letter.toLowerCase();
+                  // Words the child has already finished are dropped HERE,
+                  // as the sequence is built — never mid-flow, so an A-E run
+                  // already under way is untouched even if it completes the
+                  // word it is on. `wordProgress` is the authoritative
+                  // server payload this screen already loads on focus.
+                  const selectedWords = filterUnfinishedWords(
+                    getSelectedWords(selectedLetter), wordProgress, selectedLetter,
+                  );
+
+                  if (selectedWords.length === 0) {
+                    // Every word for this letter is done. Stay on the chooser
+                    // rather than opening an empty flow or repeating one.
+                    show(ALL_WORDS_COMPLETED, 'success');
+                    return;
                   }
+
+                  navigation.navigate('WordWriting', buildWordRouteParams({
+                    student,
+                    theme,
+                    selectedLetter,
+                    selectedWords,
+                    currentWordIndex: 0,
+                  }));
                 }}
               />
             );

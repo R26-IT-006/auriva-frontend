@@ -82,6 +82,8 @@ import {
 import { instructionForSupport } from '../../../constants/childInstructions';
 import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
 import { hasCanvasDrawing } from '../../../utils/canvasDrawingState';
+import { actionRowMinHeight } from '../../../constants/writingActionRow';
+import { startGuideReplayCycle } from '../../../utils/guideReplayCycle';
 import {
   PAD, COL_L, LETTER_CARD_SIZE, CANVAS_W, CANVAS_H, ASPECT, aspectX,
   LINE_1, LINE_2, LINE_3, LINE_4,
@@ -578,6 +580,11 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   hasDrawnRef.current = hasDrawn;
 
   const tracerProgress    = useRef(new Animated.Value(0)).current;
+  // The guide stops at the child's FIRST TOUCH, not when the stroke ends.
+  // `hasDrawn` only flips on release, so it is too late to be the stop signal
+  // here; this ref lets the grant handler cancel the cycle immediately
+  // without changing what `hasDrawn` means to support, audio or scoring.
+  const stopGuideRef = useRef(null);
   const [tracerVisible,   setTracerVisible]   = useState(false);
   const [tracerKeyframes, setTracerKeyframes] = useState(null);
 
@@ -909,32 +916,42 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     tracerProgress.setValue(0);
     setTracerVisible(true);
 
-    const strokeAnimations = [];
-    for (let index = 0; index < strokeBounds.length; index++) {
-      if (index > 0) {
-        strokeAnimations.push(Animated.delay(400));
+    // Rebuilt fresh for every pass, so no animation object carries state
+    // between passes. Stroke order is the canonical order, played forward,
+    // every time: nothing here reverses waypoints, the path, or the bounds.
+    const buildForwardSequence = () => {
+      const strokeAnimations = [];
+      for (let index = 0; index < strokeBounds.length; index++) {
+        if (index > 0) {
+          strokeAnimations.push(Animated.delay(400));
+          strokeAnimations.push(Animated.timing(tracerProgress, {
+            toValue: strokeBounds[index].start,
+            duration: 1,
+            useNativeDriver: true,
+          }));
+        }
+        // Feature 6 Step 4 — was `Math.max(600, Math.round(len / TRACER_PX_PER_MS))`.
+        // See LetterWritingScreen.js's identical block for the full rationale.
         strokeAnimations.push(Animated.timing(tracerProgress, {
-          toValue: strokeBounds[index].start,
-          duration: 1,
+          toValue: strokeBounds[index].end,
+          duration: getStrokeDurationForLevel(sampledStrokes[index].totalLength, effectiveDemoSpeedLevel),
           useNativeDriver: true,
         }));
       }
-      // Feature 6 Step 4 — was `Math.max(600, Math.round(len / TRACER_PX_PER_MS))`.
-      // See LetterWritingScreen.js's identical block for the full rationale.
-      strokeAnimations.push(Animated.timing(tracerProgress, {
-        toValue: strokeBounds[index].end,
-        duration: getStrokeDurationForLevel(sampledStrokes[index].totalLength, effectiveDemoSpeedLevel),
-        useNativeDriver: true,
-      }));
-    }
+      return Animated.sequence([Animated.delay(350), ...strokeAnimations]);
+    };
 
-    const anim = Animated.loop(
-      Animated.sequence([Animated.delay(350), ...strokeAnimations, Animated.delay(700)]),
-      { resetBeforeIteration: true }
-    );
-    anim.start();
+    // Forward-only: setValue(0) -> 0..1 -> idle pause -> setValue(0) -> 0..1.
+    // The trailing Animated.delay(700) that used to pad the loop is now the
+    // controller's idle gap. See guideReplayCycle.js for why Animated.loop's
+    // resetBeforeIteration never reached tracerProgress and played it backward.
+    const cycle = startGuideReplayCycle({
+      progress: tracerProgress,
+      buildForwardSequence,
+    });
+    stopGuideRef.current = () => cycle.stop();
 
-    return () => { setTracerVisible(false); anim.stop(); };
+    return () => { setTracerVisible(false); cycle.stop(); stopGuideRef.current = null; };
     // supportPresentation.showAnimatedTracer is derived purely from
     // attempt + collectionMode (+ recommendedStartSupport in normal mode,
     // Feature 3 Step 6) — depending on those primitives instead of the
@@ -949,6 +966,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
+        stopGuideRef.current?.();  // first touch cancels the idle replay
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         setAttemptFeedback(null);
         const { x: locationX, y: locationY } = mapTouchToCanvas({
@@ -1770,6 +1788,15 @@ const styles = StyleSheet.create({
   },
 
   buttonsRow: {
+    // Reserved BEFORE anything is in it. Clear appears on the first drawn
+    // point and Next when the finger lifts; without this the row grew twice
+    // mid-stroke and `mainRow` (flex: 1, centred) re-centred the canvas
+    // upward under the child's finger. See constants/writingActionRow.js.
+    minHeight: actionRowMinHeight({
+      // Clear is the taller child: its 1.5px border outweighs Next's
+      // extra 1px of padding.
+      maxButtonPaddingVertical: 12, maxButtonBorderWidth: 1.5, rowPaddingVertical: 6,
+    }),
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

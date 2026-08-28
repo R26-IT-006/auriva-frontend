@@ -74,6 +74,6 @@ describe('canvas accessibility label present on both screens', () => {
 
 describe('next word resets feedback/action-id state', () => {
   test('WordWritingScreen clears the child-feedback pill when the word changes', () => {
-    expect(writing).toMatch(/useEffect\(\(\) => \{\s*clearTimeout\(childFeedbackTimerRef\.current\);\s*setChildFeedbackText\(null\);\s*\}, \[word\]\);/);
+    expect(writing).toMatch(/useEffect\(\(\) => \{\s*setChildFeedbackText\(null\);\s*\}, \[word\]\);/);
   });
 });

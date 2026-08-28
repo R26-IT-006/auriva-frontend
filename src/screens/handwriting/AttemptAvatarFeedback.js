@@ -76,7 +76,7 @@ const RETRY_MESSAGES_BY_ATTEMPT = {
   3: 'Keep going. Try with the guide.',
 };
 
-export default function AttemptAvatarFeedback({ avatarKey, passed, attempt, supportLevel, theme }) {
+export default function AttemptAvatarFeedback({ avatarKey, passed, attempt, supportLevel, theme, note }) {
   const key = String(avatarKey ?? '').toLowerCase();
   const avatar = AVATAR_MAP[key] ?? AVATAR_MAP.megatron;
   const color = passed ? '#2E7D32' : '#8A5A00';
@@ -84,9 +84,16 @@ export default function AttemptAvatarFeedback({ avatarKey, passed, attempt, supp
   const passMessages  = supportLevel != null ? PASS_MESSAGES_BY_SUPPORT  : PASS_MESSAGES_BY_ATTEMPT;
   const retryMessages = supportLevel != null ? RETRY_MESSAGES_BY_SUPPORT : RETRY_MESSAGES_BY_ATTEMPT;
   const lookupKey = supportLevel != null ? supportLevel : attempt;
-  const message = passed
+  const generic = passed
     ? passMessages[lookupKey] ?? 'Nice work!'
     : retryMessages[lookupKey] ?? 'Good try. Try again.';
+  // `note` is the one actionable thing the layout check found — "Leave a
+  // little space", "Keep letters the same size". When there is one it REPLACES
+  // the generic encouragement rather than sitting beside it: the child used to
+  // get this in a separate pill under the canvas at the same moment as the
+  // avatar said "Good try", which is two things to read at once. One avatar,
+  // one sentence.
+  const message = note || generic;
 
   return (
     <View

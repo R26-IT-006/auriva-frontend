@@ -267,7 +267,7 @@ describe('Item 32 — 600ms floor', () => {
 
 // ─── Item 33 — fixed delays preserved ──────────────────────────────────────
 
-describe('Item 33 — fixed delays preserved (350ms lead / 400ms inter-stroke / 700ms trail)', () => {
+describe('Item 33 — fixed delays preserved (350ms lead / 400ms inter-stroke; trail now the idle gap)', () => {
   it('both screens still use the exact same Animated.delay values, unscaled', () => {
     for (const file of [
       '../screens/handwriting/LetterWritingScreen.js',
@@ -275,7 +275,12 @@ describe('Item 33 — fixed delays preserved (350ms lead / 400ms inter-stroke / 
     ]) {
       const source = fs.readFileSync(path.resolve(__dirname, file), 'utf8');
       expect(source).toMatch(/Animated\.delay\(400\)/);
-      expect(source).toMatch(/Animated\.sequence\(\[Animated\.delay\(350\), \.\.\.\w+, Animated\.delay\(700\)\]\)/);
+      // The lead delay is still fixed and unscaled by demo speed. The 700ms
+      // trail was the Animated.loop inter-iteration pad; forward-only replay
+      // has no iterations, so that pause is now GUIDE_IDLE_REPLAY_MS in
+      // guideReplayCycle.js — still fixed, still independent of speed level.
+      expect(source).toMatch(/return Animated\.sequence\(\[Animated\.delay\(350\), \.\.\.\w+\]\)/);
+      expect(source).not.toMatch(/Animated\.delay\(getStrokeDurationForLevel|Animated\.delay\(\w*[Ss]peed/);
     }
   });
 });

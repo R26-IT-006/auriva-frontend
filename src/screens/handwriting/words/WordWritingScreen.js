@@ -29,7 +29,7 @@ import {
 } from '../../../constants/wordPaths';
 import { featuresToScore } from '../../../utils/adaptiveSequencing';
 import { submitWordAttempt, newActionId } from '../../../utils/wordApi';
-import { afterGuidedAttempt, buildWordRouteParams, resolveWordSession } from '../../../utils/wordWorkflow';
+import { GUIDED_SUPPORT, afterGuidedAttempt, buildWordRouteParams, resolveWordSession } from '../../../utils/wordWorkflow';
 // One-time word-writing introduction — see utils/demoPolicy.js.
 import { useDemoDetour } from '../../../utils/demoDetour';
 import { DEMO_KEYS } from '../../../utils/demoPolicy';
@@ -43,6 +43,7 @@ import { useLockLandscape } from '../../../utils/useOrientationLock';
 // The shared word-writing presentation - this screen and the demonstration
 // render the SAME component, in different modes.
 import WordWritingStage from '../../../components/handwriting/WordWritingStage';
+import AttemptAvatarFeedback from '../AttemptAvatarFeedback';
 import { instructionForSupport } from '../../../constants/childInstructions';
 import {
   PAD, COL_L, IMG_SIZE, CANVAS_W, CANVAS_H, LINE_1, LINE_2, LINE_3, LINE_4,
@@ -52,6 +53,12 @@ import useGatedBack from '../../../utils/useGatedBack';
 import { goBackToOrigin } from '../../../utils/backToOrigin';
 import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
 import { hasCanvasDrawing } from '../../../utils/canvasDrawingState';
+import { actionRowMinHeight } from '../../../constants/writingActionRow';
+import { spokenWord, spokenLetter } from '../../../utils/wordSpeech';
+import { startGuideReplayCycle } from '../../../utils/guideReplayCycle';
+
+// The same dwell the letter screens give their avatar feedback.
+const ATTEMPT_FEEDBACK_MS = 2200;
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -132,10 +139,14 @@ function calculateSmoothness(paths) {
 
 // Score comes from featuresToScore({ smoothness, dtw_distance }) — the same
 // weighting letter tracing uses, so word feedback is on the same 0-100 scale.
+// The BOUNDARY is unchanged: the pill this replaced already drew its line at
+// 50 — 'Excellent! ✓' and 'Good effort! ✓' both carried the tick, 'Keep going!'
+// did not. Only the presentation moved to the avatar; nothing here decides a
+// score, and nothing downstream reads a number.
 function getFeedbackFromScore(score) {
-  if (score >= 75) return { label: 'Excellent! ✓',   color: '#2E7D32', bg: '#E8F5E9' };
-  if (score >= 50) return { label: 'Good effort! ✓', color: '#E65100', bg: '#FFF3E0' };
-  return                   { label: 'Keep going!',    color: '#C62828', bg: '#FFEBEE' };
+  // A missing/failed score is not a pass. The old client-side estimate always
+  // produced a number; the server's may not.
+  return { passed: Number.isFinite(score) && score >= 50 };
 }
 
 // Slower than letter tracing's tracer (0.28 px/ms) — a whole word is a lot
@@ -194,6 +205,7 @@ export default function WordWritingScreen({ route, navigation }) {
   const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [hasDrawn,      setHasDrawn]      = useState(false);
   const [feedbackData,  setFeedbackData]  = useState(null);
+  const feedbackTimerRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
   const [saveError, setSaveError] = useState(null);
   // Word-writing child-feedback task — the backend's post-save size/spacing
@@ -202,7 +214,6 @@ export default function WordWritingScreen({ route, navigation }) {
   // pre-save estimate) and is still visible for a moment after the screen
   // has already advanced to the next attempt — advancing never waits on it.
   const [childFeedbackText, setChildFeedbackText] = useState(null);
-  const childFeedbackTimerRef = useRef(null);
   const [showWordVideo, setShowWordVideo] = useState(() => {
     return !!(wordEntry && WORD_VIDEOS[wordEntry.word]);
   });
@@ -210,6 +221,11 @@ export default function WordWritingScreen({ route, navigation }) {
   const [tracerVisible,   setTracerVisible]   = useState(false);
   const [tracerKeyframes, setTracerKeyframes] = useState(null);
   const tracerProgress = useRef(new Animated.Value(0)).current;
+  // The guide stops at the child's FIRST TOUCH, not when the stroke ends.
+  // `hasDrawn` only flips on release, so it is too late to be the stop signal
+  // here; this ref lets the grant handler cancel the cycle immediately
+  // without changing what `hasDrawn` means to support, audio or scoring.
+  const stopGuideRef = useRef(null);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
@@ -376,57 +392,71 @@ export default function WordWritingScreen({ route, navigation }) {
     tracerProgress.setValue(0);
     setTracerVisible(true);
 
-    const strokeAnims = [];
-    for (let s = 0; s < strokeBounds.length; s++) {
-      if (s > 0) {
-        strokeAnims.push(Animated.delay(320));
+    // Rebuilt fresh for every pass, so no animation object carries state
+    // between passes. Stroke order is the canonical order, played forward,
+    // every time: nothing here reverses waypoints, the path, or the bounds.
+    const buildForwardSequence = () => {
+      const strokeAnims = [];
+      for (let s = 0; s < strokeBounds.length; s++) {
+        if (s > 0) {
+          strokeAnims.push(Animated.delay(320));
+          strokeAnims.push(Animated.timing(tracerProgress, {
+            toValue: strokeBounds[s].start, duration: 1, useNativeDriver: true,
+          }));
+        }
+        const len = perStroke[s].totalLength;
+        const dur = Math.max(400, Math.round(len / TRACER_PX_PER_MS));
         strokeAnims.push(Animated.timing(tracerProgress, {
-          toValue: strokeBounds[s].start, duration: 1, useNativeDriver: true,
+          toValue: strokeBounds[s].end, duration: dur, useNativeDriver: true,
         }));
       }
-      const len = perStroke[s].totalLength;
-      const dur = Math.max(400, Math.round(len / TRACER_PX_PER_MS));
-      strokeAnims.push(Animated.timing(tracerProgress, {
-        toValue: strokeBounds[s].end, duration: dur, useNativeDriver: true,
-      }));
-    }
+      return Animated.sequence([Animated.delay(500), ...strokeAnims]);
+    };
 
-    const anim = Animated.loop(
-      Animated.sequence([Animated.delay(500), ...strokeAnims, Animated.delay(1200)]),
-      { resetBeforeIteration: true }
-    );
-    anim.start();
+    // Forward-only: setValue(0) -> 0..1 -> idle pause -> setValue(0) -> 0..1.
+    // The trailing Animated.delay(1200) that used to pad the loop is now the
+    // controller's idle gap. See guideReplayCycle.js for why Animated.loop's
+    // resetBeforeIteration never reached tracerProgress and played it backward.
+    const cycle = startGuideReplayCycle({
+      progress: tracerProgress,
+      buildForwardSequence,
+    });
+    stopGuideRef.current = () => cycle.stop();
 
     return () => {
       setTracerVisible(false);
-      anim.stop();
+      cycle.stop();
+      stopGuideRef.current = null;
     };
   }, [attempt, hasDrawn, wordGuide, reduceMotion, tracerProgress]);
 
   // â”€â”€ Speech â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const MUTED_WRITING_WORDS = new Set(['axe', 'album', 'arrow']);
-
+  // There is no mute list. This used to open with
+  // `MUTED_WRITING_WORDS = new Set(['axe', 'album', 'arrow'])`, which skipped
+  // those three words outright — a leftover allow/deny list, not a bug in how
+  // the current word was resolved.
   const spellWord = useCallback((w = word) => {
-    if (MUTED_WRITING_WORDS.has(w)) return;
+    const spoken = spokenWord(w);
+    if (!spoken) return;
     spellCancelRef.current = true;
     spellTimersRef.current.forEach(clearTimeout);
     spellTimersRef.current = [];
     Speech.stop();
 
     spellCancelRef.current = false;
-    const letters = w.replace(/[^a-z]/gi, '').split('');
+    const letters = spoken.replace(/[^a-z]/gi, '').split('');
     let delay = 200;
     letters.forEach(ltr => {
       const t = setTimeout(() => {
-        if (!spellCancelRef.current)
-          Speech.speak(ltr.toUpperCase(), { rate: 0.8, language: SPEECH_LOCALE_EN });
+        if (!spellCancelRef.current && spokenLetter(ltr))
+          Speech.speak(spokenLetter(ltr), { rate: 0.8, language: SPEECH_LOCALE_EN });
       }, delay);
       spellTimersRef.current.push(t);
       delay += 750;
     });
     const ft = setTimeout(() => {
       if (!spellCancelRef.current)
-        Speech.speak(w.replace(/-/g, ' '), { rate: 0.82, language: SPEECH_LOCALE_EN });
+        Speech.speak(spoken, { rate: 0.82, language: SPEECH_LOCALE_EN });
     }, delay + 350);
     spellTimersRef.current.push(ft);
   }, [word]);
@@ -443,7 +473,6 @@ export default function WordWritingScreen({ route, navigation }) {
   // New word — no stale feedback/score state carries over (section 18: next
   // word must start with no previous feedback state, no previous score state).
   useEffect(() => {
-    clearTimeout(childFeedbackTimerRef.current);
     setChildFeedbackText(null);
   }, [word]);
 
@@ -453,18 +482,18 @@ export default function WordWritingScreen({ route, navigation }) {
       spellCancelRef.current = true;
       spellTimersRef.current.forEach(clearTimeout);
       Speech.stop();
-      clearTimeout(childFeedbackTimerRef.current);
+      // A screen torn down mid-feedback must not resolve into a transition.
+      clearTimeout(feedbackTimerRef.current);
     };
   }, []);
 
-  useEffect(() => {
-    if (hasDrawn && allPathsRef.current.length > 0) {
-      const smoothness   = calculateSmoothness(allPathsRef.current);
-      const dtw_distance = computeWordDTW(wordGuide.rawPath, allPathsRef.current, CANVAS_W, CANVAS_H);
-      const score = featuresToScore({ smoothness, dtw_distance });
-      setFeedbackData(getFeedbackFromScore(score));
-    }
-  }, [hasDrawn, wordGuide]);
+  // There is deliberately no drawing-time verdict here.
+  //
+  // This used to be an effect on [hasDrawn]: the moment the child lifted their
+  // finger from the FIRST stroke it scored the canvas locally and showed the
+  // avatar — mid-attempt, from a client-side estimate, before anything was
+  // submitted. Feedback now comes from the server's own score for the attempt
+  // the child explicitly submitted; see handleNext.
 
   // â”€â”€ PanResponder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const panResponder = useRef(
@@ -472,6 +501,7 @@ export default function WordWritingScreen({ route, navigation }) {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
+        stopGuideRef.current?.();  // first touch cancels the idle replay
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
         const { x, y } = mapTouchToCanvas({
@@ -568,12 +598,19 @@ export default function WordWritingScreen({ route, navigation }) {
     // live while drawing, and never blocking progression: the attempt/word
     // transition below always proceeds once the save succeeds, regardless of
     // whether there's a layout advisory to show.
-    const message = childFeedbackMessage(saved?.child_feedback);
-    clearTimeout(childFeedbackTimerRef.current);
-    setChildFeedbackText(message);
-    if (message) {
-      childFeedbackTimerRef.current = setTimeout(() => setChildFeedbackText(null), 3200);
-    }
+    // No timer of its own any more: the advisory IS the avatar's message, so
+    // it appears and clears with the avatar, on one dwell.
+    setChildFeedbackText(childFeedbackMessage(saved?.child_feedback));
+
+    // The verdict, from the score the SERVER returned for this attempt. Shown
+    // for the same dwell the letter screens use, then the existing transition
+    // runs — one feedback event, one continuation.
+    setFeedbackData(getFeedbackFromScore(saved?.score));
+    await new Promise((resolve) => {
+      feedbackTimerRef.current = setTimeout(resolve, ATTEMPT_FEEDBACK_MS);
+    });
+    setFeedbackData(null);
+    setChildFeedbackText(null);
 
     const transition = afterGuidedAttempt(attempt);
     if (transition.type === 'attempt') {
@@ -673,22 +710,24 @@ export default function WordWritingScreen({ route, navigation }) {
           panHandlers={panResponder.panHandlers}
         />
 
-        {/* â”€â”€ Feedback pill â”€â”€ */}
-        {feedbackData && (
-          <View style={[styles.feedbackPill, { backgroundColor: feedbackData.bg }]}>
-            <Text style={[styles.feedbackText, { color: feedbackData.color }]}>
-              {feedbackData.label}
-            </Text>
-          </View>
-        )}
+        {/* The layout advisory used to live here, in its own pill under the
+            canvas, and appeared at the same moment as the avatar — two
+            feedbacks for one attempt. It now goes THROUGH the avatar as its
+            message (see `note` below), so there is exactly one. */}
 
-        {/* â”€â”€ Child layout-feedback pill â”€â”€ shown only after an authoritative
-            backend save that returned a size/spacing advisory; auto-dismisses
-            and never blocks/represents pass-fail (see handleNext). */}
-        {childFeedbackText && (
-          <View style={styles.layoutFeedbackPill} accessibilityRole="text">
-            <Text style={styles.layoutFeedbackText}>{childFeedbackText}</Text>
-          </View>
+        {/* Same overlay the letter screens use — one feedback mechanism for
+            the whole handwriting module, not a second one for words. The
+            support level is the one this attempt actually presented, so the
+            wording ("Great tracing" / "Nice guide work" / "You wrote it
+            yourself") describes what the child just did. */}
+        {feedbackData && (
+          <AttemptAvatarFeedback
+            avatarKey={student?.avatar_key}
+            passed={feedbackData.passed}
+            note={childFeedbackText}
+            supportLevel={GUIDED_SUPPORT[attempt]}
+            theme={theme}
+          />
         )}
 
         {/* â”€â”€ Buttons â”€â”€ */}
@@ -846,30 +885,21 @@ const styles = StyleSheet.create({
   // Attempt badge
   // Canvas
   // â”€â”€ Tracer dot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // â”€â”€ Feedback pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  feedbackPill: {
-    alignSelf: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 5,
-    borderRadius: 50,
-    marginBottom: 4,
-  },
-  feedbackText: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 
   // â”€â”€ Child layout-feedback pill â”€â”€ deliberately neutral/calm (not a
   // pass/fail colour, not red/green) — an advisory, not a verdict.
-  layoutFeedbackPill: {
-    alignSelf: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 5,
-    borderRadius: 50,
-    marginBottom: 4,
-    backgroundColor: '#F1EFFA',
-  },
-  layoutFeedbackText: { fontSize: 12, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: '#5B5470', textAlign: 'center' },
 
   // â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buttonsRow: {
+    // Reserved BEFORE anything is in it. Clear appears on the first drawn
+    // point and Next when the finger lifts; without this the row grew twice
+    // mid-stroke and `mainRow` (flex: 1, centred) re-centred the canvas
+    // upward under the child's finger. See constants/writingActionRow.js.
+    minHeight: actionRowMinHeight({
+      // Clear is the taller child here too — 10px padding plus a 1.5px
+      // border beats Next's borderless 11px.
+      maxButtonPaddingVertical: 10, maxButtonBorderWidth: 1.5, rowPaddingVertical: 6,
+    }),
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

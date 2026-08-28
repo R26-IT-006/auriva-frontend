@@ -313,9 +313,13 @@ export function computeWordMastery(wordProgress) {
     return {
       letter, words: words.length, correct, good, total,
       accuracy, withHelp, masteryStatus, exBreakdown, bestEx, worstEx,
+      // `emoji` is NOT carried here. It never arrived: `words` is the
+      // backend's word-progress payload ({ word, status, updated_at }), so
+      // this field was always undefined and the report's picture had nothing
+      // to fall back to. The word itself is enough — utils/wordImageResolver
+      // looks up both the picture and the emoji from the canonical catalogue.
       wordList: words.map(w => ({
         word:   w.word,
-        emoji:  w.emoji,
         status: w.status,
         stars:  Object.values(w.status).filter(s => s === 'correct').length,
       })),

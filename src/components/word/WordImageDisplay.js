@@ -27,14 +27,13 @@ const styles = StyleSheet.create({
   img: {
     backgroundColor: 'transparent',
   },
+  // Transparent, and no shadow. This used to be a white, shadowed card — and
+  // every activity already draws its own surface around it, so an emoji
+  // fallback rendered a second frame inside the first. The picture path was
+  // always transparent; now both are.
   emojiBg: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
   },
 });

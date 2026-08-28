@@ -19,5 +19,11 @@ module.exports = {
   // is not transformed by default, so that one virtual module has to be
   // excepted or any file reading an EXPO_PUBLIC_ variable fails to load here.
   // Deliberately narrow: only expo/virtual, never node_modules at large.
+  // Metro turns an image require() into a React Native asset reference;
+  // Node cannot read a .jpg, so without this any test importing
+  // constants/wordImages.js fails at import and that map stays untestable.
+  moduleNameMapper: {
+    '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/imageAssetMock.js',
+  },
   transformIgnorePatterns: ['/node_modules/(?!expo/virtual/)'],
 };

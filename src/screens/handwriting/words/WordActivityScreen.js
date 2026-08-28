@@ -48,6 +48,13 @@ import { useLockLandscape } from '../../../utils/useOrientationLock';
 import useGatedBack from '../../../utils/useGatedBack';
 import { goBackToOrigin } from '../../../utils/backToOrigin';
 import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
+import AttemptAvatarFeedback from '../AttemptAvatarFeedback';
+import ResultGifFeedback from '../../../components/feedback/ResultGifFeedback';
+import { RESULT_GIF_MS } from '../../../constants/resultGifFeedback';
+import { spokenWord } from '../../../utils/wordSpeech';
+
+// The same dwell the letter screens give their feedback.
+const ATTEMPT_FEEDBACK_MS = 2200;
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -182,12 +189,16 @@ export default function WordActivityScreen({ route, navigation }) {
   const cardAnim = useRef(new Animated.Value(1)).current;
 
   // ── Speak word on change ──────────────────────────────────────────────────
+  // Every word speaks. This effect used to be wrapped in
+  // `if (currentWord.word === 'ant')`, so ANT was the only word the child ever
+  // heard — not a stale closure, an allow-list. It fires on the CURRENT word
+  // and on nothing else: strokes, feedback, Clear and answer selection all
+  // leave it alone because none of them appear in its dependencies.
   useEffect(() => {
-    if (!currentWord) return;
+    const spoken = spokenWord(currentWord);
+    if (!spoken) return undefined;
     Speech.stop();
-    if (currentWord.word === 'ant') {
-      Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
-    }
+    Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
     return () => Speech.stop();
   }, [currentWord?.word]);
 
@@ -210,8 +221,33 @@ export default function WordActivityScreen({ route, navigation }) {
   // ── Core exercise handler ─────────────────────────────────────────────────
   const [saveError, setSaveError] = useState(null);
   const [saving, setSaving] = useState(false);
-  const handleExerciseComplete = useCallback(async (wasCorrect) => {
-    if (saving) return;
+  const [activityFeedback, setActivityFeedback] = useState(null);
+  const advancingRef  = useRef(false);
+  const feedbackTimerRef = useRef(null);
+  const wrongTimerRef    = useRef(null);
+
+  // A screen torn down mid-feedback must not resolve into a navigate.
+  useEffect(() => () => {
+    clearTimeout(feedbackTimerRef.current);
+    clearTimeout(wrongTimerRef.current);
+  }, []);
+
+  // ── A wrong ANSWER, shown and then gone ───────────────────────────────────
+  // A-D report every wrong choice here. This presents the verdict and nothing
+  // else: no save, no score, no advance, no completion. The exercise stays on
+  // screen so the child can try again, which is the whole point.
+  const showWrongAnswerFeedback = useCallback(() => {
+    if (advancingRef.current) return;      // a completion already owns the overlay
+    clearTimeout(wrongTimerRef.current);
+    setActivityFeedback({ passed: false, isWriting: false });
+    wrongTimerRef.current = setTimeout(() => setActivityFeedback(null), RESULT_GIF_MS);
+  }, []);
+  const handleExerciseComplete = useCallback(async (wasCorrect, note) => {
+    // `advancing` is the double-progression guard. Each exercise already
+    // waits ~500ms before reporting, and the feedback below adds its own
+    // pause — a second report arriving in that window must not advance twice
+    // or navigate twice.
+    if (saving || advancingRef.current) return;
     const ex        = EXERCISES[exIdx];
     const result    = wasCorrect ? 'correct' : 'good';
     if (ex !== 'E') {
@@ -225,8 +261,40 @@ export default function WordActivityScreen({ route, navigation }) {
     setExStatus(newStatus);
     setScore(s => ({ correct: s.correct + (wasCorrect ? 1 : 0), total: s.total + 1 }));
 
+    // The result is already decided by the exercise; this only PRESENTS it,
+    // with the same overlay and the same dwell the letter screens use.
+    // Exercise E writes independently, so it takes the 'low' wording; the
+    // choice activities pass no level and get the component's own neutral
+    // fallback ('Nice work!' / 'Good try. Try again.').
+    // Two mechanisms, one decision point. A-D are right/wrong CHOICES and get
+    // the shared correct/wrong animation; E is handwriting and keeps the
+    // child's own themed avatar, because a written attempt is judged on how it
+    // was formed, not on being right or wrong.
+    //
+    // Either way the verdict is `wasCorrect`, which the exercise decided — this
+    // only presents it. One feedback event, one timer, one continuation.
+    const isWriting = ex === 'E';
+    advancingRef.current = true;
+    // The GIF answers "was THAT answer right?", not "did they need help?".
+    // Reaching completion in A-D means the child just chose correctly, so the
+    // verdict is correct even when `wasCorrect` is false and the status saved
+    // above is 'good'. Deriving the GIF from the persisted with-help state is
+    // exactly the bug this replaced: hint used -> correct answer -> wrong.gif.
+    // E is handwriting and keeps reporting its own scored verdict.
+    const presentedPassed = isWriting ? wasCorrect : true;
+    clearTimeout(wrongTimerRef.current);   // a pending wrong.gif must not outlive this
+    // `note` is E's layout advisory ("Leave a little space"). A-D pass none.
+    // It becomes the avatar's message, so the activity says one thing, not two.
+    setActivityFeedback({ passed: presentedPassed, isWriting, note });
+    await new Promise((resolve) => {
+      feedbackTimerRef.current = setTimeout(
+        resolve, isWriting ? ATTEMPT_FEEDBACK_MS : RESULT_GIF_MS);
+    });
+    setActivityFeedback(null);
+
     if (exIdx < EXERCISES.length - 1) {
       // More exercises for this word → advance
+      advancingRef.current = false;
       animateTransition(() => setExIdx(e => e + 1));
       return;
     }
@@ -260,6 +328,7 @@ export default function WordActivityScreen({ route, navigation }) {
       theme,
       student,
       onComplete: handleExerciseComplete,
+      onWrongAnswer: showWrongAnswerFeedback,
     };
     switch (exKey) {
       case 'A': return <ExerciseA_WriteFirst  key={`${currentWord.word}-A`} {...props} />;
@@ -318,6 +387,20 @@ export default function WordActivityScreen({ route, navigation }) {
         </View>
 
         {/* ── Exercise progress dots (live status colours) ── */}
+        {activityFeedback?.isWriting && (
+          <AttemptAvatarFeedback
+            avatarKey={student?.avatar_key}
+            passed={activityFeedback.passed}
+            note={activityFeedback.note}
+            supportLevel="low"
+            theme={theme}
+          />
+        )}
+        <ResultGifFeedback
+          visible={Boolean(activityFeedback) && !activityFeedback.isWriting}
+          correct={Boolean(activityFeedback?.passed)}
+        />
+
         <View style={styles.dotsRow}>
           {EXERCISES.map((ex, i) => {
             const cfg       = STATUS[exStatus?.[ex]] ?? STATUS.pending;
@@ -347,10 +430,12 @@ export default function WordActivityScreen({ route, navigation }) {
             <TouchableOpacity
               style={styles.wordHeader}
               onPress={() => {
-                if (currentWord.word === 'ant') {
-                  Speech.stop();
-                  Speech.speak(currentWord.word, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
-                }
+                // Resolved at PRESS time, from the word being displayed on the
+                // line below — never a captured first word.
+                const spoken = spokenWord(currentWord);
+                if (!spoken) return;
+                Speech.stop();            // no stacked utterances on repeat taps
+                Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
               }}
               activeOpacity={0.7}
             >

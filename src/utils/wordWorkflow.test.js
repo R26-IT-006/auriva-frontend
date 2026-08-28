@@ -95,7 +95,7 @@ test('screen orchestration blocks navigation when authoritative saves fail', () 
   expect(writing).not.toContain('setWordIdx');
   expect(practice).toContain("catch { setSaveError('Could not save yet. Check the connection and try again.'); setSaving(false); return; }");
   expect(practice).not.toContain('setWordIdx');
-  expect(exerciseE.indexOf('if (!authoritative.passed)')).toBeLessThan(exerciseE.indexOf('onComplete(true)'));
+  expect(exerciseE.indexOf('if (!authoritative.passed)')).toBeLessThan(exerciseE.indexOf('onComplete(true, nextResult.layoutMessage)'));
 });
 
 test('network retries reuse an action id while the next saved attempt gets a fresh id', () => {

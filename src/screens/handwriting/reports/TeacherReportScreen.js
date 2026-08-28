@@ -112,6 +112,11 @@ import useGatedBack from '../../../utils/useGatedBack';
 import { fetchTeacherOverrideFamilies } from '../../../utils/familyThresholds';
 import { navigateToWritingCheck } from '../../../utils/writingCheckNavigation';
 import { goBackToOrigin } from '../../../utils/backToOrigin';
+import { resolveWordImageKey, resolveWordEmoji } from '../../../utils/wordImageResolver';
+
+// A teacher-report preview: recognisable at a glance, not an activity
+// illustration. Was 30 — too small to read the picture at all.
+const REPORT_WORD_IMAGE_SIZE = 46;
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -1490,7 +1495,17 @@ function WordLetterRow({ data }) {
         <View style={wl.expanded}>
           {data.wordList.map((w, i) => (
             <View key={i} style={wl.wordRow}>
-              <WordImageDisplay imageKey={w.imageKey ?? ''} emoji={w.emoji} size={30} />
+              {/* Resolved from the WORD. These rows come from the backend's
+                  word-progress payload, which stores { word, status } and
+                  nothing else — so `w.imageKey` and `w.emoji` were always
+                  undefined here and every picture fell through to an empty
+                  emoji box. Same canonical catalogue the activities use; no
+                  second map. */}
+              <WordImageDisplay
+                imageKey={resolveWordImageKey(w.word)}
+                emoji={resolveWordEmoji(w.word)}
+                size={REPORT_WORD_IMAGE_SIZE}
+              />
               <Text style={wl.wordText}>{w.word}</Text>
               <View style={wl.exerciseChips}>
                 {/* All FIVE exercises, from the canonical map. The list was

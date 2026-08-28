@@ -18,9 +18,8 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem, getConceptQuestion, getConceptQuestionSi } from '../../../../data/conceptData';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
+import ResultGifFeedback from '../../../../components/feedback/ResultGifFeedback';
 
-const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
-const WRONG_GIF   = require('../../../../../assets/feedback/wrong.gif');
 
 function shuffle(arr) {
   const a = [...arr];
@@ -269,18 +268,13 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
         </View>
 
         {/* GIF feedback popup */}
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.gifPopup, { transform: [{ translateY: feedbackSlide }] }]}
-        >
-          {feedbackResult && (
-            <ExpoImage
-              source={feedbackResult === 'correct' ? CORRECT_GIF : WRONG_GIF}
-              style={styles.gifImage}
-              contentFit="contain"
-            />
-          )}
-        </Animated.View>
+        {/* Shared right/wrong feedback — components/feedback/ResultGifFeedback.
+            Five concept screens each carried their own copy of this popup,
+            with the same two requires and the same slide animation. */}
+        <ResultGifFeedback
+          visible={Boolean(feedbackResult)}
+          correct={feedbackResult === 'correct'}
+        />
 
       </SafeAreaView>
     </LinearGradient>
@@ -391,15 +385,4 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  gifPopup: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  gifImage: {
-    width: 200,
-    height: 200,
-  },
 });

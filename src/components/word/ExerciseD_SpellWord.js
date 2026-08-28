@@ -3,6 +3,9 @@ import { View, Text, TouchableOpacity, Animated, Easing, StyleSheet } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import WordImageDisplay from './WordImageDisplay';
 import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+import { SUPPORT_IMAGE, BODY, supportImageFrameStyle } from './wordActivityLayout';
+import { isHintUnlocked, unlocksHint, HINT_REVEAL_DELAY_MS, HINT_COLORS }
+  from './wordHintPolicy';
 
 // Shared with every other screen that asks for this action, so the child
 // hears one sentence for one task — and one future recording covers it.
@@ -37,7 +40,7 @@ function buildTiles(word) {
  * cannot drift away from the activity because it IS the activity.
  */
 export default function ExerciseD_SpellWord({
-  wordEntry, theme, onComplete,
+  wordEntry, theme, onComplete, onWrongAnswer,
   demoMode = false, demoPlayToken = 0, onDemoPassComplete,
 }) {
   const { word, emoji, imageKey } = wordEntry;
@@ -47,6 +50,14 @@ export default function ExerciseD_SpellWord({
   const [filled,   setFilled]   = useState([]);
   const [tileUsed, setTileUsed] = useState(() => new Array(tiles.length).fill(false));
   const [done,     setDone]     = useState(false);
+
+  // D's authoritative wrong ANSWER is a tile tapped against the letter the
+  // word needs next — the same event that already shook the tile. Correct
+  // taps that merely advance the spelling are not answers and count nothing.
+  const [wrongCount, setWrongCount] = useState(0);
+  const [hintReady,  setHintReady]  = useState(false);
+  const hintTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(hintTimerRef.current), []);
 
   const errorAnims  = useRef(tiles.map(() => new Animated.Value(0))).current;
   const fillAnims   = useRef(letters.map(() => new Animated.Value(0))).current;
@@ -70,6 +81,12 @@ export default function ExerciseD_SpellWord({
     pulseLoop.current.start();
     return () => pulseLoop.current?.stop();
   }, [filled.length, done]);
+
+  // Support only — it points at the next letter, it never taps it.
+  const showHint = isHintUnlocked(wrongCount) && hintReady && !done;
+  const hintedTileIdx = showHint
+    ? tiles.findIndex((t, i) => !tileUsed[i] && t.letter === letters[filled.length])
+    : -1;
 
   function shakeError(tileIdx) {
     const anim = errorAnims[tileIdx];
@@ -119,6 +136,15 @@ export default function ExerciseD_SpellWord({
       }
     } else {
       shakeError(tileIdx);
+      if (demoMode) return;                 // the demo drives itself; no verdict
+      onWrongAnswer?.();                    // verdict on THIS tap: wrong.gif
+      setWrongCount((w) => {
+        const next = w + 1;
+        if (unlocksHint(next)) {
+          hintTimerRef.current = setTimeout(() => setHintReady(true), HINT_REVEAL_DELAY_MS);
+        }
+        return next;
+      });
     }
   }
 
@@ -216,8 +242,8 @@ export default function ExerciseD_SpellWord({
 
       {/* Left: image with soft themed background */}
       <View style={styles.leftCol}>
-        <View style={[styles.imageBg, { backgroundColor: theme.button + '10', borderColor: theme.button + '26' }]}>
-          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={170} />
+        <View style={[styles.imageBg, supportImageFrameStyle(theme)]}>
+          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={SUPPORT_IMAGE.imageSize} />
         </View>
       </View>
 
@@ -273,6 +299,8 @@ export default function ExerciseD_SpellWord({
           {tiles.map((tile, idx) => {
             if (tileUsed[idx]) return <View key={tile.id} style={styles.tileGhost} />;
 
+            const isHinted = idx === hintedTileIdx;
+
             return (
               <Animated.View
                 key={tile.id}
@@ -288,16 +316,22 @@ export default function ExerciseD_SpellWord({
               >
                 <TouchableOpacity
                   style={[styles.tile, {
-                    backgroundColor:  theme.button + '20',
-                    borderColor:      theme.button + '50',
-                    borderBottomColor: theme.button + '80',
+                    // Colours only: width, height, radius and every border
+                    // WIDTH are fixed in styles.tile, so hinting a tile cannot
+                    // move the row.
+                    backgroundColor:  isHinted ? HINT_COLORS.surface : theme.button + '20',
+                    borderColor:      isHinted ? HINT_COLORS.border  : theme.button + '50',
+                    borderBottomColor: isHinted ? HINT_COLORS.border : theme.button + '80',
                     shadowColor:      theme.button,
                   }]}
                   onPress={() => handleTile(idx)}
                   disabled={demoMode}
                   activeOpacity={0.6}
+                  accessibilityRole="button"
+                  accessibilityLabel={tile.letter.toUpperCase()}
+                  accessibilityHint={isHinted ? 'Hint: this letter comes next' : undefined}
                 >
-                  <Text style={[styles.tileText, { color: theme.headingText }]}>
+                  <Text style={[styles.tileText, { color: isHinted ? HINT_COLORS.text : theme.headingText }]}>
                     {tile.letter.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
@@ -347,8 +381,10 @@ export default function ExerciseD_SpellWord({
               },
             ]}
           >
+            {/* The tick stays — it marks the finished word in place. The
+                praise moved to the shared avatar overlay, so the child is
+                never told "Well done!" twice at once. */}
             <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
-            <Text style={styles.successLabel}>Well done!</Text>
           </Animated.View>
         )}
       </View>
@@ -363,23 +399,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 34,
+    gap: BODY.columnGap,
     width: '100%',
   },
   leftCol: {
-    width: 240,
+    width: SUPPORT_IMAGE.paneWidth,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  imageBg: {
-    width: 212,
-    height: 212,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  imageBg: {},
   rightCol: {
     flex: 1,
     alignItems: 'center',

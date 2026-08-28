@@ -354,7 +354,11 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
 
+  // The same soft surface the activities give their support picture. COL_L and
+  // IMG_SIZE are NOT touched: wordCanvasLayout derives CANVAS_W from COL_L, so
+  // the column width is canvas geometry, not styling.
   imageCol: {
+    borderRadius: 28,
     width: COL_L,
     justifyContent: 'center',
     alignItems: 'center',
