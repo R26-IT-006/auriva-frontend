@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../../components/common/Avatar';
+import { BACKDROP } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { ageFrom } from '../../utils/formatters';
 import { teacherApi } from '../../api/teacher';
@@ -31,24 +32,6 @@ const CHROME    = '#3A9BA8';
 const CORAL     = '#D95F50';
 const CORAL_L   = '#FDECEA';
 
-// The page backdrop, in the same blue → sage → cream progression WorkspaceSelectScreen
-// and StudentPickerScreen use. The dashboard was the one flat screen in the teacher
-// workspace ('#F6F8F6'), so arriving here from the workspace picker dropped the app's
-// colour language for a grey the rest of the product never uses.
-//
-// Paler than those two screens on purpose, and that is the whole design decision:
-// they are sparse, so they can carry the saturated version, while this screen is a
-// dense grid of pure-white panels each wearing its own accent tint (purple, green,
-// blue, amber, teal below). At WorkspaceSelect's saturation the backdrop competes
-// with those accents and the panels stop reading as cards. This follows the same
-// rule the avatar themes state explicitly — a background that sits *behind* white
-// cards resolves toward near-white, so the cards keep their edges.
-//
-// Diagonal rather than straight down: the paired row above PAIR_MIN is wide enough
-// that a vertical ramp bands visibly across it.
-const BACKDROP = ['#DCEFF5', '#E4F0E6', '#EFF3E4', '#FAF8F1'];
-const BACKDROP_START = { x: 0, y: 0 };
-const BACKDROP_END   = { x: 0.6, y: 1 };
 
 // Tinted pairs reused by the overview tiles and the session strip, so a green tile
 // and a green row mean the same thing in both places.
@@ -101,6 +84,11 @@ const PAIR_MIN = 640;
 // side — more than a portrait phone has in total — and because neither shrinks,
 // a single row squeezed the greeting down to nothing rather than wrapping.
 const HEADER_ROW_MIN = 700;
+
+// Where the weekly digest splits into a summary column and a "worth a look"
+// column. Higher than PAIR_MIN on purpose: this panel spans the full width, and
+// its left column is prose — at 640 the sentence broke every three or four words.
+const DIGEST_SPLIT_MIN = 820;
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -187,7 +175,7 @@ function StudentCard({ student, width, onPress }) {
 
 // ── Panel shell ──────────────────────────────────────────────────────────────
 
-function Panel({ title, section, action, onAction, right, children, style }) {
+function Panel({ title, subtitle, section, action, onAction, right, children, style }) {
   const accent = section ? SECTION[section] : null;
   return (
     // The shadow lives on this outer view; the inner one clips the tinted header
@@ -213,12 +201,24 @@ function Panel({ title, section, action, onAction, right, children, style }) {
                 <Ionicons name={accent.icon} size={17} color={accent.fg} />
               </View>
             ) : null}
-            <Text
-              style={[styles.panelTitle, accent && { color: accent.fg }]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
+            {/* Title and subtitle stack in a flexing column so the subtitle can
+                sit under the title without pushing the header controls around. */}
+            <View style={styles.panelTitleWrap}>
+              <Text
+                style={[styles.panelTitle, accent && { color: accent.fg }]}
+                numberOfLines={1}
+              >
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text
+                  style={[styles.panelSubtitle, accent && { color: accent.fg }]}
+                  numberOfLines={1}
+                >
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
             {right}
             {action ? (
               <TouchableOpacity
@@ -420,6 +420,32 @@ function NotesPanel({ students, selectedId, onSelect, notes, loading, draft, onD
   );
 }
 
+// How an emphasised figure is drawn inside the headline. `good` is a figure worth
+// being pleased about, `watch` one worth attention — the model chooses which,
+// because a percentage on its own says nothing about whether it is good news.
+const EMPHASIS_STYLE = {
+  good:  { color: TINTS.green.fg, fontFamily: 'DMSans_800ExtraBold' },
+  watch: { color: TINTS.amber.fg, fontFamily: 'DMSans_800ExtraBold' },
+};
+
+/**
+ * "Aug 21 – Aug 28, 2026" — computed here, never asked of the model.
+ *
+ * A date a language model writes is a date it can get wrong, and this one is
+ * knowable: the digest always covers the week starting Monday, matching
+ * teacherService.startOfWeek() on the server.
+ */
+function weekRangeLabel(now = new Date()) {
+  const start = new Date(now);
+  const back = (start.getDay() + 6) % 7;          // Monday-first
+  start.setDate(start.getDate() - back);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  const d = (x) => x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${d(start)} – ${d(end)}, ${end.getFullYear()}`;
+}
+
 /**
  * Weekly class digest. Uses the dashboard's own Panel rather than the report
  * screen's AiSummaryCard — the two screens are different visual systems, and a
@@ -443,11 +469,23 @@ function DigestPanel({ data, loading, onRefresh, refreshing, width }) {
 
   if (!data?.available || !data.summary) return null;
 
-  const { headline, highlights, watch_areas: watchAreas, caveat } = data.summary;
+  const {
+    headline,
+    headline_parts: parts,
+    highlights,
+    watch_areas: watchAreas,
+    caveat,
+  } = data.summary;
+
+  // Its own threshold, above PAIR_MIN. This panel is full width, so it can split
+  // long after the page's paired panels do — and prose needs more room than the
+  // calendar and notes beside it, which are short lines and a grid.
+  const wide = width >= DIGEST_SPLIT_MIN;
 
   return (
     <Panel
       title="This week"
+      subtitle={weekRangeLabel()}
       section="digest"
       style={{ width }}
       right={
@@ -465,32 +503,70 @@ function DigestPanel({ data, loading, onRefresh, refreshing, width }) {
         </TouchableOpacity>
       }
     >
-      {headline ? <Text style={styles.digestHeadline}>{headline}</Text> : null}
-
-      {highlights?.length ? (
-        <View style={styles.digestGroup}>
-          {highlights.map((h, i) => (
-            <View key={`hl-${i}`} style={styles.digestRow}>
-              <Ionicons name="ellipse" size={5} color={TINTS.green.fg} style={styles.digestDot} />
-              <Text style={styles.digestText}>{h}</Text>
+      {/* Two columns: the summary and what went well on the left, what to look at
+          on the right. Stacked they read as one long list where the last item is
+          the least visible — and "worth a look" is the part a teacher acts on.
+          Below the breakpoint they stack anyway: two columns of prose at phone
+          width gives four-word lines. */}
+      <View style={[styles.digestBody, wide && styles.digestBodyRow]}>
+        <View style={wide ? styles.digestMain : null}>
+          {/* Filled, not a bare paragraph. The box is what makes this read as the
+              summary rather than as the first bullet of the list under it. */}
+          {(parts?.length || headline) ? (
+            <View style={styles.digestSummaryBox}>
+              <Text style={styles.digestHeadline}>
+                {parts?.length
+                  ? parts.map((p, i) => (
+                      <Text key={i} style={EMPHASIS_STYLE[p.emphasis] || null}>{p.text}</Text>
+                    ))
+                  : headline}
+              </Text>
             </View>
-          ))}
-        </View>
-      ) : null}
+          ) : null}
 
-      {watchAreas?.length ? (
-        <View style={styles.digestGroup}>
-          <Text style={styles.digestGroupTitle}>Worth a look</Text>
-          {watchAreas.map((w, i) => (
-            <View key={`wa-${i}`} style={styles.digestRow}>
-              <Ionicons name="ellipse" size={5} color={TINTS.amber.fg} style={styles.digestDot} />
-              <Text style={styles.digestText}>{w}</Text>
+          {highlights?.length ? (
+            <View style={styles.digestGroup}>
+              {highlights.map((h, i) => (
+                <View key={`hl-${i}`} style={styles.digestRow}>
+                  <Ionicons name="ellipse" size={5} color={TINTS.green.fg} style={styles.digestDot} />
+                  <Text style={styles.digestText}>{h}</Text>
+                </View>
+              ))}
             </View>
-          ))}
+          ) : null}
         </View>
-      ) : null}
 
-      {caveat ? <Text style={styles.digestCaveat}>{caveat}</Text> : null}
+        {wide && (watchAreas?.length || caveat) ? <View style={styles.digestDivider} /> : null}
+
+        {(watchAreas?.length || caveat) ? (
+          <View style={wide ? styles.digestSide : styles.digestSideStacked}>
+            {watchAreas?.length ? (
+              <>
+                <View style={styles.digestSideHead}>
+                  {/* Same hex as digestGroupTitle beside it. This file works in
+                      raw hexes and TINTS rather than the Colors palette, and
+                      reaching for Colors here was an import it does not have. */}
+                  <Ionicons name="eye-outline" size={12} color="#8AA79D" />
+                  <Text style={styles.digestGroupTitle}>Worth a look</Text>
+                </View>
+                {watchAreas.map((w, i) => {
+                  // Accepts a bare string as well as { text, tone }: a digest
+                  // cached before the schema gained tones is still served verbatim.
+                  const item = typeof w === 'string' ? { text: w, tone: 'watch' } : (w || {});
+                  const tone = item.tone === 'good' ? TINTS.green.fg : TINTS.amber.fg;
+                  return (
+                    <View key={`wa-${i}`} style={[styles.digestWatchRow, { borderLeftColor: tone }]}>
+                      <Text style={styles.digestText}>{item.text}</Text>
+                    </View>
+                  );
+                })}
+              </>
+            ) : null}
+
+            {caveat ? <Text style={styles.digestCaveat}>{caveat}</Text> : null}
+          </View>
+        ) : null}
+      </View>
     </Panel>
   );
 }
@@ -677,7 +753,7 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   if (!data) {
     return (
-      <LinearGradient colors={BACKDROP} style={styles.root} start={BACKDROP_START} end={BACKDROP_END}>
+      <LinearGradient colors={BACKDROP.colors} style={styles.root} start={BACKDROP.start} end={BACKDROP.end}>
         <SafeAreaView style={[styles.safe, styles.loadingCenter]} edges={['top', 'bottom']}>
           <ActivityIndicator color={CHROME} size="large" />
         </SafeAreaView>
@@ -801,7 +877,7 @@ export default function TeacherDashboardScreen({ navigation }) {
   );
 
   return (
-    <LinearGradient colors={BACKDROP} style={styles.root} start={BACKDROP_START} end={BACKDROP_END}>
+    <LinearGradient colors={BACKDROP.colors} style={styles.root} start={BACKDROP.start} end={BACKDROP.end}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -1042,11 +1118,20 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  panelTitleWrap: { flex: 1 },
   panelTitle: {
-    flex: 1,
     fontSize: 17,
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
+  },
+  // Inherits the section accent but drops back in weight and opacity — it dates
+  // the panel, it does not compete with the title for it.
+  panelSubtitle: {
+    fontSize: 11,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
+    opacity: 0.85,
+    marginTop: 1,
   },
   panelEmptyText: {
     fontSize: 13,
@@ -1057,11 +1142,38 @@ const styles = StyleSheet.create({
   },
 
   // ── Weekly digest ──
+  digestBody:    { gap: Layout.spacing.md },
+  digestBodyRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  // 58/42 — the left column carries prose and needs the room; the right is short
+  // lines that read fine narrow.
+  digestMain: { flex: 58 },
+  digestSide: { flex: 42, gap: 7 },
+  digestSideStacked: { gap: 7 },
+  digestDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: '#E4EFEB',
+    marginHorizontal: Layout.spacing.md,
+  },
+  digestSideHead: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
+
+  digestSummaryBox: {
+    padding: Layout.spacing.md,
+    borderRadius: Layout.radius.md,
+    backgroundColor: '#F5F8F7',
+  },
   digestHeadline: {
     fontSize: 15,
     fontFamily: 'DMSans_600SemiBold',
     color: '#1A3D2E',
     lineHeight: 22,
+  },
+  // A coloured spine per item rather than a dot: it marks the whole line as one
+  // point, which matters here because these run to two lines more often than not.
+  digestWatchRow: {
+    borderLeftWidth: 3,
+    paddingLeft: Layout.spacing.sm,
+    paddingVertical: 3,
   },
   digestGroup: { marginTop: Layout.spacing.md },
   digestGroupTitle: {

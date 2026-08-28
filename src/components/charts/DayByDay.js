@@ -261,7 +261,7 @@ function tileParts(iso) {
 }
 
 const styles = StyleSheet.create({
-  list: { padding: Layout.spacing.md, gap: Layout.spacing.md },
+  list: { padding: Layout.spacing.md, gap: Layout.spacing.sm },
 
   // ── Date picker ───────────────────────────────────────────────────────────
   // The strip bleeds through the list's own padding and puts it back inside the
@@ -274,10 +274,10 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tile: {
-    width: 56,
+    width: 58,
     alignItems: 'center',
     paddingVertical: Layout.spacing.sm,
-    borderRadius: Layout.radius.md,
+    borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -290,10 +290,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   tileNum: {
-    fontSize: Layout.fontSize.lg,
+    fontSize: Layout.fontSize.md,
     fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
-    lineHeight: Layout.fontSize.lg * 1.25,
+    lineHeight: Layout.fontSize.md * 1.25,
   },
   tileMonth: {
     fontSize: Layout.fontSize.xs - 1,
@@ -313,14 +313,16 @@ const styles = StyleSheet.create({
   tileDotOn:       { backgroundColor: Colors.text.muted },
   tileDotOnActive: { backgroundColor: 'rgba(255,255,255,0.85)' },
 
+  // No border, no shadow, no fill. This sits INSIDE the section's card, and a
+  // bordered card within a bordered card is the one shape nothing else on this
+  // page makes — it read as a panel that had been dropped in from somewhere else.
+  // The rule above it is enough to separate it from the date strip.
   card: {
-    padding: Layout.spacing.md,
-    borderRadius: Layout.radius.md,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    gap: Layout.spacing.sm,
-    ...Layout.shadow.sm,
+    paddingTop: Layout.spacing.md,
+    marginTop: 2,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    gap: Layout.spacing.md,
   },
   cardHead: {
     flexDirection: 'row',
@@ -328,14 +330,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Layout.spacing.sm,
   },
-  date: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  date: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, letterSpacing: -0.2 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   metaPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     borderRadius: Layout.radius.full,
     backgroundColor: Colors.surfaceAlt,
   },
@@ -371,7 +373,7 @@ const styles = StyleSheet.create({
   chip_tricky:  { backgroundColor: '#FDF3E0',         borderColor: '#F0DBB0' },
   chip_neutral: { backgroundColor: Colors.surfaceAlt, borderColor: Colors.borderLight },
 
-  chipText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold', maxWidth: 140 },
+  chipText: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', maxWidth: 140 },
   chipText_good:    { color: Colors.text.primary },
   chipText_tricky:  { color: '#8A5D06' },
   chipText_neutral: { color: Colors.text.muted },
@@ -401,12 +403,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   artRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  artThumbWrap: { borderRadius: Layout.radius.md, ...Layout.shadow.sm },
+  artThumbWrap: { borderRadius: Layout.radius.lg, ...Layout.shadow.sm },
   artThumb: {
     // Up from 58: at that size a coloured-in drawing was a smudge, and the whole
     // point of showing it is that a teacher can tell what they are looking at.
-    width: 72, height: 72,
-    borderRadius: Layout.radius.md,
+    width: 76, height: 76,
+    borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
     borderColor: Colors.borderLight,
@@ -424,5 +426,5 @@ const styles = StyleSheet.create({
   },
 
   emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: Layout.spacing.md },
-  empty:     { fontSize: Layout.fontSize.sm, color: Colors.text.secondary },
+  empty:     { fontSize: 12, color: Colors.text.secondary },
 });

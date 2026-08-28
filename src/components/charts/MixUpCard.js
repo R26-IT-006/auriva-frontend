@@ -20,7 +20,7 @@ import { mixUpWhere, mixUpReason } from '../../constants/teacherWording';
  * left with a bare pair and no reading of it.
  */
 export function MixUpCard({ pair, note }) {
-  const { category_key: cat, concept_a: a, concept_b: b, count, tiers = [] } = pair;
+  const { category_key: cat, concept_a: a, concept_b: b, tiers = [] } = pair;
 
   const itemA = getConceptItem(cat, a);
   const itemB = getConceptItem(cat, b);
@@ -40,21 +40,25 @@ export function MixUpCard({ pair, note }) {
     <View style={[styles.card, bothRounds && styles.cardBoth]}>
       <View style={styles.pairRow}>
         <Face item={itemA} fallback={a} />
-        <View style={styles.swapWrap}>
-          <Ionicons name="swap-horizontal" size={18} color="#7B1FA2" />
+        {/* The arrow sits in its own badge so it reads as the relationship
+            between the two pictures rather than as a third item beside them. */}
+        <View style={styles.swapBadge}>
+          <Ionicons name="swap-horizontal" size={15} color="#C4674F" />
         </View>
         <Face item={itemB} fallback={b} />
       </View>
 
-      <Text style={styles.count}>
-        Muddled {count === 1 ? 'once' : `${count} times`}
-      </Text>
-      <Text style={styles.where}>{mixUpWhere(tiers)}</Text>
-
       <View style={styles.reasonWrap}>
-        <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.text.secondary} />
+        {/* A quotation mark, not a speech-bubble icon. The sentence is written
+            about this pair rather than said by anyone, and the mark carries that
+            without occupying a badge's worth of space. */}
+        <Text style={styles.quoteMark}>“</Text>
         <Text style={styles.reason}>{reason}</Text>
       </View>
+
+      {/* Which rounds it happened in, kept last and quiet: it qualifies the
+          sentence above rather than competing with it. */}
+      <Text style={styles.where}>{mixUpWhere(tiers)}</Text>
     </View>
   );
 }
@@ -74,7 +78,7 @@ function Face({ item, fallback }) {
         )}
       </View>
       <Text style={styles.faceLabel} numberOfLines={1}>
-        {item?.label ?? formatConceptLabel(fallback)}
+        {(item?.label ?? formatConceptLabel(fallback)).toUpperCase()}
       </Text>
     </View>
   );
@@ -93,7 +97,7 @@ export function MixUpEmpty() {
 const styles = StyleSheet.create({
   card: {
     padding: Layout.spacing.md,
-    borderRadius: Layout.radius.md,
+    borderRadius: Layout.radius.xl,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.borderLight,
@@ -103,32 +107,36 @@ const styles = StyleSheet.create({
   // teacher, not an alarm about a child.
   cardBoth: { borderColor: '#D9C2E8', borderWidth: 1.5 },
 
-  pairRow:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  swapWrap: { paddingHorizontal: 2 },
+  pairRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
 
-  face:         { flex: 1, alignItems: 'center', gap: 4 },
+  swapBadge: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#FBE7E2',
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 24,
+  },
+  quoteMark: { fontSize: 18, lineHeight: 18, color: '#D9BDB4', fontFamily: 'DMSans_800ExtraBold' },
+
+  face:         { alignItems: 'center', gap: 6 },
+  // Bigger and rounder. These pictures are what the child actually works with —
+  // in a learning product they are the subject of the card, not a decoration
+  // beside the numbers, and at 62px in a cold grey box they read as icons.
   faceImageBox: {
-    width: 62, height: 62,
-    borderRadius: Layout.radius.md,
-    backgroundColor: Colors.surfaceAlt,
+    width: 76, height: 76,
+    borderRadius: Layout.radius.xl,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
     alignItems: 'center', justifyContent: 'center',
   },
   faceImage:  { width: '78%', height: '78%' },
-  faceLabel:  { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  faceLabel:  { fontSize: 9, fontFamily: 'DMSans_700Bold', color: Colors.text.muted, letterSpacing: 0.7 },
 
-  count: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: Colors.text.primary, marginTop: 2 },
-  where: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary },
+  where: { fontSize: 10, color: Colors.text.muted, marginTop: 6 },
 
-  reasonWrap: {
-    flexDirection: 'row',
-    gap: 7,
-    marginTop: 4,
-    padding: Layout.spacing.sm,
-    borderRadius: Layout.radius.sm,
-    backgroundColor: Colors.surfaceAlt,
-  },
-  reason: { flex: 1, fontSize: Layout.fontSize.xs, color: Colors.text.secondary, lineHeight: 17 },
+  reasonWrap: { flexDirection: 'row', gap: 6, marginTop: Layout.spacing.sm },
+  reason: { flex: 1, fontSize: 12, color: Colors.text.primary, lineHeight: 18 },
 
   emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: Layout.spacing.md },
-  empty:     { fontSize: Layout.fontSize.sm, color: Colors.text.secondary },
+  empty:     { fontSize: 12, color: Colors.text.secondary },
 });

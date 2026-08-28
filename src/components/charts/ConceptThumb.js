@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   box_tricky: { backgroundColor: '#FDF3E0', borderColor: '#F0DBB0' },
 
   label: {
-    fontSize: 10,
+    fontSize: 9,
     textAlign: 'center',
     color: Colors.text.secondary,
     fontFamily: 'DMSans_600SemiBold',

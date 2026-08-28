@@ -1,33 +1,56 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { TIER_COLORS } from './TierBar';
 
+// A face per group. The icon names the subject rather than the app — a paw for
+// animals, a palette for colours — so a teacher finds the row they want by shape
+// before reading a single label.
+//
+// Keyed on the category, never assigned by position. A group filtered out of the
+// list would otherwise repaint every group below it, and a teacher who has learned
+// "animals is the pink one" would be misled by their own screen.
+const GROUP_FACE = {
+  fruits:        { icon: 'nutrition-outline',     bg: '#FAF0DF', fg: '#945D08' },
+  animals:       { icon: 'paw-outline',           bg: '#FAE9F0', fg: '#A5366A' },
+  household:     { icon: 'bed-outline',           bg: '#E5EEF9', fg: '#27609F' },
+  classroom:     { icon: 'school-outline',        bg: '#EDE9FA', fg: '#6438BE' },
+  colors:        { icon: 'color-palette-outline', bg: '#FBE7E2', fg: '#C4674F' },
+  shapes:        { icon: 'shapes-outline',        bg: '#E6F4EA', fg: '#2A7146' },
+  numbers:       { icon: 'calculator-outline',    bg: '#E5EEF9', fg: '#27609F' },
+  house:         { icon: 'home-outline',          bg: '#FAF0DF', fg: '#945D08' },
+  professionals: { icon: 'people-outline',        bg: '#EDE9FA', fg: '#6438BE' },
+};
+
+const FALLBACK_FACE = { icon: 'albums-outline', bg: Colors.surfaceAlt, fg: Colors.text.muted };
+
+const INITIAL_GROUPS = 3;
+
 /**
- * How far through each group the child is, as bars on ONE shared scale.
+ * How far through each group the child is.
  *
- * The bars previously each filled their own track, so a group with 4 of 4 and a
- * group with 4 of 21 drew the same width — the reader had to read the fraction to
- * find out they were nothing alike, which is the chart failing at its only job.
- * Every bar here is measured against the largest group, so length means the same
- * thing in every row and the groups are actually comparable.
+ * One row per group: the group's face, its name, the count, and a bar underneath.
+ * The name and the count have the line to themselves, so neither squeezes the
+ * other — with the bar inline, "Household Items" and "Fruits" drew tracks of
+ * different lengths purely because their names differ in width.
  *
  * Sorted most-progress first, so "where is this child furthest along" and "where
  * have they barely started" are both answered by position alone.
  *
- * One hue for every bar, deliberately. The groups are nominal — fruits, animals and
- * colours have no order — and shading each bar by its own value would burn the
- * colour channel re-encoding the length the bar already shows.
+ * NOTE the trade this makes. Every track is full width now, so a group at 4 of 4
+ * and one at 4 of 21 draw the same-length track with different fills — the bars
+ * no longer compare group SIZES against each other, only progress within each.
+ * The count beside each name is what carries the size, which is why it stays.
  */
-export function GroupProgress({ categories = [] }) {
+export function GroupProgress({ categories = [], selectedKey, onSelect, renderDetail }) {
+  const [showAll, setShowAll] = useState(false);
+
   const active = categories.filter((c) => c.started > 0);
   if (active.length === 0) {
     return <Text style={styles.empty}>No group started yet.</Text>;
   }
-
-  // The common denominator. Bars are drawn against the biggest group's size, not
-  // against their own total, which is what makes the rows comparable.
-  const widest = Math.max(...active.map((c) => c.total), 1);
 
   const sorted = [...active].sort((a, b) => {
     const pa = a.total ? a.mastered / a.total : 0;
@@ -35,78 +58,136 @@ export function GroupProgress({ categories = [] }) {
     return pb - pa || b.mastered - a.mastered;
   });
 
+  const shown  = showAll ? sorted : sorted.slice(0, INITIAL_GROUPS);
+  const hidden = sorted.length - shown.length;
+
   return (
     <View style={styles.wrap}>
-      {sorted.map((c) => {
-        const trackPct = (c.total / widest) * 100;
+      {shown.map((c) => {
+        const face = GROUP_FACE[c.category_key] || FALLBACK_FACE;
+        const open = c.category_key === selectedKey;
+
         // Nested, not stacked: knowing the word implies finding the picture, so
         // stacking them would sum past the group's size and overflow the track.
         const learnedPct = c.total ? (c.mastered / c.total) * 100 : 0;
         const pictPct    = c.total ? (c.tier1_passed / c.total) * 100 : 0;
 
         return (
-          <View key={c.category_key} style={styles.row}>
-            <Text style={styles.label} numberOfLines={1}>{c.label}</Text>
+          <View key={c.category_key}>
+            <TouchableOpacity
+              activeOpacity={onSelect ? 0.7 : 1}
+              disabled={!onSelect}
+              onPress={() => onSelect?.(open ? null : c.category_key)}
+              accessibilityRole={onSelect ? 'button' : undefined}
+              accessibilityState={onSelect ? { expanded: open } : undefined}
+              accessibilityLabel={`${c.label}, ${c.mastered} of ${c.total} learned`}
+            >
+              <View style={styles.row}>
+                <View style={[styles.face, { backgroundColor: face.bg }]}>
+                  <Ionicons name={face.icon} size={18} color={face.fg} />
+                </View>
 
-            <View style={styles.trackArea}>
-              <View style={[styles.track, { width: `${trackPct}%` }]}>
+                <Text style={styles.label} numberOfLines={1}>{c.label}</Text>
+
+                <Text style={styles.value}>{c.mastered} / {c.total} learned</Text>
+
+                {onSelect ? (
+                  <Ionicons
+                    name={open ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={Colors.icon.muted}
+                  />
+                ) : null}
+              </View>
+
+              <View style={styles.track}>
                 <View style={[styles.seg, { width: `${pictPct}%`, backgroundColor: TIER_COLORS.tier1 }]} />
                 {/* Drawn over the wider layer, so the darker step reads as the
                     stronger evidence sitting inside the weaker one. */}
                 <View style={[styles.seg, styles.segOver, { width: `${learnedPct}%`, backgroundColor: TIER_COLORS.tier2 }]} />
               </View>
-            </View>
+            </TouchableOpacity>
 
-            <Text style={styles.value}>{c.mastered}/{c.total}</Text>
+            {open && renderDetail ? (
+              <View style={styles.detail}>{renderDetail(c)}</View>
+            ) : null}
           </View>
         );
       })}
 
-      <View style={styles.legend}>
-        <LegendDot color={TIER_COLORS.tier2} label="Learned" />
-        <LegendDot color={TIER_COLORS.tier1} label="Finds the picture" />
-        <Text style={styles.scaleNote}>Bars share one scale — longer means a bigger group</Text>
-      </View>
-    </View>
-  );
-}
-
-function LegendDot({ color, label }) {
-  return (
-    <View style={styles.legendItem}>
-      <View style={[styles.dot, { backgroundColor: color }]} />
-      <Text style={styles.legendText}>{label}</Text>
+      {/* Dashed, so it reads as "the list continues" rather than as a filled
+          control that does something to the rows above it. */}
+      {(hidden > 0 || showAll) && (
+        <TouchableOpacity
+          style={styles.moreBtn}
+          activeOpacity={0.7}
+          onPress={() => setShowAll((v) => !v)}
+          accessibilityRole="button"
+        >
+          <Text style={styles.moreText}>
+            {showAll ? 'Show fewer groups' : `Show ${hidden} more group${hidden === 1 ? '' : 's'}`}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 9 },
+  wrap: { gap: Layout.spacing.lg },
+
   row:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-
-  label: { width: 96, fontSize: Layout.fontSize.xs, color: Colors.text.secondary, fontFamily: 'DMSans_600SemiBold' },
-
-  trackArea: { flex: 1 },
-  track: {
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: Colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    overflow: 'hidden',
+  face: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
   },
-  seg:     { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 7 },
-  // A surface-coloured hairline so the darker layer reads as sitting on the paler
-  // one rather than merging into a single ambiguous bar.
+  label: {
+    flex: 1,
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.primary,
+  },
+  value: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_700Bold',
+    color: '#8FA9BC',
+  },
+
+  track: {
+    flexDirection: 'row',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.surfaceAlt,
+    overflow: 'hidden',
+    marginTop: Layout.spacing.sm,
+  },
+  seg: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 5 },
   segOver: { borderRightWidth: 2, borderRightColor: Colors.surface },
 
-  value: { width: 44, textAlign: 'right', fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  // Indented past the face, so the concepts read as belonging to the group whose
+  // row they opened rather than as a new list starting at the card's edge.
+  detail: {
+    marginTop: Layout.spacing.sm,
+    marginLeft: 52,
+    paddingLeft: Layout.spacing.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.borderLight,
+  },
 
-  legend:     { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Layout.spacing.md, marginTop: 4 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  dot:        { width: 9, height: 9, borderRadius: 5 },
-  legendText: { fontSize: 10, color: Colors.text.secondary },
-  scaleNote:  { fontSize: 10, color: Colors.text.muted, flexBasis: '100%' },
+  moreBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: Colors.border,
+  },
+  moreText: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_600SemiBold',
+    color: Colors.text.secondary,
+  },
 
-  empty: { fontSize: Layout.fontSize.sm, color: Colors.text.muted },
+  empty: { fontSize: 12, color: Colors.text.muted },
 });

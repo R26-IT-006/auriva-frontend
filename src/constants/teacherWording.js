@@ -64,7 +64,10 @@ export const SUBHEADING = {
   mixUps:     'Pairs that get muddled, and what might be behind it',
   watchList:  'Not a problem yet — just pairs children often muddle',
   responses:  'Quick answers can mean confident, or can mean guessing',
-  games:      'Games that mix several things together',
+  // Not "games that mix several things together" — that describes the mixed
+  // practice activity only, and this list also carries the memory game and the
+  // photo-and-picture match, neither of which mixes anything.
+  games:      'Played after a group of things is learned',
 };
 
 // ─── Status words ────────────────────────────────────────────────────────────

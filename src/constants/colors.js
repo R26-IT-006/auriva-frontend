@@ -40,3 +40,28 @@ export const Colors = {
   overlay: 'rgba(0, 0, 0, 0.4)',
   shadow: 'rgba(100, 120, 200, 0.12)',
 };
+
+/**
+ * The teacher workspace's page backdrop — blue → sage → cream.
+ *
+ * The same progression WorkspaceSelectScreen and StudentPickerScreen use, so a
+ * teacher moving between the dashboard, a student and their report stays on one
+ * surface rather than crossing three unrelated greys.
+ *
+ * Paler than the picker screens on purpose. Those are sparse and can carry the
+ * saturated version; the dashboard and the report are dense grids of pure-white
+ * cards, and at full strength the backdrop competes with them until the cards
+ * stop reading as cards.
+ *
+ * Diagonal rather than straight down: a two-column layout is wide enough that a
+ * vertical ramp bands visibly across it.
+ *
+ * Lives here rather than in one screen because it was defined inside
+ * DashboardScreen and a second screen needed it — two copies of a gradient drift
+ * the moment one is nudged.
+ */
+export const BACKDROP = {
+  colors: ['#DCEFF5', '#E4F0E6', '#EFF3E4', '#FAF8F1'],
+  start:  { x: 0, y: 0 },
+  end:    { x: 0.6, y: 1 },
+};

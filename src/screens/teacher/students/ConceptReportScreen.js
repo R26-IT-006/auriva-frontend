@@ -8,19 +8,20 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   useWindowDimensions,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
 import { ImageViewerModal } from '../../../components/common/ImageViewerModal';
 import { MasteryRing } from '../../../components/charts/MasteryRing';
-import { TierBar, TierLegend } from '../../../components/charts/TierBar';
 import { AccuracyChart } from '../../../components/charts/AccuracyChart';
 import { GroupProgress } from '../../../components/charts/GroupProgress';
 import { ConceptThumb, conceptLabel } from '../../../components/charts/ConceptThumb';
 import { MixUpCard, MixUpEmpty } from '../../../components/charts/MixUpCard';
 import { DayByDay } from '../../../components/charts/DayByDay';
-import { Colors } from '../../../constants/colors';
+import { Colors, BACKDROP } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
@@ -28,7 +29,7 @@ import { scoreColor } from '../../../utils/scoreColor';
 import { formatDateTime } from '../../../utils/formatters';
 import {
   HEADING, SUBHEADING, ROUND_BY_STATUS_KEY,
-  countOf, seconds, duration, tries, firstNameOf, overviewSentence, difficultyWord,
+  countOf, seconds, duration, tries, firstNameOf, overviewSentence, difficultyWord, GAME_NAME,
 } from '../../../constants/teacherWording';
 
 const TIER_LABEL = ROUND_BY_STATUS_KEY;
@@ -44,20 +45,26 @@ const TIER_LABEL = ROUND_BY_STATUS_KEY;
  *
  * Detail sections default closed; the two a teacher acts on stay open.
  */
-function Section({ title, subtitle, summary, children, right, collapsible = false, defaultOpen = true }) {
+function Section({
+  title, subtitle, summary, children, right, icon, tone = 'neutral',
+  collapsible = false, defaultOpen = true, inPair = false, headerInside = false,
+}) {
   const [open, setOpen] = useState(defaultOpen);
   const isOpen = collapsible ? open : true;
+  const t = STAT_TONES[tone] || STAT_TONES.neutral;
 
   const head = (
     <View style={styles.sectionHead}>
-      {collapsible && (
-        <Ionicons
-          name={isOpen ? 'chevron-down' : 'chevron-forward'}
-          size={16}
-          color={Colors.text.muted}
-          style={styles.sectionChevron}
-        />
-      )}
+      {/* An icon per section, so the page can be navigated by shape before any of
+          it is read. Five headings set in the same weight and colour made one
+          undifferentiated ladder — a teacher scrolling for the games had to read
+          every title on the way past. */}
+      {icon ? (
+        <View style={[styles.sectionIcon, { backgroundColor: t.bg }]}>
+          <Ionicons name={icon} size={17} color={t.fg} />
+        </View>
+      ) : null}
+
       <View style={{ flex: 1 }}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {/* When closed, the summary replaces the subtitle: the subtitle explains
@@ -66,25 +73,59 @@ function Section({ title, subtitle, summary, children, right, collapsible = fals
           ? (subtitle ? <Text style={styles.sectionSub}>{subtitle}</Text> : null)
           : (summary ? <Text style={styles.sectionSummary}>{summary}</Text> : null)}
       </View>
+
       {right}
+
+      {/* Moved to the trailing edge. On the left it sat between the page margin and
+          the title, so the five headings started at two different indents depending
+          on whether they happened to fold. */}
+      {collapsible ? (
+        <Ionicons
+          name={isOpen ? 'chevron-up' : 'chevron-down'}
+          size={18}
+          color={Colors.icon.default}
+          style={styles.sectionChevron}
+        />
+      ) : null}
     </View>
   );
 
-  return (
-    <View style={styles.section}>
-      {collapsible ? (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => setOpen((v) => !v)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: isOpen }}
-          accessibilityLabel={`${title}. ${isOpen ? 'Tap to hide' : 'Tap to show'}`}
-        >
-          {head}
-        </TouchableOpacity>
-      ) : head}
+  const tap = (node) => (collapsible ? (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => setOpen((v) => !v)}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: isOpen }}
+      accessibilityLabel={`${title}. ${isOpen ? 'Tap to hide' : 'Tap to show'}`}
+    >
+      {node}
+    </TouchableOpacity>
+  ) : node);
 
-      {isOpen && <Card style={styles.card}>{children}</Card>}
+  // `headerInside` puts the heading in the card rather than above it on the page
+  // backdrop. It exists for the paired rows: a section whose heading sits outside
+  // starts its CARD lower than a plain Card beside it, so the two cards in a row
+  // never line up however they are stretched.
+  if (headerInside) {
+    return (
+      <View style={[styles.section, inPair && styles.sectionInPair]}>
+        <Card style={[styles.card, inPair && styles.cardFill]}>
+          {tap(<View style={styles.headInCard}>{head}</View>)}
+          {isOpen && children}
+        </Card>
+      </View>
+    );
+  }
+
+  return (
+    // `inPair` drops the top margin and lets the card fill the row. A section
+    // sitting beside a bare Card started 32px lower than it — the margin that
+    // separates stacked sections has nothing to separate it from at the top of a
+    // column — and without the fill the two cards ended at different heights,
+    // which is what makes a two-column row look accidental rather than laid out.
+    <View style={[styles.section, inPair && styles.sectionInPair]}>
+      {tap(head)}
+      {isOpen && <Card style={[styles.card, inPair && styles.cardFill]}>{children}</Card>}
     </View>
   );
 }
@@ -102,15 +143,48 @@ function Section({ title, subtitle, summary, children, right, collapsible = fals
  * A count of zero on "worth another look" is good news and must not wear a warning
  * colour, so the tone is chosen by the caller from the value.
  */
-function StatTile({ label, value, icon, tone = 'neutral' }) {
+function StatTile({ label, value, of, note, noteTone, icon, tone = 'neutral' }) {
   const t = STAT_TONES[tone] || STAT_TONES.neutral;
   return (
-    <View style={styles.statTile}>
-      <View style={[styles.statBadge, { backgroundColor: t.bg }]}>
-        <Ionicons name={icon} size={14} color={t.fg} />
+    // The tile takes its own tint rather than the shared cold grey.
+    //
+    // This is a learning product, and the teacher's side of it had drifted into
+    // reading like a finance dashboard: every surface the same blue-grey, every
+    // caption at 10px, colour confined to small badges. Letting each tile sit on
+    // the colour it already carries costs nothing — the tints are the validated
+    // ones the badges use — and the row stops looking like a spreadsheet header.
+    <View style={[styles.statTile, { backgroundColor: t.bg }, tone === 'plain' && styles.statTilePlain]}>
+      {/* Badge beside the figure, not above it. Stacked and centred, the tile
+          needed three lines of height for one number and the label had to shrink
+          to 9px to fit — a row puts the badge in the margin where it costs no
+          vertical space and lets the number be the biggest thing in the tile. */}
+      {/* White, not the tone's tint — the tile is already wearing that, and a tint
+          on a tint at this size turns to mush. On colour, white reads as a chip. */}
+      <View style={[styles.statBadge, { backgroundColor: t.chip || '#FFFFFF' }]}>
+        <Ionicons name={icon} size={17} color={t.ink || t.fg} />
       </View>
-      <Text style={styles.statTileValue}>{value}</Text>
-      <Text style={styles.statTileLabel} numberOfLines={2}>{label}</Text>
+
+      <View style={styles.statBody}>
+        {/* Label first, then the number. Reading order matches the question — a
+            teacher asks "how many learned?", so the tile answers in that order
+            rather than making them find the number's caption underneath it. */}
+        <Text style={[styles.statTileLabel, { color: t.fg }]} numberOfLines={1}>
+          {label}
+        </Text>
+
+        <View style={styles.statValueRow}>
+          <Text style={[styles.statTileValue, { color: t.ink || Colors.text.primary }]}>{value}</Text>
+          {/* The denominator, kept small and grey. "9 of 93" set at one size makes
+              93 look like part of the answer; the child's score is the 9. */}
+          {of ? <Text style={[styles.statTileOf, { color: t.fg }]}>/ {of}</Text> : null}
+        </View>
+
+        {note ? (
+          <Text style={[styles.statTileNote, { color: t.fg }, noteTone ? { color: noteTone } : null]} numberOfLines={1}>
+            {note}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -120,6 +194,17 @@ const STAT_TONES = {
   info:    { bg: '#E5EEF9', fg: '#27609F' },
   warn:    { bg: '#FAF0DF', fg: '#945D08' },
   neutral: { bg: Colors.surfaceAlt, fg: Colors.text.muted },
+
+  // Summary-band tiles, at the design's own values.
+  //
+  // Noted for whoever reads this next: white on #7A9DB0 measures 2.89:1 and on
+  // #EE9080 2.35:1, both under the 4.5:1 floor for body text. Darker steps of the
+  // same hues were tried and rejected in favour of the design as drawn. If these
+  // figures turn out hard to read on a tablet in classroom light, the fix that
+  // keeps the palette is dark ink on these fills rather than white.
+  plain:      { bg: '#FFFFFF', fg: Colors.text.secondary, ink: Colors.text.primary, chip: Colors.surfaceAlt },
+  solidBlue:  { bg: '#7A9DB0', fg: 'rgba(255,255,255,0.92)', ink: '#FFFFFF', chip: 'rgba(255,255,255,0.28)' },
+  solidCoral: { bg: '#EE9080', fg: 'rgba(255,255,255,0.92)', ink: '#FFFFFF', chip: 'rgba(255,255,255,0.28)' },
 };
 
 /** Kept for the rows that are genuinely a bare figure — game counts, time spent. */
@@ -151,35 +236,79 @@ function ScorePips({ correct = 0, total = 0 }) {
   );
 }
 
+/** "6.5s" — the compact form, for a headline figure where the sentence is elsewhere. */
+function shortSeconds(ms) {
+  if (typeof ms !== 'number' || !Number.isFinite(ms) || ms <= 0) return '—';
+  const s = ms / 1000;
+  return s < 10 ? `${Math.round(s * 10) / 10}s` : `${Math.round(s)}s`;
+}
+
+function pctOf(part, total) {
+  if (!total || !Number.isFinite(total) || total <= 0) return null;
+  return Math.round((Number(part) || 0) / total * 100);
+}
+
 /**
- * Right-versus-wrong answer speed as two bars against the same scale.
+ * One bar divided between two measures, with the labels underneath.
  *
- * Three numbers in a row made the teacher subtract to find the point. The point
- * is which bar is longer, so draw the bars.
+ * Used for right-versus-wrong answer speed, where the point is which side is
+ * bigger. Two separate bars measured against a shared peak said the same thing
+ * in twice the height, and in a narrow column the second bar's label wrapped.
  */
-function SpeedBars({ correctMs, incorrectMs }) {
-  if (!correctMs && !incorrectMs) return null;
-  const peak = Math.max(correctMs || 0, incorrectMs || 0, 1);
-  const rows = [
-    { label: 'When right', ms: correctMs,   color: '#3FAE6F' },
-    { label: 'When wrong', ms: incorrectMs, color: '#E0A030' },
-  ];
+function SplitBar({ parts = [] }) {
+  const usable = parts.filter((p) => Number(p.ms) > 0);
+  if (usable.length === 0) return null;
+
   return (
-    <View style={styles.speedWrap}>
-      {rows.map((r) => (
-        <View key={r.label} style={styles.speedRow}>
-          <Text style={styles.speedLabel}>{r.label}</Text>
-          <View style={styles.speedTrack}>
-            <View
-              style={[
-                styles.speedFill,
-                { width: `${Math.max(6, ((r.ms || 0) / peak) * 100)}%`, backgroundColor: r.color },
-              ]}
-            />
+    <View style={styles.splitBarWrap}>
+      <View style={styles.splitBarTrack}>
+        {usable.map((p, i) => (
+          <View
+            key={p.key}
+            style={[
+              styles.splitBarSeg,
+              { flexGrow: Number(p.ms), backgroundColor: p.color, marginLeft: i === 0 ? 0 : 2 },
+            ]}
+          />
+        ))}
+      </View>
+      <View style={styles.splitBarLegend}>
+        {usable.map((p) => (
+          <View key={p.key} style={styles.splitBarLegendItem}>
+            <View style={[styles.splitBarDot, { backgroundColor: p.color }]} />
+            <Text style={[styles.splitBarLabel, { color: p.color }]}>{p.label}</Text>
           </View>
-          <Text style={styles.speedValue}>{seconds(r.ms)}</Text>
-        </View>
-      ))}
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const TIME_TONES = {
+  info:  { bg: '#E5EEF9', fg: '#4A7C95' },
+  coral: { bg: '#FBE7E2', fg: '#C4674F' },
+};
+
+/** A named share of the child's time: icon, label, percentage. */
+function TimeRow({ icon, tone, label, pct }) {
+  const t = TIME_TONES[tone] || TIME_TONES.info;
+  return (
+    <View style={styles.timeRow}>
+      <View style={[styles.timeIcon, { backgroundColor: t.bg }]}>
+        <Ionicons name={icon} size={16} color={t.fg} />
+      </View>
+      <Text style={styles.timeLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.timePct}>{pct == null ? '—' : `${pct}%`}</Text>
+    </View>
+  );
+}
+
+/** A bare count in its own box — a tally, not a share of anything. */
+function CountBox({ value, label }) {
+  return (
+    <View style={styles.countBox}>
+      <Text style={styles.countValue}>{value ?? 0}</Text>
+      <Text style={styles.countLabel}>{label}</Text>
     </View>
   );
 }
@@ -219,7 +348,7 @@ export default function ConceptReportScreen({ route, navigation }) {
   const [error, setError]     = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [expanded, setExpanded] = useState(null);
-  const [showAllWork, setShowAllWork] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   // The drawing being looked at full-size, or null. Holding the artwork itself
   // rather than a boolean keeps the title and date in the modal correct while it
   // animates out.
@@ -273,23 +402,25 @@ export default function ConceptReportScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
-        <View style={styles.centered}><ActivityIndicator size="large" color={Colors.icon.active} /></View>
-      </SafeAreaView>
+      <LinearGradient colors={BACKDROP.colors} start={BACKDROP.start} end={BACKDROP.end} style={styles.safe}>
+        <SafeAreaView style={[styles.safeInner, styles.centered]} edges={['bottom']}>
+          <ActivityIndicator size="large" color={Colors.icon.active} />
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   if (error || !report) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
-        <View style={styles.centered}>
+      <LinearGradient colors={BACKDROP.colors} start={BACKDROP.start} end={BACKDROP.end} style={styles.safe}>
+        <SafeAreaView style={[styles.safeInner, styles.centered]} edges={['bottom']}>
           <Ionicons name="cloud-offline-outline" size={34} color={Colors.text.muted} />
           <Text style={styles.errorText}>{error || 'Could not load the report.'}</Text>
           <TouchableOpacity onPress={() => { setLoading(true); load(); }}>
             <Text style={styles.retry}>Try again</Text>
           </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
@@ -321,6 +452,35 @@ export default function ConceptReportScreen({ route, navigation }) {
   //
   // "Worth another look" = failed, or passed-but-weak. Worst first, so the top of
   // the list is where a teacher should start.
+  // How many concepts became learned in the last seven days.
+  //
+  // Dated on tier2_passed_at, not tier1: a concept counts as learned only once
+  // both rounds are passed, and tier 1 is the earlier of the two — dating it there
+  // would credit this week with concepts that were half-learned a fortnight ago.
+  //
+  // Falls to 0 when the field is absent, which is what a client sees against a
+  // backend that has not been restarted. The tile then shows its plain caption
+  // rather than a confident "+0 this week".
+  // The span the chart actually covers, taken from its own first and last points
+  // rather than from `window_days`. The window is how far back we LOOKED; this is
+  // where the data starts, and quoting 90 days over a chart holding five would be
+  // wrong in the direction that flatters.
+  const trendPoints = timeline.filter((p) => typeof p.accuracy === 'number');
+  const trendRange = trendPoints.length > 1
+    ? `${shortDate(trendPoints[0].date)} — ${shortDate(trendPoints[trendPoints.length - 1].date)}`
+    : (trendPoints.length === 1 ? shortDate(trendPoints[0].date) : null);
+
+  // The trend card spans the page, so the chart gets the full content width less
+  // the page padding and the card's own.
+  const chartWidth = width - Layout.spacing.lg * 2 - Layout.spacing.md * 2;
+
+  const weekAgo = Date.now() - 7 * 86400000;
+  const learnedThisWeek = concepts.filter((c) => {
+    if (!c.mastered || !c.tier2_passed_at) return false;
+    const t = new Date(c.tier2_passed_at).getTime();
+    return Number.isFinite(t) && t >= weekAgo;
+  }).length;
+
   const struggling = concepts
     .filter((c) => c.tier1_status === 'failed' || c.tier2_status === 'failed'
       || (typeof c.tier1_score === 'number' && c.tier1_score < 2 / 3))
@@ -373,11 +533,15 @@ export default function ConceptReportScreen({ route, navigation }) {
     : `${activeCategories.length} of ${categories.length} started`
       + (furthest ? ` · ${furthest.label} furthest along` : '');
 
-  const gamesTotal = activities.reduce((n, a) => n + (a.total_rounds || 0), 0);
-  const gamesRight = activities.reduce((n, a) => n + (a.correct_count || 0), 0);
-  const gamesSummary = activities.length === 0
-    ? 'None played yet'
-    : `${activities.length} played · got ${countOf(gamesRight, gamesTotal)} right`;
+  // Finished games only. An abandoned one contributes a null score, which the
+  // `|| 0` swallowed into the denominator as a zero-round game — so a child who
+  // walked away from one had their headline accuracy quietly diluted by it.
+  const doneGames  = activities.filter((a) => a.status === 'passed' || a.status === 'failed');
+  const gamesTotal = doneGames.reduce((n, a) => n + (a.total_rounds || 0), 0);
+  const gamesRight = doneGames.reduce((n, a) => n + (a.correct_count || 0), 0);
+  const gamesSummary = doneGames.length === 0
+    ? (activities.length ? 'None finished yet' : 'None played yet')
+    : `${doneGames.length} played · got ${countOf(gamesRight, gamesTotal)} right`;
 
   const headline = aiHeadline || overviewSentence({
     name,
@@ -389,12 +553,30 @@ export default function ConceptReportScreen({ route, navigation }) {
 
   // Fast-and-wrong suggests guessing; slow-and-right suggests effortful recall.
   // Only worth surfacing when there is a real sample behind it.
-  const guessing = rt.sample_size >= 10
-    && rt.incorrect_avg_ms != null && rt.correct_avg_ms != null
-    && rt.incorrect_avg_ms < rt.correct_avg_ms * 0.8;
+  const timed = rt.sample_size >= 10
+    && rt.incorrect_avg_ms != null && rt.correct_avg_ms != null;
+
+  const guessing = timed && rt.incorrect_avg_ms < rt.correct_avg_ms * 0.8;
+
+  // The mirror case, which had no hint at all — and it is the one the data keeps
+  // producing. A child answering in 4.5 seconds when right and 16 when wrong shows
+  // the single most striking thing on this screen (one bar over three times the
+  // other) and the report said nothing about it, leaving the teacher to guess
+  // whether a long bar was good or bad. It is good: they are working at it.
+  const labouring = timed && rt.incorrect_avg_ms > rt.correct_avg_ms * 1.6;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    // The backdrop the rest of the teacher workspace sits on. This screen was on
+    // the flat Colors.background, so opening a report from the dashboard dropped
+    // the teacher onto a different surface for no reason — and the report is the
+    // screen they spend the longest on.
+    <LinearGradient
+      colors={BACKDROP.colors}
+      start={BACKDROP.start}
+      end={BACKDROP.end}
+      style={styles.safe}
+    >
+      <SafeAreaView style={styles.safeInner} edges={['bottom']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -411,7 +593,7 @@ export default function ConceptReportScreen({ route, navigation }) {
             can say things the template cannot; the template stays as the fallback
             for when the feature is off or the call failed, so the card never opens
             with a blank space where the summary should be. */}
-        <Card style={styles.card}>
+        <View style={styles.band}>
           <View style={styles.overview}>
             <MasteryRing value={totals.mastery_pct} size={104} label="learned" />
 
@@ -420,31 +602,71 @@ export default function ConceptReportScreen({ route, navigation }) {
                   A graduation cap on "Learned" and a picture frame on "Finds the
                   picture" both described the product rather than the figure —
                   double-tick reads as finished, an eye reads as recognised. */}
+              {/* Short label, big number, plain caption underneath. The caption is
+                  where the descriptive wording went — "LEARNED" alone is not enough
+                  for a reader who has never met the app, and "Finds the picture" as
+                  the headline label made the number look like an afterthought. */}
               <StatTile
                 icon="checkmark-done-outline"
                 label="Learned"
-                value={countOf(totals.mastered, totals.catalogue_concepts)}
-                tone="good"
+                value={String(totals.mastered)}
+                of={totals.catalogue_concepts}
+                note={learnedThisWeek > 0 ? `+${learnedThisWeek} this week` : 'Both rounds passed'}
+                noteTone={learnedThisWeek > 0 ? STAT_TONES.good.fg : undefined}
+                tone="plain"
               />
               <StatTile
                 icon="eye-outline"
-                label="Finds the picture"
+                label="Pictures"
                 value={String(totals.tier1_passed)}
-                tone="info"
+                note="Finds the picture"
+                tone="solidBlue"
               />
               {/* Amber only when there is actually something to look at. Zero here
                   is good news, and dressing it in a warning colour would have the
                   row read as a problem on the child's best possible day. */}
-              {/* `repeat`, not `refresh`. Refresh means reload the screen — a
-                  control, not a count. Repeat means go over it again, which is
-                  what the number is telling the teacher to do. */}
               <StatTile
                 icon="repeat-outline"
-                label="Worth another look"
+                label="Revisit"
                 value={String(struggling.length)}
-                tone={struggling.length > 0 ? 'warn' : 'neutral'}
+                note="Worth another look"
+                tone={struggling.length > 0 ? 'solidCoral' : 'plain'}
               />
             </View>
+          </View>
+        </View>
+
+        {/* The trend and its reading, in their own card. They were inside the
+            summary block, which made one very tall card doing two jobs — the band
+            above answers "where is this child", this answers "which way are they
+            going". */}
+
+        {/* Full width. The trend is the one block on the page that is a chart,
+            and a chart squeezed into 60% of a tablet is the first thing to
+            become unreadable — it was sharing the row to keep the page short,
+            which is the wrong thing to optimise for on the one graph here. */}
+        <Card style={styles.card}>
+          {/* The card names itself now. It carried the headline sentence straight
+              off the top edge, so on a page of titled sections this was the one
+              block with nothing saying what it was. */}
+          <View style={styles.trendHead}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.trendTitle}>Progress trend</Text>
+              <Text style={styles.trendSub}>
+                {totals.started > 0
+                  ? `${name} has finished ${totals.mastered} of ${totals.started} things.`
+                  : `${name} has not started anything yet.`}
+              </Text>
+            </View>
+
+            {/* The span the chart is drawn over, said in words. The axis labels its
+                two ends, but only once you are already reading the plot — the pill
+                answers "what period is this?" before you look. */}
+            {trendRange ? (
+              <View style={styles.datePill}>
+                <Text style={styles.datePillText}>{trendRange}</Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.glanceBlock}>
@@ -463,14 +685,21 @@ export default function ConceptReportScreen({ route, navigation }) {
               </View>
             ) : null}
 
-            {aiHeadline ? (
+            {/* A heading for the lines under it rather than a footnote under the
+                sentence above. It has to say two things at once — that a machine
+                wrote these, and that they are about this child — and as a caption
+                trailing the headline it read as a disclaimer on the headline
+                instead of a label on the list. */}
+            {aiHeadline && strengths.length ? (
               <View style={styles.aiRow}>
                 <Ionicons name="sparkles" size={11} color={Colors.primary} />
-                <Text style={styles.aiTag}>Written from {name}'s activity</Text>
+                <Text style={styles.aiTag}>Insights from {name}'s activity</Text>
                 <View style={{ flex: 1 }} />
                 <TouchableOpacity
                   onPress={() => loadNarrative(true)}
                   disabled={narrativeRefreshing}
+                  accessibilityRole="button"
+                  accessibilityLabel="Rewrite these insights"
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   {narrativeRefreshing
@@ -480,64 +709,412 @@ export default function ConceptReportScreen({ route, navigation }) {
               </View>
             ) : null}
 
-            {/* Two at most. The model returns up to three and the third is reliably
-                the weakest — it is what it writes when it has run out of things to
-                say, which is exactly the padding rule 4 forbids. */}
-            {strengths.slice(0, 2).map((s, i) => (
-              <View key={i} style={styles.strengthRow}>
-                <Ionicons name="trending-up-outline" size={13} color="#22A05F" />
-                <Text style={styles.strengthText}>{s}</Text>
-              </View>
-            ))}
           </View>
 
-          {/* The trend belongs to the headline — it is the evidence for "getting
-              better" or "holding steady" — so it sits in this card rather than
-              owning a section of its own. */}
           <View style={styles.trendWrap}>
             <AccuracyChart
               points={timeline}
-              width={width - Layout.spacing.lg * 2 - Layout.spacing.md * 2}
-              height={132}
+              width={chartWidth}
+              height={210}
             />
           </View>
+
+          {/* The model's observations, boxed and titled, under the chart rather
+              than loose above it. Two bare sentences between the headline and the
+              plot read as more of the headline; in a box under the evidence they
+              read as remarks about it, which is what they are. */}
+          {strengths.length > 0 && (
+            <View style={styles.insightsBox}>
+              <View style={styles.insightsIcon}>
+                <Ionicons name="bulb-outline" size={15} color="#8A7A3D" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.insightsTitle}>Activity insights</Text>
+                {/* Two at most. The model returns up to three and the third is
+                    reliably the weakest — what it writes once it has run out of
+                    things to say, which is the padding its own rule 4 forbids. */}
+                {strengths.slice(0, 2).map((s, i) => (
+                  <Text key={i} style={styles.insightsText}>{s}</Text>
+                ))}
+              </View>
+            </View>
+          )}
         </Card>
 
-        {/* One section, not two. "Mixed up" and "Worth another look" both answered
-            "where do I put my attention?", and a concept is frequently in both —
-            so a teacher read two lists and had to work out the overlap themselves.
-            Muddled pairs lead because they arrive with a reason attached, and a
-            reason is the part you can act on. */}
-        <Section
-          title="What to work on"
-          subtitle={workList.length ? 'Most worth your time first' : null}
-        >
-          {/* A wrapping grid, two pair-cards to a row on a tablet. Stacked full
-              width they ran to a very tall column for what is a short list, and
-              each card is squarish — two side by side let a teacher take in the
-              whole list without scrolling.
+        {/* What to work on beside how they work: the list of things to do, and
+            the behaviour behind them. These are the two halves of one question —
+            what is hard, and why — so they belong on a line together.
 
-              Single concepts stay full width: they are a row, not a card, and at
-              half width they would leave a ragged hole beside them. Because pairs
-              always sort ahead of singles, the pairs fill their rows first and the
-              singles land underneath on their own lines. */}
-          {workList.length === 0 ? (
-            <MixUpEmpty />
-          ) : (
-            <View style={styles.mixUpList}>
-              {workList.slice(0, showAllWork ? workList.length : 4).map((w) =>
-                w.kind === 'pair' ? (
-                  <View
-                    key={`p:${w.item.category_key}/${w.item.concept_a}|${w.item.concept_b}`}
-                    style={twoCol ? styles.pairHalf : styles.pairFull}
-                  >
-                    <MixUpCard
-                      pair={w.item}
-                      note={noteFor[`${w.item.concept_a}|${w.item.concept_b}`]}
-                    />
+            The section is lifted verbatim rather than re-typed, so its heading,
+            its "view all" control and its modal come with it unchanged. */}
+        <View style={twoCol ? styles.pairRow : null}>
+          <View style={twoCol ? styles.pairMain : null}>
+          {/* One section, not two. "Mixed up" and "Worth another look" both answered
+              "where do I put my attention?", and a concept is frequently in both —
+              so a teacher read two lists and had to work out the overlap themselves.
+              Muddled pairs lead because they arrive with a reason attached, and a
+              reason is the part you can act on. */}
+          <Section
+            title="What to work on"
+            subtitle={workList.length ? 'Most worth your time first' : null}
+            icon="flag-outline"
+            tone="warn"
+            headerInside
+            inPair={twoCol}
+          >
+            {/* A wrapping grid, two pair-cards to a row on a tablet. Stacked full
+                width they ran to a very tall column for what is a short list, and
+                each card is squarish — two side by side let a teacher take in the
+                whole list without scrolling.
+
+                Single concepts stay full width: they are a row, not a card, and at
+                half width they would leave a ragged hole beside them. Because pairs
+                always sort ahead of singles, the pairs fill their rows first and the
+                singles land underneath on their own lines. */}
+            {workList.length === 0 ? (
+              <MixUpEmpty />
+            ) : (
+              <View style={styles.mixUpList}>
+                {workList.slice(0, 2).map((w) =>
+                  w.kind === 'pair' ? (
+                    <View
+                      key={`p:${w.item.category_key}/${w.item.concept_a}|${w.item.concept_b}`}
+                      style={styles.pairFull}
+                    >
+                      <MixUpCard
+                        pair={w.item}
+                        note={noteFor[`${w.item.concept_a}|${w.item.concept_b}`]}
+                      />
+                    </View>
+                  ) : (
+                    <View key={`c:${w.item.category_key}/${w.item.concept_key}`} style={styles.workRow}>
+                      <ConceptThumb
+                        categoryKey={w.item.category_key}
+                        conceptKey={w.item.concept_key}
+                        size={40}
+                        tone="tricky"
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.strugglingName}>
+                          {conceptLabel(w.item.category_key, w.item.concept_key)}
+                        </Text>
+                        <Text style={styles.strugglingMeta}>
+                          Got {countOf(w.item.correct_attempts, w.item.real_attempts)} right
+                          {w.item.avg_response_ms ? ` · ${seconds(w.item.avg_response_ms)} each` : ''}
+                        </Text>
+                      </View>
+                    </View>
+                  )
+                )}
+              </View>
+            )}
+
+            {/* At the foot, not in the header. A control that opens the REST of a
+                list belongs after the part you can already see — beside the title
+                it read as an action on the section rather than the end of it. */}
+            {workList.length > 0 && (
+              <TouchableOpacity
+                style={styles.viewAllBtn}
+                onPress={() => setInsightsOpen(true)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`View all ${workList.length} insights`}
+              >
+                <Text style={styles.viewAll}>
+                  {workList.length > 2 ? `View all ${workList.length} insights` : 'View all insights'}
+                </Text>
+                <Ionicons name="arrow-forward" size={14} color="#8FA9BC" />
+              </TouchableOpacity>
+            )}
+          </Section>
+          </View>
+
+          <View style={twoCol ? styles.pairSide : null}>
+              {/* A Card with its own header rather than a Section, so its title sits
+                  INSIDE the card the way "Progress trend" does. As a Section the
+                  heading sat outside on the backdrop, which pushed the card top down
+                  by the height of that heading — the two cards in the row started at
+                  different heights and no amount of stretching fixed it, because they
+                  were never aligned to begin with. */}
+              <Card style={[styles.card, twoCol && styles.cardFill]}>
+                <View style={styles.trendHead}>
+                  <View style={[styles.sectionIcon, { backgroundColor: STAT_TONES.info.bg }]}>
+                    <Ionicons name="pulse-outline" size={17} color={STAT_TONES.info.fg} />
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.trendTitle}>How they work</Text>
+                    <Text style={styles.trendSub}>
+                      {rt.sample_size > 0 ? `Based on ${tries(rt.sample_size)}` : 'No timed answers yet'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.padded}>
+                  {/* The average as a headline figure with its label beside it, then
+                      the right/wrong split as one two-segment bar. Two stacked bars
+                      against a shared scale showed the same thing but took four lines
+                      to say it; one bar puts the comparison in a single shape. */}
+                  <View style={styles.rtHead}>
+                    <Text style={styles.rtHeadLabel}>Response time</Text>
+                    <Text style={styles.rtHeadValue}>{shortSeconds(rt.overall_avg_ms)} avg.</Text>
+                  </View>
+
+                  <SplitBar
+                    parts={[
+                      { key: 'right', ms: rt.correct_avg_ms,   color: '#8FB8A0', label: `Right (${shortSeconds(rt.correct_avg_ms)})` },
+                      { key: 'wrong', ms: rt.incorrect_avg_ms, color: '#EE9080', label: `Wrong (${shortSeconds(rt.incorrect_avg_ms)})` },
+                    ]}
+                  />
+
+                  {guessing && (
+                    <View style={styles.hint}>
+                      <Ionicons name="information-circle-outline" size={16} color="#B4780A" />
+                      <Text style={styles.hintText}>
+                        {name} answers faster when wrong than when right. That often means guessing
+                        rather than not knowing — slowing the pace may help more than going over the
+                        same material again.
+                      </Text>
+                    </View>
+                  )}
+
+                  {labouring && (
+                    <View style={[styles.hint, styles.hintGood]}>
+                      <Ionicons name="information-circle-outline" size={16} color="#1B7A47" />
+                      <Text style={[styles.hintText, styles.hintTextGood]}>
+                        {name} takes about {Math.round(rt.incorrect_avg_ms / rt.correct_avg_ms)} times
+                        longer on the ones they get wrong — usually a good sign, meaning they are
+                        working the answer out rather than guessing.
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* The time split as two labelled rows rather than a stacked bar.
+                      In a narrow right-hand column a two-segment bar is a few pixels
+                      of each colour; a percentage beside a named row survives it. */}
+                  <TimeRow
+                    icon="eye-outline"
+                    tone="info"
+                    label="Looking at pictures"
+                    pct={pctOf(engagement.exposure_ms, engagement.exposure_ms + engagement.video_ms)}
+                  />
+                  <TimeRow
+                    icon="film-outline"
+                    tone="coral"
+                    label="Watching videos"
+                    pct={pctOf(engagement.video_ms, engagement.exposure_ms + engagement.video_ms)}
+                  />
+
+                  {/* Boxed figures. These are tallies, not shares of the split above,
+                      and as two more rows they read as part of it. */}
+                  <View style={styles.countRow}>
+                    <CountBox value={engagement.total_taps} label="Taps" />
+                    <CountBox value={engagement.coloring_sessions} label="Drawings" />
+                  </View>
+
+                  {engagement.relearn_count > 0 && (
+                    <Text style={styles.relearnNote}>
+                      Went over {engagement.relearn_count} {engagement.relearn_count === 1 ? 'thing' : 'things'} again
+                    </Text>
+                  )}
+                </View>
+              </Card>
+          </View>
+        </View>
+
+
+        <Section
+          title="Recent sessions"
+          subtitle={SUBHEADING.dayByDay}
+          icon="calendar-outline"
+          tone="info"
+          headerInside
+        >
+          <DayByDay days={days} onOpenArtwork={setOpenArt} accent={theme.button} />
+        </Section>
+
+        {/* From here down is reference rather than action, so it starts folded.
+            Each header carries the one fact worth knowing without opening it. */}
+        <Section
+          title={HEADING.categories}
+          subtitle="Tap a group to see the things inside it"
+          icon="albums-outline"
+          tone="good"
+          summary={groupSummary}
+          headerInside
+          collapsible
+          defaultOpen={false}
+        >
+          {/* ONE chart, and the concepts open inside it.
+              This section rendered the same three groups twice — the shared-scale
+              bars, and then a second full set of TierBar rows underneath carrying
+              the identical labels and fractions with a different legend and a
+              different colour meaning. Two charts of one thing is worse than
+              either alone: the rows disagreed on bar length while agreeing on the
+              numbers, so a teacher had to work out which one to believe.
+              The bars stayed because they share a scale, which is the whole point
+              of the section; the expandable behaviour moved onto them. */}
+          <View style={styles.groupChartWrap}>
+            <GroupProgress
+              categories={categories}
+              selectedKey={expanded}
+              onSelect={setExpanded}
+              renderDetail={(c) => {
+                const rows = concepts.filter((x) => x.category_key === c.category_key);
+                if (rows.length === 0) {
+                  return <Text style={styles.muted}>Nothing tried in this group yet.</Text>;
+                }
+                return rows.map((r) => (
+                  <View key={r.concept_key} style={styles.conceptRow}>
+                    <ConceptThumb
+                      categoryKey={r.category_key}
+                      conceptKey={r.concept_key}
+                      size={26}
+                    />
+                    <Text style={styles.conceptName} numberOfLines={1}>
+                      {conceptLabel(r.category_key, r.concept_key)}
+                      {r.in_catalogue ? '' : ' *'}
+                    </Text>
+                    <View style={styles.pills}>
+                      {Object.keys(TIER_LABEL).map((k) => (
+                        <TierPill key={k} status={r[k]} />
+                      ))}
+                    </View>
+                    <Text style={[styles.conceptScore, { color: scoreColor(r.tier1_score) }]}>
+                      {r.real_attempts > 0 ? `${r.correct_attempts}/${r.real_attempts}` : '—'}
+                    </Text>
+                  </View>
+                ));
+              }}
+            />
+          </View>
+        </Section>
+
+        {/* Answer speed and time spent were two sections of behavioural context,
+            neither of which is a finding on its own. Together they answer one
+            question — how does this child go about it? */}
+
+        {activities.length > 0 && (
+          <Section
+            title={HEADING.games}
+            subtitle={SUBHEADING.games}
+            icon="game-controller-outline"
+            tone="good"
+            summary={gamesSummary}
+            headerInside
+            collapsible
+            defaultOpen={false}
+          >
+            <View style={styles.padded}>
+              {/* Four, not eight. Older than the last handful is history rather
+                  than information — the trend it would show is already the chart
+                  in the summary card. */}
+              {activities.slice(0, 4).map((a, i) => {
+                // A game still open has no score yet, and the row said "Got — right"
+                // beside an empty space where the dots go — a broken sentence about
+                // nothing. It is worth showing (a game started and left is real
+                // information) but it has to say what it is.
+                const done = a.status === 'passed' || a.status === 'failed';
+
+                // The meta line is assembled from whatever exists rather than
+                // concatenated blind: card games carry no difficulty level, so the
+                // old version opened every one of those rows with a stray "· ".
+                const meta = [
+                  done ? difficultyWord(a.difficulty_level) : null,
+                  a.completed_at ? shortDate(a.completed_at) : null,
+                ].filter(Boolean).join(' · ');
+
+                return (
+                  <View key={`${a.category_key}-${a.activity_number}-${i}`} style={styles.activityRow}>
+                    {/* Which concepts the game covered, as the pictures themselves.
+                        A comma-separated list of names made the teacher reconstruct
+                        the game in their head; three thumbnails just show it. */}
+                    <View style={styles.activityThumbs}>
+                      {(a.concept_keys || []).slice(0, 3).map((k) => (
+                        <ConceptThumb key={k} categoryKey={a.category_key} conceptKey={k} size={30} />
+                      ))}
+                      {(a.concept_keys || []).length > 3 && (
+                        <Text style={styles.activityMore}>+{a.concept_keys.length - 3}</Text>
+                      )}
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      {/* The game's name leads. Two rows with the same thumbnails
+                          and the same date were indistinguishable before — they were
+                          a memory game and a pair match, and the report drew them as
+                          twins because it never said which was which. */}
+                      <Text style={styles.activityTitle}>
+                        {GAME_NAME[a.activity_type] || GAME_NAME.practice}
+                      </Text>
+                      <Text style={styles.activityMeta}>
+                        {done ? `Got ${countOf(a.correct_count, a.total_rounds)} right` : 'Not finished'}
+                        {meta ? ` · ${meta}` : ''}
+                      </Text>
+                    </View>
+
+                    {done
+                      ? <ScorePips correct={a.correct_count} total={a.total_rounds} />
+                      : <Ionicons name="ellipsis-horizontal" size={16} color={Colors.icon.muted} />}
+                  </View>
+                );
+              })}
+            </View>
+          </Section>
+        )}
+
+        {/* The model's own statement of what it does not know. Kept at the bottom
+            rather than under the headline: it qualifies the whole report, and
+            putting it directly beneath the opening sentence made the first thing a
+            teacher read into a disclaimer. */}
+        {caveat ? <Text style={styles.caveat}>{caveat}</Text> : null}
+
+        <Text style={styles.footnote}>
+          Covers the last {report.window_days} days.
+          {concepts.some((c) => !c.in_catalogue) ? '  * no longer in the list of things taught.' : ''}
+        </Text>
+      </ScrollView>
+
+      {/* Every muddled pair and every struggling concept, not just the four the
+          card shows. The section caps its list so the page stays readable; this is
+          where a teacher goes when they want the whole picture rather than the
+          top of it — so it scrolls, and it does not truncate. */}
+      <Modal
+        visible={insightsOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInsightsOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHead}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>What to work on</Text>
+                <Text style={styles.modalSub}>
+                  {workList.length} {workList.length === 1 ? 'thing' : 'things'} worth your time, most first
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setInsightsOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color={Colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              contentContainerStyle={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+            >
+              {workList.map((w) => (
+                w.kind === 'pair' ? (
+                  <MixUpCard
+                    key={`mp:${w.item.category_key}/${w.item.concept_a}|${w.item.concept_b}`}
+                    pair={w.item}
+                    note={noteFor[`${w.item.concept_a}|${w.item.concept_b}`]}
+                  />
                 ) : (
-                  <View key={`c:${w.item.category_key}/${w.item.concept_key}`} style={styles.workRow}>
+                  <View key={`mc:${w.item.category_key}/${w.item.concept_key}`} style={styles.workRow}>
                     <ConceptThumb
                       categoryKey={w.item.category_key}
                       conceptKey={w.item.concept_key}
@@ -555,200 +1132,11 @@ export default function ConceptReportScreen({ route, navigation }) {
                     </View>
                   </View>
                 )
-              )}
-            </View>
-          )}
-
-          {/* Outside the wrapping grid — inside it, the button became another flex
-              item and tried to sit beside a card. */}
-          {workList.length > 4 && (
-            <TouchableOpacity
-              style={styles.moreBtn}
-              activeOpacity={0.7}
-              onPress={() => setShowAllWork((v) => !v)}
-            >
-              <Text style={styles.moreText}>
-                {showAllWork ? 'Show fewer' : `Show ${workList.length - 4} more`}
-              </Text>
-              <Ionicons
-                name={showAllWork ? 'chevron-up' : 'chevron-down'}
-                size={15}
-                color={Colors.text.link}
-              />
-            </TouchableOpacity>
-          )}
-        </Section>
-
-        <Section title="Recent sessions" subtitle={SUBHEADING.dayByDay}>
-          <DayByDay days={days} onOpenArtwork={setOpenArt} accent={theme.button} />
-        </Section>
-
-        {/* From here down is reference rather than action, so it starts folded.
-            Each header carries the one fact worth knowing without opening it. */}
-        <Section
-          title={HEADING.categories}
-          subtitle="Tap a group to see the things inside it"
-          summary={groupSummary}
-          collapsible
-          defaultOpen={false}
-        >
-          <View style={styles.groupChartWrap}>
-            <GroupProgress categories={categories} />
-          </View>
-
-          <View style={styles.categoryBlock}>
-            {activeCategories.length === 0 ? (
-              <Text style={styles.muted}>No group started yet.</Text>
-            ) : (
-              <>
-                {activeCategories.map((c) => {
-                  const isOpen = expanded === c.category_key;
-                  const rows = concepts.filter((x) => x.category_key === c.category_key);
-                  return (
-                    <View key={c.category_key}>
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() => setExpanded(isOpen ? null : c.category_key)}
-                      >
-                        <TierBar
-                          label={c.label}
-                          total={c.total}
-                          tier1={c.tier1_passed}
-                          tier2={c.tier2_passed}
-                          tier3={c.tier3_passed}
-                          right={`${c.mastered}/${c.total}`}
-                        />
-                      </TouchableOpacity>
-
-                      {isOpen && (
-                        <View style={styles.conceptRows}>
-                          {rows.map((r) => (
-                            <View key={r.concept_key} style={styles.conceptRow}>
-                              <ConceptThumb
-                                categoryKey={r.category_key}
-                                conceptKey={r.concept_key}
-                                size={26}
-                              />
-                              <Text style={styles.conceptName} numberOfLines={1}>
-                                {conceptLabel(r.category_key, r.concept_key)}
-                                {r.in_catalogue ? '' : ' *'}
-                              </Text>
-                              <View style={styles.pills}>
-                                {Object.keys(TIER_LABEL).map((k) => (
-                                  <TierPill key={k} status={r[k]} />
-                                ))}
-                              </View>
-                              <Text style={[styles.conceptScore, { color: scoreColor(r.tier1_score) }]}>
-                                {r.real_attempts > 0 ? `${r.correct_attempts}/${r.real_attempts}` : '—'}
-                              </Text>
-                              <Text style={styles.conceptMeta}>
-                                {r.real_attempts > 0 ? tries(r.real_attempts) : '—'}
-                              </Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-                <TierLegend />
-              </>
-            )}
-          </View>
-        </Section>
-
-        {/* Answer speed and time spent were two sections of behavioural context,
-            neither of which is a finding on its own. Together they answer one
-            question — how does this child go about it? */}
-        <Section
-          title="How they work"
-          subtitle={rt.sample_size > 0 ? `Based on ${tries(rt.sample_size)}` : 'No timed answers yet'}
-          summary={rt.overall_avg_ms ? `Usually ${seconds(rt.overall_avg_ms)} per answer` : 'No timed answers yet'}
-          collapsible
-          defaultOpen={false}
-        >
-          <View style={styles.padded}>
-            <Text style={styles.rtLead}>
-              {name} usually answers in {seconds(rt.overall_avg_ms)}.
-            </Text>
-            <SpeedBars correctMs={rt.correct_avg_ms} incorrectMs={rt.incorrect_avg_ms} />
-            {guessing && (
-              <View style={styles.hint}>
-                <Ionicons name="information-circle-outline" size={16} color="#B4780A" />
-                <Text style={styles.hintText}>
-                  {name} answers faster when wrong than when right. That often means guessing
-                  rather than not knowing — slowing the pace may help more than going over the
-                  same material again.
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.subDivider} />
-
-            <View style={styles.engagementGrid}>
-              <StatCell label="Pictures tapped" value={String(engagement.total_taps)} />
-              <StatCell label="Looking at pictures" value={duration(engagement.exposure_ms)} />
-              <StatCell label="Watching videos" value={duration(engagement.video_ms)} />
-              <StatCell label="Colouring" value={String(engagement.coloring_sessions)} />
-              {engagement.relearn_count > 0 && (
-                <StatCell label="Went over again" value={String(engagement.relearn_count)} />
-              )}
-            </View>
-          </View>
-        </Section>
-
-        {activities.length > 0 && (
-          <Section
-            title={HEADING.games}
-            subtitle={SUBHEADING.games}
-            summary={gamesSummary}
-            collapsible
-            defaultOpen={false}
-          >
-            <View style={styles.padded}>
-              {/* Four, not eight. Older than the last handful is history rather
-                  than information — the trend it would show is already the chart
-                  in the summary card. */}
-              {activities.slice(0, 4).map((a, i) => (
-                <View key={`${a.category_key}-${a.activity_number}-${i}`} style={styles.activityRow}>
-                  {/* Which concepts the game covered, as the pictures themselves.
-                      A comma-separated list of names made the teacher reconstruct
-                      the game in their head; three thumbnails just show it. */}
-                  <View style={styles.activityThumbs}>
-                    {(a.concept_keys || []).slice(0, 3).map((k) => (
-                      <ConceptThumb key={k} categoryKey={a.category_key} conceptKey={k} size={30} />
-                    ))}
-                    {(a.concept_keys || []).length > 3 && (
-                      <Text style={styles.activityMore}>+{a.concept_keys.length - 3}</Text>
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.activityTitle}>
-                      Got {countOf(a.correct_count, a.total_rounds)} right
-                    </Text>
-                    <Text style={styles.activityMeta}>
-                      {difficultyWord(a.difficulty_level)}
-                      {a.completed_at ? ` · ${shortDate(a.completed_at)}` : ''}
-                    </Text>
-                  </View>
-                  <ScorePips correct={a.correct_count} total={a.total_rounds} />
-                </View>
               ))}
-            </View>
-          </Section>
-        )}
-
-        {/* The model's own statement of what it does not know. Kept at the bottom
-            rather than under the headline: it qualifies the whole report, and
-            putting it directly beneath the opening sentence made the first thing a
-            teacher read into a disclaimer. */}
-        {caveat ? <Text style={styles.caveat}>{caveat}</Text> : null}
-
-        <Text style={styles.footnote}>
-          Covers the last {report.window_days} days.
-          {concepts.some((c) => !c.in_catalogue) ? '  * no longer in the list of things taught.' : ''}
-        </Text>
-      </ScrollView>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Outside the ScrollView: a Modal nested in a scroller inherits its
           clipping on Android and comes up cropped. */}
@@ -761,26 +1149,73 @@ export default function ConceptReportScreen({ route, navigation }) {
         accentText={theme.buttonText}
         onClose={() => setOpenArt(null)}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:     { flex: 1, backgroundColor: Colors.background },
+  // Colour comes from the BACKDROP gradient this is applied to.
+  safe:      { flex: 1 },
+  safeInner: { flex: 1 },
   scroll:   { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm, padding: Layout.spacing.xl },
   errorText:{ fontSize: Layout.fontSize.sm, color: Colors.text.secondary, textAlign: 'center' },
   retry:    { fontSize: Layout.fontSize.sm, color: Colors.text.link, fontFamily: 'DMSans_700Bold' },
 
   card:    { marginBottom: 0 },
-  section: { marginTop: Layout.spacing.lg },
-  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: Layout.spacing.sm },
-  sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  sectionSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
+  // More air above a heading than below it, so each one reads as opening the block
+  // under it rather than floating between two. Headings sit on the page backdrop
+  // rather than inside a card, so they need the separation to hold their own.
+  section: { marginTop: Layout.spacing.xl },
+
+  // The paired row. Main is the wider of the two — it holds a chart, which needs
+  // the room; the side column holds short labelled rows that survive being narrow.
+  // Both drop to full width below `twoCol`, where two columns leave the chart
+  // too cramped to read.
+  // The gap above is larger than the one between stacked sections, deliberately.
+  // `sectionInPair` zeroes each column's own top margin so the two cards line up,
+  // which left this row butted straight against the card above it — and a paired
+  // row needs MORE separation than a stacked one, not less, or the four cards read
+  // as one undifferentiated block.
+  pairRow: {
+    flexDirection: 'row',
+    gap: Layout.spacing.lg,
+    alignItems: 'stretch',
+    marginTop: 40,
+  },
+  // How-they-work takes the larger share now. It carries a chart, a paragraph and
+  // four figures; the list beside it is two cards that were never using the 61% it
+  // had. Close to even, with the edge to the denser side — a 60/40 the other way
+  // would just move the crowding rather than remove it.
+  pairMain: { flex: 1 },
+  pairSide: { flex: 1.18 },
+  sectionInPair: { marginTop: 0, flex: 1 },
+  headInCard:    { padding: Layout.spacing.md, paddingBottom: 0 },
+  cardFill:      { flex: 1 },
+  // Centre-aligned, not flex-end: with an icon badge in the row, baseline-ish
+  // alignment left the badge hanging below the title it belongs to.
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.sm,
+    marginBottom: Layout.spacing.sm,
+  },
+  sectionIcon: {
+    width: 34, height: 34, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: Layout.fontSize.lg,
+    fontFamily: 'DMSans_900Black',
+    color: Colors.text.primary,
+    letterSpacing: -0.4,
+  },
+  sectionSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
   // Darker than the subtitle: when a section is closed this line IS the content,
   // so it should not read as secondary to a heading nobody can act on.
-  sectionSummary: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 1 },
-  sectionChevron: { marginRight: 6, marginBottom: 2 },
+  sectionSummary: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2, fontFamily: 'DMSans_600SemiBold' },
+  sectionChevron: { marginLeft: 2 },
 
   workRow: {
     flexDirection: 'row',
@@ -797,14 +1232,66 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.borderLight,
     marginVertical: Layout.spacing.md,
   },
-  moreBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 6 },
-  moreText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: Colors.text.link },
-  padded:  { padding: Layout.spacing.md },
-  muted:   { fontSize: Layout.fontSize.sm, color: Colors.text.muted },
+  viewAll: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: '#8FA9BC' },
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Layout.spacing.md,
+    marginHorizontal: Layout.spacing.md,
+    marginBottom: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surfaceAlt,
+  },
 
-  overview:      { flexDirection: 'row', alignItems: 'center', padding: Layout.spacing.md, gap: Layout.spacing.lg },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(20, 28, 24, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Layout.spacing.lg,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 680,
+    // Capped so the sheet never grows past the screen on a long list — the body
+    // scrolls inside it instead of the whole card running off the bottom.
+    maxHeight: '85%',
+    borderRadius: Layout.radius.xl,
+    backgroundColor: Colors.surface,
+    overflow: 'hidden',
+  },
+  modalHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Layout.spacing.sm,
+    padding: Layout.spacing.lg,
+    paddingBottom: Layout.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  modalTitle: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  modalSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
+  modalBody:  { padding: Layout.spacing.lg, gap: Layout.spacing.md },
+
+  padded:  { padding: Layout.spacing.md },
+  muted:   { fontSize: 12, color: Colors.text.muted },
+
+  overview:      { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md },
   // Three equal tiles that stay on one line. They wrapped before, so on a narrow
   // tablet the third dropped underneath and the row lost its shape.
+  // The band: one tinted block holding the ring and the three tiles, so the
+  // summary reads as a single answer rather than four cards that happen to be
+  // adjacent. Tinted rather than white because everything below it is white — a
+  // white summary on a white stack has no top to the page.
+  band: {
+    backgroundColor: '#DFEBE3',
+    borderRadius: Layout.radius.xl,
+    padding: Layout.spacing.md,
+    marginBottom: Layout.spacing.md,
+  },
+  statTilePlain: { borderWidth: 1, borderColor: Colors.borderLight },
   overviewStats: { flex: 1, flexDirection: 'row', gap: Layout.spacing.sm },
 
   // Tightened all round. These are three supporting figures beside the ring, and
@@ -812,31 +1299,40 @@ const styles = StyleSheet.create({
   // where the summary was the smallest thing on it.
   statTile: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderRadius: Layout.radius.md,
-    backgroundColor: Colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    gap: 10,
+    paddingVertical: Layout.spacing.sm,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    gap: 0,
+    alignItems: 'flex-start',
+    flexDirection: 'column',
   },
+  statBody: { alignSelf: 'stretch', gap: 0 },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 1 },
+  // A rounded square rather than a circle: it echoes the tile it sits in, and the
+  // three of them read as a set of chips instead of three loose dots.
   statBadge: {
-    width: 26, height: 26, borderRadius: 13,
+    width: 28, height: 28, borderRadius: 9,
     alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10,
   },
   statTileValue: {
-    fontSize: Layout.fontSize.md,
+    fontSize: 20,
     fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
+    letterSpacing: -0.5,
   },
+  statTileOf: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
+  statTileNote: { fontSize: 9, marginTop: 3 },
   statTileLabel: {
-    fontSize: 10,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    // Tight enough that "Worth another look" wrapping to two lines does not make
-    // its tile taller than the two beside it.
-    lineHeight: 13,
+    fontSize: 9,
+    fontFamily: 'DMSans_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
   },
 
   // The glance sentence. Separated from the stats by a hairline rather than a gap:
@@ -851,16 +1347,27 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   glance: {
-    fontSize: Layout.fontSize.md,
+    fontSize: Layout.fontSize.sm,
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
     lineHeight: 21,
   },
-  aiRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  aiTag:  { fontSize: 10, color: Colors.text.muted },
+  aiRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  aiTag: {
+    fontSize: 9,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
 
-  strengthRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-  strengthText: { flex: 1, fontSize: Layout.fontSize.sm, color: Colors.text.secondary, lineHeight: 18 },
+  strengthRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  strengthBadge: {
+    width: 20, height: 20, borderRadius: 7,
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 1,
+  },
+  strengthText: { flex: 1, fontSize: 12, color: Colors.text.secondary, lineHeight: 18 },
 
   caveat: {
     marginTop: Layout.spacing.lg,
@@ -871,55 +1378,107 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  mixUpList: {
-    padding: Layout.spacing.md,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Layout.spacing.md,
-  },
-  // 48%, not 50%: the gap between the two has to come out of the row somewhere,
-  // and at 50% the second card wraps to its own line on every width.
-  pairHalf: { width: '48%' },
+  mixUpList: { padding: Layout.spacing.md, gap: Layout.spacing.md },
+  // Kept as a full-width wrapper rather than dropped: the section is a column of
+  // its own now, and a card that sized to its content would leave the second one
+  // a different width from the first.
   pairFull: { width: '100%' },
 
   statCell:      { minWidth: 76, flexGrow: 1 },
   statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
   statCellLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
 
-  trendWrap:      { padding: Layout.spacing.md },
-  groupChartWrap: { padding: Layout.spacing.md },
-  categoryBlock: { padding: Layout.spacing.md, gap: Layout.spacing.sm },
+  trendWrap:      { paddingHorizontal: Layout.spacing.md, paddingBottom: Layout.spacing.md },
 
-  conceptRows: {
-    marginTop: Layout.spacing.sm,
-    marginBottom: Layout.spacing.xs,
-    marginLeft: Layout.spacing.sm,
-    paddingLeft: Layout.spacing.sm,
-    borderLeftWidth: 2,
-    borderLeftColor: Colors.borderLight,
-    gap: 6,
+  trendHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Layout.spacing.sm,
+    padding: Layout.spacing.md,
+    paddingBottom: Layout.spacing.sm,
   },
-  conceptRow:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  conceptName: { flex: 1, fontSize: Layout.fontSize.xs, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
+  trendTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, letterSpacing: -0.3 },
+  trendSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
+
+  datePill: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Layout.radius.full,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  datePillText: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+
+  insightsBox: {
+    flexDirection: 'row',
+    gap: Layout.spacing.sm,
+    margin: Layout.spacing.md,
+    marginTop: 0,
+    padding: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  insightsIcon: {
+    width: 30, height: 30, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F6EFD6',
+  },
+  insightsTitle: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: Colors.text.primary, marginBottom: 3 },
+  insightsText:  { fontSize: 12, color: Colors.text.secondary, lineHeight: 19, marginTop: 1 },
+  groupChartWrap: { padding: Layout.spacing.md },
+
+  // The indent rule that used to wrap these lives in GroupProgress now, since the
+  // rows render inside its expanded row rather than in a list of their own.
+  conceptRow: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm, paddingVertical: 3 },
+  conceptName: { flex: 1, fontSize: 11, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
   pills:       { flexDirection: 'row', gap: 3 },
   tierPill:    { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   conceptScore:{ width: 42, textAlign: 'right', fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold' },
-  conceptMeta: { width: 56, textAlign: 'right', fontSize: 10, color: Colors.text.muted },
 
-  strugglingName:  { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  strugglingName:  { fontSize: 12, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
   strugglingMeta:  { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
 
-  rtLead: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, marginBottom: Layout.spacing.sm },
-
-  speedWrap:  { gap: 8 },
-  speedRow:   { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  speedLabel: { width: 74, fontSize: Layout.fontSize.xs, color: Colors.text.secondary },
-  speedTrack: {
-    flex: 1, height: 10, borderRadius: 5,
-    backgroundColor: Colors.surfaceAlt, overflow: 'hidden',
+  rtHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 },
+  rtHeadLabel: {
+    fontSize: Layout.fontSize.xs,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  speedFill:  { height: '100%', borderRadius: 5 },
-  speedValue: { width: 92, textAlign: 'right', fontSize: Layout.fontSize.xs, color: Colors.text.secondary },
+  rtHeadValue: { fontSize: Layout.fontSize.xxl, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+
+  splitBarWrap:  { marginTop: Layout.spacing.sm, gap: 9 },
+  splitBarTrack: { flexDirection: 'row', height: 16, borderRadius: 8, overflow: 'hidden', backgroundColor: Colors.surfaceAlt },
+  splitBarSeg:   { height: '100%' },
+  splitBarLegend:     { flexDirection: 'row', justifyContent: 'space-between' },
+  splitBarLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  splitBarDot:        { width: 9, height: 9, borderRadius: 5 },
+  splitBarLabel:      { fontSize: 12, fontFamily: 'DMSans_600SemiBold' },
+
+  timeRow:   { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, marginTop: Layout.spacing.lg },
+  timeIcon:  { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  timeLabel: { flex: 1, fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  timePct:   { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+
+  countRow: { flexDirection: 'row', gap: Layout.spacing.sm, marginTop: Layout.spacing.lg },
+  countBox: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Layout.spacing.lg,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  countValue: { fontSize: 30, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  countLabel: {
+    fontSize: 10,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    marginTop: 2,
+  },
+
+  relearnNote: { fontSize: 11, color: Colors.text.muted, marginTop: Layout.spacing.md },
 
   pips:   { flexDirection: 'row', gap: 3, alignItems: 'center' },
   pip:    { width: 8, height: 8, borderRadius: 4 },
@@ -930,18 +1489,31 @@ const styles = StyleSheet.create({
   activityMore:   { fontSize: 10, color: Colors.text.muted, fontFamily: 'DMSans_700Bold' },
   hint: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: Layout.spacing.md,
-    padding: Layout.spacing.sm,
-    borderRadius: Layout.radius.md,
+    gap: 9,
+    marginTop: Layout.spacing.lg,
+    padding: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
     backgroundColor: Colors.status.warningLight,
   },
-  hintText: { flex: 1, fontSize: Layout.fontSize.xs, color: '#8A5D06', lineHeight: 17 },
+  hintText: { flex: 1, fontSize: 12, color: '#8A5D06', lineHeight: 19 },
+  // The good-news variant. Same shape, green rather than amber — an encouraging
+  // reading dressed in a warning colour would be read as a warning.
+  hintGood:     { backgroundColor: '#E6F4EA' },
+  hintTextGood: { color: '#1B5E3A' },
+
+  subHeading: {
+    fontSize: 10,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginBottom: Layout.spacing.sm,
+  },
 
   engagementGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Layout.spacing.md },
 
   activityRow:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm, paddingVertical: 7 },
-  activityTitle:   { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
+  activityTitle:   { fontSize: 12, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
   activityMeta:    { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
 
   footnote: {

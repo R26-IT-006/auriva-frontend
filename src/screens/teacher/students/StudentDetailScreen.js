@@ -213,6 +213,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const firstName  = student.full_name.split(' ')[0];
   const hasProgress = concepts && concepts.totals.started > 0;
 
+
   // Code and age were two pill chips; as one quiet line under the name they read
   // as a caption on the name rather than as two more things to look at.
   const identityMeta = [
@@ -426,6 +427,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+
   safe: { flex: 1, backgroundColor: Colors.background },
   scroll: {
     padding: Layout.spacing.lg,
