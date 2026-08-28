@@ -21,20 +21,61 @@ import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
-const TEAL      = '#3A9BA8';
+// Page chrome — the full-page spinner and the pull-to-refresh tint. This used to be
+// the digest panel's accent as well, which is why it is teal; the digest is rose now
+// and teal is no longer any section's colour, so it reads as neutral app furniture
+// rather than pointing at one panel. That is the reason to keep the hue, not inertia.
+const CHROME    = '#3A9BA8';
 // Matches the delete icon on the principal side's teacher table, so "delete" reads
 // the same wherever it shows up.
 const CORAL     = '#D95F50';
 const CORAL_L   = '#FDECEA';
 
+// The page backdrop, in the same blue → sage → cream progression WorkspaceSelectScreen
+// and StudentPickerScreen use. The dashboard was the one flat screen in the teacher
+// workspace ('#F6F8F6'), so arriving here from the workspace picker dropped the app's
+// colour language for a grey the rest of the product never uses.
+//
+// Paler than those two screens on purpose, and that is the whole design decision:
+// they are sparse, so they can carry the saturated version, while this screen is a
+// dense grid of pure-white panels each wearing its own accent tint (purple, green,
+// blue, amber, teal below). At WorkspaceSelect's saturation the backdrop competes
+// with those accents and the panels stop reading as cards. This follows the same
+// rule the avatar themes state explicitly — a background that sits *behind* white
+// cards resolves toward near-white, so the cards keep their edges.
+//
+// Diagonal rather than straight down: the paired row above PAIR_MIN is wide enough
+// that a vertical ramp bands visibly across it.
+const BACKDROP = ['#DCEFF5', '#E4F0E6', '#EFF3E4', '#FAF8F1'];
+const BACKDROP_START = { x: 0, y: 0 };
+const BACKDROP_END   = { x: 0.6, y: 1 };
+
 // Tinted pairs reused by the overview tiles and the session strip, so a green tile
 // and a green row mean the same thing in both places.
+//
+// `fg` carries two jobs and has to satisfy both, which the previous set did not:
+//   - panel title text, sitting on its own `bg`
+//   - a solid fill with WHITE text on it (calDayToday, notesChipActive, notesAddBtn)
+// The second is the harsh one. The old amber #E89A2E scored 2.31:1 against white —
+// a teacher reading today's date or an active note chip was reading pale orange on
+// white. Every one of the five failed both tests; the best was purple at 4.22/4.95.
+// All five now clear 4.5:1 in both roles, measured, with amber the tightest at 4.86.
+//
+// Hue spacing was the other problem. green(146) teal(187) blue(209) crowded three of
+// the five sections into 63 degrees, so at a glance the calendar, the sessions strip
+// and the digest all read as "the blue-green one" — while amber sat 111 degrees away
+// on its own. Teal is retired and the digest takes rose instead: five hues, minimum
+// gap now 48 degrees rather than 22, so the sections are told apart by colour alone.
+//
+// Kept deliberately desaturated. These sit on the BACKDROP gradient above, which is
+// itself blue-to-sage-to-cream — saturated accents fought it and the panels stopped
+// reading as cards.
 const TINTS = {
-  purple: { bg: '#EFEBFA', fg: '#6C5CE0' },
-  green:  { bg: '#E3F7EC', fg: '#3FAE6F' },
-  blue:   { bg: '#E6F1FC', fg: '#3B82C4' },
-  amber:  { bg: '#FDF1DC', fg: '#E89A2E' },
-  teal:   { bg: '#E2F4F6', fg: '#3A9BA8' },
+  purple: { bg: '#EDE9FA', fg: '#6438BE' },
+  green:  { bg: '#E6F4EA', fg: '#2A7146' },
+  blue:   { bg: '#E5EEF9', fg: '#27609F' },
+  amber:  { bg: '#FAF0DF', fg: '#945D08' },
+  rose:   { bg: '#FAE9F0', fg: '#A5366A' },
 };
 
 // Each dashboard section gets its own accent so the panels read as distinct
@@ -44,15 +85,22 @@ const SECTION = {
   notes:        { icon: 'document-text-outline', ...TINTS.amber },
   calendar:     { icon: 'calendar-outline',    ...TINTS.blue },
   daySessions:  { icon: 'time-outline',        ...TINTS.green },
-  digest:       { icon: 'sparkles-outline',    ...TINTS.teal },
+  digest:       { icon: 'sparkles-outline',    ...TINTS.rose },
 };
 
 const PANEL_PAD    = 20;
 const PANEL_BORDER = 1;
 const GRID_GAP     = 14;
-// Below this the two columns stack; the calendar needs ~330pt before its day cells
-// start crowding, and the student cards want the rest.
-const TWO_COL_MIN = 900;
+// Notes and the calendar share a row above this and stack below it. The calendar
+// needs ~330pt before its day cells start crowding and the notes list wants about
+// as much for its chips and composer, so two of them plus the gap is the floor.
+const PAIR_MIN = 640;
+
+// Below this the header's greeting and its controls stack instead of sharing a
+// row. The Workspaces button and the profile chip need roughly 385pt side by
+// side — more than a portrait phone has in total — and because neither shrinks,
+// a single row squeezed the greeting down to nothing rather than wrapping.
+const HEADER_ROW_MIN = 700;
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -84,16 +132,13 @@ function buildMonthGrid(monthDate) {
 // Soft rings behind the avatar so a row of cards reads as distinct children at a
 // glance. Picked by name the same way Avatar picks its own fill, so a child keeps
 // the same pairing everywhere the card appears.
-const AVATAR_HALOS = ['#D6F0F4', '#FCE0E9', '#DCF5E8', '#FCEFD2', '#E6E2F8'];
-
-function haloFor(name) {
-  if (!name) return AVATAR_HALOS[0];
-  return AVATAR_HALOS[name.charCodeAt(0) % AVATAR_HALOS.length];
-}
+// The avatar tile carries the colour itself now — Avatar picks a saturated hue
+// from the child's name and prints white initials on it — so the pale halo ring
+// that used to sit behind it has no job left. Its palette is gone with it.
+const AVATAR_TILE = 84;
 
 function StudentCard({ student, width, onPress }) {
   const age = ageFrom(student.dateOfBirth);
-  const halo = haloFor(student.fullName);
 
   return (
     <TouchableOpacity
@@ -103,27 +148,38 @@ function StudentCard({ student, width, onPress }) {
       accessibilityRole="button"
       accessibilityLabel={`${student.fullName}${age != null ? `, age ${age}` : ''}`}
     >
+      {/* Avatar-forward: a rounded-square tile, the name, then the age.
+          The card used to be a gradient wash behind a circle behind a chevron —
+          three decorations around one 72px avatar. Stripping it back to the tile
+          lets a teacher pick a child out of the row by colour and initials, which
+          is how they scan it, and the card gets shorter at the same time. */}
       <View style={styles.studentCard}>
-        <LinearGradient
-          colors={[halo, '#FFFFFF']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.7 }}
-          style={styles.studentCardTop}
-        />
-
-        <View style={[styles.studentHalo, { backgroundColor: halo }]}>
-          <Avatar name={student.fullName} uri={student.profilePhotoUrl} size={72} />
+        <View style={styles.studentAvatarWrap}>
+          {/* The tile IS the avatar. It used to be an Avatar nested inside a
+              separately tinted square — and Avatar hard-codes borderRadius to
+              size/2, so that rendered as a saturated circle sitting inside a pale
+              square. The `style` override squares it off; Avatar applies `style`
+              last, so this wins over its own radius without touching the shared
+              component, which the header chip and the profile still want round. */}
+          <Avatar
+            name={student.fullName}
+            uri={student.profilePhotoUrl}
+            size={AVATAR_TILE}
+            style={styles.studentAvatarTile}
+          />
+          {/* On the tile's corner rather than in the card's flow, so it reads as
+              belonging to this child rather than as a bullet before their name. */}
+          <View style={[styles.studentDot, { backgroundColor: student.lastSessionAt ? '#3FAE6F' : '#E0A030' }]} />
         </View>
 
-        {/* Two lines, with the height reserved either way: full names run long enough
-            that one line truncates most of them, and letting the box grow only when a
-            name wraps leaves the cards in a row at different heights. */}
-        <Text style={styles.studentName} numberOfLines={2}>{student.fullName}</Text>
-        <Text style={styles.studentAge}>{age != null ? `Age ${age}` : 'Age not set'}</Text>
-
-        <View style={styles.studentChevron}>
-          <Ionicons name="chevron-forward" size={14} color="#B7C6BF" />
-        </View>
+        {/* First name only. Full names ran to two lines, so every card reserved the
+            height for two whether it used it or not — and "Dinuja Sasanjana" over
+            two cramped lines is harder to pick out of a row than "Dinuja". The
+            teacher knows these five children; the surname is on the profile. */}
+        <Text style={styles.studentName} numberOfLines={1}>
+          {student.fullName?.trim().split(/\s+/)[0] || student.fullName}
+        </Text>
+        <Text style={styles.studentAge}>{age != null ? `AGE ${age}` : 'AGE NOT SET'}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -138,7 +194,15 @@ function Panel({ title, section, action, onAction, right, children, style }) {
     // to the rounded corners. Overflow:hidden clips a view's own shadow on iOS,
     // so the two can't be the same view or the shadow silently disappears.
     <View style={[styles.panelShadowWrap, style]}>
-      <View style={[styles.panel, accent && { borderColor: accent.fg + '33' }]}>
+      <View style={[
+        styles.panel,
+        accent && { borderColor: accent.fg + '33' },
+        // A solid edge in the section's own colour. The tinted header alone left
+        // the panels reading as one undifferentiated stack once they were on a
+        // coloured page; a spine down the side is visible from the scroll
+        // position rather than only when the header is on screen.
+        accent && { borderLeftWidth: 4, borderLeftColor: accent.fg },
+      ]}>
         {(title || right) && (
           <View style={[
             styles.panelHeader,
@@ -370,7 +434,7 @@ function DigestPanel({ data, loading, onRefresh, refreshing, width }) {
     return (
       <Panel title="This week" section="digest" style={{ width }}>
         <View style={styles.digestLoading}>
-          <ActivityIndicator size="small" color={TEAL} />
+          <ActivityIndicator size="small" color={TINTS.rose.fg} />
           <Text style={styles.digestLoadingText}>Writing summary…</Text>
         </View>
       </Panel>
@@ -396,8 +460,8 @@ function DigestPanel({ data, loading, onRefresh, refreshing, width }) {
           style={styles.digestRefresh}
         >
           {refreshing
-            ? <ActivityIndicator size="small" color={TEAL} />
-            : <Ionicons name="refresh" size={15} color={TEAL} />}
+            ? <ActivityIndicator size="small" color={TINTS.rose.fg} />
+            : <Ionicons name="refresh" size={15} color={TINTS.rose.fg} />}
         </TouchableOpacity>
       }
     >
@@ -460,19 +524,23 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   const { width } = useWindowDimensions();
   const contentWidth = width - Layout.spacing.lg * 2;
-  const twoCol       = contentWidth >= TWO_COL_MIN;
+  const pairRow      = contentWidth >= PAIR_MIN;
+  const wideHeader   = contentWidth >= HEADER_ROW_MIN;
 
   // Explicit column widths rather than flex, so the student grid below can do its
   // own column maths against a number it knows before layout. Widths are floored
   // throughout: fractional ones round up during layout and overrun the row.
-  const COL_GAP  = Layout.spacing.lg;
-  const mainW    = twoCol ? Math.floor((contentWidth - COL_GAP) * 0.62) : contentWidth;
-  const sideW    = twoCol ? contentWidth - COL_GAP - mainW : contentWidth;
+  //
+  // Notes and the calendar take an even half each. Neither is the subordinate of
+  // the other — one is what the teacher writes, the other is what they look up —
+  // so there is nothing to justify the 62/38 split the old two-column body used.
+  const COL_GAP = Layout.spacing.lg;
+  const pairW   = pairRow ? Math.floor((contentWidth - COL_GAP) / 2) : contentWidth;
   // Panels are border-box, so the 1px border eats the same width the padding does.
   // Measuring against padding alone overruns the pane by 2px — enough to wrap the
   // last card onto its own row. The trailing pixel is slack against fractional
   // device-pixel rounding, which would do the same thing on a half-pixel screen.
-  const mainPane = mainW - (PANEL_PAD + PANEL_BORDER) * 2 - 1;
+  const mainPane = contentWidth - (PANEL_PAD + PANEL_BORDER) * 2 - 1;
 
   // Column counts come from a target width rather than fixed breakpoints, so the
   // grid keeps filling its row at any pane width. Capped at four to hold the
@@ -480,7 +548,22 @@ export default function TeacherDashboardScreen({ navigation }) {
   const fit = (min, max) =>
     Math.max(2, Math.min(max, Math.floor((mainPane + GRID_GAP) / (min + GRID_GAP))));
 
-  const cardCols = fit(150, 4);
+  // Keep the whole class on one row where it fits.
+  //
+  // This was fit(150, 4): a hard cap at four columns, so a class of five put one
+  // child alone on a second row — the row stopped reading as "my class" and the
+  // fifth looked like an afterthought. The cap is now six, and the count is
+  // clamped to the class size so five students make five columns rather than four
+  // and a straggler.
+  //
+  // 120 rather than 150 as the target width: the card lost the gradient wash and
+  // the 88px ring, so it needs about 84pt for the avatar tile and its padding.
+  //
+  // Read off `data` rather than `proficiency`, which is not declared until further
+  // down this component — referencing it here would compile to `undefined` rather
+  // than an error, which is exactly how the report screen broke earlier.
+  const classSize = data?.proficiency?.length ?? 0;
+  const cardCols = Math.max(2, Math.min(classSize || 4, fit(120, 6)));
   const cardW    = Math.floor((mainPane - GRID_GAP * (cardCols - 1)) / cardCols);
 
   const load = useCallback(async () => {
@@ -586,8 +669,7 @@ export default function TeacherDashboardScreen({ navigation }) {
     }
   };
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  // Fallback only — the header shows the full name when the profile has loaded.
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Teacher';
 
   const shiftMonth = (delta) =>
@@ -595,24 +677,24 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   if (!data) {
     return (
-      <View style={styles.root}>
+      <LinearGradient colors={BACKDROP} style={styles.root} start={BACKDROP_START} end={BACKDROP_END}>
         <SafeAreaView style={[styles.safe, styles.loadingCenter]} edges={['top', 'bottom']}>
-          <ActivityIndicator color={TEAL} size="large" />
+          <ActivityIndicator color={CHROME} size="large" />
         </SafeAreaView>
-      </View>
+      </LinearGradient>
     );
   }
 
-  // ── Left column ──────────────────────────────────────────────────────────
-  const mainColumn = (
-    <View style={[styles.column, { width: mainW }]}>
+  // ── Full-width band: the week's summary, then the class ───────────────────
+  const topBand = (
+    <View style={[styles.column, { width: contentWidth }]}>
       {/* Absent whenever the summary is unavailable — the column closes up. */}
       <DigestPanel
         data={digest}
         loading={digestLoading}
         refreshing={digestRefreshing}
         onRefresh={() => loadDigest(true)}
-        width={mainW}
+        width={contentWidth}
       />
 
       <Panel
@@ -651,7 +733,12 @@ export default function TeacherDashboardScreen({ navigation }) {
           </View>
         )}
       </Panel>
+    </View>
+  );
 
+  // ── Paired below it: what the teacher writes, beside what they look up ────
+  const notesColumn = (
+    <View style={[styles.column, { width: pairW }]}>
       <NotesPanel
         students={proficiency}
         selectedId={selectedStudentId}
@@ -667,9 +754,11 @@ export default function TeacherDashboardScreen({ navigation }) {
     </View>
   );
 
-  // ── Right column ─────────────────────────────────────────────────────────
-  const sideColumn = (
-    <View style={[styles.column, { width: sideW }]}>
+  // The day's sessions travel with the calendar: the panel is the answer to the
+  // date the grid above it has selected, so splitting them would leave a heading
+  // naming a day the reader can no longer see chosen.
+  const calendarColumn = (
+    <View style={[styles.column, { width: pairW }]}>
       <Panel
         title="Calendar"
         section="calendar"
@@ -712,7 +801,7 @@ export default function TeacherDashboardScreen({ navigation }) {
   );
 
   return (
-    <View style={styles.root}>
+    <LinearGradient colors={BACKDROP} style={styles.root} start={BACKDROP_START} end={BACKDROP_END}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -721,22 +810,31 @@ export default function TeacherDashboardScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => { setRefreshing(true); load(); }}
-              tintColor={TEAL}
+              tintColor={CHROME}
             />
           }
         >
           {/* ── Header ── */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.headerGreeting} numberOfLines={1}>
-                {greeting}, {firstName}! 👋
+          <View style={[styles.header, wideHeader ? styles.headerRow : styles.headerStack]}>
+            <View style={[styles.headerLeft, wideHeader && styles.headerLeftGrow]}>
+              {/* Allowed a second line once stacked: the greeting has the full
+                  width to itself there, and clipping a teacher's own name to fit
+                  a row that no longer exists is the wrong trade. */}
+              {/* The teacher's own name, not a greeting.
+                  "Good morning, Hansi! 👋" plus "Here's what's happening in your
+                  classroom today" spent the widest, boldest line on the screen
+                  saying nothing — the same words every visit, carrying no fact.
+                  The name and code identify whose workspace this is, which is the
+                  one thing a header on a shared staff tablet has to answer. */}
+              <Text style={styles.headerName} numberOfLines={wideHeader ? 1 : 2}>
+                {profile?.full_name ?? firstName}
               </Text>
               <Text style={styles.headerSub}>
-                Here's what's happening in your classroom today.
+                Teacher{profile?.teacher_code ? ` · ${profile.teacher_code}` : ''}
               </Text>
             </View>
 
-            <View style={styles.headerRight}>
+            <View style={[styles.headerRight, !wideHeader && styles.headerRightStacked]}>
               <TouchableOpacity
                 style={styles.workspaceBtn}
                 onPress={() => navigation.getParent()?.navigate('WorkspaceSelect')}
@@ -744,7 +842,9 @@ export default function TeacherDashboardScreen({ navigation }) {
                 accessibilityRole="button"
                 accessibilityLabel="Switch workspace"
               >
-                <Ionicons name="grid-outline" size={16} color="#2A5A48" />
+                {/* Filled icon to match the filled button — the outline version
+                    reads as thin and washed out reversed on solid ink. */}
+                <Ionicons name="grid" size={17} color="#FFFFFF" />
                 <Text style={styles.workspaceBtnText}>Workspaces</Text>
               </TouchableOpacity>
 
@@ -770,9 +870,12 @@ export default function TeacherDashboardScreen({ navigation }) {
           </View>
 
           {/* ── Body ── */}
-          <View style={[styles.body, twoCol && styles.bodyRow, { gap: COL_GAP }]}>
-            {mainColumn}
-            {sideColumn}
+          <View style={[styles.body, { gap: COL_GAP }]}>
+            {topBand}
+            <View style={[styles.pair, pairRow && styles.pairRow, { gap: COL_GAP }]}>
+              {notesColumn}
+              {calendarColumn}
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -787,15 +890,13 @@ export default function TeacherDashboardScreen({ navigation }) {
         onConfirm={logout}
         onCancel={() => setLogoutVisible(false)}
       />
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  // A soft, warm off-white rather than pure white — panels (which stay pure
-  // white) still read as distinct cards sitting on the page instead of
-  // blending into it.
-  root: { flex: 1, backgroundColor: '#F6F8F6' },
+  // Colour comes from the BACKDROP gradient this is applied to, not from here.
+  root: { flex: 1 },
   safe: { flex: 1 },
   loadingCenter: { alignItems: 'center', justifyContent: 'center' },
   scroll: {
@@ -805,17 +906,24 @@ const styles = StyleSheet.create({
 
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     gap: Layout.spacing.md,
     marginBottom: Layout.spacing.xl,
   },
-  headerLeft: { flex: 1, gap: 2 },
-  headerGreeting: {
-    fontSize: 24,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerStack: { flexDirection: 'column', alignItems: 'stretch' },
+  headerLeft: { gap: 2 },
+  // Only in row mode. In a column this would make the greeting eat the leftover
+  // vertical space and push the controls to the bottom of the screen.
+  headerLeftGrow: { flex: 1 },
+  headerName: {
+    fontSize: 26,
     fontFamily: 'DMSans_900Black',
-    color: '#1A3D2E',
+    color: '#16281F',
+    letterSpacing: -0.4,
   },
   headerSub: {
     fontSize: 13,
@@ -823,21 +931,36 @@ const styles = StyleSheet.create({
     color: '#4A7A60',
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Stacked, the controls own the full width: the one navigation action goes to
+  // one end and the account menu to the other, rather than huddling on the left.
+  headerRightStacked: { justifyContent: 'space-between' },
+  // Filled, not outlined. This is the only way out of the workspace and it used to
+  // be a white pill with a #EDF1EF border sitting beside the profile chip, which is
+  // also a white pill — two identical-looking chips, so the one navigation action in
+  // the header carried no more weight than the account menu. Solid ink reverses that
+  // and leaves the profile chip as the quiet one.
+  //
+  // #2A5A48 is the colour the button's own label already used, so this adds weight
+  // without adding a hue: it stays the header's green, and at 7.91:1 against white
+  // it is safe to reverse the text out of.
   workspaceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    height: 40,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EDF1EF',
+    gap: 8,
+    height: 44,
+    paddingHorizontal: 18,
+    borderRadius: 22,
+    backgroundColor: '#2A5A48',
+    shadowColor: '#1A3D2E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 4,
   },
   workspaceBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'DMSans_700Bold',
-    color: '#2A5A48',
+    color: '#FFFFFF',
   },
   profileChip: {
     flexDirection: 'row',
@@ -850,8 +973,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#EDF1EF',
+    // The chip is the one part of the header that can give ground on a narrow
+    // screen — the avatar and chevron hold their size and the name truncates,
+    // rather than the whole chip pushing the row wider than the screen.
+    flexShrink: 1,
   },
-  profileChipText: { maxWidth: 140 },
+  profileChipText: { flexShrink: 1, maxWidth: 140 },
   profileChipName: {
     fontSize: 14,
     fontFamily: 'DMSans_700Bold',
@@ -865,7 +992,10 @@ const styles = StyleSheet.create({
 
   // ── Layout ────────────────────────────────────────────────────────────────
   body:    { flexDirection: 'column' },
-  bodyRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  pair:    { flexDirection: 'column' },
+  // flex-start, not stretch: the two panels are different heights and the shorter
+  // one should end where its content does rather than growing to match.
+  pairRow: { flexDirection: 'row', alignItems: 'flex-start' },
   column:  { gap: Layout.spacing.lg },
 
   // ── Panels ────────────────────────────────────────────────────────────────
@@ -984,12 +1114,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: TEAL,
+    borderColor: CHROME,
   },
   pillBtnText: {
     fontSize: 13,
     fontFamily: 'DMSans_700Bold',
-    color: TEAL,
+    color: CHROME,
   },
 
   // ── Student cards ─────────────────────────────────────────────────────────
@@ -1007,8 +1137,9 @@ const styles = StyleSheet.create({
   studentCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    paddingTop: 30,
-    paddingBottom: 16,
+    // 30 at the top made room for a gradient wash that is no longer there.
+    paddingTop: 18,
+    paddingBottom: 14,
     paddingHorizontal: 10,
     alignItems: 'center',
     gap: 4,
@@ -1018,41 +1149,43 @@ const styles = StyleSheet.create({
   },
   // Soft tinted wash behind the avatar, fading into the card's white body — gives
   // each card its own bit of color without the halo ring having to carry it alone.
-  studentCardTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 78,
-    opacity: 0.55,
+  studentAvatarWrap: { marginBottom: 12 },
+  // A rounded square, not a circle. Squares of the same size tile a row evenly and
+  // read as a set; the radius is a little under a third of the side, which is what
+  // keeps it a square with soft corners rather than drifting back toward a circle.
+  studentAvatarTile: {
+    borderRadius: 26,
+    overflow: 'hidden',
   },
-  studentHalo: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-    borderWidth: 3,
+  // Big enough to read as a status light across a row of five, and overlapping the
+  // tile's corner so it belongs to the avatar. The white ring is what separates it
+  // from the tile underneath at any avatar colour.
+  studentDot: {
+    position: 'absolute',
+    right: -3,
+    bottom: -3,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 4,
     borderColor: '#FFFFFF',
   },
   studentName: {
     fontSize: 15,
     lineHeight: 20,
-    height: 40,
+    // One line now that it is a first name, so the card no longer reserves height
+    // for a second that most children never used.
+    height: 20,
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
     textAlign: 'center',
   },
   studentAge: {
-    fontSize: 12,
-    fontFamily: 'DMSans_400Regular',
-    color: '#6B8A80',
-  },
-  studentChevron: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: '#9AAFA7',
+    letterSpacing: 0.8,
+    marginTop: 2,
   },
 
   // ── Calendar ──────────────────────────────────────────────────────────────

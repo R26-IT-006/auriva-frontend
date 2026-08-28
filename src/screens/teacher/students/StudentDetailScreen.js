@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   ScrollView,
   StyleSheet,
   RefreshControl,
@@ -20,9 +19,8 @@ import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
-import { conceptApi } from '../../../api/concept';
 import { formatDate, ageFrom } from '../../../utils/formatters';
-import { getConceptItem } from '../../../data/conceptData';
+import { countOf, ROUND } from '../../../constants/teacherWording';
 
 // Same tinted pairs the teacher dashboard uses for its section panels, so a
 // profile opened from a dashboard card keeps the same visual language.
@@ -34,9 +32,8 @@ const TINTS = {
 };
 
 const SECTION = {
-  contact:  { icon: 'call-outline',          ...TINTS.green },
-  progress: { icon: 'stats-chart-outline',   ...TINTS.purple },
-  artwork:  { icon: 'color-palette-outline', ...TINTS.amber },
+  contact:  { icon: 'call-outline',        ...TINTS.green },
+  progress: { icon: 'stats-chart-outline', ...TINTS.purple },
 };
 
 const PANEL_PAD = 16;
@@ -175,7 +172,6 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
   const [activeModule, setActiveModule] = useState('concept');
-  const [artworks, setArtworks] = useState([]);
 
   const fetch = useCallback(async () => {
     if (!initialStudent?.sid) { setRefreshing(false); return; }
@@ -200,22 +196,10 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
-  const fetchArtworks = useCallback(async () => {
-    if (!initialStudent?.sid) return;
-    try {
-      setArtworks(await conceptApi.listColoring({ studentId: initialStudent.sid }));
-    } catch {
-      setArtworks([]); // the section simply doesn't render
-    }
-  }, [initialStudent?.sid]);
-
   useEffect(() => { fetch(); }, [fetch]);
 
   // Refetch on focus so returning from the report reflects a session just played.
-  useFocusEffect(useCallback(() => {
-    fetchConcepts();
-    fetchArtworks();
-  }, [fetchConcepts, fetchArtworks]));
+  useFocusEffect(useCallback(() => { fetchConcepts(); }, [fetchConcepts]));
 
   if (!student) return null;
 
@@ -393,15 +377,15 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
           ) : (
             <>
               <View style={styles.conceptHeader}>
-                <MasteryRing value={concepts.totals.mastery_pct} size={92} label="mastery" />
+                <MasteryRing value={concepts.totals.mastery_pct} size={92} label="learned" />
                 <View style={styles.conceptStats}>
                   <StatLine
-                    label="Mastered"
-                    value={`${concepts.totals.mastered} / ${concepts.totals.catalogue_concepts}`}
+                    label="Learned"
+                    value={countOf(concepts.totals.mastered, concepts.totals.catalogue_concepts)}
                   />
-                  <StatLine label="Started" value={String(concepts.totals.started)} />
-                  <StatLine label="Identified" value={String(concepts.totals.tier1_passed)} />
-                  <StatLine label="Needs work" value={String(needsAttention)} />
+                  <StatLine label="Tried so far" value={String(concepts.totals.started)} />
+                  <StatLine label={ROUND.tier1.label} value={String(concepts.totals.tier1_passed)} />
+                  <StatLine label="Worth another look" value={String(needsAttention)} />
                 </View>
               </View>
 
@@ -436,33 +420,6 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
           )}
         </Panel>
 
-        {/* Colouring artwork — only appears once the child has coloured something */}
-        {artworks.length > 0 && (
-          <Panel title="Colouring Artwork" section="artwork" flush>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.artworkRow}
-            >
-              {artworks.map((art) => {
-                const concept = getConceptItem(art.category_key, art.concept_key);
-                return (
-                  <View key={art.id} style={styles.artworkCard}>
-                    <Image
-                      source={{ uri: art.image_url }}
-                      style={styles.artworkImage}
-                      resizeMode="cover"
-                    />
-                    <Text style={styles.artworkLabel} numberOfLines={1}>
-                      {concept?.label ?? art.concept_key}
-                    </Text>
-                    <Text style={styles.artworkDate}>{formatDate(art.created_at)}</Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </Panel>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -711,37 +668,5 @@ const styles = StyleSheet.create({
   reportLinkText: {
     fontSize: Layout.fontSize.sm,
     fontFamily: 'DMSans_700Bold',
-  },
-
-  // ── Colouring artwork ─────────────────────────────────────────────────────
-  artworkRow: {
-    gap: Layout.spacing.sm,
-    padding: PANEL_PAD,
-  },
-  artworkCard: {
-    width: 132,
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    padding: 8,
-    ...Layout.shadow.sm,
-  },
-  artworkImage: {
-    width: '100%',
-    height: 116,
-    borderRadius: Layout.radius.md,
-    backgroundColor: Colors.surfaceAlt,
-  },
-  artworkLabel: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_700Bold',
-    color: Colors.text.primary,
-    marginTop: 6,
-  },
-  artworkDate: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    marginTop: 1,
   },
 });

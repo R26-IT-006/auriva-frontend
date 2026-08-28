@@ -23,7 +23,7 @@ import {
   categoryHasPairMatch,
 } from '../../../data/conceptData';
 import { getConclusionForCategory } from '../../../data/conceptConclusions';
-import { getPairableItems } from '../../../data/conceptPairMatch';
+import { getPairableItems, MIN_PAIRS } from '../../../data/conceptPairMatch';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
@@ -225,9 +225,14 @@ export default function ConceptItemsScreen({ route, navigation }) {
 
   // Same predicate the server counts mastery with — tier 1 and tier 2 passed,
   // tier 3 excluded because it is a video watch with no assessment.
-  const masteredCount = merged.filter(
-    (i) => i.tier1_status === 'passed' && i.tier2_status === 'passed',
-  ).length;
+  //
+  // Kept as keys, not just a count: the card games need the actual concepts when
+  // their startGameActivity call fails, and this screen is the only place on the
+  // client that already knows which ones this child has been taught.
+  const masteredKeys = merged
+    .filter((i) => i.tier1_status === 'passed' && i.tier2_status === 'passed')
+    .map((i) => i.key);
+  const masteredCount = masteredKeys.length;
 
   // Bottom 3 by tier1_score for the review section (only when all passed)
   const weakConcepts = allTier1Passed
@@ -293,27 +298,38 @@ export default function ConceptItemsScreen({ route, navigation }) {
         ? null
         : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
     }] : []),
-    ...(categoryHasPairMatch(category.key) && pairableItems.length >= 3 ? [{
+    // Both card games unlock at MIN_PAIRS mastered concepts, not at one.
+    //
+    // At one or two the game opened, the server could not fill it from what the
+    // child had actually been taught, and the builders quietly dealt from the whole
+    // category instead — so a child met concepts for the first time inside an
+    // activity meant to consolidate what they knew, and the score was recorded as
+    // though it meant something. Measured against the real data, 14 of 24
+    // student/category pairs were being dealt that way.
+    //
+    // `masteredKeys` rather than a count is passed onward so the game screens have
+    // something true to fall back on when the server is unreachable.
+    ...(categoryHasPairMatch(category.key) && pairableItems.length >= MIN_PAIRS ? [{
       key:      'pairmatch',
       screen:   'ConceptPairMatch',
       icon:     'git-compare',
       title:    'Photo & Picture Match',
       subtitle: 'Match each photo to its drawing.',
-      // The screen asks the server which concepts to deal, so nothing about the
-      // selection is passed through navigation.
-      disabledReason: masteredCount >= 1
+      params:   { masteredKeys },
+      disabledReason: masteredCount >= MIN_PAIRS
         ? null
-        : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
+        : `Unlocks once you master ${MIN_PAIRS} ${category.label.toLowerCase()} concepts.`,
     }] : []),
-    ...(pairableItems.length >= 3 ? [{
+    ...(pairableItems.length >= MIN_PAIRS ? [{
       key:      'memory',
       screen:   'ConceptMemory',
       icon:     'grid',
       title:    'Memory Game',
       subtitle: 'Turn the cards over and find the pairs.',
-      disabledReason: masteredCount >= 1
+      params:   { masteredKeys },
+      disabledReason: masteredCount >= MIN_PAIRS
         ? null
-        : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
+        : `Unlocks once you master ${MIN_PAIRS} ${category.label.toLowerCase()} concepts.`,
     }] : []),
     ...(coloringItems.length > 0 ? [{
       key:      'coloring',

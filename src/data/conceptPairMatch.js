@@ -10,7 +10,14 @@ import { getConceptItemsForCategory, categoryHasPairMatch } from './conceptData'
 // Four pairs is eight cards — enough to be a game, few enough that each card
 // stays large and the board never scrolls.
 export const MAX_PAIRS = 4;
-const MIN_PAIRS = 3;
+
+// The floor for both card games, and the number the activity picker unlocks on.
+// Exported because three places have to agree on it — this builder, the memory
+// builder, and ConceptItemsScreen's picker — and when they disagreed the picker
+// offered games that could not be dealt from what the child had been taught.
+// Mirrored by MIN_GAME_CONCEPTS in the backend's activityService.js, which
+// carries the reasoning for why the floor is three and not two.
+export const MIN_PAIRS = 3;
 
 // One colour per pair. A matched photo and its drawing both take their pair's
 // colour, so the board becomes a readable record of what has been paired — with
@@ -64,7 +71,22 @@ export function buildPairMatchGame(categoryKey, conceptKeys = []) {
   const byKey    = new Map(pairable.map((i) => [i.key, i]));
   const selected = conceptKeys.map((k) => byKey.get(k)).filter(Boolean);
 
-  const chosen = (selected.length >= MIN_PAIRS ? selected : shuffle(pairable))
+  // Too few usable keys means the caller could not tell us what this child has
+  // been taught — the activity row was never opened, or the request failed. Return
+  // null so the screen can say so, rather than dealing a game.
+  //
+  // This used to fall back to `shuffle(pairable)`: the WHOLE category, chosen at
+  // random. The server's selection was discarded wholesale and the child was dealt
+  // concepts they had never been shown, inside an activity whose entire purpose is
+  // consolidating what they already know. Worse, the result was still recorded —
+  // ACTIVITY_FORMAT_CONFUSION edges and a score, written about concepts that were
+  // never taught, indistinguishable downstream from real evidence.
+  //
+  // The picker now gates this activity on MIN_PAIRS mastered concepts, so a short
+  // list here is an error condition and not the ordinary small-pool case.
+  if (selected.length < MIN_PAIRS) return null;
+
+  const chosen = selected
     .slice(0, MAX_PAIRS)
     .map((item, i) => ({ ...item, pairColor: PAIR_COLORS[i % PAIR_COLORS.length] }));
 

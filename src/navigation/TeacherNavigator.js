@@ -45,6 +45,9 @@ const stackOptions = {
 
 // The teacher workspace — reached via "Teacher Workspace". A single stack: the
 // dashboard is the entry point and navigates onward to the student screens.
+//
+// Every screen in here is portrait-locked; see the `TeacherMain` entry below for
+// why the lock is declared on the container rather than repeated per screen.
 function TeacherWorkspace() {
   return (
     <Stack.Navigator screenOptions={stackOptions}>
@@ -62,7 +65,22 @@ export default function TeacherNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WorkspaceSelect" component={WorkspaceSelectScreen} />
-      <Stack.Screen name="TeacherMain"     component={TeacherWorkspace} />
+      {/* Portrait for the whole teacher workspace — the dashboard and everything
+          it opens. These are dense reading screens (a report, a profile, tables of
+          chips) laid out as single columns, and they gain nothing from landscape
+          while a rotation mid-read costs the teacher their place.
+
+          Declared here rather than on each nested screen because react-native-
+          screens resolves a screen's orientation by walking up to the nearest
+          ancestor that sets one: the workspace's own screens leave it unset, so
+          they inherit this, and any screen added to the stack later is covered
+          without having to remember. The sibling routes below leave it unset too,
+          which is what keeps the child-facing activities free to rotate. */}
+      <Stack.Screen
+        name="TeacherMain"
+        component={TeacherWorkspace}
+        options={{ orientation: 'portrait' }}
+      />
       <Stack.Screen name="StudentPicker"    component={StudentPickerScreen} />
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
       <Stack.Screen name="AvatarSelection"    component={AvatarSelectionScreen} />

@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import PairMatchBoard from '../../../../components/concept/PairMatchBoard';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
-import { buildPairMatchGame, MAX_PAIRS } from '../../../../data/conceptPairMatch';
+import { buildPairMatchGame, MAX_PAIRS, MIN_PAIRS, getPairableItems } from '../../../../data/conceptPairMatch';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
 
@@ -33,7 +33,9 @@ const FINISH_DELAY_MS    = 1600;
  * lost. First-try matches are logged so the teacher still sees a real signal.
  */
 export default function ConceptPairMatchScreen({ route, navigation }) {
-  const { student, category } = route.params;
+  // masteredKeys comes from ConceptItemsScreen, which already knows what this
+  // child has been taught. Only used if startGameActivity fails.
+  const { student, category, masteredKeys = [] } = route.params;
 
   const theme = getAvatarTheme(student?.avatar_key);
 
@@ -70,9 +72,13 @@ export default function ConceptPairMatchScreen({ route, navigation }) {
         setGame(buildPairMatchGame(category.key, res.concept_keys || []));
       })
       .catch(() => {
-        // Unreachable server: fall back to a local deal rather than stranding
-        // the child on a spinner. The run simply is not recorded.
-        if (active) setGame(buildPairMatchGame(category.key, []));
+        // Unreachable server: deal from the concepts this screen was handed as
+        // mastered rather than stranding the child on a spinner. The run is not
+        // recorded, but it is still played on concepts they have been taught.
+        //
+        // This used to pass [], which sent the builder down a `shuffle(the whole
+        // category)` path — a game of concepts the child had never seen.
+        if (active) setGame(buildPairMatchGame(category.key, masteredKeys));
       })
       .finally(() => { if (active) setLoading(false); });
 
@@ -194,7 +200,12 @@ export default function ConceptPairMatchScreen({ route, navigation }) {
         <SafeAreaView style={[styles.safe, styles.centered]} edges={['top', 'bottom']}>
           <Ionicons name="images-outline" size={40} color={theme.headingText} />
           <Text style={[styles.emptyText, { color: theme.headingText }]}>
-            This category doesn't have enough pictures for matching yet.
+            {/* Two different reasons the builder returns null — missing artwork,
+                or too few concepts taught to this child yet. The second is the
+                ordinary one and resolves itself as they learn. */}
+            {getPairableItems(category.key).length < MIN_PAIRS
+              ? "This category doesn't have enough pictures for matching yet."
+              : `Master ${MIN_PAIRS} ${category.label.toLowerCase()} concepts to unlock this game.`}
           </Text>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: theme.button }]}

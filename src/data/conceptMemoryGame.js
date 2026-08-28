@@ -6,12 +6,11 @@
 //
 // Shares its card sourcing with conceptPairMatch so a category qualifies for
 // both activities on the same rule.
-import { getPairableItems, drawnImageFor } from './conceptPairMatch';
+import { getPairableItems, drawnImageFor, MIN_PAIRS } from './conceptPairMatch';
 
 // Four pairs is eight cards — a 4×2 grid of squares that fits one screen and
 // stays inside what a young child can hold in mind.
 export const MEMORY_PAIRS = 4;
-const MIN_PAIRS = 3;
 
 // One colour per pair, opening with the pair-match board's five so a child
 // meets the same visual language in both activities.
@@ -51,7 +50,12 @@ export function buildMemoryGame(categoryKey, conceptKeys = []) {
   const byKey    = new Map(pairable.map((i) => [i.key, i]));
   const selected = conceptKeys.map((k) => byKey.get(k)).filter(Boolean);
 
-  const chosen = (selected.length >= MIN_PAIRS ? selected : shuffle(pairable))
+  // Null rather than a random deal — see the matching note in conceptPairMatch.js.
+  // A board dealt from the whole category teaches nothing and still writes a score
+  // and confusion edges about concepts the child has never been shown.
+  if (selected.length < MIN_PAIRS) return null;
+
+  const chosen = selected
     .slice(0, MEMORY_PAIRS)
     .map((item, i) => ({ ...item, pairColor: PAIR_COLORS[i % PAIR_COLORS.length] }));
 

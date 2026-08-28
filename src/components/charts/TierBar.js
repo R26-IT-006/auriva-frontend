@@ -1,14 +1,28 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { ROUND } from '../../constants/teacherWording';
 
-// Tier 1 → 3 reads as a progression, so the segments deepen rather than switching
-// hue. Tier 3 is exposure (a video with no assessment), which is why it is the
-// palest of the three despite being furthest along.
+// A sequential ramp — ONE hue, stepped by lightness — not three separate colours.
+//
+// The comment here used to say the segments "deepen rather than switching hue",
+// but the values were blue / green / pale-blue: three hues pretending to be a
+// progression. Two of them also failed outright as a palette — #9BC9E8 sat at
+// chroma 0.065, which reads as grey rather than as a colour, and carried 1.76:1
+// against white, so the segment was nearly invisible on the track.
+//
+// These are nested subsets (you cannot know the word without finding the picture),
+// which is the textbook case for sequential: same hue, more-is-darker. Lightness
+// falls 0.705 → 0.351 → 0.118, strictly monotonic, so the three read in order even
+// in greyscale or print.
+//
+// Darkness tracks how much the round demonstrates, NOT how far along it is. The
+// word round is the strongest evidence so it is darkest; the video is exposure with
+// no assessment, so it stays palest despite being last.
 export const TIER_COLORS = {
-  tier1: '#5B7EE0',
-  tier2: '#52C07C',
-  tier3: '#9BC9E8',
+  tier1: '#57B183',   // finds the picture — 2.62:1
+  tier2: '#1B6E45',   // knows the word — 6.24:1, the strongest evidence
+  tier3: '#BFE3CE',   // watched the video — palest: exposure, not mastery
 };
 
 /**
@@ -41,10 +55,12 @@ export function TierBar({ total, tier1 = 0, tier2 = 0, tier3 = 0, label, right, 
 
 /** Colour key. Rendered once per screen, not per bar. */
 export function TierLegend() {
+  // Wording comes from constants/teacherWording so the legend, the report and the
+  // profile cannot drift into three different names for the same round.
   const items = [
-    ['Identify', TIER_COLORS.tier1],
-    ['Name',     TIER_COLORS.tier2],
-    ['Watched',  TIER_COLORS.tier3],
+    [ROUND.tier1.label, TIER_COLORS.tier1],
+    [ROUND.tier2.label, TIER_COLORS.tier2],
+    [ROUND.tier3.label, TIER_COLORS.tier3],
   ];
   return (
     <View style={styles.legend}>

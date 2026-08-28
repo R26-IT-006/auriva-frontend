@@ -14,6 +14,7 @@ import * as Speech from 'expo-speech';
 import MemoryFlipBoard from '../../../../components/concept/MemoryFlipBoard';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { buildMemoryGame, MEMORY_PAIRS } from '../../../../data/conceptMemoryGame';
+import { getPairableItems, MIN_PAIRS } from '../../../../data/conceptPairMatch';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
 
@@ -38,7 +39,9 @@ const PEEK_MS = 1100;
  * logged so the teacher still sees a real signal.
  */
 export default function ConceptMemoryScreen({ route, navigation }) {
-  const { student, category } = route.params;
+  // masteredKeys comes from ConceptItemsScreen, which already knows what this
+  // child has been taught. Only used if startGameActivity fails.
+  const { student, category, masteredKeys = [] } = route.params;
 
   const theme = getAvatarTheme(student?.avatar_key);
   const { width, height } = useWindowDimensions();
@@ -76,9 +79,13 @@ export default function ConceptMemoryScreen({ route, navigation }) {
         setGame(buildMemoryGame(category.key, res.concept_keys || []));
       })
       .catch(() => {
-        // Unreachable server: fall back to a local deal rather than stranding
-        // the child on a spinner. The run simply is not recorded.
-        if (active) setGame(buildMemoryGame(category.key, []));
+        // Unreachable server: deal from the concepts this screen was handed as
+        // mastered rather than stranding the child on a spinner. The run is not
+        // recorded, but it is still played on concepts they have been taught.
+        //
+        // This used to pass [], which sent the builder down a `shuffle(the whole
+        // category)` path — a game of concepts the child had never seen.
+        if (active) setGame(buildMemoryGame(category.key, masteredKeys));
       })
       .finally(() => { if (active) setLoading(false); });
 
@@ -231,7 +238,13 @@ export default function ConceptMemoryScreen({ route, navigation }) {
         <SafeAreaView style={[styles.safe, styles.centered]} edges={['top', 'bottom']}>
           <Ionicons name="images-outline" size={40} color={theme.headingText} />
           <Text style={[styles.emptyText, { color: theme.headingText }]}>
-            This category doesn't have enough pictures for a memory game yet.
+            {/* Two different reasons the builder returns null, and they need
+                different answers: the category may not have the artwork, or this
+                child may not have been taught enough concepts yet. The second is
+                the ordinary one and it resolves itself as they learn. */}
+            {getPairableItems(category.key).length < MIN_PAIRS
+              ? "This category doesn't have enough pictures for a memory game yet."
+              : `Master ${MIN_PAIRS} ${category.label.toLowerCase()} concepts to unlock the memory game.`}
           </Text>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: theme.button }]}
