@@ -19,7 +19,8 @@
  * a screen-specific rewording of an existing key silently doubles the recording
  * work, which is the reason to keep this list short.
  *
- * NO AUDIO IS WIRED UP YET. This module holds text only.
+ * Audio is resolved separately by handwritingInstructionAudio.js using these
+ * same stable keys. This module remains the only source of visible copy.
  *
  * ── Scope ────────────────────────────────────────────────────────────────
  * The PRIMARY instruction shown before/during an activity — what the child is

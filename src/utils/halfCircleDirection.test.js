@@ -275,12 +275,12 @@ describe('the cycle-3 lead-in', () => {
     expect(style('leadInSi')).toMatch(/fontFamily: 'Nunito_600SemiBold'/);
   });
 
-  it('§9 audio — exactly one spoken instruction, still the task one', () => {
-    // Two overlapping utterances would be worse than none, so the lead-in is
-    // visual only and Speech is untouched.
-    expect((code.match(/Speech\.speak\(/g) || []).length).toBe(2);
-    expect(code).not.toMatch(/Speech\.speak\(REMEDIATION_LEAD_IN/);
-    expect(code).toMatch(/Speech\.speak\(PRE_WRITING_INSTRUCTION\.en, ukSpeechOptions\(\)\)/);
+  it('§9 audio — the fixed task instruction uses one prerecorded bilingual clip', () => {
+    // The remediation lead-in remains visual-only. FOLLOW_PATH owns the one
+    // auto-play/replay path and no normal fixed-instruction TTS remains.
+    expect((code.match(/Speech\.speak\(/g) || []).length).toBe(0);
+    expect(code).toMatch(/useInstructionAudio\(INSTRUCTION_KEYS\.FOLLOW_PATH/);
+    expect(code).toMatch(/fallbackText:\s*PRE_WRITING_INSTRUCTION\.en/);
   });
 
   it('the copy is the approved bilingual pair', () => {

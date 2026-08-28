@@ -44,7 +44,8 @@ import { useLockLandscape } from '../../../utils/useOrientationLock';
 // render the SAME component, in different modes.
 import WordWritingStage from '../../../components/handwriting/WordWritingStage';
 import AttemptAvatarFeedback from '../AttemptAvatarFeedback';
-import { instructionForSupport } from '../../../constants/childInstructions';
+import { instructionForSupport, SUPPORT_INSTRUCTION_KEY } from '../../../constants/childInstructions';
+import { useInstructionAudioState } from '../../../utils/useInstructionAudio';
 import {
   PAD, COL_L, IMG_SIZE, CANVAS_W, CANVAS_H, LINE_1, LINE_2, LINE_3, LINE_4,
   WORD_SCREEN_W,
@@ -196,6 +197,19 @@ export default function WordWritingScreen({ route, navigation }) {
   });
 
   const [attempt,       setAttempt]       = useState(1);
+  const supportLevel = ATTEMPT_SUPPORT_LEVEL[attempt];
+  const { replay: replayInstruction, instructionPlaying } = useInstructionAudioState(
+    SUPPORT_INSTRUCTION_KEY[supportLevel],
+    {
+      autoPlay: true,
+      autoPlayToken: `${wordEntry?.word ?? selectedLetter}:${attempt}`,
+      fallbackText: instructionForSupport(supportLevel).en,
+    },
+  );
+  const canWriteRef = useRef(false);
+  canWriteRef.current = !instructionPlaying;
+  const targetSpokenAttemptRef = useRef(false);
+  useEffect(() => { targetSpokenAttemptRef.current = false; }, [wordEntry?.word, attempt]);
   const [currentPath,   setCurrentPath]   = useState([]);
   const [allPaths,      setAllPaths]      = useState([]);
   // Clear follows the CANVAS, not the session: it appears with the
@@ -463,6 +477,13 @@ export default function WordWritingScreen({ route, navigation }) {
 
   const spellWordRef = useRef(spellWord);
   spellWordRef.current = spellWord;
+  const replaySupportInstruction = useCallback(() => {
+    spellCancelRef.current = true;
+    spellTimersRef.current.forEach(clearTimeout);
+    spellTimersRef.current = [];
+    Speech.stop();
+    return replayInstruction();
+  }, [replayInstruction]);
 
   // Bounce image in on each new word
   useEffect(() => {
@@ -498,9 +519,10 @@ export default function WordWritingScreen({ route, navigation }) {
   // â”€â”€ PanResponder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder:  () => true,
+      onStartShouldSetPanResponder: () => canWriteRef.current,
+      onMoveShouldSetPanResponder:  () => canWriteRef.current,
       onPanResponderGrant: (evt) => {
+        if (!canWriteRef.current) return;
         stopGuideRef.current?.();  // first touch cancels the idle replay
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
@@ -511,7 +533,10 @@ export default function WordWritingScreen({ route, navigation }) {
           inset: CANVAS_BORDER_WIDTH,
         });
         setCurrentPath([{ x, y, t: 0 }]);
-        if (allPathsRef.current.length === 0) spellWordRef.current?.();
+        if (!targetSpokenAttemptRef.current) {
+          targetSpokenAttemptRef.current = true;
+          spellWordRef.current?.();
+        }
       },
       onPanResponderMove: (evt) => {
         const { x, y } = mapTouchToCanvas({
@@ -690,6 +715,7 @@ export default function WordWritingScreen({ route, navigation }) {
           spelling={spelling}
           badge={badge}
           instruction={instructionForSupport(ATTEMPT_SUPPORT_LEVEL[attempt])}
+          onPlayInstruction={replaySupportInstruction}
           guideOpacity={guideOpacity}
           guidePathD={guidePathD}
           guideDots={guideDots}
@@ -704,7 +730,8 @@ export default function WordWritingScreen({ route, navigation }) {
           tracerVisible={tracerVisible}
           tracerXInterp={tracerXInterp}
           tracerYInterp={tracerYInterp}
-          onSpeakWord={() => spellWordRef.current?.()}
+          onSpeakWord={instructionPlaying ? undefined : () => spellWordRef.current?.()}
+          canvasPointerEvents={instructionPlaying ? 'none' : 'auto'}
           canvasRef={canvasRef}
           onCanvasLayout={measureCanvasOrigin}
           panHandlers={panResponder.panHandlers}

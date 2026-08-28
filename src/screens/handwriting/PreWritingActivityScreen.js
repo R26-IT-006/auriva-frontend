@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Polyline, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
 import { useLearningSessionActivity } from '../../context/LearningSessionContext';
 import BreakPromptModal from '../../components/handwriting/BreakPromptModal';
 import { LIVE_ACTIVITY_TYPES } from '../../constants/liveSessionPolicy';
@@ -30,8 +29,8 @@ import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { useLockLandscape } from '../../utils/useOrientationLock';
-import { SPEECH_LOCALE_EN, ukSpeechOptions } from '../../constants/speechLocale';
 import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
+import { useInstructionAudio } from '../../utils/useInstructionAudio';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -236,6 +235,14 @@ export default function PreWritingActivityScreen({ route, navigation }) {
 
   const activity     = activities[activityIndex];
   const isLastActivity = activityIndex === activities.length - 1;
+  const replayInstruction = useInstructionAudio(INSTRUCTION_KEYS.FOLLOW_PATH, {
+    autoPlay: true,
+    autoPlayToken: activity?.id ?? activityIndex,
+    delayMs: 300,
+    // A failed local-media load must not crash or hide the approved text. Only
+    // that exceptional path may reuse the former English TTS.
+    fallbackText: PRE_WRITING_INSTRUCTION.en,
+  });
 
   // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
   // Prewriting has no case_type/support_level concept, so only current_item
@@ -333,13 +340,9 @@ export default function PreWritingActivityScreen({ route, navigation }) {
     pulseLoopRef.current = pulseLoop;
     pulseLoop.start();
 
-    const t = setTimeout(() => { Speech.speak(PRE_WRITING_INSTRUCTION.en, ukSpeechOptions()); }, 300);
-
     return () => {
       pointerLoop.stop();
       pulseLoop.stop();
-      clearTimeout(t);
-      Speech.stop();
     };
   }, [activity, animValue, pulseAnim]);
 
@@ -522,7 +525,7 @@ export default function PreWritingActivityScreen({ route, navigation }) {
                   <Text style={styles.instructionSi}>{PRE_WRITING_INSTRUCTION.si}</Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => Speech.speak(PRE_WRITING_INSTRUCTION.en, ukSpeechOptions())}
+                  onPress={replayInstruction}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   style={[styles.speakerBtn, { backgroundColor: theme.button + '18' }]}
                   activeOpacity={0.7}

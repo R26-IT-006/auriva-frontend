@@ -529,8 +529,8 @@ describe('word writing', () => {
 });
 
 describe('word activities', () => {
-  const block = wordActivity.slice(wordActivity.indexOf('const currentExercise'),
-    wordActivity.indexOf('const currentExercise') + 1600);
+  const demoStart = wordActivity.indexOf('useDemoDetour({');
+  const block = wordActivity.slice(demoStart, demoStart + 1400);
 
   it('only Exercise D gets a demo', () => {
     expect(block).toMatch(/enabled: currentExercise === 'D'/);
@@ -777,7 +777,7 @@ describe('the demo renders the real activity, not a substitute', () => {
     for (const src of [letterScreen, upperScreen]) {
       expect(src).not.toMatch(/^const SUPPORT_BADGE = \{/m);
       expect(src).toMatch(/SUPPORT_BADGE,/);
-      expect(src).toMatch(/import \{ instructionForSupport \} from '[^']*childInstructions'/);
+      expect(src).toMatch(/import \{[^}]*instructionForSupport[^}]*\} from '[^']*childInstructions'/);
       expect(src).not.toMatch(/SUPPORT_INSTRUCTIONS|SUPPORT_HINTS/);
     }
   });

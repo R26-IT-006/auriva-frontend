@@ -42,6 +42,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native
 import Svg, { Line, Path, Circle, Polyline, Polygon, Text as SvgText } from 'react-native-svg';
 import { writeLetterInstruction } from '../../constants/childInstructions';
 import { Ionicons } from '@expo/vector-icons';
+import InstructionReplayButton from './InstructionReplayButton';
 
 import { normalizeStrokes } from '../../utils/dtw';
 import { SUPPORT_LEVELS } from '../../constants/handwritingSupportLevels';
@@ -139,7 +140,7 @@ export const LETTER_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'd
  *   tracerVisible?: boolean, tracerXInterp?: any, tracerYInterp?: any,
  *   badge: {bg: string, border: string, text: string},
  *   instruction: {en: string, si: string},
- *   onPlaySound?: () => void,
+ *   onPlaySound?: () => void, onPlayInstruction?: () => void,
  *   canvasRef?: any, onCanvasLayout?: () => void,
  *   panHandlers?: object,         // practice only — never spread in demo mode
  *   canvasPointerEvents?: 'auto'|'none',
@@ -166,6 +167,7 @@ export default function LetterWritingStage({
   badge,
   instruction,
   onPlaySound,
+  onPlayInstruction,
   canvasRef = null,
   onCanvasLayout,
   panHandlers = null,
@@ -229,8 +231,15 @@ export default function LetterWritingStage({
 
         {/* Attempt badge */}
         <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-          <Text style={[styles.attemptTitle, { color: badge.text }]}>{instruction?.en}</Text>
-          <Text style={[styles.attemptHint, { color: badge.text }]}>{instruction?.si}</Text>
+          <View style={styles.attemptTexts}>
+            <Text style={[styles.attemptTitle, { color: badge.text }]}>{instruction?.en}</Text>
+            <Text style={[styles.attemptHint, { color: badge.text }]}>{instruction?.si}</Text>
+          </View>
+          <InstructionReplayButton
+            onPress={onPlayInstruction}
+            color={badge.text}
+            backgroundColor={badge.border + '35'}
+          />
         </View>
 
         {/* Writing canvas — canvasOuter wraps the card so the tracer dot
@@ -485,7 +494,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
+
+  attemptTexts: { flex: 1, alignItems: 'center' },
 
   // Sub-instruction — the same size on every writing surface.
   attemptTitle: {

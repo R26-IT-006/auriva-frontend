@@ -18,6 +18,9 @@ import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstr
 import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
 import { SUPPORT_IMAGE_COMPACT, supportImageFrameStyle } from './wordActivityLayout';
 import { actionRowMinHeight } from '../../constants/writingActionRow';
+import * as Speech from 'expo-speech';
+import { SPEECH_LOCALE_EN } from '../../constants/speechLocale';
+import { spokenWord } from '../../utils/wordSpeech';
 
 // Shared with every other screen that asks for this action, so the child
 // hears one sentence for one task — and one future recording covers it.
@@ -46,7 +49,7 @@ const LINE_2 = Math.round(CANVAS_H * 0.37);
 const LINE_3 = Math.round(CANVAS_H * 0.64);
 const LINE_4 = Math.round(CANVAS_H * 0.92);
 
-export default function ExerciseE_WriteWord({ wordEntry, theme, student, onComplete }) {
+export default function ExerciseE_WriteWord({ wordEntry, theme, student, onComplete, canWrite = true }) {
   const { word, emoji, imageKey } = wordEntry;
   const { notifyStrokeStart, notifyStrokeEnd } = useLearningSession();
   const [currentPath, setCurrentPath] = useState([]);
@@ -61,6 +64,11 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
   const [submitting, setSubmitting] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const actionIdRef = useRef(null);
+  const canWriteRef = useRef(canWrite);
+  canWriteRef.current = canWrite;
+  const doneRef = useRef(done);
+  doneRef.current = done;
+  const targetSpokenRef = useRef(false);
   const startTimeRef = useRef(null);
   // Border-touch bug fix — see touchPointSanitize.js / WordWritingScreen.js.
   const canvasRef       = useRef(null);
@@ -99,9 +107,10 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !done,
-      onMoveShouldSetPanResponder: () => !done,
+      onStartShouldSetPanResponder: () => canWriteRef.current && !doneRef.current,
+      onMoveShouldSetPanResponder: () => canWriteRef.current && !doneRef.current,
       onPanResponderGrant: (evt) => {
+        if (!canWriteRef.current || doneRef.current) return;
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
         const { x, y } = mapTouchToCanvas({
@@ -111,6 +120,14 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
           inset: CANVAS_BORDER_WIDTH,
         });
         setCurrentPath([{ x, y, t: 0 }]);
+        if (!targetSpokenRef.current) {
+          targetSpokenRef.current = true;
+          const spoken = spokenWord(wordEntry);
+          if (spoken) {
+            Speech.stop();
+            Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
+          }
+        }
       },
       onPanResponderMove: (evt) => {
         const { x, y } = mapTouchToCanvas({
@@ -198,6 +215,7 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
           ref={canvasRef}
           onLayout={measureCanvasOrigin}
           {...panResponder.panHandlers}
+          pointerEvents={canWrite ? 'auto' : 'none'}
           accessible
           accessibilityLabel="Word handwriting practice area"
         >

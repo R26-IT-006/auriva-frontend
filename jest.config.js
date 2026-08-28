@@ -23,7 +23,7 @@ module.exports = {
   // Node cannot read a .jpg, so without this any test importing
   // constants/wordImages.js fails at import and that map stays untestable.
   moduleNameMapper: {
-    '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/imageAssetMock.js',
+    '\\.(jpg|jpeg|png|gif|webp|svg|mp4)$': '<rootDir>/__mocks__/imageAssetMock.js',
   },
   transformIgnorePatterns: ['/node_modules/(?!expo/virtual/)'],
 };

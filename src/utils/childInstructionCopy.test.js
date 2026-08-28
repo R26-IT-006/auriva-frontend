@@ -158,13 +158,15 @@ describe('pre-writing shows ONE primary instruction', () => {
     expect(code).toMatch(/<GuideActivity activity=\{activity\} theme=\{theme\} \/>/);
   });
 
-  it('TTS speaks the new primary instruction, and is otherwise unchanged', () => {
+  it('prerecorded audio plays the primary instruction without normal-path fixed TTS', () => {
     // Same two calls, same 300ms delay, same speaker button — new text.
     // The British locale was added afterwards; timing and call count are what
     // this asserts, plus that the text is the new primary instruction.
-    expect(code).toMatch(/setTimeout\(\(\) => \{ Speech\.speak\(PRE_WRITING_INSTRUCTION\.en, ukSpeechOptions\(\)\); \}, 300\)/);
-    expect(code).toMatch(/onPress=\{\(\) => Speech\.speak\(PRE_WRITING_INSTRUCTION\.en, ukSpeechOptions\(\)\)\}/);
-    expect((code.match(/Speech\.speak\(/g) || []).length).toBe(2);
+    expect(code).toMatch(/useInstructionAudio\(INSTRUCTION_KEYS\.FOLLOW_PATH/);
+    expect(code).toMatch(/autoPlay:\s*true/);
+    expect(code).toMatch(/onPress=\{replayInstruction\}/);
+    expect(code).not.toMatch(/Speech\.speak\(PRE_WRITING_INSTRUCTION/);
+    expect((code.match(/Speech\.speak\(/g) || []).length).toBe(0);
     expect(code).not.toMatch(/Speech\.speak\(activity\./);
   });
 });
@@ -196,7 +198,7 @@ describe('letter writing shows the target and one support instruction', () => {
   it.each([[LOWERCASE], [UPPERCASE]])('%s passes the shared instruction', (rel) => {
     const code = readCode(rel);
     expect(code).toMatch(/instruction=\{instructionForSupport\(supportLevel\)\}/);
-    expect(code).toMatch(/import \{ instructionForSupport \} from '[^']*childInstructions'/);
+    expect(code).toMatch(/import \{[^}]*instructionForSupport[^}]*\} from '[^']*childInstructions'/);
   });
 
   it.each([[LOWERCASE], [UPPERCASE], [LETTER_STAGE], [WORD_SCREEN], [WORD_STAGE]])(

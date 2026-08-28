@@ -241,8 +241,8 @@ describe('the spoken letter is the visible letter', () => {
     // `sequence` is runtimeSequence ?? effectiveSequence ?? baseSequence, and
     // effectiveSequence is null until the mastered-letter read resolves — so
     // before that, `letter` is the pre-filter letter the child never sees.
-    expect(code).toMatch(/if \(!masteredSequenceReady \|\| !letterObj\) return undefined;/);
-    expect(code).toMatch(/\}, \[letter, letterObj, masteredSequenceReady\]\);/);
+    expect(code).toMatch(/const instructionKey = masteredSequenceReady && letterObj/);
+    expect(code).toMatch(/autoPlay: Boolean\(instructionKey\)/);
   });
 
   it.each([[LOWERCASE, "'a'"], [UPPERCASE, "'A'"]])(
@@ -255,7 +255,7 @@ describe('the spoken letter is the visible letter', () => {
       // pre-filter letter. It stays as a render-safety default only.
       expect(code.replace(/\s+/g, ' '))
         .toContain(`const letter = letterObj?.letter ?? ${fallback};`);
-      expect(code).toMatch(/Speech\.speak\(letter\.toUpperCase\(\)/);
+      expect(code).toMatch(/Speech\.speak\(spoken\.toUpperCase\(\)/);
     });
 
   it.each([[LOWERCASE], [UPPERCASE]])('%s never speaks a route param or a cached letter', (rel) => {

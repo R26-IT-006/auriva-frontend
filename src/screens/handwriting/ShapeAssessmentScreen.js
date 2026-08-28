@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line, Circle, Polyline, Path, G, Defs, Marker } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import * as Speech from 'expo-speech';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 // computeDTW / normalizeStrokesForDTW / normalizePointsForDTW previously
@@ -43,6 +43,7 @@ import {
 } from '../../utils/collectionSession';
 import { useLockLandscape } from '../../utils/useOrientationLock';
 import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
+import { SPEECH_LOCALE_EN } from '../../constants/speechLocale';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -124,16 +125,6 @@ const SHAPES = [
     pageLabel: 'Assessment 6 of 6',
   },
 ];
-
-
-const SHAPE_AUDIO = {
-  horizontal_line: require('../../../assets/handwriting_instructions/horizontal_line.mp3'),
-  vertical_line:   require('../../../assets/handwriting_instructions/vertical_line.mp3'),
-  full_circle:     require('../../../assets/handwriting_instructions/circle.mp3'),
-  half_circle:     require('../../../assets/handwriting_instructions/curved.mp3'),
-  zigzag:          require('../../../assets/handwriting_instructions/zig_zag.mp3'),
-  curve_wave:      require('../../../assets/handwriting_instructions/wave.mp3'),
-};
 
 // ─── Animated pointer path sampling ───────────────────────────────────────────
 // computePathPoints moved to utils/unifiedShapeScoreMirror.js as
@@ -296,7 +287,6 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const pulseAnim            = useRef(new Animated.Value(0)).current;
   const bgAnim               = useRef(new Animated.Value(0)).current;
   const pulseLoopRef         = useRef(null);
-  const soundRef             = useRef(null);
   const strokeIdCounter      = useRef(0);  // ML: counts strokes within the current shape
 
   const currentShape = SHAPES[currentShapeIndex];
@@ -322,16 +312,17 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     [bgAnim],
   );
 
-  const playShapeAudio = useCallback(async (shapeId) => {
-    try {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-      const { sound } = await Audio.Sound.createAsync(SHAPE_AUDIO[shapeId]);
-      soundRef.current = sound;
-      await sound.playAsync();
-    } catch (_) {}
+  // Shape instructions are dynamic assessment copy, not any of the nine fixed
+  // handwriting instruction keys. Keep the existing autoplay/replay controls
+  // functional without inventing or statically requiring shape MP3 assets.
+  const speakShapeInstruction = useCallback((shape) => {
+    if (!shape?.instruction) return;
+    Speech.stop();
+    Speech.speak(shape.instruction, {
+      rate: 0.82,
+      pitch: 1.0,
+      language: SPEECH_LOCALE_EN,
+    });
   }, []);
 
   useEffect(() => {
@@ -416,13 +407,13 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     pulseLoop.start();
 
     const shape = SHAPES[currentShapeIndex];
-    const t = setTimeout(() => { playShapeAudio(shape.id); }, 300);
+    const t = setTimeout(() => { speakShapeInstruction(shape); }, 300);
 
     return () => {
       pointerLoop.stop();
       pulseLoop.stop();
       clearTimeout(t);
-      if (soundRef.current) { soundRef.current.unloadAsync(); soundRef.current = null; }
+      Speech.stop();
     };
   }, [currentShapeIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -520,13 +511,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   }, []);
 
   const handleNext = useCallback(async () => {
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-      } catch (_) {}
-      soundRef.current = null;
-    }
+    Speech.stop();
     const idx = currentShapeIndexRef.current;
     const shapeId = SHAPES[idx].id;
     const shapeData = {
@@ -646,7 +631,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
             pulseOpacity={pulseOpacity}
             pointerLeft={pointerLeft}
             pointerTop={pointerTop}
-            onSpeak={() => playShapeAudio(currentShape.id)}
+            onSpeak={() => speakShapeInstruction(currentShape)}
             canvasRef={canvasRef}
             onCanvasLayout={measureCanvasOrigin}
             panHandlers={panResponder.panHandlers}

@@ -27,7 +27,6 @@ const SPEAKING = [
   LOWERCASE, UPPERCASE,
   '../screens/handwriting/words/WordWritingScreen.js',
   '../screens/handwriting/words/WordActivityScreen.js',
-  '../screens/handwriting/PreWritingActivityScreen.js',
   '../context/LearningSessionContext.js',
 ];
 
@@ -235,10 +234,13 @@ describe('speech asks for British English', () => {
     }
   });
 
-  it('the pre-writing instruction, which used to pass no options at all, now does', () => {
-    const code = readCode('../screens/handwriting/PreWritingActivityScreen.js');
-    expect((code.match(/ukSpeechOptions\(\)/g) || []).length).toBe(2);
-    expect(code).not.toMatch(/Speech\.speak\(PRE_WRITING_INSTRUCTION\.en\)/);
+  it('the pre-writing recording fallback still uses British English', () => {
+    const screen = readCode('../screens/handwriting/PreWritingActivityScreen.js');
+    const hook = readCode('./useInstructionAudio.js');
+    expect(screen).not.toMatch(/Speech\.speak\(PRE_WRITING_INSTRUCTION/);
+    expect(screen).toMatch(/fallbackText:\s*PRE_WRITING_INSTRUCTION\.en/);
+    expect(hook).toMatch(/Speech\.speak\(fallbackText, \{/);
+    expect(hook).toMatch(/\.\.\.ukSpeechOptions\(\)/);
   });
 
   it('Sinhala speech is untouched', () => {
@@ -313,7 +315,7 @@ describe('SENTINEL — pronunciation only', () => {
   it('what gets SPOKEN for a letter is still the letter, not its transcription', () => {
     for (const rel of [LOWERCASE, UPPERCASE]) {
       const code = readCode(rel);
-      expect(code).toMatch(/Speech\.speak\(letter\.toUpperCase\(\)/);
+      expect(code).toMatch(/Speech\.speak\(spoken\.toUpperCase\(\)/);
       expect(code).not.toMatch(/Speech\.speak\(phonetic/);
     }
   });

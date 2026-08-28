@@ -125,7 +125,7 @@ describe('§4 / §5 — press time, and word change only', () => {
   const code = readCode(WORD_A);
 
   it('§4 the speaker resolves the word inside its handler', () => {
-    expect(code).toMatch(/onPress=\{\(\) => \{\s*const spoken = spokenWord\(currentWord\);/);
+    expect(code).toMatch(/onPress=\{\(\) => \{[\s\S]{0,180}const spoken = spokenWord\(currentWord\);/);
     expect(code).toMatch(/if \(!spoken\) return;/);
   });
 
@@ -158,7 +158,7 @@ describe('§4 / §5 — press time, and word change only', () => {
   it('§8 Word Writing speaks the word it displays', () => {
     const w = readCode(WORD_W);
     // The stage's speaker calls back into the screen's current spellWord.
-    expect(w).toMatch(/onSpeakWord=\{\(\) => spellWordRef\.current\?\.\(\)\}/);
+    expect(w).toMatch(/onSpeakWord=\{instructionPlaying \? undefined : \(\) => spellWordRef\.current\?\.\(\)\}/);
     expect(w).toMatch(/spellWordRef\.current = spellWord;/);
     expect(w).toMatch(/const spellWord = useCallback\(\(w = word\) => \{/);
     expect(w).toMatch(/\}, \[word\]\);/);

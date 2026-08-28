@@ -32,6 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import WordImageDisplay from '../word/WordImageDisplay';
 import { writeWordInstruction } from '../../constants/childInstructions';
+import InstructionReplayButton from './InstructionReplayButton';
 import {
   PAD, COL_L, IMG_SIZE, CANVAS_W, CANVAS_H, LINE_1, LINE_2, LINE_3, LINE_4,
 } from '../../constants/wordCanvasLayout';
@@ -52,8 +53,9 @@ export const WORD_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'dem
  *   activeStrokeDesc?: object|null, activeDirectionHint?: object|null,
  *   allPaths?: Array, currentPath?: Array, hasDrawn?: boolean,
  *   tracerVisible?: boolean, tracerXInterp?: any, tracerYInterp?: any,
- *   onSpeakWord?: () => void,
+ *   onSpeakWord?: () => void, onPlayInstruction?: () => void,
  *   canvasRef?: any, onCanvasLayout?: () => void, panHandlers?: object,
+ *   canvasPointerEvents?: 'auto'|'none',
  * }} props
  */
 export default function WordWritingStage({
@@ -82,9 +84,11 @@ export default function WordWritingStage({
   tracerXInterp = null,
   tracerYInterp = null,
   onSpeakWord,
+  onPlayInstruction,
   canvasRef = null,
   onCanvasLayout,
   panHandlers = null,
+  canvasPointerEvents = 'auto',
 }) {
 
   // The word is passed through unchanged — this only wraps it in the
@@ -96,7 +100,7 @@ export default function WordWritingStage({
   // attached, so there is nothing to accidentally re-enable.
   const canvasTouchProps = isDemo
     ? { pointerEvents: 'none' }
-    : { ref: canvasRef, onLayout: onCanvasLayout, ...(panHandlers ?? {}) };
+    : { pointerEvents: canvasPointerEvents, ref: canvasRef, onLayout: onCanvasLayout, ...(panHandlers ?? {}) };
 
   const drawnPaths = isDemo ? [] : allPaths;
   const livePath   = isDemo ? [] : currentPath;
@@ -160,8 +164,15 @@ export default function WordWritingStage({
               instruction line the practice screen uses. The screen resolves
               it from constants/childInstructions.js, so both say the same
               words for the same support level. */}
-          <Text style={[styles.attemptTitle, { color: badge.text }]}>{instruction?.en}</Text>
-          <Text style={[styles.attemptHint, { color: badge.text }]}>{instruction?.si}</Text>
+          <View style={styles.attemptTexts}>
+            <Text style={[styles.attemptTitle, { color: badge.text }]}>{instruction?.en}</Text>
+            <Text style={[styles.attemptHint, { color: badge.text }]}>{instruction?.si}</Text>
+          </View>
+          <InstructionReplayButton
+            onPress={onPlayInstruction}
+            color={badge.text}
+            backgroundColor={badge.border + '35'}
+          />
         </View>
 
         {/* Writing canvas — canvasOuter wraps the card so the tracer dot
@@ -423,7 +434,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
+
+  attemptTexts: { flex: 1, alignItems: 'center' },
 
   // Sub-instruction — the same size on every writing surface.
   attemptTitle: {

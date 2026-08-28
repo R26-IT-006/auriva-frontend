@@ -52,6 +52,9 @@ import AttemptAvatarFeedback from '../AttemptAvatarFeedback';
 import ResultGifFeedback from '../../../components/feedback/ResultGifFeedback';
 import { RESULT_GIF_MS } from '../../../constants/resultGifFeedback';
 import { spokenWord } from '../../../utils/wordSpeech';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../../constants/childInstructions';
+import { useInstructionAudioState } from '../../../utils/useInstructionAudio';
+import InstructionReplayButton from '../../../components/handwriting/InstructionReplayButton';
 
 // The same dwell the letter screens give their feedback.
 const ATTEMPT_FEEDBACK_MS = 2200;
@@ -70,6 +73,14 @@ const EXERCISE_LABELS = {
   D: 'Spell It!',
   E: 'Write the Word',
 };
+
+const EXERCISE_INSTRUCTION_KEY = Object.freeze({
+  A: INSTRUCTION_KEYS.CHOOSE_FIRST_LETTER,
+  B: INSTRUCTION_KEYS.CHOOSE_PICTURE,
+  C: INSTRUCTION_KEYS.CHOOSE_MISSING_LETTER,
+  D: INSTRUCTION_KEYS.MAKE_WORD,
+  E: INSTRUCTION_KEYS.WRITE_WORD,
+});
 
 // ─── Status display config ────────────────────────────────────────────────────
 
@@ -152,6 +163,20 @@ export default function WordActivityScreen({ route, navigation }) {
   // Arranging letter tiles into an order is genuinely new, so it is shown
   // once, the first time the child reaches it.
   const currentExercise = EXERCISES[exIdx];
+  const { replay: replayInstruction, instructionPlaying } = useInstructionAudioState(
+    EXERCISE_INSTRUCTION_KEY[currentExercise],
+    {
+      autoPlay: currentExercise === 'E',
+      autoPlayToken: currentExercise === 'E' ? `${currentWord?.word ?? ''}:E` : null,
+      fallbackText: currentExercise === 'E'
+        ? CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.WRITE_WORD].en
+        : '',
+    },
+  );
+  const replayCurrentInstruction = useCallback(() => {
+    if (currentExercise === 'E') Speech.stop();
+    return replayInstruction();
+  }, [currentExercise, replayInstruction]);
   const spellDemoLetters = useMemo(
     () => (currentWord?.word ?? '').replace(/[^a-z]/gi, '').toLowerCase().split(''),
     [currentWord?.word],
@@ -195,6 +220,7 @@ export default function WordActivityScreen({ route, navigation }) {
   // and on nothing else: strokes, feedback, Clear and answer selection all
   // leave it alone because none of them appear in its dependencies.
   useEffect(() => {
+    if (currentExercise === 'E') return undefined;
     const spoken = spokenWord(currentWord);
     if (!spoken) return undefined;
     Speech.stop();
@@ -329,6 +355,7 @@ export default function WordActivityScreen({ route, navigation }) {
       student,
       onComplete: handleExerciseComplete,
       onWrongAnswer: showWrongAnswerFeedback,
+      canWrite: !instructionPlaying,
     };
     switch (exKey) {
       case 'A': return <ExerciseA_WriteFirst  key={`${currentWord.word}-A`} {...props} />;
@@ -420,9 +447,17 @@ export default function WordActivityScreen({ route, navigation }) {
           })}
         </View>
 
-        <Text style={[styles.exLabel, { color: theme.headingText }]}>
-          {EXERCISE_LABELS[exKey]}
-        </Text>
+        <View style={styles.exLabelRow}>
+          <Text style={[styles.exLabel, { color: theme.headingText }]}>
+            {EXERCISE_LABELS[exKey]}
+          </Text>
+          <InstructionReplayButton
+            onPress={replayCurrentInstruction}
+            color={theme.buttonText}
+            backgroundColor={theme.button}
+            style={styles.instructionSpeaker}
+          />
+        </View>
 
         {/* ── Exercise card ── */}
         <View style={styles.cardContainer}>
@@ -430,6 +465,7 @@ export default function WordActivityScreen({ route, navigation }) {
             <TouchableOpacity
               style={styles.wordHeader}
               onPress={() => {
+                if (currentExercise === 'E' && instructionPlaying) return;
                 // Resolved at PRESS time, from the word being displayed on the
                 // line below — never a captured first word.
                 const spoken = spokenWord(currentWord);
@@ -437,6 +473,7 @@ export default function WordActivityScreen({ route, navigation }) {
                 Speech.stop();            // no stacked utterances on repeat taps
                 Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
               }}
+              disabled={currentExercise === 'E' && instructionPlaying}
               activeOpacity={0.7}
             >
               <Text style={styles.wordDisplay}>{currentWord.word.toUpperCase()}</Text>
@@ -510,8 +547,15 @@ const styles = StyleSheet.create({
 
   exLabel: {
     fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', textAlign: 'center',
-    letterSpacing: 0.5, marginBottom: 8, opacity: 0.7,
+    letterSpacing: 0.5, opacity: 0.7,
   },
+  exLabelRow: {
+    minHeight: 34,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instructionSpeaker: { position: 'absolute', right: 28 },
 
   cardContainer: {
     flex: 1,

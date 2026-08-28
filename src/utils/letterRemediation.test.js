@@ -364,7 +364,8 @@ describe('SENTINEL — cycle, mastery and scoring policy unchanged', () => {
   it('current-letter audio, canvas mapping and reference paths are untouched', () => {
     for (const rel of SCREENS) {
       const code = readCode(rel);
-      expect(code).toMatch(/if \(!masteredSequenceReady \|\| !letterObj\) return undefined;/);
+      expect(code).toMatch(/const instructionKey = masteredSequenceReady && letterObj/);
+      expect(code).toMatch(/targetSpokenAttemptRef\.current = false/);
       expect(code).toMatch(/mapTouchToCanvas\(\{/);
       expect(code).toMatch(/const LETTER_PATHS = \{/);
     }

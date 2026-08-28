@@ -79,7 +79,8 @@ import LetterWritingStage from '../../../components/handwriting/LetterWritingSta
 import {
   SUPPORT_BADGE,
 } from '../../../components/handwriting/LetterWritingStage';
-import { instructionForSupport } from '../../../constants/childInstructions';
+import { instructionForSupport, SUPPORT_INSTRUCTION_KEY } from '../../../constants/childInstructions';
+import { useInstructionAudioState } from '../../../utils/useInstructionAudio';
 import { SPEECH_LOCALE_EN } from '../../../constants/speechLocale';
 import { hasCanvasDrawing } from '../../../utils/canvasDrawingState';
 import { actionRowMinHeight } from '../../../constants/writingActionRow';
@@ -607,6 +608,18 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   // sequence; collection mode is completely untouched (spec §17).
   const recommendedStartSupport = resolveRecommendedStartSupport({ recommendation, currentLetter: letter });
   const supportLevel = resolveSessionSupportLevel({ attempt, collectionMode, recommendedStartSupport });
+  const instructionKey = masteredSequenceReady && letterObj
+    ? SUPPORT_INSTRUCTION_KEY[supportLevel]
+    : null;
+  const { replay: replayInstruction, instructionPlaying } = useInstructionAudioState(instructionKey, {
+    autoPlay: Boolean(instructionKey),
+    autoPlayToken: `${letter}:${attempt}:${supportLevel}`,
+    fallbackText: instructionForSupport(supportLevel).en,
+  });
+  const canWriteRef = useRef(false);
+  canWriteRef.current = !instructionPlaying;
+  const targetSpokenAttemptRef = useRef(false);
+  useEffect(() => { targetSpokenAttemptRef.current = false; }, [letter, attempt]);
   const supportPresentation = getSupportPresentation({ supportLevel, attempt, collectionMode });
 
   // Feature 6 Step 4 — see LetterWritingScreen.js's identical block for the
@@ -685,6 +698,10 @@ export default function UppercaseWritingScreen({ route, navigation }) {
 
   const playLetterSoundRef = useRef(playLetterSound);
   playLetterSoundRef.current = playLetterSound;
+  const replaySupportInstruction = useCallback(() => {
+    Speech.stop();
+    return replayInstruction();
+  }, [replayInstruction]);
 
   // Announce the letter the child can actually SEE.
   //
@@ -695,12 +712,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   // an effect is not: this spoke the pre-filter letter ("L") and only then
   // the real one ("O"). Gating the announcement on the same flag the render
   // uses means the audio can never name a letter that was never shown.
-  useEffect(() => {
-    if (!masteredSequenceReady || !letterObj) return undefined;
-    Speech.speak(letter.toUpperCase(), { rate: 0.8, pitch: 1.0, language: SPEECH_LOCALE_EN });
-    return () => Speech.stop();
-  }, [letter, letterObj, masteredSequenceReady]);
-
   // Feature 3 Step 6 — adaptive support recommendation fetch. See
   // LetterWritingScreen.js's identical block for the full rationale: once
   // per letter, skipped entirely in collection mode, never blocks
@@ -963,9 +974,10 @@ export default function UppercaseWritingScreen({ route, navigation }) {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder:  () => true,
+      onStartShouldSetPanResponder: () => canWriteRef.current,
+      onMoveShouldSetPanResponder:  () => canWriteRef.current,
       onPanResponderGrant: (evt) => {
+        if (!canWriteRef.current) return;
         stopGuideRef.current?.();  // first touch cancels the idle replay
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         setAttemptFeedback(null);
@@ -979,7 +991,8 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         startTimeRef.current = now;
         strokeIdCounter.current += 1;  // ML: new stroke begins
         setCurrentPath([{ x: locationX, y: locationY, t: 0, tAbs: now, stroke_id: strokeIdCounter.current }]);
-        if (allPathsRef.current.length === 0) {
+        if (!targetSpokenAttemptRef.current) {
+          targetSpokenAttemptRef.current = true;
           playLetterSoundRef.current?.();
         }
       },
@@ -1604,11 +1617,12 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           tracerYInterp={tracerYInterp}
           badge={badge}
           instruction={instructionForSupport(supportLevel)}
-          onPlaySound={() => playLetterSound()}
+          onPlayInstruction={replaySupportInstruction}
+          onPlaySound={instructionPlaying ? undefined : () => playLetterSound()}
           canvasRef={canvasRef}
           onCanvasLayout={measureCanvasOrigin}
           panHandlers={panResponder.panHandlers}
-          canvasPointerEvents={attemptFeedback ? 'none' : 'auto'}
+          canvasPointerEvents={attemptFeedback || instructionPlaying ? 'none' : 'auto'}
         />
 
         {/* Feedback pill */}
