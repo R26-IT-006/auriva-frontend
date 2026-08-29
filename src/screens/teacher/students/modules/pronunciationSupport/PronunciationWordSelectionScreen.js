@@ -19,24 +19,44 @@ import {
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
 import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
-import { AvatarIdentityBadge, EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import {
+  AvatarIdentityBadge,
+  EntranceItem,
+  SelectionCheck,
+  selectionElevation,
+  selectionSurface,
+  selectionTextColor,
+  ThemedGradientFill,
+} from "./pronunciationDesignKit.js";
 
 function MoreWordCard({ item, index, selected, onPress, width, theme }) {
   return (
-    <EntranceItem index={index}>
+    <EntranceItem index={index} style={selectionElevation(theme, selected, 14)}>
       <ButtonFeedback
         activeOpacity={0.86}
         onPress={onPress}
+        accessibilityRole="radio"
+        accessibilityState={{ selected, checked: selected }}
+        accessibilityLabel={item.word}
         style={[
           styles.moreWordCard,
-          { width, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
-          selected && styles.moreWordCardSelected,
+          { width },
+          selectionSurface(theme, selected),
         ]}
       >
+        <SelectionCheck selected={selected} theme={theme} size={22} />
+
         <View style={[styles.moreWordBadge, { backgroundColor: item.color }]}>
           <Ionicons name="paw-outline" size={18} color="#5F6E83" />
         </View>
-        <Text style={styles.moreWordText}>{item.word}</Text>
+        <Text
+          style={[
+            styles.moreWordText,
+            { color: selectionTextColor(theme, selected, Colors.text.primary) },
+          ]}
+        >
+          {item.word}
+        </Text>
         {item.completed ? (
           <View style={styles.completedPill}>
             <Ionicons name="checkmark-circle" size={13} color={Colors.status.success} />
@@ -64,18 +84,27 @@ function WordCard({
   const imageSource = getWordImageSource(item, imageStyle);
 
   return (
-    <EntranceItem index={index}>
+    <EntranceItem index={index} style={selectionElevation(theme, selected, 12)}>
     <View
       ref={refCallback}
-      style={[styles.wordCard, { width, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline }, selected && styles.wordCardSelected]}
+      style={[styles.wordCard, { width }, selectionSurface(theme, selected)]}
     >
       <ButtonFeedback
         activeOpacity={0.86}
         onPress={() => onToggleExpand && onToggleExpand(item)}
+        accessibilityRole="radio"
+        accessibilityState={{ selected, checked: selected, expanded }}
+        accessibilityLabel={label}
         style={styles.wordHeader}
       >
         <View style={styles.wordMetaCompact}>
-          <Text style={[styles.wordText, isAlphabetMode && styles.letterText]}>
+          <Text
+            style={[
+              styles.wordText,
+              isAlphabetMode && styles.letterText,
+              { color: selectionTextColor(theme, selected, Colors.text.primary) },
+            ]}
+          >
             {label}
           </Text>
           {item.completed ? (
@@ -85,6 +114,19 @@ function WordCard({
             </View>
           ) : null}
         </View>
+        {/* Inline rather than pinned to the corner: this row already ends
+            in a chevron, and a badge floating over it would collide. Mounted
+            only while selected so it never holds an empty 30pt gap open in
+            front of the chevron on the other rows. */}
+        {selected ? (
+          <SelectionCheck
+            selected
+            theme={theme}
+            size={22}
+            style={styles.wordSelectionCheck}
+          />
+        ) : null}
+
         <Ionicons
           name={expanded ? "chevron-up" : "chevron-down"}
           size={22}
@@ -558,13 +600,13 @@ const styles = StyleSheet.create({
   wordCard: {
     borderRadius: 12,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#B8C4D6",
-    backgroundColor: Colors.surface,
     minHeight: 62,
   },
-  wordCardSelected: {
-    borderWidth: 2,
+  wordSelectionCheck: {
+    position: "relative",
+    top: 0,
+    right: 0,
+    marginRight: 8,
   },
   wordVisual: {
     height: 165,
@@ -627,17 +669,11 @@ const styles = StyleSheet.create({
   },
   moreWordCard: {
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#C9D4E1",
-    backgroundColor: Colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-  },
-  moreWordCardSelected: {
-    borderWidth: 2,
   },
   moreWordBadge: {
     width: 46,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert, Switch, Image } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Switch, Image } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,7 +17,20 @@ import {
 import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
 import { IMAGE_STYLES } from "./wordImageStyles.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
-import { AvatarIdentityBadge, EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { beginTeachingSession } from "./pronunciationSessionLifecycle.js";
+import {
+  PronunciationAlert,
+  usePronunciationAlert,
+} from "./PronunciationAlert.js";
+import {
+  AvatarIdentityBadge,
+  EntranceItem,
+  SelectionCheck,
+  selectionElevation,
+  selectionSurface,
+  selectionTextColor,
+  ThemedGradientFill,
+} from "./pronunciationDesignKit.js";
 
 const PRONUNCIATION_MODE_OPTIONS = [
   {
@@ -38,14 +51,17 @@ const PRONUNCIATION_MODE_OPTIONS = [
 
 function CategoryCard({ item, index, selected, onPress, cardWidth, theme }) {
   return (
-    <EntranceItem index={index}>
+    <EntranceItem index={index} style={selectionElevation(theme, selected, 12)}>
       <ButtonFeedback
         activeOpacity={0.85}
         onPress={onPress}
+        accessibilityRole="radio"
+        accessibilityState={{ selected, checked: selected }}
+        accessibilityLabel={`${item.title}. ${item.subtitle}`}
         style={[
           styles.categoryCard,
-          { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
-          selected && styles.categoryCardSelected,
+          { width: cardWidth },
+          selectionSurface(theme, selected),
         ]}
       >
         <View
@@ -58,11 +74,20 @@ function CategoryCard({ item, index, selected, onPress, cardWidth, theme }) {
           )}
         </View>
         <View style={styles.categoryBody}>
-          <Text style={styles.categoryTitle}>{item.title}</Text>
+          <Text
+            style={[
+              styles.categoryTitle,
+              { color: selectionTextColor(theme, selected, Colors.text.primary) },
+            ]}
+          >
+            {item.title}
+          </Text>
           <Text style={styles.categorySubtitle} numberOfLines={2}>
             {item.subtitle}
           </Text>
         </View>
+
+        <SelectionCheck selected={selected} theme={theme} />
       </ButtonFeedback>
     </EntranceItem>
   );
@@ -78,6 +103,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
     Boolean(student?.reduce_stimulation),
   );
   const [savingSensorySetting, setSavingSensorySetting] = useState(false);
+  const { showAlert, alertProps } = usePronunciationAlert();
   const startSession = usePronunciationSessionStore((state) => state.startSession);
   const setSelectedStudent = usePronunciationSessionStore(
     (state) => state.setSelectedStudent,
@@ -127,9 +153,10 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
       await teacherApi.setSensorySettings(studentId, value);
     } catch (error) {
       setReduceStimulation(previous);
-      Alert.alert(
+      showAlert(
         "Couldn't save setting",
         error.response?.data?.error || error.message || "Please try again.",
+        { tone: "error" },
       );
     } finally {
       setSavingSensorySetting(false);
@@ -146,6 +173,10 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
 
   function handleContinue() {
     if (!selectedMode) return;
+
+    // Opens the backend session row that feeds the teacher dashboard's
+    // Recent Activity list. Fire-and-forget: the flow must not wait on it.
+    beginTeachingSession(activeStudent);
 
     if (selectedMode === PRONUNCIATION_MODES.ALPHABET) {
       startSession({
@@ -334,6 +365,8 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
           </View>
         </View>
       </ScrollView>
+
+      <PronunciationAlert {...alertProps} theme={theme} />
     </SafeAreaView>
     </LinearGradient>
   );
@@ -417,13 +450,11 @@ const styles = StyleSheet.create({
   categoryCard: {
     borderRadius: 12,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E6ECF4",
-    backgroundColor: Colors.surface,
     minHeight: 172,
-  },
-  categoryCardSelected: {
-    borderWidth: 2,
+    // The row stretches its items, and the wrapper carrying the selection
+    // shadow now paints a background — so the card has to fill that wrapper
+    // or a bare strip of it shows below a short card.
+    flex: 1,
   },
   categoryVisual: {
     height: 96,

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -19,6 +18,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { useFocusEffect } from "@react-navigation/native";
 import { teacherApi } from "../../../../../api/teacher";
+import {
+  PronunciationAlert,
+  usePronunciationAlert,
+} from "./PronunciationAlert.js";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { useToast } from "../../../../../context/ToastContext";
@@ -107,6 +110,7 @@ function ReplayAudioButton({ resultId, hasRawAudio }) {
   const soundRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { showAlert, alertProps } = usePronunciationAlert();
 
   async function stopAudio() {
     if (!soundRef.current) return;
@@ -173,7 +177,11 @@ function ReplayAudioButton({ resultId, hasRawAudio }) {
         }
       });
     } catch (error) {
-      Alert.alert("Playback error", error.message || "Unable to play this recording right now.");
+      showAlert(
+        "Playback error",
+        error.message || "Unable to play this recording right now.",
+        { tone: "error" },
+      );
     } finally {
       setIsLoading(false);
     }
@@ -198,6 +206,8 @@ function ReplayAudioButton({ resultId, hasRawAudio }) {
       <Text style={styles.audioRowText}>
         {isPlaying ? "Playing…" : "Play the student's recording"}
       </Text>
+
+      <PronunciationAlert {...alertProps} />
     </TouchableOpacity>
   );
 }

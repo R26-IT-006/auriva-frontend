@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Image, Alert, useWindowDimensions, Animated, Easing, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Image, useWindowDimensions, Animated, Easing, ScrollView, ActivityIndicator } from "react-native";
 import { ButtonFeedback } from "../../../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,11 +21,18 @@ import {
   PLAYBACK_AUDIO_MODE,
   readAudioClip,
 } from "./pronunciationRecording.js";
-import { buildPronunciationScoringPayload } from "./pronunciationPayloads.js";
+import {
+  buildPronunciationScoringPayload,
+  getPronunciationWordLabel,
+} from "./pronunciationPayloads.js";
 import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 import { ThemedGradientFill } from "./pronunciationDesignKit.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
 import { ConfirmDialog } from "../../../../../components/common/ConfirmDialog";
+import {
+  PronunciationAlert,
+  usePronunciationAlert,
+} from "./PronunciationAlert.js";
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
@@ -64,6 +71,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   );
   const { isExitConfirmVisible, confirmExit, cancelExit } =
     useExitSessionGuard(navigation);
+  const { showAlert, alertProps } = usePronunciationAlert();
   const recordingRef = useRef(null);
   const scoringAbortControllerRef = useRef(null);
   const isScoringRef = useRef(false);
@@ -196,9 +204,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        showAlert(
           "Microphone permission needed",
           "Please allow microphone access to record pronunciation.",
+          { tone: "warning" },
         );
         return;
       }
@@ -214,9 +223,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       setIsRecording(true);
     } catch (error) {
       Audio.setAudioModeAsync(PLAYBACK_AUDIO_MODE).catch(() => {});
-      Alert.alert(
+      showAlert(
         "Recording error",
         error.message || "Unable to start recording.",
+        { tone: "error" },
       );
     }
   }
@@ -237,9 +247,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       }
 
       if (!audioData?.rawAudioBase64) {
-        Alert.alert(
+        showAlert(
           "Audio save error",
           "The recording finished, but the audio file could not be prepared for saving. Please record again.",
+          { tone: "error", confirmLabel: "Record Again" },
         );
         setSavedRecordingUri(null);
         setSavedAudioData(null);
@@ -251,16 +262,18 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       setSavedAudioData(audioData);
       setLastRecordingDuration(durationSeconds);
       setRecordingUri(uri, durationSeconds, audioData);
-      Alert.alert(
+      showAlert(
         "Recording saved",
         uri
           ? "Your pronunciation clip has been recorded."
           : "Recording finished.",
+        { tone: "success" },
       );
     } catch (error) {
-      Alert.alert(
+      showAlert(
         "Recording error",
         error.message || "Unable to stop recording.",
+        { tone: "error" },
       );
     } finally {
       recordingRef.current = null;
@@ -274,14 +287,19 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     if (isScoringRef.current) return;
 
     if (!studentId) {
-      Alert.alert("Student unavailable", "Unable to score without a selected student.");
+      showAlert(
+        "Student unavailable",
+        "Unable to score without a selected student.",
+        { tone: "error" },
+      );
       return;
     }
 
     if (!savedAudioData?.rawAudioBase64 || !savedRecordingUri) {
-      Alert.alert(
+      showAlert(
         "Record first",
         "Please record the pronunciation before moving to the result.",
+        { tone: "info", confirmLabel: "Got It" },
       );
       return;
     }
@@ -320,14 +338,21 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       const errorCode = error.code;
       const isQualityError = errorCode === "AUDIO_QUALITY_FAILED";
       const isWordMismatch = errorCode === "WORD_MISMATCH";
-      Alert.alert(
+      showAlert(
         isWordMismatch
-          ? "Different word detected"
+          ? "That sounded different"
           : isQualityError
             ? "Recording quality issue"
             : "Scoring error",
         error.message ||
           "Unable to score this pronunciation right now.",
+        {
+          tone: isWordMismatch ? "mismatch" : isQualityError ? "quality" : "error",
+          // The backend names what it heard in `details`; showing it beside
+          // the target word tells the teacher at a glance what went wrong.
+          heardWord: isWordMismatch ? error.details?.recognized_text ?? null : null,
+          targetWord: isWordMismatch ? getPronunciationWordLabel(word, null) : null,
+        },
       );
       return;
     } finally {
@@ -548,6 +573,8 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
         onConfirm={confirmExit}
         onCancel={cancelExit}
       />
+
+      <PronunciationAlert {...alertProps} theme={theme} />
     </SafeAreaView>
     </LinearGradient>
   );

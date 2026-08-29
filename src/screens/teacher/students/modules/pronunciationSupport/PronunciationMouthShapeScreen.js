@@ -8,7 +8,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
-import { EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import {
+  EntranceItem,
+  SelectionCheck,
+  selectionElevation,
+  selectionSurface,
+  selectionTextColor,
+  ThemedGradientFill,
+} from "./pronunciationDesignKit.js";
 
 const MOUTH_SHAPES = [
   { id: "k", ipa: "/k/", label: "open", variant: "open" },
@@ -55,18 +62,26 @@ function MouthShapeIcon({ variant, theme }) {
 
 function MouthCard({ item, index, selected, onPress, theme }) {
   return (
-    <EntranceItem index={index}>
+    <EntranceItem index={index} style={selectionElevation(theme, selected, 12)}>
       <ButtonFeedback
         activeOpacity={0.86}
         onPress={onPress}
-        style={[
-          styles.card,
-          { backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
-          selected && styles.cardSelected,
-        ]}
+        accessibilityRole="radio"
+        accessibilityState={{ selected, checked: selected }}
+        accessibilityLabel={`${item.ipa}, ${item.label}`}
+        style={[styles.card, selectionSurface(theme, selected)]}
       >
+        <SelectionCheck selected={selected} theme={theme} size={24} />
+
         <MouthShapeIcon variant={item.variant} theme={theme} />
-        <Text style={[styles.ipa, { color: theme.headingText }]}>{item.ipa}</Text>
+        <Text
+          style={[
+            styles.ipa,
+            { color: selectionTextColor(theme, selected, theme.headingText) },
+          ]}
+        >
+          {item.ipa}
+        </Text>
         <Text style={styles.label}>{item.label}</Text>
       </ButtonFeedback>
     </EntranceItem>
@@ -228,15 +243,9 @@ const styles = StyleSheet.create({
     width: 120,
     height: 160,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: "#E4EAF1",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 10,
-  },
-  cardSelected: {
-    borderWidth: 2,
   },
   mouthIconWrap: {
     width: 70,

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   useWindowDimensions,
   Image,
-  Alert,
   ScrollView,
   Animated,
   Easing,
@@ -35,6 +34,10 @@ import {
 } from "./pronunciationAudioPlayback.js";
 import { AvatarIdentityBadge, ThemedGradientFill } from "./pronunciationDesignKit.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
+import {
+  PronunciationAlert,
+  usePronunciationAlert,
+} from "./PronunciationAlert.js";
 import { ConfirmDialog } from "../../../../../components/common/ConfirmDialog";
 
 const CAT_FLASHCARD_VIDEO = require("../../../../../../assets/pronunciation-videos/whiskers_cat.mp4");
@@ -66,6 +69,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   );
   const { isExitConfirmVisible, confirmExit, cancelExit } =
     useExitSessionGuard(navigation);
+  const { showAlert, alertProps } = usePronunciationAlert();
 
   const words = WORD_BANK[categoryId] || [];
   const selectedWord =
@@ -272,9 +276,10 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     const audioAsset = WORD_AUDIO_ASSETS[selectedWord?.id];
 
     if (!audioAsset) {
-      Alert.alert(
+      showAlert(
         "Audio unavailable",
         `No pronunciation audio has been added for ${selectedWord?.word || "this word"} yet.`,
+        { tone: "warning" },
       );
       return;
     }
@@ -307,7 +312,11 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     } catch (error) {
       console.log("Pronunciation audio playback error:", error);
       setIsPlaying(false);
-      Alert.alert("Playback error", "Unable to play this pronunciation audio right now.");
+      showAlert(
+        "Playback error",
+        "Unable to play this pronunciation audio right now.",
+        { tone: "error" },
+      );
     }
   }
 
@@ -532,6 +541,8 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
         onConfirm={confirmExit}
         onCancel={cancelExit}
       />
+
+      <PronunciationAlert {...alertProps} theme={theme} />
     </SafeAreaView>
     </LinearGradient>
   );

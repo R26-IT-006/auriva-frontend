@@ -27,6 +27,7 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
+import { endTeachingSession } from "./pronunciationSessionLifecycle.js";
 import { buildPronunciationResultPayload } from "./pronunciationPayloads.js";
 import { AvatarIdentityBadge, ThemedGradientFill } from "./pronunciationDesignKit.js";
 import {
@@ -467,10 +468,14 @@ export default function PronunciationResultScreen({ navigation, route }) {
   }, [confettiPieces, isHighScore, isNeutralFeedback, lowScorePulse, lowScoreShake, reduceStimulation]);
 
   function handleGoDashboard() {
+    // Back to setup ends this teaching session — the next one opens its own
+    // backend row when the teacher continues from the setup screen.
+    endTeachingSession(student);
     navigation.navigate("PronunciationSessionSetup", { student });
   }
 
   function handleGoHome() {
+    endTeachingSession(student);
     navigation.reset({
       index: 0,
       routes: [{ name: "WorkspaceSelect" }],

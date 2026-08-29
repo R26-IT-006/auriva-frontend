@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { usePreventRemove } from "@react-navigation/native";
 
+import { endTeachingSession } from "./pronunciationSessionLifecycle.js";
+import { usePronunciationSessionStore } from "./pronunciationSessionStore.js";
+
 // Intercepts every way off a mid-session screen — the screen's own back
 // button, the hardware Android back button, and the iOS swipe-back gesture
 // all resolve to the same navigation action, so a single guard catches all
@@ -24,6 +27,9 @@ import { usePreventRemove } from "@react-navigation/native";
 // screen's existing back button — it already calls navigation.goBack().
 export function useExitSessionGuard(navigation, { enabled = true } = {}) {
   const [isExitConfirmVisible, setExitConfirmVisible] = useState(false);
+  const selectedStudent = usePronunciationSessionStore(
+    (state) => state.selectedStudent,
+  );
   const [guardActive, setGuardActive] = useState(enabled);
   const pendingActionRef = useRef(null);
 
@@ -62,6 +68,10 @@ export function useExitSessionGuard(navigation, { enabled = true } = {}) {
   }, [guardActive, navigation]);
 
   function confirmExit() {
+    // Leaving mid-session is still the end of the teaching session, so the
+    // backend row is closed here too — otherwise it stays "In progress"
+    // forever on the teacher dashboard.
+    endTeachingSession(selectedStudent);
     setExitConfirmVisible(false);
     setGuardActive(false);
   }

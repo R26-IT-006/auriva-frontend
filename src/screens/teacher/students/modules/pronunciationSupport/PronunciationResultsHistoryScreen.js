@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -19,6 +18,10 @@ import { teacherApi } from "../../../../../api/teacher";
 import { Colors } from "../../../../../constants/colors";
 import { Layout } from "../../../../../constants/layout";
 import { getAvatarTheme } from "../../../../../constants/avatarThemes";
+import {
+  PronunciationAlert,
+  usePronunciationAlert,
+} from "./PronunciationAlert.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
 import { AvatarIdentityBadge } from "./pronunciationDesignKit.js";
 import {
@@ -297,6 +300,7 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   const student = route.params?.student;
   const studentId = getStudentIdentifier(student);
   const theme = getAvatarTheme(student?.avatar_key);
+  const { showAlert, alertProps } = usePronunciationAlert();
   const [results, setResults] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -449,9 +453,10 @@ export default function PronunciationResultsHistoryScreen({ route }) {
         }
       });
     } catch (error) {
-      Alert.alert(
+      showAlert(
         "Playback error",
         error.message || "Unable to play this recording right now.",
+        { tone: "error" },
       );
     } finally {
       setLoadingAudioId(null);
@@ -915,6 +920,8 @@ export default function PronunciationResultsHistoryScreen({ route }) {
           </>
         )}
       </ScrollView>
+
+      <PronunciationAlert {...alertProps} theme={theme} />
     </SafeAreaView>
     </LinearGradient>
   );
