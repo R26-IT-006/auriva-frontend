@@ -302,9 +302,9 @@ describe('word activities A–E', () => {
   });
 
   it('tile-selection and canvas behaviour are untouched', () => {
-    expect(readCode(EX.A)).toMatch(/onPress=\{\(\) => handlePress\(letter, idx\)\}/);
-    expect(readCode(EX.B)).toMatch(/onPress=\{\(\) => handlePress\(opt, idx\)\}/);
-    expect(readCode(EX.C)).toMatch(/onPress=\{\(\) => handlePress\(letter, idx\)\}/);
+    expect(readCode(EX.A)).toMatch(/onPress=\{\(\) => handlePress\(letter\)\}/);
+    expect(readCode(EX.B)).toMatch(/onPress=\{\(\) => handlePress\(opt\)\}/);
+    expect(readCode(EX.C)).toMatch(/onPress=\{\(\) => handlePress\(letter\)\}/);
     expect(readCode(EX.E)).toMatch(/mapTouchToCanvas\(\{/);
   });
 });
@@ -354,7 +354,9 @@ describe('SENTINEL — feedback, flow, logic, geometry and layout unchanged', ()
     const stage = readCode(LETTER_STAGE);
     expect(stage).toMatch(/<Svg width=\{CANVAS_W\} height=\{CANVAS_H\}/);
     expect(stage).toMatch(/d=\{isAngular \? toStraightPath\(rawPath\) : toSmoothPath\(rawPath\)\}/);
-    expect(stage).not.toMatch(/viewBox|preserveAspectRatio/);
+    const canvasStart = stage.indexOf('<Svg width={CANVAS_W} height={CANVAS_H}>');
+    const writingCanvas = stage.slice(canvasStart, stage.indexOf('</Svg>', canvasStart));
+    expect(writingCanvas).not.toMatch(/viewBox|preserveAspectRatio/);
     for (const rel of ['../constants/wordPaths.js', '../constants/letterCanvasLayout.js']) {
       expect(readCode(rel)).not.toMatch(/childInstructions/);
     }

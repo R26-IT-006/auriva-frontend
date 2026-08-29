@@ -65,8 +65,8 @@ describe('§1 / §9 — the GIF reports the answer, the status reports the help'
   it('the completion verdict is no longer derived from the persisted status', () => {
     // The exact shape that produced the bug.
     expect(code).not.toMatch(/setActivityFeedback\(\{ passed: wasCorrect, isWriting \}\)/);
-    expect(code).toMatch(/const presentedPassed = isWriting \? wasCorrect : true;/);
-    expect(code).toMatch(/setActivityFeedback\(\{ passed: presentedPassed, isWriting, note \}\)/);
+    expect(code).toMatch(/showCorrectAnswerFeedback = useCallback\([\s\S]*showChoiceAnswerFeedback\(true\)/);
+    expect(code).toMatch(/setActivityFeedback\(\{ passed, isWriting: false \}\)/);
   });
 
   it('§8 persistence is untouched — with-help still saves as good', () => {
@@ -81,8 +81,7 @@ describe('§1 / §9 — the GIF reports the answer, the status reports the help'
 
   it('E keeps presenting its own scored verdict', () => {
     expect(code).toMatch(/const isWriting = ex === 'E';/);
-    // presentedPassed passes wasCorrect straight through when isWriting.
-    expect(code).toMatch(/isWriting \? wasCorrect : true/);
+    expect(code).toMatch(/setActivityFeedback\(\{ passed: wasCorrect, isWriting: true, note \}\)/);
   });
 });
 
@@ -92,13 +91,13 @@ describe('§2 / §5 — a wrong answer shows wrong.gif and completes nothing', (
   const code = readCode(SCREEN);
 
   it('the screen has a verdict-only channel for wrong answers', () => {
-    expect(code).toMatch(/const showWrongAnswerFeedback = useCallback\(\(\) => \{/);
-    expect(code).toMatch(/setActivityFeedback\(\{ passed: false, isWriting: false \}\)/);
+    expect(code).toMatch(/const showWrongAnswerFeedback = useCallback\(/);
+    expect(code).toMatch(/showChoiceAnswerFeedback\(false\)/);
     expect(code).toMatch(/onWrongAnswer: showWrongAnswerFeedback,/);
   });
 
   it('it saves nothing, scores nothing and advances nothing', () => {
-    const at = code.indexOf('const showWrongAnswerFeedback');
+    const at = code.indexOf('const showChoiceAnswerFeedback');
     const body = code.slice(at, code.indexOf('}, []);', at));
     for (const forbidden of ['saveWordActivity', 'setExStatus', 'setScore',
                              'setExIdx', 'navigation.replace', 'onComplete',
@@ -106,11 +105,11 @@ describe('§2 / §5 — a wrong answer shows wrong.gif and completes nothing', (
       expect(body).not.toMatch(new RegExp(forbidden.replace(/[.()]/g, '\\$&')));
     }
     // It stands down while a completion owns the overlay.
-    expect(body).toMatch(/if \(advancingRef\.current\) return;/);
+    expect(body).toMatch(/if \(advancingRef\.current \|\| answerFeedbackRef\.current\) return Promise\.resolve\(false\);/);
   });
 
   it('a pending wrong.gif cannot survive into the completion verdict', () => {
-    expect(code).toMatch(/clearTimeout\(wrongTimerRef\.current\);\s*setActivityFeedback\(\{ passed: presentedPassed/);
+    expect(code).toMatch(/if \(isWriting\) \{\s*clearTimeout\(wrongTimerRef\.current\);/);
     expect(code).toMatch(/clearTimeout\(feedbackTimerRef\.current\);\s*clearTimeout\(wrongTimerRef\.current\);/);
   });
 });
@@ -154,14 +153,14 @@ describe('§10-§13 — every choice activity, same rule', () => {
     const code = readCode(EX.D);
     // The wrong event is the existing shake branch — the tap that does not
     // match the letter the word needs next. Correct taps only advance.
-    expect(code).toMatch(/shakeError\(tileIdx\);\s*if \(demoMode\) return;\s*onWrongAnswer\?\.\(\);/);
+    expect(code).toMatch(/if \(demoMode\) return;[\s\S]*const feedbackDone = onWrongAnswer\?\.\(\);/);
     expect(code).toMatch(/if \(tile\.letter === letters\[pos\]\) \{/);
     const at = code.indexOf('if (tile.letter === letters[pos]) {');
     const correctBranch = code.slice(at, code.indexOf('} else {', at));
     expect(correctBranch).not.toMatch(/setWrongCount|onWrongAnswer/);
     // Spelling/tile logic itself is unchanged.
     expect(code).toMatch(/if \(newFilled\.length === letters\.length\) \{/);
-    expect(code).toMatch(/else onComplete\(true\);/);
+    expect(code).toMatch(/onComplete\(wrongCount === 0\);/);
   });
 
   it('§13 Activity D points at the next needed letter, and only points', () => {
@@ -193,7 +192,7 @@ describe('§15-§21 — the hint reads as support, not as a warning', () => {
   it.each([['A', EX.A], ['C', EX.C]])('Activity %s hints through the shared tokens', (_n, rel) => {
     const code = readCode(rel);
     expect(code).toMatch(/isHinted\s+\? HINT_COLORS\.surface/);
-    expect(code).toMatch(/borderColor: isHinted\s+\? HINT_COLORS\.border/);
+    expect(code).toMatch(/: isHinted \? HINT_COLORS\.border/);
     expect(code).toMatch(/hintText:\s+\{ color: HINT_COLORS\.text \}/);
   });
 

@@ -55,6 +55,7 @@ import { spokenWord } from '../../../utils/wordSpeech';
 import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../../constants/childInstructions';
 import { useInstructionAudioState } from '../../../utils/useInstructionAudio';
 import InstructionReplayButton from '../../../components/handwriting/InstructionReplayButton';
+import WordPracticeResultCard from '../../../components/word/WordPracticeResultCard';
 
 // The same dwell the letter screens give their feedback.
 const ATTEMPT_FEEDBACK_MS = 2200;
@@ -152,8 +153,14 @@ export default function WordActivityScreen({ route, navigation }) {
     return Number.isInteger(requested) && requested >= 0 && requested < WORD_EXERCISE_COUNT
       ? requested : 0;
   });
-  const [exStatus,   setExStatus]   = useState(BLANK_STATUS);
-  const [score,      setScore]      = useState({ correct: 0, total: 0 });
+  const [exStatus, setExStatus] = useState(() => ({
+    ...BLANK_STATUS,
+    ...(route.params?.initialExerciseStatus ?? {}),
+  }));
+  const [score, setScore] = useState(() => ({
+    correct: Object.values(route.params?.initialExerciseStatus ?? {}).filter(status => status === 'correct').length,
+    total: Object.values(route.params?.initialExerciseStatus ?? {}).filter(status => status === 'correct' || status === 'good').length,
+  }));
 
   // ── One-time spelling-tile demonstration (utils/demoPolicy.js) ───────────
   // Exercise D is the only word activity that gets one. A, B and C are all
@@ -201,6 +208,9 @@ export default function WordActivityScreen({ route, navigation }) {
           }),
           // Resume at Exercise D, not back at A.
           initialExerciseIndex: exIdx,
+          // The demo is a presentation detour, so the A-C outcomes already
+          // earned for this word must return with the child as session state.
+          initialExerciseStatus: exStatus,
         },
       });
     },
@@ -248,7 +258,10 @@ export default function WordActivityScreen({ route, navigation }) {
   const [saveError, setSaveError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [activityFeedback, setActivityFeedback] = useState(null);
+  const [wordResult, setWordResult] = useState(null);
   const advancingRef  = useRef(false);
+  const answerFeedbackRef = useRef(false);
+  const resultContinuingRef = useRef(false);
   const feedbackTimerRef = useRef(null);
   const wrongTimerRef    = useRef(null);
 
@@ -262,12 +275,23 @@ export default function WordActivityScreen({ route, navigation }) {
   // A-D report every wrong choice here. This presents the verdict and nothing
   // else: no save, no score, no advance, no completion. The exercise stays on
   // screen so the child can try again, which is the whole point.
-  const showWrongAnswerFeedback = useCallback(() => {
-    if (advancingRef.current) return;      // a completion already owns the overlay
+  const showChoiceAnswerFeedback = useCallback((passed) => {
+    if (advancingRef.current || answerFeedbackRef.current) return Promise.resolve(false);
+    answerFeedbackRef.current = true;
     clearTimeout(wrongTimerRef.current);
-    setActivityFeedback({ passed: false, isWriting: false });
-    wrongTimerRef.current = setTimeout(() => setActivityFeedback(null), RESULT_GIF_MS);
+    setActivityFeedback({ passed, isWriting: false });
+    return new Promise((resolve) => {
+      wrongTimerRef.current = setTimeout(() => {
+        setActivityFeedback(null);
+        answerFeedbackRef.current = false;
+        resolve(true);
+      }, RESULT_GIF_MS);
+    });
   }, []);
+  const showWrongAnswerFeedback = useCallback(
+    () => showChoiceAnswerFeedback(false), [showChoiceAnswerFeedback]);
+  const showCorrectAnswerFeedback = useCallback(
+    () => showChoiceAnswerFeedback(true), [showChoiceAnswerFeedback]);
   const handleExerciseComplete = useCallback(async (wasCorrect, note) => {
     // `advancing` is the double-progression guard. Each exercise already
     // waits ~500ms before reporting, and the feedback below adds its own
@@ -287,36 +311,20 @@ export default function WordActivityScreen({ route, navigation }) {
     setExStatus(newStatus);
     setScore(s => ({ correct: s.correct + (wasCorrect ? 1 : 0), total: s.total + 1 }));
 
-    // The result is already decided by the exercise; this only PRESENTS it,
-    // with the same overlay and the same dwell the letter screens use.
-    // Exercise E writes independently, so it takes the 'low' wording; the
-    // choice activities pass no level and get the component's own neutral
-    // fallback ('Nice work!' / 'Good try. Try again.').
-    // Two mechanisms, one decision point. A-D are right/wrong CHOICES and get
-    // the shared correct/wrong animation; E is handwriting and keeps the
-    // child's own themed avatar, because a written attempt is judged on how it
-    // was formed, not on being right or wrong.
-    //
-    // Either way the verdict is `wasCorrect`, which the exercise decided — this
-    // only presents it. One feedback event, one timer, one continuation.
+    // A-D present their selected verdict before reporting completion. E is
+    // handwriting, so it keeps the existing themed-avatar dwell here.
     const isWriting = ex === 'E';
     advancingRef.current = true;
-    // The GIF answers "was THAT answer right?", not "did they need help?".
-    // Reaching completion in A-D means the child just chose correctly, so the
-    // verdict is correct even when `wasCorrect` is false and the status saved
-    // above is 'good'. Deriving the GIF from the persisted with-help state is
-    // exactly the bug this replaced: hint used -> correct answer -> wrong.gif.
-    // E is handwriting and keeps reporting its own scored verdict.
-    const presentedPassed = isWriting ? wasCorrect : true;
-    clearTimeout(wrongTimerRef.current);   // a pending wrong.gif must not outlive this
-    // `note` is E's layout advisory ("Leave a little space"). A-D pass none.
-    // It becomes the avatar's message, so the activity says one thing, not two.
-    setActivityFeedback({ passed: presentedPassed, isWriting, note });
-    await new Promise((resolve) => {
-      feedbackTimerRef.current = setTimeout(
-        resolve, isWriting ? ATTEMPT_FEEDBACK_MS : RESULT_GIF_MS);
-    });
-    setActivityFeedback(null);
+    // E alone reaches this presentation branch; choice GIFs are independent
+    // of the saved first-try/with-help status.
+    if (isWriting) {
+      clearTimeout(wrongTimerRef.current);
+      setActivityFeedback({ passed: wasCorrect, isWriting: true, note });
+      await new Promise((resolve) => {
+        feedbackTimerRef.current = setTimeout(resolve, ATTEMPT_FEEDBACK_MS);
+      });
+      setActivityFeedback(null);
+    }
 
     if (exIdx < EXERCISES.length - 1) {
       // More exercises for this word → advance
@@ -325,7 +333,14 @@ export default function WordActivityScreen({ route, navigation }) {
       return;
     }
 
-    // ── Last exercise of this word ────────────────────────────────────────
+    // The authoritative A-E statuses drive the per-word presentation. The
+    // existing next-word/final-session transition runs only from Keep Going.
+    setWordResult({ word: currentWord.word, statuses: newStatus });
+  }, [wordIdx, exIdx, exStatus, currentWord, letterWords, saving, student, theme, letter, navigation]);
+
+  const continueFromWordResult = useCallback(() => {
+    if (!wordResult || resultContinuingRef.current) return;
+    resultContinuingRef.current = true;
     const transition = afterExerciseESuccess(wordIdx, letterWords.length);
     if (transition.route === 'WordWriting') {
       navigation.replace('WordWriting', buildWordRouteParams({
@@ -338,7 +353,7 @@ export default function WordActivityScreen({ route, navigation }) {
       return;
     }
     navigation.replace('WordProgress', { student, studentId: Number(student?.sid), theme });
-  }, [wordIdx, exIdx, exStatus, currentWord, letterWords, saving, student, theme, letter, navigation]);
+  }, [wordResult, wordIdx, letterWords, navigation, student, theme, letter]);
 
   // ── Celebration dismiss ───────────────────────────────────────────────────
   // ── Letter summary stats (computed from snapshot) ─────────────────────────
@@ -355,6 +370,7 @@ export default function WordActivityScreen({ route, navigation }) {
       student,
       onComplete: handleExerciseComplete,
       onWrongAnswer: showWrongAnswerFeedback,
+      onCorrectAnswer: showCorrectAnswerFeedback,
       canWrite: !instructionPlaying,
     };
     switch (exKey) {
@@ -485,6 +501,26 @@ export default function WordActivityScreen({ route, navigation }) {
           </Animated.View>
         </View>
 
+        {wordResult && (
+          <View style={[styles.resultScreen, { backgroundColor: theme.backgroundGradient?.[0] ?? '#F7FAFC' }]}>
+            <TouchableOpacity
+              style={styles.resultBack}
+              onPress={requestBack}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
+              <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+            </TouchableOpacity>
+            <WordPracticeResultCard
+              word={wordResult.word}
+              statuses={wordResult.statuses}
+              theme={theme}
+              onContinue={continueFromWordResult}
+            />
+          </View>
+        )}
+
       </SafeAreaView>
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -512,6 +548,14 @@ export default function WordActivityScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
+  resultScreen: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  resultBack: { position: 'absolute', top: 18, left: 20, padding: 8 },
 
   topBar: {
     flexDirection: 'row',

@@ -51,6 +51,11 @@ import {
   LINE_1, LINE_2, LINE_3, LINE_4,
 } from '../../constants/letterCanvasLayout';
 
+// The column allocation stays fixed so CANVAS_W and the entire writing side
+// remain unchanged. Only the card inside the left column is reduced slightly.
+const PREVIEW_CARD_SIZE = Math.round(LETTER_CARD_SIZE * 0.88);
+const PREVIEW_GLYPH_SIZE = Math.round(PREVIEW_CARD_SIZE * 0.80);
+
 // ─── Support badge vocabulary ───────────────────────────────────────────
 // Moved here from the two writing screens, which held identical copies. The
 // demonstration renders the same badge chrome, so these must be one source.
@@ -119,6 +124,29 @@ function getGhostDots(rawPath) {
     }
   }
   return dots;
+}
+
+/**
+ * Fit the canonical canvas-space letter into a square without stretching it.
+ * The path itself remains the exact rawPath used by the writing target.
+ */
+function getCanonicalPreviewViewBox(rawPath) {
+  const points = normalizeStrokes(rawPath)
+    .flat()
+    .filter((point) => Number.isFinite(point?.fx) && Number.isFinite(point?.fy))
+    .map((point) => ({ x: aspectX(point.fx) * CANVAS_W, y: point.fy * CANVAS_H }));
+
+  if (points.length === 0) return `0 0 ${CANVAS_W} ${CANVAS_H}`;
+
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxY = Math.max(...points.map((point) => point.y));
+  const side = Math.max(maxX - minX, maxY - minY, 1) * 1.20;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  return `${centerX - side / 2} ${centerY - side / 2} ${side} ${side}`;
 }
 
 export const LETTER_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'demo' });
@@ -193,12 +221,38 @@ export default function LetterWritingStage({
   return (
     <View style={styles.mainRow}>
 
-      {/* Left column — large letter card */}
+      {/* Left column — canonical handwriting-form preview. */}
       <View style={styles.letterCol}>
         <View style={[styles.letterCard, { backgroundColor: theme.button }]}>
-          <Text style={[styles.letterCardText, { color: theme.buttonText }]}>
-            {letter}
-          </Text>
+          {rawPath && (
+            <Svg
+              width={PREVIEW_GLYPH_SIZE}
+              height={PREVIEW_GLYPH_SIZE}
+              viewBox={getCanonicalPreviewViewBox(rawPath)}
+              preserveAspectRatio="xMidYMid meet"
+              pointerEvents="none"
+              accessible={false}
+            >
+              <Path
+                d={isAngular ? toStraightPath(rawPath) : toSmoothPath(rawPath)}
+                stroke={theme.buttonText}
+                strokeWidth={8}
+                strokeLinecap="round"
+                strokeLinejoin={isAngular ? 'miter' : 'round'}
+                vectorEffect="non-scaling-stroke"
+                fill="none"
+              />
+              {getGhostDots(rawPath).map((dot, idx) => (
+                <Circle
+                  key={`preview-dot-${idx}`}
+                  cx={dot.cx}
+                  cy={dot.cy}
+                  r={5}
+                  fill={theme.buttonText}
+                />
+              ))}
+            </Svg>
+          )}
         </View>
       </View>
 
@@ -424,9 +478,9 @@ const styles = StyleSheet.create({
   },
 
   letterCard: {
-    width: LETTER_CARD_SIZE,
-    height: LETTER_CARD_SIZE,
-    borderRadius: Math.round(LETTER_CARD_SIZE * 0.22),
+    width: PREVIEW_CARD_SIZE,
+    height: PREVIEW_CARD_SIZE,
+    borderRadius: Math.round(PREVIEW_CARD_SIZE * 0.22),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -434,12 +488,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
-  },
-
-  letterCardText: {
-    fontSize: Math.round(LETTER_CARD_SIZE * 0.60),
-    fontWeight: '900',
-    lineHeight: Math.round(LETTER_CARD_SIZE * 0.75),
   },
 
   contentCol: {

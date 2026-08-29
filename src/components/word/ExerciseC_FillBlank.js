@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import WordImageDisplay from './WordImageDisplay';
 import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
 import { SUPPORT_IMAGE, BODY, supportImageFrameStyle } from './wordActivityLayout';
 import { isHintUnlocked, unlocksHint, HINT_REVEAL_DELAY_MS, HINT_COLORS }
   from './wordHintPolicy';
+import { ANSWER_FEEDBACK_COLORS, shuffleSameOptions } from './wordAnswerFeedback';
 
 // Shared with every other screen that asks for this action, so the child
 // hears one sentence for one task — and one future recording covers it.
@@ -25,14 +26,18 @@ function getBlankInfo(word) {
   return { blankAt: mid, correct: word[mid].toLowerCase() };
 }
 
-export default function ExerciseC_FillBlank({ wordEntry, theme, onComplete, onWrongAnswer }) {
+export default function ExerciseC_FillBlank({ wordEntry, theme, onComplete, onWrongAnswer, onCorrectAnswer }) {
   const { word, emoji, imageKey } = wordEntry;
   const { blankAt: bi, correct }  = useMemo(() => getBlankInfo(word), [word]);
 
-  const choices = useMemo(() => makeChoices(correct), [word]);
+  const initialChoices = useMemo(() => makeChoices(correct), [word]);
+  const [choices, setChoices] = useState(initialChoices);
 
   const [wrongCount, setWrongCount] = useState(0);
   const [done,       setDone]       = useState(false);
+  const [inputLocked, setInputLocked] = useState(false);
+  const inputLockRef = useRef(false);
+  const [verdict, setVerdict] = useState(null);
 
   // The hint waits for the second wrong answer's feedback to finish, so the
   // child sees the verdict on their own answer before the support appears.
@@ -40,24 +45,19 @@ export default function ExerciseC_FillBlank({ wordEntry, theme, onComplete, onWr
   const hintTimerRef = useRef(null);
   useEffect(() => () => clearTimeout(hintTimerRef.current), []);
 
-  const flashAnims = useRef(choices.map(() => new Animated.Value(1))).current;
-
-  function flash(idx, success) {
-    Animated.sequence([
-      Animated.timing(flashAnims[idx], { toValue: success ? 0.3 : 0.15, duration: 80, useNativeDriver: true }),
-      Animated.timing(flashAnims[idx], { toValue: 1, duration: 180, useNativeDriver: true }),
-    ]).start();
-  }
-
-  function handlePress(letter, idx) {
-    if (done) return;
+  async function handlePress(letter) {
+    if (done || inputLockRef.current) return;
+    inputLockRef.current = true;
     if (letter === correct) {
       setDone(true);
-      flash(idx, true);
-      setTimeout(() => onComplete(wrongCount === 0), 500);
+      setInputLocked(true);
+      setVerdict({ id: letter, correct: true });
+      await Promise.resolve(onCorrectAnswer?.());
+      onComplete(wrongCount === 0);
     } else {
-      flash(idx, false);
-      onWrongAnswer?.();                    // verdict on THIS answer: wrong.gif
+      setInputLocked(true);
+      setVerdict({ id: letter, correct: false });
+      const feedbackDone = onWrongAnswer?.(); // verdict on THIS answer: wrong.gif
       setWrongCount((w) => {
         const next = w + 1;                 // answers only
         if (unlocksHint(next)) {
@@ -65,6 +65,11 @@ export default function ExerciseC_FillBlank({ wordEntry, theme, onComplete, onWr
         }
         return next;
       });
+      await Promise.resolve(feedbackDone);
+      setVerdict(null);
+      setChoices(current => shuffleSameOptions(current));
+      inputLockRef.current = false;
+      setInputLocked(false);
     }
   }
 
@@ -95,39 +100,45 @@ export default function ExerciseC_FillBlank({ wordEntry, theme, onComplete, onWr
         </View>
 
         <View style={styles.grid}>
-          {choices.map((letter, idx) => {
+          {choices.map((letter) => {
             const isCorrect = letter === correct;
             const isHinted  = showHint && isCorrect;
-            const bg = done && isCorrect ? '#4CAF50'
+            const isVerdict = verdict?.id === letter;
+            const isWrong = isVerdict && !verdict.correct;
+            const isRight = isVerdict && verdict.correct;
+            const bg = isWrong          ? ANSWER_FEEDBACK_COLORS.wrongSurface
+                     : isRight          ? ANSWER_FEEDBACK_COLORS.correctSurface
                      : isHinted          ? HINT_COLORS.surface
                      :                    '#F5F5F5';
 
             return (
-              <Animated.View key={letter} style={{ opacity: flashAnims[idx] }}>
+              <View key={letter}>
                 <TouchableOpacity
                   style={[styles.tile, {
                     backgroundColor: bg,
-                    borderColor: isHinted         ? HINT_COLORS.border
-                               : done && isCorrect ? '#388E3C'
+                    borderColor: isWrong  ? ANSWER_FEEDBACK_COLORS.wrongBorder
+                               : isRight  ? ANSWER_FEEDBACK_COLORS.correctBorder
+                               : isHinted ? HINT_COLORS.border
                                :                    '#E0E0E0',
                   }]}
-                  onPress={() => handlePress(letter, idx)}
+                  onPress={() => handlePress(letter)}
                   activeOpacity={0.7}
-                  disabled={done}
+                  disabled={done || inputLocked}
                   accessibilityRole="button"
                   accessibilityLabel={letter.toUpperCase()}
                   accessibilityHint={isHinted ? 'Hint: this is the answer' : undefined}
-                  accessibilityState={{ disabled: done }}
+                  accessibilityState={{ disabled: done || inputLocked }}
                 >
                   <Text style={[
                     styles.tileText,
                     isHinted          && styles.hintText,
-                    done && isCorrect && styles.correctText,
+                    isWrong && styles.wrongText,
+                    isRight && styles.correctText,
                   ]}>
                     {letter.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
             );
           })}
         </View>
@@ -221,5 +232,6 @@ const styles = StyleSheet.create({
     color: '#333333',
   },
   hintText:    { color: HINT_COLORS.text },
-  correctText: { color: '#FFFFFF' },
+  wrongText:   { color: ANSWER_FEEDBACK_COLORS.wrongText },
+  correctText: { color: ANSWER_FEEDBACK_COLORS.correctText },
 });

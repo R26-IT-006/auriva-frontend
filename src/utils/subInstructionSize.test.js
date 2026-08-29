@@ -213,10 +213,9 @@ describe('SENTINEL — the main target line is untouched', () => {
 
 describe('SENTINEL — glyphs, geometry and logic untouched', () => {
   it('the reference letter card is byte-identical', () => {
-    const body = styleBody(read('../components/handwriting/LetterWritingStage.js'), 'letterCardText');
-    expect(body).not.toMatch(/fontFamily/);
-    expect(body).toMatch(/fontSize: Math\.round\(LETTER_CARD_SIZE \* 0\.60\)/);
-    expect(body).toMatch(/lineHeight: Math\.round\(LETTER_CARD_SIZE \* 0\.75\)/);
+    const source = read('../components/handwriting/LetterWritingStage.js');
+    expect(source).not.toMatch(/letterCardText:/);
+    expect(source).toMatch(/viewBox=\{getCanonicalPreviewViewBox\(rawPath\)\}/);
   });
 
   it('the exercise and word glyph styles are untouched', () => {

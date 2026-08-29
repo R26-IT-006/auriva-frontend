@@ -301,7 +301,9 @@ describe('SENTINEL — geometry, storage and scoring untouched', () => {
   it('nothing transforms a point between state and the rendered stroke', () => {
     const stage = readCode('../components/handwriting/LetterWritingStage.js');
     expect(stage).toMatch(/points=\{stroke\.map\(p => `\$\{p\.x\},\$\{p\.y\}`\)\.join\(' '\)\}/);
-    expect(stage).not.toMatch(/viewBox|preserveAspectRatio/);
+    const canvasStart = stage.indexOf('<Svg width={CANVAS_W} height={CANVAS_H}>');
+    const writingCanvas = stage.slice(canvasStart, stage.indexOf('</Svg>', canvasStart));
+    expect(writingCanvas).not.toMatch(/viewBox|preserveAspectRatio/);
   });
 
   it('reference path constants are untouched', () => {

@@ -863,9 +863,9 @@ describe('demo mode disables interaction; practice mode is untouched', () => {
   }
 
   it('Activity D refuses taps in demo mode and never completes the real activity', () => {
-    expect(exerciseD).toMatch(/disabled=\{demoMode\}/);
-    expect(exerciseD).toMatch(/if \(demoMode\) onDemoPassComplete\?\.\(\);/);
-    expect(exerciseD).toMatch(/else onComplete\(true\);/);
+    expect(exerciseD).toMatch(/disabled=\{demoMode \|\| inputLocked \|\| done\}/);
+    expect(exerciseD).toMatch(/if \(demoMode\) \{\s*setTimeout\(\(\) => onDemoPassComplete\?\.\(\), 800\);/);
+    expect(exerciseD).toMatch(/else \{[\s\S]*onComplete\(wrongCount === 0\);/);
     expect(exerciseD).toMatch(/pointerEvents=\{demoMode \? 'none' : 'auto'\}/);
   });
 

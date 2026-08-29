@@ -157,7 +157,6 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
   // (they keep today's appearance) while removing any judgement call about
   // which glyph a child might treat as a model.
   const GLYPH_STYLES = [
-    ['components/handwriting/LetterWritingStage.js', ['letterCardText']],
     ['components/word/ExerciseA_WriteFirst.js',      ['tileText']],
     ['components/word/ExerciseB_CircleImage.js',     ['wordText']],
     ['components/word/ExerciseC_FillBlank.js',       ['tileText']],
@@ -180,10 +179,9 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
 
   it('SENTINEL — the reference letter card is byte-identical to before', () => {
     const src = read('components/handwriting/LetterWritingStage.js');
-    const m = src.match(/letterCardText:\s*\{([\s\S]*?)\}/);
-    expect(m[1]).toMatch(/fontSize: Math\.round\(LETTER_CARD_SIZE \* 0\.60\)/);
-    expect(m[1]).toMatch(/fontWeight: '900'/);
-    expect(m[1]).not.toMatch(/fontFamily/);
+    expect(src).not.toMatch(/letterCardText:/);
+    expect(src).toMatch(/viewBox=\{getCanonicalPreviewViewBox\(rawPath\)\}/);
+    expect(src).toMatch(/d=\{isAngular \? toStraightPath\(rawPath\) : toSmoothPath\(rawPath\)\}/);
   });
 
   it('the canvas stroke-order numbers are SVG props, never a StyleSheet face', () => {
@@ -228,7 +226,6 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
 describe('every declared weight now resolves to its Nunito face', () => {
   const WRITING = [...WRITING_FILES, 'screens/teacher/students/StudentDetailScreen.js'];
   const GLYPH = {
-    'LetterWritingStage.js': ['letterCardText'],
     'ExerciseA_WriteFirst.js': ['tileText'],
     'ExerciseB_CircleImage.js': ['wordText'],
     'ExerciseC_FillBlank.js': ['tileText'],

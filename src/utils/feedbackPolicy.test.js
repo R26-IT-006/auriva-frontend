@@ -153,8 +153,9 @@ describe('§21 / §22 — A–D use the GIF, E keeps the avatar', () => {
   it('the branch is on the exercise, and only on the exercise', () => {
     expect(code).toMatch(/const isWriting = ex === 'E';/);
     // Phase 4: the GIF reports the ANSWER, the saved status reports the help.
-    expect(code).toMatch(/const presentedPassed = isWriting \? wasCorrect : true;/);
-    expect(code).toMatch(/setActivityFeedback\(\{ passed: presentedPassed, isWriting, note \}\)/);
+    expect(code).toMatch(/showChoiceAnswerFeedback\(true\)/);
+    expect(code).toMatch(/setActivityFeedback\(\{ passed, isWriting: false \}\)/);
+    expect(code).toMatch(/setActivityFeedback\(\{ passed: wasCorrect, isWriting: true, note \}\)/);
   });
 
   it('§22 A–D render the GIF and never the avatar', () => {
@@ -175,7 +176,7 @@ describe('§21 / §22 — A–D use the GIF, E keeps the avatar', () => {
     expect(readCode(EX.A)).toMatch(/onComplete\(wrongCount === 0\)/);
     expect(readCode(EX.B)).toMatch(/const isCorrect = opt\.word === word;/);
     expect(readCode(EX.C)).toMatch(/const isCorrect = letter === correct;/);
-    expect(readCode(EX.D)).toMatch(/else onComplete\(true\);/);
+    expect(readCode(EX.D)).toMatch(/onComplete\(wrongCount === 0\);/);
     expect(code).toMatch(/const result\s+= wasCorrect \? 'correct' : 'good';/);
     const gif = readCode(GIF);
     expect(gif).not.toMatch(/isCorrect|score|onComplete|===\s*answer/);
@@ -279,7 +280,8 @@ describe('§10 / §11 / §25 — one component, and it cannot move the page', ()
 describe('§24 — one feedback event, one timer, one continuation', () => {
   it('the word activity uses a single timer whose length depends on the mechanism', () => {
     const code = readCode(WORD_A);
-    expect(code).toMatch(/feedbackTimerRef\.current = setTimeout\(\s*resolve, isWriting \? ATTEMPT_FEEDBACK_MS : RESULT_GIF_MS\)/);
+    expect(code).toMatch(/feedbackTimerRef\.current = setTimeout\(resolve, ATTEMPT_FEEDBACK_MS\)/);
+    expect(code).toMatch(/wrongTimerRef\.current = setTimeout\([\s\S]*RESULT_GIF_MS/);
     const at = code.indexOf('const handleExerciseComplete');
     const handler = code.slice(at, code.indexOf('}, [wordIdx', at));
     expect((handler.match(/setTimeout\(/g) || [])).toHaveLength(1);
@@ -293,7 +295,9 @@ describe('§24 — one feedback event, one timer, one continuation', () => {
     const at = code.indexOf('const handleExerciseComplete');
     const handler = code.slice(at, code.indexOf('\n  }, [', at));
     expect((handler.match(/advancingRef\.current = false/g) || [])).toHaveLength(1);
-    expect((handler.match(/navigation\.replace\('WordWriting'/g) || [])).toHaveLength(1);
+    const continuation = code.slice(code.indexOf('const continueFromWordResult'));
+    expect((continuation.match(/navigation\.replace\('WordWriting'/g) || [])).toHaveLength(1);
+    expect(code).toMatch(/resultContinuingRef\.current = true/);
   });
 
   it('Word Writing advances once, after its own single dwell', () => {

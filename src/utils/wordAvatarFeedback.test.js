@@ -129,12 +129,13 @@ describe('A / B / C / D — a choice result goes to the avatar', () => {
     // because reaching completion in a choice activity means exactly that.
     // Deriving the GIF from `wasCorrect` showed wrong.gif to a child who had
     // used the hint and then answered correctly.
-    expect(code).toMatch(/const presentedPassed = isWriting \? wasCorrect : true;/);
-    expect(code).toMatch(/setActivityFeedback\(\{ passed: presentedPassed, isWriting, note \}\)/);
+    expect(code).toMatch(/showCorrectAnswerFeedback = useCallback/);
+    expect(code).toMatch(/setActivityFeedback\(\{ passed, isWriting: false \}\)/);
+    expect(code).toMatch(/setActivityFeedback\(\{ passed: wasCorrect, isWriting: true, note \}\)/);
     // Two raise-sites now: this completion verdict, and a wrong ANSWER that
     // does not complete anything. No third.
     expect((code.match(/setActivityFeedback\(\{/g) || []).length).toBe(2);
-    expect(code).toMatch(/setActivityFeedback\(\{ passed: false, isWriting: false \}\)/);
+    expect(code).toMatch(/showChoiceAnswerFeedback\(false\)/);
   });
 
   it('A correct → positive, A incorrect → encouragement', () => {
@@ -228,8 +229,9 @@ describe('J — the activity advances exactly once', () => {
   });
 
   it('the feedback pause is a single awaited timer, not a parallel one', () => {
-    // One timer, whose duration depends on which mechanism is showing.
-    expect(code).toMatch(/feedbackTimerRef\.current = setTimeout\(\s*resolve, isWriting \? ATTEMPT_FEEDBACK_MS : RESULT_GIF_MS\)/);
+    // Choice GIFs and E's avatar each own one awaited dwell.
+    expect(code).toMatch(/feedbackTimerRef\.current = setTimeout\(resolve, ATTEMPT_FEEDBACK_MS\)/);
+    expect(code).toMatch(/wrongTimerRef\.current = setTimeout\([\s\S]*RESULT_GIF_MS/);
     // Still ONE awaited timer in the completion path. The second setTimeout on
     // this screen belongs to the wrong-answer overlay, which awaits nothing
     // and advances nothing.

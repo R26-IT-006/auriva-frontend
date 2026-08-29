@@ -254,7 +254,7 @@ describe('D / E / F — copy, no scrolling, correctness', () => {
     expect(readCode(EX.A)).toMatch(/onComplete\(wrongCount === 0\)/);
     expect(readCode(EX.B)).toMatch(/const isCorrect = opt\.word === word;/);
     expect(readCode(EX.C)).toMatch(/const isCorrect = letter === correct;/);
-    expect(readCode(EX.D)).toMatch(/else onComplete\(true\);/);
+    expect(readCode(EX.D)).toMatch(/onComplete\(wrongCount === 0\);/);
     expect(readCode(EX.E)).toMatch(/setDone\(true\); setTimeout\(\(\) => onComplete\(true, nextResult\.layoutMessage\), 500\);/);
   });
 

@@ -6,6 +6,7 @@ import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstr
 import { SUPPORT_IMAGE, BODY, supportImageFrameStyle } from './wordActivityLayout';
 import { isHintUnlocked, unlocksHint, HINT_REVEAL_DELAY_MS, HINT_COLORS }
   from './wordHintPolicy';
+import { ANSWER_FEEDBACK_COLORS, shuffleAvailableTiles } from './wordAnswerFeedback';
 
 // Shared with every other screen that asks for this action, so the child
 // hears one sentence for one task — and one future recording covers it.
@@ -40,7 +41,7 @@ function buildTiles(word) {
  * cannot drift away from the activity because it IS the activity.
  */
 export default function ExerciseD_SpellWord({
-  wordEntry, theme, onComplete, onWrongAnswer,
+  wordEntry, theme, onComplete, onWrongAnswer, onCorrectAnswer,
   demoMode = false, demoPlayToken = 0, onDemoPassComplete,
 }) {
   const { word, emoji, imageKey } = wordEntry;
@@ -49,17 +50,20 @@ export default function ExerciseD_SpellWord({
 
   const [filled,   setFilled]   = useState([]);
   const [tileUsed, setTileUsed] = useState(() => new Array(tiles.length).fill(false));
+  const [tileOrder, setTileOrder] = useState(() => tiles.map((_, index) => index));
   const [done,     setDone]     = useState(false);
+  const [inputLocked, setInputLocked] = useState(false);
+  const inputLockRef = useRef(false);
+  const [verdict, setVerdict] = useState(null);
 
   // D's authoritative wrong ANSWER is a tile tapped against the letter the
-  // word needs next — the same event that already shook the tile. Correct
-  // taps that merely advance the spelling are not answers and count nothing.
+  // word needs next. Correct taps that merely advance the spelling are not
+  // final answers and count nothing.
   const [wrongCount, setWrongCount] = useState(0);
   const [hintReady,  setHintReady]  = useState(false);
   const hintTimerRef = useRef(null);
   useEffect(() => () => clearTimeout(hintTimerRef.current), []);
 
-  const errorAnims  = useRef(tiles.map(() => new Animated.Value(0))).current;
   const fillAnims   = useRef(letters.map(() => new Animated.Value(0))).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
   const successAnim = useRef(new Animated.Value(0)).current;
@@ -88,16 +92,6 @@ export default function ExerciseD_SpellWord({
     ? tiles.findIndex((t, i) => !tileUsed[i] && t.letter === letters[filled.length])
     : -1;
 
-  function shakeError(tileIdx) {
-    const anim = errorAnims[tileIdx];
-    Animated.sequence([
-      Animated.timing(anim, { toValue:  1, duration: 55, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: -1, duration: 55, useNativeDriver: true }),
-      Animated.timing(anim, { toValue:  1, duration: 55, useNativeDriver: true }),
-      Animated.timing(anim, { toValue:  0, duration: 55, useNativeDriver: true }),
-    ]).start();
-  }
-
   function animateFill(pos) {
     fillAnims[pos].setValue(0);
     Animated.spring(fillAnims[pos], {
@@ -108,8 +102,8 @@ export default function ExerciseD_SpellWord({
     }).start();
   }
 
-  function handleTile(tileIdx) {
-    if (done || tileUsed[tileIdx]) return;
+  async function handleTile(tileIdx) {
+    if (done || inputLockRef.current || tileUsed[tileIdx]) return;
     const tile = tiles[tileIdx];
     const pos  = filled.length;
 
@@ -129,15 +123,22 @@ export default function ExerciseD_SpellWord({
           friction: 7,
         }).start();
         // Demo mode never calls the activity's own completion path.
-        setTimeout(() => {
-          if (demoMode) onDemoPassComplete?.();
-          else onComplete(true);
-        }, 800);
+        if (demoMode) {
+          setTimeout(() => onDemoPassComplete?.(), 800);
+        } else {
+          inputLockRef.current = true;
+          setInputLocked(true);
+          setVerdict({ id: tile.id, correct: true });
+          await Promise.resolve(onCorrectAnswer?.());
+          onComplete(wrongCount === 0);
+        }
       }
     } else {
-      shakeError(tileIdx);
       if (demoMode) return;                 // the demo drives itself; no verdict
-      onWrongAnswer?.();                    // verdict on THIS tap: wrong.gif
+      inputLockRef.current = true;
+      setInputLocked(true);
+      setVerdict({ id: tile.id, correct: false });
+      const feedbackDone = onWrongAnswer?.(); // verdict on THIS tap: wrong.gif
       setWrongCount((w) => {
         const next = w + 1;
         if (unlocksHint(next)) {
@@ -145,6 +146,11 @@ export default function ExerciseD_SpellWord({
         }
         return next;
       });
+      await Promise.resolve(feedbackDone);
+      setVerdict(null);
+      setTileOrder(current => shuffleAvailableTiles(current, tileUsed));
+      inputLockRef.current = false;
+      setInputLocked(false);
     }
   }
 
@@ -171,7 +177,11 @@ export default function ExerciseD_SpellWord({
     demoTimers.current = [];
     setFilled([]);
     setTileUsed(new Array(tiles.length).fill(false));
+    setTileOrder(tiles.map((_, index) => index));
     setDone(false);
+    setInputLocked(false);
+    inputLockRef.current = false;
+    setVerdict(null);
     handOpacity.setValue(0);
     handScale.setValue(1);
     rippleOpacity.setValue(0);
@@ -296,46 +306,50 @@ export default function ExerciseD_SpellWord({
 
         {/* Letter tiles */}
         <View style={[styles.tileRow, demoMode && styles.tileRowDemo]} pointerEvents={demoMode ? 'none' : 'auto'}>
-          {tiles.map((tile, idx) => {
-            if (tileUsed[idx]) return <View key={tile.id} style={styles.tileGhost} />;
+          {tileOrder.map((idx) => {
+            const tile = tiles[idx];
+            const isVerdict = verdict?.id === tile.id;
+            const isWrong = isVerdict && !verdict.correct;
+            const isRight = isVerdict && verdict.correct;
+            if (tileUsed[idx] && !isRight) return <View key={tile.id} style={styles.tileGhost} />;
 
             const isHinted = idx === hintedTileIdx;
 
             return (
-              <Animated.View
+              <View
                 key={tile.id}
                 onLayout={(e) => { tileLayouts.current[idx] = e.nativeEvent.layout; }}
-                style={{
-                  transform: [{
-                    translateX: errorAnims[idx].interpolate({
-                      inputRange:  [-1, 0, 1],
-                      outputRange: [-8, 0, 8],
-                    }),
-                  }],
-                }}
               >
                 <TouchableOpacity
                   style={[styles.tile, {
                     // Colours only: width, height, radius and every border
                     // WIDTH are fixed in styles.tile, so hinting a tile cannot
                     // move the row.
-                    backgroundColor:  isHinted ? HINT_COLORS.surface : theme.button + '20',
-                    borderColor:      isHinted ? HINT_COLORS.border  : theme.button + '50',
-                    borderBottomColor: isHinted ? HINT_COLORS.border : theme.button + '80',
+                    backgroundColor: isWrong ? ANSWER_FEEDBACK_COLORS.wrongSurface
+                      : isRight ? ANSWER_FEEDBACK_COLORS.correctSurface
+                      : isHinted ? HINT_COLORS.surface : theme.button + '20',
+                    borderColor: isWrong ? ANSWER_FEEDBACK_COLORS.wrongBorder
+                      : isRight ? ANSWER_FEEDBACK_COLORS.correctBorder
+                      : isHinted ? HINT_COLORS.border : theme.button + '50',
+                    borderBottomColor: isWrong ? ANSWER_FEEDBACK_COLORS.wrongBorder
+                      : isRight ? ANSWER_FEEDBACK_COLORS.correctBorder
+                      : isHinted ? HINT_COLORS.border : theme.button + '80',
                     shadowColor:      theme.button,
                   }]}
                   onPress={() => handleTile(idx)}
-                  disabled={demoMode}
+                  disabled={demoMode || inputLocked || done}
                   activeOpacity={0.6}
                   accessibilityRole="button"
                   accessibilityLabel={tile.letter.toUpperCase()}
                   accessibilityHint={isHinted ? 'Hint: this letter comes next' : undefined}
                 >
-                  <Text style={[styles.tileText, { color: isHinted ? HINT_COLORS.text : theme.headingText }]}>
+                  <Text style={[styles.tileText, { color: isWrong ? ANSWER_FEEDBACK_COLORS.wrongText
+                    : isRight ? ANSWER_FEEDBACK_COLORS.correctText
+                    : isHinted ? HINT_COLORS.text : theme.headingText }]}>
                     {tile.letter.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
             );
           })}
           {demoMode && (

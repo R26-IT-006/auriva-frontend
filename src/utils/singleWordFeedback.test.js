@@ -155,7 +155,7 @@ describe('the advisory is the avatar, not a second thing beside it', () => {
   it('the word activity carries the note to the avatar', () => {
     const code = readCode(ACTIVITY);
     expect(code).toMatch(/handleExerciseComplete = useCallback\(async \(wasCorrect, note\) =>/);
-    expect(code).toMatch(/setActivityFeedback\(\{ passed: presentedPassed, isWriting, note \}\)/);
+    expect(code).toMatch(/setActivityFeedback\(\{ passed: wasCorrect, isWriting: true, note \}\)/);
     expect(code).toMatch(/note=\{activityFeedback\.note\}/);
   });
 
