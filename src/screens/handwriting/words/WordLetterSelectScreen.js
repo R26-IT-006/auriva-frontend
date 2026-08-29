@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { fetchWordProgress } from '../../../utils/wordApi';
 import { buildWordRouteParams, getSelectedWords } from '../../../utils/wordWorkflow';
 import { filterUnfinishedWords } from '../../../utils/wordCompletionHistory';
+import { computeWordLetterUnlocks } from '../../../utils/wordLetterUnlockPolicy';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import useGatedBack from '../../../utils/useGatedBack';
 import { useToast } from '../../../context/ToastContext';
@@ -61,12 +62,6 @@ const AVATAR_MAP = {
 
 // ─── Unlock logic ─────────────────────────────────────────────────────────────
 
-function computeUnlocked() {
-  const map = {};
-  LETTERS.forEach(letter => { map[letter] = true; });
-  return map;
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function WordLetterSelectScreen({ route, navigation }) {
@@ -81,19 +76,24 @@ export default function WordLetterSelectScreen({ route, navigation }) {
   // Concept screens do. Cancelling navigates nowhere.
   const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
-  // The Teacher button opens TeacherReport — the same teacher-facing
-  // destination LetterHomeScreen already gates behind its own
-  // requestGatedAction('progress'). Leaving it open here made the gate
-  // bypassable simply by reaching the report from the word flow instead of
-  // the letter flow. Reuses the SAME ParentGateModal mechanism (a second
-  // independent instance of the existing hook), not a new gate concept.
+  // The Progress Report is a teacher-facing surface, so it sits behind the
+  // same parent gate the back button uses  -  the useGatedBack(action) form
+  // TeacherReportScreen.js already uses for its own non-back actions.
+  //
+  // Both of these were REFERENCED below and declared nowhere, so evaluating
+  // the top bar threw a ReferenceError and the chooser could not render.
+  //
+  // The destination is TeacherReport - the same route LetterHomeScreen's own
+  // gated progress action uses, with the same { student, theme, originRoute }
+  // params. Only the BUTTON'S LABEL changed in this phase; the screen behind
+  // it is unchanged, and no second report screen was introduced.
   const {
     requestBack: requestTeacherReport,
     gateModal: teacherReportGateModal,
   } = useGatedBack(() => navigation.navigate('TeacherReport', {
-    // Back from the report returns HERE, not to whatever the stack holds
-    // underneath it — see utils/backToOrigin.js.
-    student, theme, originRoute: 'WordLetterSelect',
+    student,
+    theme,
+    originRoute: 'WordLetterSelect',
   }));
 
   const { student, theme } = route.params;
@@ -137,9 +137,9 @@ export default function WordLetterSelectScreen({ route, navigation }) {
     }, [student?.sid])
   );
 
-  const unlocked     = computeUnlocked();
+  const unlocked     = computeWordLetterUnlocks(wordProgress);
   const doneCount    = LETTERS.filter(l => !!wordProgress[l.toLowerCase()]).length;
-  const progressText = `${doneCount} / ${LETTERS.length} letters`;
+  const progressText = `${doneCount} / ${LETTERS.length} letters started`;
 
   return (
     <LinearGradient
@@ -167,19 +167,19 @@ export default function WordLetterSelectScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.topOutlineBtn, { borderColor: theme.button, backgroundColor: theme.button + '14' }]}
               onPress={() => navigation.navigate('WordProgress', { student, theme })}
-              accessibilityLabel="View rewards"
+              accessibilityLabel="Word Progress"
             >
               <Ionicons name="ribbon-outline" size={14} color={theme.button} />
-              <Text style={[styles.topOutlineBtnText, { color: theme.button }]}>Rewards</Text>
+              <Text style={[styles.topOutlineBtnText, { color: theme.button }]}>Word Progress</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.topFilledBtn, { backgroundColor: theme.button }]}
               onPress={requestTeacherReport}
-              accessibilityLabel="Teacher report — needs a code"
+              accessibilityLabel="Progress Report - needs a code"
             >
               <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
-              <Text style={[styles.topFilledBtnText, { color: theme.buttonText }]}>Teacher</Text>
+              <Text style={[styles.topFilledBtnText, { color: theme.buttonText }]}>Progress Report</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -280,10 +280,33 @@ function LetterCard({ letter, isUnlocked, progress, palette, globalPulse, theme,
     : 0;
 
   if (!isUnlocked) {
+    // A locked letter keeps ITS OWN card  -  same pastel fill, same border,
+    // same big letter in the same colour. Locking is a small badge in the
+    // corner and a softer letter, not a grey rectangle: the alphabet should
+    // still read as the same friendly grid whether or not it is open yet.
+    //
+    // No stars, no press, and no breathing animation  -  the pulse belongs to
+    // the cards a child can actually tap.
     return (
-      <View style={[styles.card, styles.cardLocked]}>
-        <Text style={styles.letterLocked}>{letter}</Text>
-        <Ionicons name="lock-closed" size={IS_TABLET ? 14 : 12} color="#BBBBBB" style={{ marginTop: 3 }} />
+      <View
+        style={[
+          styles.card,
+          styles.cardUnlocked,
+          { backgroundColor: palette.bg, borderColor: palette.border },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Letter ${letter} locked`}
+        accessibilityState={{ disabled: true }}
+      >
+        <View style={[styles.shineCircle, { backgroundColor: palette.shine }]} />
+
+        <View style={[styles.lockBadge, { backgroundColor: palette.border }]}>
+          <Ionicons name="lock-closed" size={IS_TABLET ? 11 : 10} color={palette.text} />
+        </View>
+
+        <Text style={[styles.letter, styles.letterLocked, { color: palette.text }]}>
+          {letter}
+        </Text>
       </View>
     );
   }
@@ -458,10 +481,13 @@ const styles = StyleSheet.create({
     shadowRadius:  8,
     elevation:     3,
   },
-  cardLocked: {
-    backgroundColor: 'rgba(255,255,255,0.20)',
-    borderWidth:     1.5,
-    borderColor:     'rgba(255,255,255,0.30)',
+  lockBadge: {
+    position:      'absolute',
+    top:           6,
+    left:          6,
+    borderRadius:  10,
+    paddingHorizontal: 4,
+    paddingVertical:   3,
   },
 
   // Shine accent
@@ -495,10 +521,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     lineHeight: IS_TABLET ? Math.round(CARD_SIZE * 0.50) : Math.round(CARD_SIZE * 0.52),
   },
+  // Modifies styles.letter rather than replacing it: the size and weight stay
+  // exactly as an unlocked card's, only softened.
   letterLocked: {
-    fontSize:   IS_TABLET ? Math.round(CARD_SIZE * 0.40) : Math.round(CARD_SIZE * 0.42),
-    fontWeight: '900',
-    color:      '#CCCCCC',
+    opacity: 0.55,
   },
 
   // Stars

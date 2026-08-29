@@ -59,8 +59,10 @@ describe('the back button is gated, never a direct navigation', () => {
   it('navigation happens only inside handleGateSuccess, after the code is accepted', () => {
     const handler = slice(screen, 'function handleGateSuccess()', 'function handleGateCancel()');
     expect(handler).toContain("pendingGateAction === 'back'");
-    expect(handler).toMatch(/navigation\.canGoBack\(\)/);
-    expect(handler).toMatch(/navigation\.goBack\(\)/);
+    // Back now returns to the assessment starting screen rather than popping
+    // one entry or exiting the module - see utils/moduleSelectionBack.js.
+    // The GATE is unchanged: this still runs only after the code is accepted.
+    expect(handler).toMatch(/backToAssessmentStart\(navigation, \{ student, theme \}\)/);
     expect(handler).toMatch(/navigation\.navigate\('TeacherMain'\)/);
   });
 
@@ -76,10 +78,13 @@ describe('the back button is gated, never a direct navigation', () => {
 });
 
 describe('the gate cannot be bypassed by the back button itself', () => {
-  it('the only navigation targets reachable from the back action are goBack / TeacherMain', () => {
-    const handler = slice(screen, "pendingGateAction === 'back'", '}\n    setPendingGateAction(null);');
-    const targets = handler.match(/navigation\.navigate\('([^']+)'\)/g) ?? [];
-    expect(targets).toEqual(["navigation.navigate('TeacherMain')"]);
+  it('the back action reaches exactly one destination, and only via the gate', () => {
+    const handler = slice(screen, "pendingGateAction === 'back'", 'setPendingGateAction(null);');
+    // One call, one destination: the assessment starting screen.
+    expect((handler.match(/backToAssessmentStart\(/g) ?? []).length).toBe(1);
+    expect(handler.match(/navigation\.navigate\('([^']+)'\)/g) ?? []).toEqual([]);
+    // And it is still unreachable without passing the gate first.
+    expect(screen).not.toMatch(/onPress=\{\(\) => backToAssessmentStart/);
   });
 
   it('does not introduce a hardware/gesture back path that skips the gate', () => {

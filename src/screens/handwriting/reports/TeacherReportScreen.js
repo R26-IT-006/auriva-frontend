@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -113,6 +113,12 @@ import { fetchTeacherOverrideFamilies } from '../../../utils/familyThresholds';
 import { navigateToWritingCheck } from '../../../utils/writingCheckNavigation';
 import { goBackToOrigin } from '../../../utils/backToOrigin';
 import { resolveWordImageKey, resolveWordEmoji } from '../../../utils/wordImageResolver';
+import { mergeWordPracticeByLetter, hasWritingResult }
+  from '../../../utils/wordPracticeReport';
+import {
+  fetchLetterMasteryEvidence, evidenceUnavailableMessage, evidenceCaption,
+  EVIDENCE_STATUS,
+} from '../../../utils/letterMasteryEvidence';
 
 // A teacher-report preview: recognisable at a glance, not an activity
 // illustration. Was 30 — too small to read the picture at all.
@@ -436,6 +442,15 @@ export default function TeacherReportScreen({ route, navigation }) {
   const { width: viewportWidth } = useWindowDimensions();
   const isWideLayout = viewportWidth >= 600;
   const [report,   setReport]   = useState(null);
+
+  // Word activities and word writing arrive as two payloads and stay two
+  // payloads; this is only the join, so each word can be shown once with all
+  // of its evidence. Letter summary numbers pass through untouched.
+  const mergedWordPractice = useMemo(
+    () => mergeWordPracticeByLetter(
+      report?.wordMastery?.byLetter, report?.wordWritingHistory?.words),
+    [report?.wordMastery?.byLetter, report?.wordWritingHistory?.words],
+  );
   const [duration, setDuration] = useState(0);
   const [letterProgressReport, setLetterProgressReport] = useState(null);
   // Report-load crash fix: several steps below (local AsyncStorage reads,
@@ -959,22 +974,18 @@ export default function TeacherReportScreen({ route, navigation }) {
                     </View>
                   )}
 
-                  {report.wordMastery.byLetter.length > 0 ? (
+                  {/* ONE list. The standalone "Word writing" list that used
+                      to sit below this showed the same words again, with
+                      their handwriting scores detached from their activity
+                      results - a teacher reading ANT's chips had to scroll
+                      past every other letter to find ANT's writing score.
+                      Both payloads are still fetched separately and unchanged;
+                      mergeWordPracticeByLetter joins them per word. */}
+                  {mergedWordPractice.length > 0 ? (
                     <>
                       <View style={s.divider} />
-                      <Text style={mda.sectionLabel}>Word activities</Text>
-                      {report.wordMastery.byLetter.map(l => (
+                      {mergedWordPractice.map(l => (
                         <WordLetterRow key={l.letter} data={l} />
-                      ))}
-                    </>
-                  ) : null}
-
-                  {report.wordWritingHistory?.words?.length > 0 ? (
-                    <>
-                      <View style={s.divider} />
-                      <Text style={mda.sectionLabel}>Word writing</Text>
-                      {report.wordWritingHistory.words.map(w => (
-                        <WordWritingRow key={w.word} data={w} />
                       ))}
                     </>
                   ) : null}
@@ -1061,7 +1072,7 @@ export default function TeacherReportScreen({ route, navigation }) {
 
       {/* Parent gate for the back button above. Rendered once, at the
           end of the tree, so it overlays the whole screen. */}
-      <LetterDetailSheet letter={letterDetail} onClose={() => setLetterDetail(null)} />
+      <LetterDetailSheet letter={letterDetail} studentId={student?.sid} onClose={() => setLetterDetail(null)} />
 
       {gateModal}
     </LinearGradient>
@@ -1285,7 +1296,83 @@ function LetterMasteryGrid({ letters, onSelect }) {
  * Where policy provenance is unknown the evidence is labelled neutrally
  * ("Recorded practice evidence") rather than claimed for any policy.
  */
-function LetterDetailSheet({ letter, onClose }) {
+// The mastery drawing, at a size a teacher can actually read on a tablet.
+const MASTERY_PREVIEW_SIZE = 132;
+
+// The stored trajectory, drawn as-is. Same helper the shape previews use, so
+// one normalizer handles the { stroke_id, points } shape both are stored in
+// and both preserve the drawing's own aspect ratio. Read-only: no replay, no
+// scoring, no editing.
+function MasteryWritingPreview({ result }) {
+  if (result == null) {
+    return (
+      <View style={ld.previewEmpty}>
+        <Text style={ld.previewEmptyText}>Loading writing evidence…</Text>
+      </View>
+    );
+  }
+
+  const paths = result.status === EVIDENCE_STATUS.AVAILABLE
+    ? computeShapePreviewPaths(
+        result.evidence?.stroke_points, MASTERY_PREVIEW_SIZE, MASTERY_PREVIEW_SIZE, 10)
+    : [];
+
+  // Status said available but the points would not render - show the honest
+  // empty state rather than an empty white box.
+  if (paths.length === 0) {
+    return (
+      <View style={ld.previewEmpty}>
+        <Ionicons name="image-outline" size={20} color="#CBD5E1" />
+        <Text style={ld.previewEmptyText}>
+          {evidenceUnavailableMessage(
+            result.status === EVIDENCE_STATUS.AVAILABLE ? EVIDENCE_STATUS.NO_STROKES : result.status,
+          )}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={ld.previewWrap}>
+      <View style={ld.previewCanvas}>
+        <Svg width={MASTERY_PREVIEW_SIZE} height={MASTERY_PREVIEW_SIZE}>
+          {paths.map((points, i) => (
+            <Polyline
+              key={i}
+              points={points.map(pt => `${pt.x},${pt.y}`).join(' ')}
+              stroke="#334155"
+              strokeWidth={2.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          ))}
+        </Svg>
+      </View>
+      <Text style={ld.previewCaption}>{evidenceCaption(result.evidence)}</Text>
+    </View>
+  );
+}
+
+function LetterDetailSheet({ letter, studentId, onClose }) {
+  // Lazy, and only for a mastered letter: the strokes are a targeted read
+  // that never rides along with the report payload. `null` while in flight so
+  // the box shows a loading line rather than flashing "unavailable" first.
+  const [evidence, setEvidence] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (letter?.status !== 'Mastered') {
+      setEvidence({ status: EVIDENCE_STATUS.NOT_MASTERED, evidence: null });
+      return undefined;
+    }
+    setEvidence(null);
+    fetchLetterMasteryEvidence(studentId, letter.letter).then((result) => {
+      if (active) setEvidence(result);
+    });
+    return () => { active = false; };
+  }, [letter?.letter, letter?.status, studentId]);
+
   if (!letter) return null;
 
   const t = statusToken(
@@ -1328,12 +1415,13 @@ function LetterDetailSheet({ letter, onClose }) {
             </View>
 
             <Text style={ld.sectionLabel}>Student writing</Text>
-            {/* The stored trajectory is not part of this report's payload, so
-                no drawing is shown rather than a fabricated one. */}
-            <View style={ld.previewEmpty}>
-              <Ionicons name="image-outline" size={20} color="#CBD5E1" />
-              <Text style={ld.previewEmptyText}>No writing evidence available yet.</Text>
-            </View>
+            {/* The child's OWN strokes from the attempt that established
+                mastery - never the reference glyph, never a generated
+                example, never another attempt that merely scored well. When
+                the mastering attempt cannot be identified (a letter mastered
+                before that link was recorded) this says so plainly rather
+                than showing a drawing it cannot vouch for. */}
+            <MasteryWritingPreview result={evidence} />
 
             <Text style={ld.note}>
               Recorded practice evidence. Practice history is summarised from this
@@ -1385,6 +1473,13 @@ const ld = StyleSheet.create({
     borderWidth: 1, borderColor: '#E2E8F0',
   },
   previewEmptyText: { fontSize: 11.5, color: '#94A3B8' },
+  previewWrap: { alignItems: 'center', gap: 8 },
+  previewCanvas: {
+    alignItems: 'center', justifyContent: 'center',
+    padding: 8, borderRadius: 10, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  previewCaption: { fontSize: 11.5, color: '#475569', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   note: { fontSize: 11, color: '#94A3B8', marginTop: 14, lineHeight: 15 },
 });
 
@@ -1506,8 +1601,9 @@ function WordLetterRow({ data }) {
                 emoji={resolveWordEmoji(w.word)}
                 size={REPORT_WORD_IMAGE_SIZE}
               />
-              <Text style={wl.wordText}>{w.word}</Text>
-              <View style={wl.exerciseChips}>
+              <View style={wl.wordMain}>
+                <Text style={wl.wordText}>{w.word}</Text>
+                <View style={wl.exerciseChips}>
                 {/* All FIVE exercises, from the canonical map. The list was
                     hardcoded to A-D, so 'E — Write the Word' (the exercise
                     that actually produces the written-word evidence) never
@@ -1527,6 +1623,11 @@ function WordLetterRow({ data }) {
                     </View>
                   );
                 })}
+                </View>
+                {/* This word's OWN handwriting result, beside its own
+                    activity chips. Same numbers and the same size/spacing
+                    labels the separate list showed - moved, not recomputed. */}
+                <WordWritingSummary entry={w} />
               </View>
               <View style={wl.stars}>
                 {[0,1,2].map(i => (
@@ -1549,8 +1650,11 @@ const wl = StyleSheet.create({
   metaText:     { fontSize: 11, color: TEXT_3, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
   pctText:      { fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   expanded:     { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, gap: 8, marginTop: 2, marginLeft: 52 },
-  wordRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  wordText:     { flex: 1, fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_1, textTransform: 'capitalize' },
+  wordRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  wordMain:     { flex: 1, gap: 5 },
+  writingLine:  { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' },
+  writingNone:  { fontSize: 10.5, color: TEXT_3, fontFamily: 'Nunito_600SemiBold', fontWeight: '600' },
+  wordText:     { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: TEXT_1, textTransform: 'capitalize' },
   exerciseChips:{ flexDirection: 'row', gap: 4 },
   exChip:       { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
   exLabel:      { fontSize: 10, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
@@ -1585,24 +1689,23 @@ function LayoutConsistencyPill({ label, value }) {
   );
 }
 
-function WordWritingRow({ data }) {
+// One word's handwriting result, inside that word's own card. This replaces
+// the standalone WordWritingRow, whose whole list sat far below the activity
+// results for the same words. Every value shown is the one the backend
+// already sent - nothing is recomputed or rescored here.
+function WordWritingSummary({ entry }) {
+  if (!hasWritingResult(entry)) {
+    // Not a blank set of metrics: an explicit statement that this word has
+    // not been written yet.
+    return <Text style={wl.writingNone}>No writing attempt</Text>;
+  }
+  const data = entry.writing;
   return (
-    <View style={wwp.row}>
-      <View style={wwp.topLine}>
-        <Text style={wwp.word}>{data.word}</Text>
-        <Pill label={data.passed ? 'Passed' : 'In progress'} status={data.passed ? 'good' : 'moderate'} />
-      </View>
-      <View style={wwp.scoreLine}>
-        <Text style={wwp.metaText}>Latest score {data.latest_score}</Text>
-        <Text style={wwp.metaText}>·</Text>
-        <Text style={wwp.metaText}>Best {data.best_score}</Text>
-        <Text style={wwp.metaText}>·</Text>
-        <Text style={wwp.metaText}>{data.attempt_count} attempt{data.attempt_count !== 1 ? 's' : ''}</Text>
-      </View>
-      <View style={wwp.metricsRow}>
-        <LayoutConsistencyPill label="Letter size" value={data.letter_size} />
-        <LayoutConsistencyPill label="Spacing" value={data.letter_spacing} />
-      </View>
+    <View style={wl.writingLine}>
+      <Text style={wwp.metaText}>Latest {data.latest_score}</Text>
+      <Pill label={data.passed ? 'Passed' : 'In progress'} status={data.passed ? 'good' : 'moderate'} />
+      <LayoutConsistencyPill label="Letter size" value={data.letter_size} />
+      <LayoutConsistencyPill label="Spacing" value={data.letter_spacing} />
     </View>
   );
 }

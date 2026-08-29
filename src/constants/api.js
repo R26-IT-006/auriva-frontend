@@ -110,6 +110,11 @@ export const ENDPOINTS = {
   FAMILY_THRESHOLDS:          (studentId) => `/handwriting/family-thresholds/${studentId}`,
   // Feature 3 Step 6 — read-only adaptive support recommendation, scoped to
   // one (student, letter, caseType) since support is family-specific.
+  // One mastered letter's actual writing, for the teacher report's Letter
+  // Details panel. Same (student, letter, caseType) scope as
+  // SUPPORT_RECOMMENDATION below; deliberately NOT part of any bulk report
+  // payload - stroke_points is far too large to send 52 of.
+  LETTER_MASTERY_EVIDENCE:    (studentId, letter, caseType) => `/handwriting/letter-mastery-evidence/${studentId}/${letter}/${caseType}`,
   SUPPORT_RECOMMENDATION:     (studentId, letter, caseType) => `/handwriting/support-recommendation/${studentId}/${letter}/${caseType}`,
   // Feature 4 Step 5 — read-only adaptive pre-writing recommendation, same
   // (student, letter, caseType) scope as SUPPORT_RECOMMENDATION above.

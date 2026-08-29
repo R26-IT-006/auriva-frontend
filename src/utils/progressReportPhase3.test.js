@@ -103,7 +103,7 @@ describe('letter detail sheet', () => {
     const grid = fnBody(report, 'function LetterCaseGrid(');
     expect(grid).toMatch(/<TouchableOpacity/);
     expect(grid).toMatch(/onPress=\{\(\) => onSelect\(l\)\}/);
-    expect(report).toMatch(/<LetterDetailSheet letter=\{letterDetail\} onClose=/);
+    expect(report).toMatch(/<LetterDetailSheet letter=\{letterDetail\} studentId=\{student\?\.sid\} onClose=/);
   });
 
   it('renders ONLY provable fields', () => {
@@ -135,8 +135,23 @@ describe('letter detail sheet', () => {
   });
 
   it('shows a neutral empty state instead of a fabricated drawing', () => {
-    expect(body()).toMatch(/No writing evidence available yet\./);
+    // The panel now renders the child's OWN mastery-attempt strokes when the
+    // mastering attempt is provable. When it is not, the wording comes from
+    // evidenceUnavailableMessage() — which still says "No writing evidence
+    // available yet." for a letter that simply is not mastered, and says so
+    // more precisely for the other cases. Nothing is ever fabricated.
+    expect(body()).toMatch(/<MasteryWritingPreview result=\{evidence\} \/>/);
     expect(body()).not.toMatch(/require\(|\.png|\.jpg/);
+
+    const util = read('./letterMasteryEvidence.js');
+    expect(util).toMatch(/return 'No writing evidence available yet\.';/);
+    expect(util).toMatch(/Mastery writing evidence unavailable for this earlier record\./);
+  });
+
+  it('the drawing is the student’s own strokes, never a reference glyph', () => {
+    const preview = fnBody(report, 'function MasteryWritingPreview(');
+    expect(preview).toMatch(/result\.evidence\?\.stroke_points/);
+    expect(preview).not.toMatch(/LETTER_PATHS|canonical|referencePath|template/i);
   });
 
   it('exposes no technical internals', () => {
@@ -180,18 +195,31 @@ describe('Word Practice is one merged section', () => {
   });
 
   it('both data sources are still read, unchanged and separately', () => {
-    expect(report).toMatch(/report\.wordMastery\.byLetter\.map/);
-    expect(report).toMatch(/report\.wordWritingHistory\.words\.map/);
+    // They are still two payloads, fetched independently. What changed is
+    // that the JOIN happens before rendering, so a word appears once with
+    // both kinds of evidence instead of twice under two headings.
+    expect(report).toMatch(/mergeWordPracticeByLetter\(\s*report\?\.wordMastery\?\.byLetter, report\?\.wordWritingHistory\?\.words\)/);
+    expect(report).toMatch(/computed\.wordWritingHistory = serverWordReport;/);
   });
 
-  it('each source renders its own rows once — no duplicated word cards', () => {
+  it('each word renders once — no duplicated word cards', () => {
     expect((report.match(/<WordLetterRow/g) || []).length).toBe(1);
-    expect((report.match(/<WordWritingRow/g) || []).length).toBe(1);
+    // The standalone writing list that repeated the same words is gone.
+    expect(report).not.toMatch(/<WordWritingRow/);
+    expect(report).not.toMatch(/function WordWritingRow/);
   });
 
-  it('each sub-list is omitted entirely when it has no data', () => {
-    expect(report).toMatch(/report\.wordMastery\.byLetter\.length > 0 \? \(/);
-    expect(report).toMatch(/report\.wordWritingHistory\?\.words\?\.length > 0 \? \(/);
+  it('the list is omitted entirely when it has no data', () => {
+    expect(report).toMatch(/mergedWordPractice\.length > 0 \? \(/);
+    // And the whole section still falls back to one empty state.
+    expect(report).toMatch(/<Empty message="No word practice recorded yet\." \/>/);
+  });
+
+  it('a word carries its own writing result, beside its own chips', () => {
+    const row = fnBody(report, 'function WordLetterRow(');
+    expect(row).toMatch(/<WordWritingSummary entry=\{w\} \/>/);
+    expect(row.indexOf('WORD_EXERCISE_KEYS.map'))
+      .toBeLessThan(row.indexOf('<WordWritingSummary'));
   });
 
   it('the empty state is teacher-facing, with no DB terminology', () => {

@@ -14,6 +14,7 @@ import { fetchWordProgress } from '../../../utils/wordApi';
 import WordImageDisplay from '../../../components/word/WordImageDisplay';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import useGatedBack from '../../../utils/useGatedBack';
+import { resolveWordImageKey, resolveWordEmoji } from '../../../utils/wordImageResolver';
 
 const ALPHABET  = 'abcdefghijklmnopqrstuvwxyz'.split('');
 const EXERCISES = ['A', 'B', 'C', 'D', 'E'];
@@ -313,13 +314,27 @@ export default function WordProgressScreen({ route, navigation }) {
   );
 }
 
+// Big enough for a parent to recognise the picture at a glance in a dense
+// table, small enough that the row stays a row. The exercise badges are 30px,
+// so this is the tallest thing in it.
+const WORD_ROW_IMAGE_SIZE = 48;
+
 function WordRow({ item }) {
   const correct = Object.values(item.status).filter(s => s === 'correct').length;
   const stars   = correct === 4 ? 3 : correct >= 2 ? 2 : correct >= 1 ? 1 : 0;
 
   return (
     <View style={wordRowStyles.row}>
-      <WordImageDisplay imageKey={item.imageKey} emoji={item.emoji} size={36} />
+      {/* Resolved FROM THE WORD, exactly as the Progress Report does it.
+          These rows are the backend's word-progress payload - { word, status }
+          and nothing else - so `item.imageKey` and `item.emoji` were always
+          undefined and every picture fell through to an empty emoji box.
+          Same canonical catalogue the child activities use; no second map. */}
+      <WordImageDisplay
+        imageKey={resolveWordImageKey(item.word)}
+        emoji={resolveWordEmoji(item.word)}
+        size={WORD_ROW_IMAGE_SIZE}
+      />
 
       <Text style={wordRowStyles.word} numberOfLines={1}>
         {item.word.charAt(0).toUpperCase() + item.word.slice(1)}

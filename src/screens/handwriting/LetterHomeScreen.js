@@ -54,6 +54,7 @@ import {
   canOpen, isPreview, PREVIEW_BADGE,
 } from '../../constants/demoAccess';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import { backToAssessmentStart } from '../../utils/moduleSelectionBack';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/handwriting-avatars/Boba.png'),
@@ -448,11 +449,18 @@ export default function LetterHomeScreen({ route, navigation }) {
     // cannot reach it unaided.
     else if (pendingGateAction === 'writingCheck') navigation.navigate('WritingCheck', { student, theme });
     else if (pendingGateAction === 'back') {
-      // goBack() when the stack has somewhere to return to; otherwise exit
-      // the writing module. See the back button's own comment for why both
-      // branches are needed.
-      if (navigation.canGoBack()) navigation.goBack();
-      else navigation.navigate('TeacherMain');
+      // Back from module selection returns to the assessment starting screen.
+      //
+      // This used to be `canGoBack() ? goBack() : navigate('TeacherMain')`,
+      // which made the destination depend on how the child arrived: after an
+      // assessment goBack() popped one entry onto AssessmentComplete, and on
+      // the already-complete path WelcomeScreen's replace() left nothing to
+      // go back to at all. See utils/moduleSelectionBack.js.
+      //
+      // The gate itself is unchanged - this only replaces what runs after it
+      // is passed. The teacher dashboard is still reachable through its own
+      // 'dashboard' action above.
+      backToAssessmentStart(navigation, { student, theme });
     }
     setPendingGateAction(null);
   }
