@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Nunito_800ExtraBold, Nunito_600SemiBold } from '@expo-google-fonts/nunito';
+import { DMSans_800ExtraBold, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { evaluationApi } from '../../../../api/evaluation';
@@ -127,7 +127,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
           <Text
             style={[
               styles.cardTitle,
-              fontsLoaded && { fontFamily: 'Nunito_800ExtraBold', fontWeight: 'normal' },
+              fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', fontWeight: 'normal' },
             ]}
             numberOfLines={1}
           >
@@ -137,7 +137,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
             <Text
               style={[
                 styles.cardSub,
-                fontsLoaded && { fontFamily: 'Nunito_600SemiBold', fontWeight: 'normal' },
+                fontsLoaded && { fontFamily: 'DMSans_600SemiBold', fontWeight: 'normal' },
               ]}
             >
               {`Master ${EVAL_UNLOCK_THRESHOLD} words to unlock • ${entry.mastered_count}/${EVAL_UNLOCK_THRESHOLD}`}
@@ -146,7 +146,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
             <Text
               style={[
                 styles.cardSub,
-                fontsLoaded && { fontFamily: 'Nunito_600SemiBold', fontWeight: 'normal' },
+                fontsLoaded && { fontFamily: 'DMSans_600SemiBold', fontWeight: 'normal' },
               ]}
             >
               Ready to try!
@@ -161,7 +161,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
               <Text
                 style={[
                   styles.statusPillText,
-                  fontsLoaded && { fontFamily: 'Nunito_800ExtraBold', fontWeight: 'normal' },
+                  fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', fontWeight: 'normal' },
                 ]}
               >
                 Locked
@@ -172,7 +172,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
               <Text
                 style={[
                   styles.statusPillText,
-                  fontsLoaded && { fontFamily: 'Nunito_800ExtraBold', fontWeight: 'normal' },
+                  fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', fontWeight: 'normal' },
                 ]}
               >
                 Start
@@ -196,11 +196,11 @@ export default function EvaluationMenuScreen({ route, navigation }) {
   const [error,   setError]   = useState(null);
 
   // Same pattern as L2TopicSelectionScreen — Colora loaded locally,
-  // Nunito pulled from the @expo-google-fonts/nunito package.
+  // DM Sans pulled from the @expo-google-fonts/dm-sans package.
   const [fontsLoaded] = useFonts({
     Colora: require('../../../../../assets/fonts/COLORA.ttf'),
-    Nunito_800ExtraBold,
-    Nunito_600SemiBold,
+    DMSans_800ExtraBold,
+    DMSans_600SemiBold,
   });
 
   useEffect(() => {

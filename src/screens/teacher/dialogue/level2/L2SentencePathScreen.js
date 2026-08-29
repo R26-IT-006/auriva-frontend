@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path, Circle, Rect, Polygon } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Nunito_800ExtraBold, Nunito_700Bold, Nunito_600SemiBold } from '@expo-google-fonts/nunito';
+import { DMSans_800ExtraBold, DMSans_700Bold, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { Layout } from '../../../../constants/layout';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 
@@ -98,7 +98,7 @@ export default function L2SentencePathScreen({ route, navigation }) {
 
   const [fontsLoaded] = useFonts({
     Colora: require('../../../../../assets/fonts/COLORA.ttf'),
-    Nunito_800ExtraBold, Nunito_700Bold, Nunito_600SemiBold,
+    DMSans_800ExtraBold, DMSans_700Bold, DMSans_600SemiBold,
   });
   const font = (weight) => (fontsLoaded ? { fontFamily: weight, fontWeight: 'normal' } : null);
 
@@ -176,7 +176,7 @@ export default function L2SentencePathScreen({ route, navigation }) {
                   <View style={[styles.cardHeader, { backgroundColor: accent }]}>
                     <Text style={styles.cardEmoji}>{stop.emoji}</Text>
                   </View>
-                  <Text style={[styles.cardTitle, font('Nunito_800ExtraBold')]} numberOfLines={2}>
+                  <Text style={[styles.cardTitle, font('DMSans_800ExtraBold')]} numberOfLines={2}>
                     {stop.title}
                   </Text>
                 </View>
@@ -191,7 +191,7 @@ export default function L2SentencePathScreen({ route, navigation }) {
                 >
                   <View style={[styles.btnShadow, { backgroundColor: '#9B1040' }, stop.isPractice && { backgroundColor: '#B07D00' }]} />
                   <View style={[styles.btn, { backgroundColor: btnColor }, activeId === stop.id && styles.btnPressed]}>
-                    <Text style={[styles.btnNumber, font('Nunito_800ExtraBold')]}>{stop.id}</Text>
+                    <Text style={[styles.btnNumber, font('DMSans_800ExtraBold')]}>{stop.id}</Text>
                   </View>
                   {isDone && (
                     <View style={styles.doneBadge}>
@@ -209,15 +209,15 @@ export default function L2SentencePathScreen({ route, navigation }) {
             <View style={styles.banner}>
               <Text style={styles.bannerEmoji}>{activeStop.emoji}</Text>
               <View>
-                <Text style={[styles.bannerLabel, font('Nunito_700Bold')]}>
+                <Text style={[styles.bannerLabel, font('DMSans_700Bold')]}>
                   {activeStop.isPractice ? 'PRACTICE' : `LESSON ${activeStop.id}`}
                 </Text>
-                <Text style={[styles.bannerTitle, font('Nunito_800ExtraBold')]} numberOfLines={1}>
+                <Text style={[styles.bannerTitle, font('DMSans_800ExtraBold')]} numberOfLines={1}>
                   {activeStop.title.replace('\n', ' ')}
                 </Text>
               </View>
               <TouchableOpacity style={styles.startBtn} onPress={() => handleStart(activeStop)} activeOpacity={0.85}>
-                <Text style={[styles.startBtnText, font('Nunito_800ExtraBold')]}>Start!</Text>
+                <Text style={[styles.startBtnText, font('DMSans_800ExtraBold')]}>Start!</Text>
                 <Text style={styles.startBtnEmoji}>🚀</Text>
               </TouchableOpacity>
             </View>

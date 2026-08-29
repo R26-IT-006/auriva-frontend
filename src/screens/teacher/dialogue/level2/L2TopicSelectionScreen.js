@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path, Ellipse, Circle, Rect, G } from 'react-native-svg';
 import { useFonts } from 'expo-font';
-import { Nunito_800ExtraBold, Nunito_600SemiBold } from '@expo-google-fonts/nunito';
+import { DMSans_800ExtraBold, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
@@ -102,7 +102,7 @@ function TopicCard({ topic, pos, cardW, cardH, theme, onPress, extraBadge, fonts
             style={[
               styles.topicLabel,
               { color: locked ? '#A0AAB4' : '#1E1B4B' },
-              fontsLoaded && { fontFamily: 'Nunito_800ExtraBold', fontWeight: 'normal' },
+              fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', fontWeight: 'normal' },
             ]}
             numberOfLines={2}
           >
@@ -113,7 +113,7 @@ function TopicCard({ topic, pos, cardW, cardH, theme, onPress, extraBadge, fonts
               style={[
                 styles.topicSub,
                 { color: '#C8D0D8' },
-                fontsLoaded && { fontFamily: 'Nunito_600SemiBold', fontWeight: 'normal' },
+                fontsLoaded && { fontFamily: 'DMSans_600SemiBold', fontWeight: 'normal' },
               ]}
             >
               Coming soon
@@ -136,8 +136,8 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
 
   const [fontsLoaded] = useFonts({
     Colora: require('../../../../../assets/fonts/COLORA.ttf'),
-    Nunito_800ExtraBold,
-    Nunito_600SemiBold,
+    DMSans_800ExtraBold,
+    DMSans_600SemiBold,
   });
 
   useEffect(() => {
