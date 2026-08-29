@@ -501,6 +501,14 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_400Regular',
     color: MUTED,
   },
+  // The empty counterpart of `mutedText` — same cell, same ternary. Italic
+  // rather than a new colour: it marks an absence, not a warning state.
+  unassignedText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_400Regular',
+    color: MUTED,
+    fontStyle: 'italic',
+  },
 
   // ── Action buttons ────────────────────────────────────────────────────────
   actionBtn: {
