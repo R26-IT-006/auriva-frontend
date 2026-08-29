@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
-import { useLockPortrait } from '../../utils/useOrientationLock';
+import { useLockLandscape } from '../../utils/useOrientationLock';
 import useGatedBack from '../../utils/useGatedBack';
 import { goBackToOrigin } from '../../utils/backToOrigin';
 import { fetchMasteredLetters, filterUnmasteredSequence } from '../../utils/masteredLetterFiltering';
@@ -55,10 +55,9 @@ const AVATAR_MAP = {
 };
 
 export default function ProgressReportScreen({ route, navigation }) {
-  // Reports are kept in portrait while focused so their vertically structured
-  // content remains easy to scan. The lock is released on blur by the shared
-  // orientation hook, leaving all writing activities' landscape behavior intact.
-  useLockPortrait();
+  // This child-facing completion/progress surface remains part of the
+  // handwriting flow. Only the main teacher Progress Report is portrait.
+  useLockLandscape();
 
   // Leaving a learning activity is an adult decision — the back button
   // opens the parent gate first, exactly as LetterHomeScreen and the

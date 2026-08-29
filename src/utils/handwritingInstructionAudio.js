@@ -31,7 +31,10 @@ function enqueue(operation) {
  * @returns {Promise<boolean|null>} true when started, false on a real playback
  * failure, or null when a newer play/stop request superseded this request.
  */
-export function playInstructionAudio(instructionKey, { onPlaybackEnd } = {}) {
+export function playInstructionAudio(
+  instructionKey,
+  { onPlaybackEnd, onPlaybackStatus } = {},
+) {
   const requestId = ++latestRequest;
   let ended = false;
   const finish = (reason) => {
@@ -81,6 +84,7 @@ export function playInstructionAudio(instructionKey, { onPlaybackEnd } = {}) {
       const playback = { sound, finish };
       currentPlayback = playback;
       sound.setOnPlaybackStatusUpdate((status) => {
+        try { onPlaybackStatus?.(status); } catch {}
         if (status.isLoaded && status.didJustFinish) {
           sound.unloadAsync().catch(() => {});
           if (currentPlayback === playback) currentPlayback = null;

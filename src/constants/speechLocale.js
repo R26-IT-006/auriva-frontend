@@ -50,3 +50,8 @@ export const SPEECH_LOCALE_SI = 'si-LK';
 export function ukSpeechOptions(options = {}) {
   return { ...options, language: SPEECH_LOCALE_EN };
 }
+
+/** Calm, device-portable delivery used only for dynamic target-letter names. */
+export function ukLetterSpeechOptions() {
+  return ukSpeechOptions({ rate: 0.75, pitch: 0.9 });
+}

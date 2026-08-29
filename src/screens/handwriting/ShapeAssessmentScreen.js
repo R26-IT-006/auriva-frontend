@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   PanResponder,
@@ -44,6 +43,8 @@ import {
 import { useLockLandscape } from '../../utils/useOrientationLock';
 import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
 import { SPEECH_LOCALE_EN } from '../../constants/speechLocale';
+import AttemptAvatarFeedback from './AttemptAvatarFeedback';
+import { actionRowMinHeight } from '../../constants/writingActionRow';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -69,13 +70,7 @@ console.log(`CANVAS_WIDTH=${CANVAS_WIDTH}`);
 console.log(`CANVAS_HEIGHT=${CANVAS_HEIGHT}`);
 
 const N_POINTS     = 100;
-
-const AVATAR_MAP = {
-  boba:     require('../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../assets/avatar-images/Megatron.png'),
-};
+const ASSESSMENT_FEEDBACK_MS = 1600;
 
 // Instruction text — kept deliberately short (2-4 words), one idea per
 // line, same "Trace ___" opening word every time. Short + predictable
@@ -262,6 +257,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   // tracer and stays true after a clear.
   const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [showNext,          setShowNext]          = useState(false);
+  const [assessmentFeedback, setAssessmentFeedback] = useState(false);
   const [reduceMotion,      setReduceMotion]      = useState(false);
 
   const startTime            = useRef(null);
@@ -288,6 +284,8 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const bgAnim               = useRef(new Animated.Value(0)).current;
   const pulseLoopRef         = useRef(null);
   const strokeIdCounter      = useRef(0);  // ML: counts strokes within the current shape
+  const feedbackActiveRef    = useRef(false);
+  const advancingRef         = useRef(false);
 
   const currentShape = SHAPES[currentShapeIndex];
 
@@ -420,10 +418,11 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   // ── PanResponder ────────────────────────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder:  () => true,
+      onStartShouldSetPanResponder: () => !feedbackActiveRef.current,
+      onMoveShouldSetPanResponder:  () => !feedbackActiveRef.current,
 
       onPanResponderGrant: (evt) => {
+        if (feedbackActiveRef.current) return;
         const { x: locationX, y: locationY } = mapTouchToCanvas({
           pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
           origin: canvasOriginRef.current,
@@ -503,6 +502,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   }, [student.sid, collectionMode, collectionSessionId]);
 
   const handleClear = useCallback(() => {
+    if (feedbackActiveRef.current) return;
     setAllPaths([]);
     allPathsRef.current = [];
     setCurrentPath([]);
@@ -511,6 +511,8 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   }, []);
 
   const handleNext = useCallback(async () => {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     Speech.stop();
     const idx = currentShapeIndexRef.current;
     const shapeId = SHAPES[idx].id;
@@ -537,6 +539,15 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       })));
     }
 
+    // Assessment feedback is neutral and presentation-only. Feature
+    // extraction above is already complete; this overlay does not read or
+    // alter any score, threshold, baseline, or captured stroke.
+    feedbackActiveRef.current = true;
+    setAssessmentFeedback(true);
+    await new Promise(resolve => setTimeout(resolve, ASSESSMENT_FEEDBACK_MS));
+    setAssessmentFeedback(false);
+    feedbackActiveRef.current = false;
+
     const updated = [...completedShapesRef.current, shapeData];
     completedShapesRef.current = updated;
     setCompletedShapes(updated);
@@ -549,8 +560,10 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       setCurrentPath([]);
       setShowNext(false);
       strokeIdCounter.current = 0;  // ML: reset stroke counter for the next shape
+      advancingRef.current = false;
     } else {
       const assessmentId = await submitAssessment(updated);
+      advancingRef.current = false;
       if (collectionMode) {
         navigation.navigate('LetterWriting', {
           student,
@@ -662,6 +675,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
                 <TouchableOpacity
                   style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
                   onPress={handleClear}
+                  disabled={assessmentFeedback}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="refresh" size={18} color={theme.button} />
@@ -673,6 +687,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
                 <TouchableOpacity
                   style={[styles.nextButton, { backgroundColor: theme.button }]}
                   onPress={handleNext}
+                  disabled={assessmentFeedback}
                   activeOpacity={0.85}
                 >
                   <Text style={[styles.nextText, { color: theme.buttonText }]}>Next</Text>
@@ -684,28 +699,14 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
         </View>
 
-        {/* Feedback bubble — speech bubble above avatar's head */}
-        {showNext && (
-          <>
-            <View style={[styles.avatarBubble, { borderColor: theme.button + '28' }]}>
-              <Text style={[styles.avatarBubbleText, { color: theme.button }]}>
-                Nice tracing.
-                {'\n'}
-                Tap Next when ready.
-              </Text>
-            </View>
-            {/* Tail pointing right toward avatar's head */}
-            <View style={[styles.avatarBubbleDotLarge, { borderColor: theme.button + '28' }]} />
-            <View style={[styles.avatarBubbleDotSmall, { borderColor: theme.button + '22' }]} />
-          </>
+        {assessmentFeedback && (
+          <AttemptAvatarFeedback
+            avatarKey={student?.avatar_key}
+            passed
+            note="Nice work!"
+            theme={theme}
+          />
         )}
-
-        {/* Avatar — screen-level absolute */}
-        <Image
-          source={AVATAR_MAP[student?.avatar_key]}
-          style={styles.avatarImage}
-          resizeMode="contain"
-        />
 
       </SafeAreaView>
     </LinearGradient>
@@ -784,6 +785,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   buttonsRow: {
+    minHeight: actionRowMinHeight({
+      maxButtonPaddingVertical: 13,
+      maxButtonBorderWidth: 1.5,
+    }),
     flexDirection: 'row',
     gap: 16,
     alignItems: 'center',
@@ -814,67 +819,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
-  },
-
-  // Avatar
-  avatarImage: {
-    position: 'absolute',
-    bottom: -10,
-    right: 8,
-    width: 250,
-    height: 320,
-    zIndex: 10,
-  },
-
-  // Feedback speech bubble above avatar's head
-  avatarBubble: {
-    position: 'absolute',
-    bottom: 252,
-    right: 118,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    borderWidth: 1.5,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 182,
-    minHeight: 78,
-    maxWidth: 210,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 6,
-    elevation: 4,
-    zIndex: 11,
-  },
-  avatarBubbleText: {
-    fontSize: 16,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
-    lineHeight: 22,
-    textAlign: 'center',
-  },
-  avatarBubbleDotLarge: {
-    position: 'absolute',
-    bottom: 238,
-    right: 104,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    backgroundColor: '#FFFFFF',
-    zIndex: 11,
-  },
-  avatarBubbleDotSmall: {
-    position: 'absolute',
-    bottom: 222,
-    right: 88,
-    width: 13,
-    height: 13,
-    borderRadius: 6.5,
-    borderWidth: 1.5,
-    backgroundColor: '#FFFFFF',
-    zIndex: 12,
   },
 });

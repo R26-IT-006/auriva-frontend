@@ -198,7 +198,12 @@ export default function WordWritingScreen({ route, navigation }) {
 
   const [attempt,       setAttempt]       = useState(1);
   const supportLevel = ATTEMPT_SUPPORT_LEVEL[attempt];
-  const { replay: replayInstruction, instructionPlaying } = useInstructionAudioState(
+  const {
+    replay: replayInstruction,
+    instructionPlaying,
+    canWrite,
+    requestTargetSpeech,
+  } = useInstructionAudioState(
     SUPPORT_INSTRUCTION_KEY[supportLevel],
     {
       autoPlay: true,
@@ -207,7 +212,7 @@ export default function WordWritingScreen({ route, navigation }) {
     },
   );
   const canWriteRef = useRef(false);
-  canWriteRef.current = !instructionPlaying;
+  canWriteRef.current = canWrite;
   const targetSpokenAttemptRef = useRef(false);
   useEffect(() => { targetSpokenAttemptRef.current = false; }, [wordEntry?.word, attempt]);
   const [currentPath,   setCurrentPath]   = useState([]);
@@ -535,7 +540,7 @@ export default function WordWritingScreen({ route, navigation }) {
         setCurrentPath([{ x, y, t: 0 }]);
         if (!targetSpokenAttemptRef.current) {
           targetSpokenAttemptRef.current = true;
-          spellWordRef.current?.();
+          requestTargetSpeech(() => spellWordRef.current?.());
         }
       },
       onPanResponderMove: (evt) => {
@@ -731,7 +736,7 @@ export default function WordWritingScreen({ route, navigation }) {
           tracerXInterp={tracerXInterp}
           tracerYInterp={tracerYInterp}
           onSpeakWord={instructionPlaying ? undefined : () => spellWordRef.current?.()}
-          canvasPointerEvents={instructionPlaying ? 'none' : 'auto'}
+          canvasPointerEvents={canWrite ? 'auto' : 'none'}
           canvasRef={canvasRef}
           onCanvasLayout={measureCanvasOrigin}
           panHandlers={panResponder.panHandlers}

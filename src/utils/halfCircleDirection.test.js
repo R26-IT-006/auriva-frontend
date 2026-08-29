@@ -1,4 +1,4 @@
-// Directional half-circle remediation, and the cycle-3 lead-in.
+// Directional half-circle remediation and its pre-writing presentation.
 //
 // ── Why "always cw" was wrong ────────────────────────────────────────────
 // A stroke id says WHICH primitive a letter uses. For a curve that is half the
@@ -218,72 +218,42 @@ describe('half-circle remediation is direction-aware', () => {
   });
 });
 
-// ─── §D7-9 the lead-in ──────────────────────────────────────────────────
+// ─── Cycle-3 instruction presentation ───────────────────────────────────
 
-describe('the cycle-3 lead-in', () => {
+describe('the cycle-3 instruction presentation', () => {
   const code = readCode(PRE_WRITING);
-  // The instruction card's own markup. PRE_WRITING_INSTRUCTION.en also appears
-  // in the Speech call well above the render, so ordering must be judged
-  // inside the card rather than across the file.
   const card = code.slice(code.indexOf('styles.instructionTexts'),
                           code.indexOf('styles.speakerBtn'));
 
-  it('§D7 renders only for CYCLE_3_REMEDIATION', () => {
-    expect(code).toMatch(/const isRemediation = warmupReason === PRE_WRITING_REASON\.CYCLE_3_REMEDIATION;/);
-    expect(code).toMatch(/\{isRemediation && \(/);
-    expect(code).toMatch(/\{REMEDIATION_LEAD_IN\.en\}/);
-    expect(code).toMatch(/\{REMEDIATION_LEAD_IN\.si\}/);
-    // Never for the other reasons.
-    expect(code).not.toMatch(/CATEGORY_TRANSITION|ADAPTIVE_DIFFICULTY|SESSION_START/);
+  it('does not render the PRACTISE_FIRST lead-in', () => {
+    expect(code).not.toMatch(/REMEDIATION_LEAD_IN|PRACTISE_FIRST|leadInEn|leadInSi/);
+    expect(card).not.toMatch(/Let's practise first|මුලින් පුහුණු වෙමු/);
   });
 
-  it('§D8 the task instruction is still shown, and still second', () => {
+  it('shows only the approved bilingual FOLLOW_PATH instruction', () => {
     expect(card).toMatch(/\{PRE_WRITING_INSTRUCTION\.en\}/);
     expect(card).toMatch(/\{PRE_WRITING_INSTRUCTION\.si\}/);
-    expect(card.indexOf('REMEDIATION_LEAD_IN.en'))
-      .toBeLessThan(card.indexOf('PRE_WRITING_INSTRUCTION.en'));
-    expect(card.indexOf('REMEDIATION_LEAD_IN.si'))
-      .toBeLessThan(card.indexOf('PRE_WRITING_INSTRUCTION.en'));
+    expect(CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.FOLLOW_PATH]).toEqual({
+      en: 'Follow the path', si: 'රේඛාව දිගේ අඳින්න',
+    });
   });
 
-  it('§D9 no new screen, card or modal', () => {
-    // BreakPromptModal is pre-existing and unrelated; what matters is that the
-    // lead-in added none of its own.
+  it('uses the existing centered instruction card without an extra wrapper', () => {
     expect(card).not.toMatch(/Modal|<Card|navigate\(/);
     expect(code).not.toMatch(/navigate\('Remediation|RemediationScreen/);
     expect((code.match(/Modal/g) || []).length)
       .toBe((read(PRE_WRITING).match(/BreakPromptModal/g) || []).length);
-    // It sits inside the instruction card that was already there.
-    expect(card).toMatch(/REMEDIATION_LEAD_IN/);
     expect(card).toMatch(/PRE_WRITING_INSTRUCTION/);
-    // No new container view — the existing instructionTexts wrapper holds both.
-    expect(card).toMatch(/<>/);
   });
 
-  it('the lead-in is subordinate, and its Sinhala is not tiny', () => {
-    const style = (name) => {
-      const at = code.indexOf(`  ${name}: {`);
-      expect(at).toBeGreaterThan(-1);
-      return code.slice(at, code.indexOf('\n  },', at));
-    };
-    const size = (b) => Number(b.match(/fontSize: (\d+)/)[1]);
-    expect(size(style('leadInEn'))).toBe(18);
-    expect(size(style('leadInSi'))).toBe(18);                       // same as its English
-    expect(size(style('leadInEn'))).toBeLessThan(size(style('instructionEn')));  // 18 < 20
-    expect(style('leadInSi')).toMatch(/lineHeight: 26/);            // room for vowel signs
-    expect(style('leadInEn')).toMatch(/fontFamily: 'Nunito_700Bold'/);
-    expect(style('leadInSi')).toMatch(/fontFamily: 'Nunito_600SemiBold'/);
-  });
-
-  it('§9 audio — the fixed task instruction uses one prerecorded bilingual clip', () => {
-    // The remediation lead-in remains visual-only. FOLLOW_PATH owns the one
-    // auto-play/replay path and no normal fixed-instruction TTS remains.
+  it('uses one prerecorded FOLLOW_PATH clip and no second instruction audio', () => {
     expect((code.match(/Speech\.speak\(/g) || []).length).toBe(0);
     expect(code).toMatch(/useInstructionAudio\(INSTRUCTION_KEYS\.FOLLOW_PATH/);
     expect(code).toMatch(/fallbackText:\s*PRE_WRITING_INSTRUCTION\.en/);
+    expect((code.match(/useInstructionAudio\(/g) || []).length).toBe(1);
   });
 
-  it('the copy is the approved bilingual pair', () => {
+  it('retains the shared PRACTISE_FIRST key without rendering it here', () => {
     expect(CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.PRACTISE_FIRST]).toEqual({
       en: "Let's practise first", si: 'මුලින් පුහුණු වෙමු',
     });

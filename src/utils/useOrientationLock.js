@@ -8,17 +8,14 @@
  * teacher's progress report is the one exception: it is a long, dense,
  * scrolling document that reads far better in PORTRAIT.
  *
- * Both hooks lock on focus and RELEASE on blur, so a screen only ever affects
- * itself. React Navigation fires blur before the next screen's focus, so
- * moving between a landscape screen and the portrait report resolves in the
- * right order without either screen knowing about the other.
+ * Both hooks lock on focus. Cleanup releases only when another orientation-
+ * owning screen has not taken over, so the newest focused screen wins even
+ * when native lock/unlock promises complete out of order.
  *
  * ── Release semantics ──────────────────────────────────────────────────────
- * Cleanup calls `unlockAsync()`, which restores the app-level setting from
- * app.json (`"orientation": "default"` — free rotation). Deliberately NOT a
- * lock back to some "previous" orientation: nothing outside this module locks
- * anything, so forcing one on the way out would change screens that never
- * asked for it.
+ * Cleanup calls `unlockAsync()` only when no newer orientation-owning screen
+ * has taken over. That restores app.json (`"orientation": "default"` — free
+ * rotation) without overriding the destination screen.
  *
  * ── Failure behaviour ──────────────────────────────────────────────────────
  * Orientation locking is a native call: it is a no-op on web and can reject on
@@ -27,9 +24,10 @@
  * is already in, and is never surfaced to the child or the teacher. A sideways
  * screen is a much smaller problem than a crashed one.
  *
- * The `cancelled` flag guards the async gap: if the screen is blurred before
- * the lock resolves, the pending lock must not land after cleanup has already
- * run, or it would leak onto the next screen.
+ * The `cancelled` flag guards the async gap. If a stale lock resolves after
+ * navigation, it reapplies the newest request instead of unlocking the new
+ * destination. Cleanup defers release by one microtask so destination focus
+ * can acquire ownership first.
  */
 
 'use strict';
@@ -37,6 +35,9 @@
 import { useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
+
+let nextRequestId = 0;
+let activeRequest = null;
 
 /**
  * Shared implementation. `lockName` is only used for the dev-log line, so a
@@ -46,14 +47,20 @@ function useLockTo(orientationLock, lockName) {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      const request = { id: ++nextRequestId, orientationLock };
+      activeRequest = request;
 
       (async () => {
         try {
           await ScreenOrientation.lockAsync(orientationLock);
           if (cancelled) {
-            // Blurred while the lock was in flight — undo it immediately so
-            // it cannot leak onto the screen that is now showing.
-            await ScreenOrientation.unlockAsync();
+            // Blurred while the lock was in flight: restore the newest owner,
+            // or release when no orientation-owning screen remains.
+            if (activeRequest) {
+              await ScreenOrientation.lockAsync(activeRequest.orientationLock);
+            } else {
+              await ScreenOrientation.unlockAsync();
+            }
           }
         } catch (err) {
           if (typeof __DEV__ !== 'undefined' && __DEV__) {
@@ -64,10 +71,15 @@ function useLockTo(orientationLock, lockName) {
 
       return () => {
         cancelled = true;
-        ScreenOrientation.unlockAsync().catch((err) => {
-          if (typeof __DEV__ !== 'undefined' && __DEV__) {
-            console.log(`[useOrientationLock] ${lockName} unlock failed:`, err?.message ?? err);
-          }
+        if (activeRequest?.id !== request.id) return;
+        activeRequest = null;
+        Promise.resolve().then(() => {
+          if (activeRequest) return;
+          ScreenOrientation.unlockAsync().catch((err) => {
+            if (typeof __DEV__ !== 'undefined' && __DEV__) {
+              console.log(`[useOrientationLock] ${lockName} unlock failed:`, err?.message ?? err);
+            }
+          });
         });
       };
       // orientationLock/lockName are module constants at every call site.

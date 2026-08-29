@@ -323,8 +323,8 @@ describe('SENTINEL — §26 nothing else changed', () => {
       }
       expect(code).not.toMatch(/\/100/);           // never a raw score
     }
-    // The actionable instruction stays.
-    expect(readCode(EX.E)).toContain('Finish every letter, then try Done again');
+    expect(readCode(EX.E)).not.toContain('Finish every letter, then try Done again');
+    expect(readCode(WORD_A)).toContain("note: 'Finish every letter'");
   });
 
   it('the permanent instructions all survive', () => {

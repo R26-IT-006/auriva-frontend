@@ -51,12 +51,16 @@ describe('the SAME component the letter screens use', () => {
     }
   });
 
-  it('the shared component itself is unchanged — §L', () => {
+  it('the shared component uses the approved short support messages', () => {
     const code = readCode(AVATAR);
     expect(code).toMatch(/PASS_MESSAGES_BY_SUPPORT = \{\s*high:\s+'Great tracing!',/);
-    expect(code).toMatch(/RETRY_MESSAGES_BY_SUPPORT = \{\s*high:\s+'Good start\. Watch once more\.',/);
+    expect(code).toMatch(/medium:\s+'Nice work!'/);
+    expect(code).toMatch(/low:\s+'Great writing!'/);
+    expect(code).toMatch(/RETRY_MESSAGES_BY_SUPPORT = \{\s*high:\s+'Try again!',/);
+    expect(code).toMatch(/medium:\s+'Follow the guide!'/);
+    expect(code).toMatch(/low:\s+'Try once more!'/);
     expect(code).toMatch(/\? passMessages\[lookupKey\] \?\? 'Nice work!'/);
-    expect(code).toMatch(/: retryMessages\[lookupKey\] \?\? 'Good try\. Try again\.'/);
+    expect(code).toMatch(/: retryMessages\[lookupKey\] \?\? 'Try again!'/);
     expect(code).not.toMatch(/word|Word/);
   });
 
@@ -153,11 +157,11 @@ describe('A / B / C / D — a choice result goes to the avatar', () => {
     expect(code).toMatch(/visible=\{Boolean\(activityFeedback\) && !activityFeedback\.isWriting\}/);
   });
 
-  it('D — "Well done!" is gone, the in-place tick stays', () => {
+  it('D — the redundant in-place completion tick is gone', () => {
     const d = readCode(EX.D);
     expect(d).not.toContain('Well done!');
-    expect(d).not.toMatch(/styles\.successLabel[^:]/);
-    expect(d).toMatch(/<Ionicons name="checkmark-circle" size=\{24\} color="#4CAF50" \/>/);
+    expect(d).not.toMatch(/successRow|successLabel|successAnim/);
+    expect(d).not.toMatch(/<Ionicons name="checkmark-circle"/);
   });
 
   it('H / I — correctness and retry behaviour are unchanged', () => {
@@ -186,8 +190,8 @@ describe('D — Exercise E result reaches the avatar, its canvas does not change
     expect(e).not.toMatch(/Score \$\{result\.score\}\/100/);
     expect(e).not.toMatch(/\/100/);
     expect(e).toContain('Try once more');
-    // The one actionable instruction stays.
-    expect(e).toContain('Finish every letter, then try Done again');
+    expect(e).not.toContain('Finish every letter, then try Done again');
+    expect(readCode(WORD_A)).toContain("note: 'Finish every letter'");
   });
 
   it('no numbers, thresholds or internals leak anywhere in the word flow', () => {
@@ -229,16 +233,16 @@ describe('J — the activity advances exactly once', () => {
   });
 
   it('the feedback pause is a single awaited timer, not a parallel one', () => {
-    // Choice GIFs and E's avatar each own one awaited dwell.
+    // Choice GIFs, completed E feedback, and incomplete E feedback each own
+    // one isolated dwell.
     expect(code).toMatch(/feedbackTimerRef\.current = setTimeout\(resolve, ATTEMPT_FEEDBACK_MS\)/);
     expect(code).toMatch(/wrongTimerRef\.current = setTimeout\([\s\S]*RESULT_GIF_MS/);
-    // Still ONE awaited timer in the completion path. The second setTimeout on
-    // this screen belongs to the wrong-answer overlay, which awaits nothing
-    // and advances nothing.
+    // Still ONE awaited timer in the completion path. The other two belong to
+    // non-progressing choice and incomplete-word overlays.
     const at = code.indexOf('const handleExerciseComplete');
     const handler = code.slice(at, code.indexOf('}, [wordIdx', at));
     expect((handler.match(/setTimeout\(/g) || []).length).toBe(1);
-    expect((code.match(/setTimeout\(/g) || []).length).toBe(2);
+    expect((code.match(/setTimeout\(/g) || []).length).toBe(3);
   });
 
   it('an unmount mid-feedback cannot resolve into a navigate', () => {

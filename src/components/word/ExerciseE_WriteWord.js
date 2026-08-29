@@ -49,7 +49,15 @@ const LINE_2 = Math.round(CANVAS_H * 0.37);
 const LINE_3 = Math.round(CANVAS_H * 0.64);
 const LINE_4 = Math.round(CANVAS_H * 0.92);
 
-export default function ExerciseE_WriteWord({ wordEntry, theme, student, onComplete, canWrite = true }) {
+export default function ExerciseE_WriteWord({
+  wordEntry,
+  theme,
+  student,
+  onComplete,
+  onIncomplete,
+  canWrite = true,
+  requestTargetSpeech = (speakTarget) => speakTarget?.(),
+}) {
   const { word, emoji, imageKey } = wordEntry;
   const { notifyStrokeStart, notifyStrokeEnd } = useLearningSession();
   const [currentPath, setCurrentPath] = useState([]);
@@ -122,11 +130,13 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
         setCurrentPath([{ x, y, t: 0 }]);
         if (!targetSpokenRef.current) {
           targetSpokenRef.current = true;
-          const spoken = spokenWord(wordEntry);
-          if (spoken) {
-            Speech.stop();
-            Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
-          }
+          requestTargetSpeech(() => {
+            const spoken = spokenWord(wordEntry);
+            if (spoken) {
+              Speech.stop();
+              Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
+            }
+          });
         }
       },
       onPanResponderMove: (evt) => {
@@ -185,7 +195,11 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
       // and section 5 of the completion-pass task: never read anywhere that
       // decides authoritative.passed above.
       const nextResult={score:authoritative.score,passed:authoritative.passed,completed:authoritative.completion_passed,layoutMessage:childFeedbackMessage(authoritative.child_feedback)};setResult(nextResult);
-      if (!authoritative.passed) { actionIdRef.current=null; return; }
+      if (!authoritative.passed) {
+        actionIdRef.current = null;
+        if (!nextResult.completed) await Promise.resolve(onIncomplete?.());
+        return;
+      }
       // The layout advisory rides up with the result so the AVATAR can say
       // it. It used to be rendered again below, beside the avatar - one
       // attempt, two messages for the child to read.
@@ -300,13 +314,9 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, student, onCompl
         </View>
 
         <View style={styles.actions}>
-          {result && !result.passed && (
+          {result && !result.passed && result.completed && (
             <Text accessibilityRole="alert" style={styles.retryText}>
-              {/* The score is deliberately NOT shown: a raw number is not
-                  child-facing feedback, and the avatar overlay carries the
-                  encouragement. What stays is the one actionable thing —
-                  finish the word before trying Done. */}
-              {result.completed ? 'Try once more' : 'Finish every letter, then try Done again'}
+              Try once more
             </Text>
           )}
           {/* The layout advisory is not rendered here any more. It travels

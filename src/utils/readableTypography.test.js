@@ -157,6 +157,7 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
   // (they keep today's appearance) while removing any judgement call about
   // which glyph a child might treat as a model.
   const GLYPH_STYLES = [
+    ['components/handwriting/LetterWritingStage.js', ['letterCardText']],
     ['components/word/ExerciseA_WriteFirst.js',      ['tileText']],
     ['components/word/ExerciseB_CircleImage.js',     ['wordText']],
     ['components/word/ExerciseC_FillBlank.js',       ['tileText']],
@@ -177,10 +178,11 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
     }
   });
 
-  it('SENTINEL — the reference letter card is byte-identical to before', () => {
+  it('SENTINEL — non-overridden preview letters use the restored glyph style', () => {
     const src = read('components/handwriting/LetterWritingStage.js');
-    expect(src).not.toMatch(/letterCardText:/);
-    expect(src).toMatch(/viewBox=\{getCanonicalPreviewViewBox\(rawPath\)\}/);
+    expect(src).toMatch(/letterCardText:/);
+    expect(src).toMatch(/fontSize: Math\.round\(LETTER_CARD_SIZE \* 0\.60\)/);
+    expect(src).not.toMatch(/getCanonicalPreviewViewBox/);
     expect(src).toMatch(/d=\{isAngular \? toStraightPath\(rawPath\) : toSmoothPath\(rawPath\)\}/);
   });
 
@@ -226,6 +228,7 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
 describe('every declared weight now resolves to its Nunito face', () => {
   const WRITING = [...WRITING_FILES, 'screens/teacher/students/StudentDetailScreen.js'];
   const GLYPH = {
+    'LetterWritingStage.js': ['letterCardText'],
     'ExerciseA_WriteFirst.js': ['tileText'],
     'ExerciseB_CircleImage.js': ['wordText'],
     'ExerciseC_FillBlank.js': ['tileText'],
@@ -263,6 +266,9 @@ describe('every declared weight now resolves to its Nunito face', () => {
           const k = lines[j].match(/^\s{2}([A-Za-z0-9_]+):\s*\{/);
           if (k) name = k[1];
         }
+        // This one bilingual line intentionally uses the platform Sinhala
+        // fallback because Nunito does not provide Sinhala glyph metrics.
+        if (base === 'PreWritingActivityScreen.js' && name === 'instructionSi') continue;
         if (excluded.includes(name)) continue;
         if (base === 'StudentDetailScreen.js' && !name.startsWith('ws')) continue;
         unpaired.push(`${rel}:${name || '?'} -> ${lines[i].trim()}`);

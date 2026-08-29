@@ -372,12 +372,16 @@ describe('SENTINEL — feedback, flow, logic, geometry and layout unchanged', ()
     expect(readCode(WORD_STAGE)).toMatch(/wordTitleSi: \{\s*fontSize: 12,/);
   });
 
-  it('every Sinhala line pairs its weight with a real Nunito face', () => {
+  it('Sinhala lines keep their face, except Pre-Writing which deliberately uses system fallback', () => {
     // The app has no Sinhala face loaded — see the report. What this asserts is
     // only that the module-wide weight/family rule was not broken.
     for (const rel of [LETTER_STAGE, WORD_STAGE, PRE_WRITING, ...Object.values(EX)]) {
       const code = readCode(rel);
       for (const m of code.matchAll(/(\w*[Ss]i): \{([^}]*)\}/g)) {
+        if (rel === PRE_WRITING && m[1] === 'instructionSi') {
+          expect(m[2]).not.toMatch(/fontFamily/);
+          continue;
+        }
         if (/fontWeight/.test(m[2])) expect(m[2]).toMatch(/fontFamily/);
       }
     }

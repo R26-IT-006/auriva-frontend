@@ -18,12 +18,13 @@ const read = (rel) => fs.readFileSync(path.resolve(__dirname, rel), 'utf8');
 const SUB_FONT_SIZE   = 20;
 const SUB_LINE_EN     = 26;
 const SUB_LINE_SI     = 28;   // Sinhala vowel signs sit outside the Latin band
+const PRE_WRITING_REL = '../screens/handwriting/PreWritingActivityScreen.js';
 
 // [file, English style, Sinhala style]
 const SUB_INSTRUCTIONS = [
   ['../components/handwriting/LetterWritingStage.js', 'attemptTitle',  'attemptHint'],
   ['../components/handwriting/WordWritingStage.js',   'attemptTitle',  'attemptHint'],
-  ['../screens/handwriting/PreWritingActivityScreen.js', 'instructionEn', 'instructionSi'],
+  [PRE_WRITING_REL, 'instructionEn', 'instructionSi'],
   ['../components/word/ExerciseA_WriteFirst.js',  'instruction', 'instructionSi'],
   ['../components/word/ExerciseB_CircleImage.js', 'instruction', 'instructionSi'],
   ['../components/word/ExerciseC_FillBlank.js',   'instruction', 'instructionSi'],
@@ -107,13 +108,14 @@ describe('every sub-instruction is one readable size', () => {
 
 describe('line height leaves room for Sinhala', () => {
   it.each(SUB_INSTRUCTIONS)('%s — English leading is %s', (rel, en) => {
-    expect(num(styleBody(read(rel), en), 'lineHeight')).toBe(SUB_LINE_EN);
+    expect(num(styleBody(read(rel), en), 'lineHeight'))
+      .toBe(rel === PRE_WRITING_REL ? 28 : SUB_LINE_EN);
   });
 
   it.each(SUB_INSTRUCTIONS)('%s — Sinhala gets MORE leading than English', (rel, en, si) => {
     const src = read(rel);
     const siLine = num(styleBody(src, si), 'lineHeight');
-    expect(siLine).toBe(SUB_LINE_SI);
+    expect(siLine).toBe(rel === PRE_WRITING_REL ? 32 : SUB_LINE_SI);
     expect(siLine).toBeGreaterThan(num(styleBody(src, en), 'lineHeight'));
   });
 
@@ -126,13 +128,13 @@ describe('line height leaves room for Sinhala', () => {
     }
   });
 
-  it('leading stays inside the 26–28 band', () => {
+  it('other instructions stay in the 26–28 band; Pre-Writing gets collision-safe leading', () => {
     for (const [rel, en, si] of SUB_INSTRUCTIONS) {
       const src = read(rel);
       for (const name of [en, si]) {
         const lh = num(styleBody(src, name), 'lineHeight');
         expect(lh).toBeGreaterThanOrEqual(26);
-        expect(lh).toBeLessThanOrEqual(28);
+        expect(lh).toBeLessThanOrEqual(rel === PRE_WRITING_REL ? 32 : 28);
       }
     }
   });
@@ -140,14 +142,18 @@ describe('line height leaves room for Sinhala', () => {
 
 // ─── weight ─────────────────────────────────────────────────────────────
 
-describe('weight stays inside the Nunito system', () => {
-  it('English sub-instructions are Bold, Sinhala SemiBold — not heavier', () => {
+describe('weight stays readable while Sinhala may use its system fallback', () => {
+  it('English sub-instructions are Bold and Sinhala is SemiBold — not heavier', () => {
     for (const [rel, en, si] of SUB_INSTRUCTIONS) {
       const src = read(rel);
       expect(styleBody(src, en)).toMatch(/fontWeight: '700'/);
       expect(styleBody(src, en)).toMatch(/fontFamily: 'Nunito_700Bold'/);
       expect(styleBody(src, si)).toMatch(/fontWeight: '600'/);
-      expect(styleBody(src, si)).toMatch(/fontFamily: 'Nunito_600SemiBold'/);
+      if (rel === PRE_WRITING_REL) {
+        expect(styleBody(src, si)).not.toMatch(/fontFamily:/);
+      } else {
+        expect(styleBody(src, si)).toMatch(/fontFamily: 'Nunito_600SemiBold'/);
+      }
     }
   });
 
@@ -166,6 +172,10 @@ describe('weight stays inside the Nunito system', () => {
       for (const name of [en, si]) {
         const body = styleBody(src, name);
         const w = body.match(/fontWeight: '(\d+)'/)[1];
+        if (rel === PRE_WRITING_REL && name === si) {
+          expect(body).not.toMatch(/fontFamily:/);
+          continue;
+        }
         expect(body).toMatch(new RegExp(`fontFamily: '${PAIR[w]}'`));
       }
     }
@@ -212,10 +222,11 @@ describe('SENTINEL — the main target line is untouched', () => {
 // ─── nothing else moved ─────────────────────────────────────────────────
 
 describe('SENTINEL — glyphs, geometry and logic untouched', () => {
-  it('the reference letter card is byte-identical', () => {
+  it('the reference letter card uses custom a/I and the restored text fallback', () => {
     const source = read('../components/handwriting/LetterWritingStage.js');
-    expect(source).not.toMatch(/letterCardText:/);
-    expect(source).toMatch(/viewBox=\{getCanonicalPreviewViewBox\(rawPath\)\}/);
+    expect(source).toMatch(/letterCardText:/);
+    expect(source).toMatch(/LEFT_PREVIEW_SHAPES\[letter\]/);
+    expect(source).not.toMatch(/getCanonicalPreviewViewBox/);
   });
 
   it('the exercise and word glyph styles are untouched', () => {

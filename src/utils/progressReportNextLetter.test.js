@@ -202,7 +202,7 @@ describe('the report screen is wired to that derivation', () => {
   });
 });
 
-describe('the report is given the sequence to work from', () => {
+describe('the report handles an optional adaptive sequence', () => {
   it('LetterPracticeScreen passes letterSequence to ProgressReport', () => {
     const nav = readCode(PRACTICE);
     const call = nav.slice(nav.indexOf("navigate('ProgressReport'"));
@@ -228,7 +228,7 @@ describe('SENTINEL — nothing else in the report changed', () => {
 
   it('the endpoint, orientation lock and gated back are untouched', () => {
     expect(code).toMatch(/ENDPOINTS\.LETTER_PROGRESS\(student\.sid\)/);
-    expect(code).toMatch(/useLockPortrait\(\)/);
+    expect(code).toMatch(/useLockLandscape\(\)/);
     expect(code).toMatch(/goBackToOrigin\(navigation, route\.params\?\.originRoute\)/);
   });
 

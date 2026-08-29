@@ -117,11 +117,11 @@ describe('wiring', () => {
     expect(code).toMatch(/useLockPortrait\(\);/);
   });
 
-  it('ProgressReportScreen imports and calls the portrait hook', () => {
+  it('child-facing ProgressReportScreen remains landscape', () => {
     const code = stripComments(progressScreen);
-    expect(code).toMatch(/import \{ useLockPortrait \} from '\.\.\/\.\.\/utils\/useOrientationLock'/);
-    expect(code).toMatch(/useLockPortrait\(\);/);
-    expect(code).not.toMatch(/useLockLandscape\(\);/);
+    expect(code).toMatch(/import \{ useLockLandscape \} from '\.\.\/\.\.\/utils\/useOrientationLock'/);
+    expect(code).toMatch(/useLockLandscape\(\);/);
+    expect(code).not.toMatch(/useLockPortrait\(\);/);
   });
 
   it('the lock lives in the screen, not in one navigator', () => {
@@ -172,6 +172,36 @@ describe('useLockLandscape', () => {
     expect(() => capturedEffect()).not.toThrow();
     await flush();
   });
+
+  it('takes ownership before a previous portrait cleanup can unlock it', async () => {
+    useLockPortrait();
+    const portraitCleanup = capturedEffect();
+    await flush();
+
+    portraitCleanup();
+    useLockLandscape();
+    capturedEffect();
+    await flush();
+
+    expect(mockLockAsync.mock.calls.at(-1)[0]).toBe(5);
+    expect(mockUnlockAsync).not.toHaveBeenCalled();
+  });
+
+  it('reapplies landscape if an old portrait lock resolves after navigation', async () => {
+    let resolvePortrait;
+    mockLockAsync.mockReturnValueOnce(new Promise((resolve) => { resolvePortrait = resolve; }));
+
+    useLockPortrait();
+    const portraitCleanup = capturedEffect();
+    portraitCleanup();
+    useLockLandscape();
+    capturedEffect();
+    await flush();
+
+    resolvePortrait();
+    await flush();
+    expect(mockLockAsync.mock.calls.at(-1)[0]).toBe(5);
+  });
 });
 
 describe('module-wide orientation coverage', () => {
@@ -202,12 +232,9 @@ describe('module-wide orientation coverage', () => {
     expect(unlocked).toEqual([]);
   });
 
-  it('both report screens lock portrait', () => {
+  it('only the main teacher Progress Report locks portrait', () => {
     const portrait = screens.filter((f) => fsMod.readFileSync(f, 'utf8').includes('useLockPortrait()'));
-    expect(portrait.map((f) => pathMod.basename(f)).sort()).toEqual([
-      'ProgressReportScreen.js',
-      'TeacherReportScreen.js',
-    ]);
+    expect(portrait.map((f) => pathMod.basename(f)).sort()).toEqual(['TeacherReportScreen.js']);
   });
 
   it('no screen locks both orientations', () => {

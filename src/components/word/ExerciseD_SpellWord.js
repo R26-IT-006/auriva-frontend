@@ -66,7 +66,6 @@ export default function ExerciseD_SpellWord({
 
   const fillAnims   = useRef(letters.map(() => new Animated.Value(0))).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
-  const successAnim = useRef(new Animated.Value(0)).current;
   const pulseLoop   = useRef(null);
 
   // Pulse the next empty box
@@ -116,12 +115,6 @@ export default function ExerciseD_SpellWord({
 
       if (newFilled.length === letters.length) {
         setDone(true);
-        Animated.spring(successAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 7,
-        }).start();
         // Demo mode never calls the activity's own completion path.
         if (demoMode) {
           setTimeout(() => onDemoPassComplete?.(), 800);
@@ -385,22 +378,6 @@ export default function ExerciseD_SpellWord({
           )}
         </View>
 
-        {done && (
-          <Animated.View
-            style={[
-              styles.successRow,
-              {
-                opacity: successAnim,
-                transform: [{ scale: successAnim }],
-              },
-            ]}
-          >
-            {/* The tick stays — it marks the finished word in place. The
-                praise moved to the shared avatar overlay, so the child is
-                never told "Well done!" twice at once. */}
-            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
-          </Animated.View>
-        )}
       </View>
 
     </View>
@@ -507,16 +484,5 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     fontFamily: 'Nunito_800ExtraBold',
-  },
-  successRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  successLabel: {
-    fontSize: 18,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
-    color: '#2E7D32',
   },
 });

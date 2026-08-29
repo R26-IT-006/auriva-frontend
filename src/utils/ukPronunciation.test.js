@@ -12,7 +12,9 @@ import {
   LETTER_NAMES, PRIMARY_SOUND, ALSO_SOUNDS,
   letterName, letterSound, letterNameDisplay,
 } from '../constants/letterPhonetics';
-import { SPEECH_LOCALE_EN, SPEECH_LOCALE_SI, ukSpeechOptions } from '../constants/speechLocale';
+import {
+  SPEECH_LOCALE_EN, SPEECH_LOCALE_SI, ukSpeechOptions, ukLetterSpeechOptions,
+} from '../constants/speechLocale';
 
 const read = (rel) => fs.readFileSync(path.resolve(__dirname, rel), 'utf8');
 const stripComments = (s) =>
@@ -214,6 +216,11 @@ describe('speech asks for British English', () => {
     expect(ukSpeechOptions()).toEqual({ language: 'en-GB' });
   });
 
+  it('target-letter speech uses one calm UK configuration', () => {
+    expect(ukLetterSpeechOptions())
+      .toEqual({ rate: 0.75, pitch: 0.9, language: 'en-GB' });
+  });
+
   it('no named voice id is hardcoded anywhere — a missing id speaks nothing', () => {
     const code = readCode('../constants/speechLocale.js');
     expect(code).not.toMatch(/voice:/);
@@ -226,11 +233,11 @@ describe('speech asks for British English', () => {
 
   it.each(SPEAKING)('%s routes English speech through the shared locale', (rel) => {
     const code = readCode(rel);
-    expect(code).toMatch(/import \{ [^}]*SPEECH_LOCALE_EN[^}]*\} from '[^']*speechLocale'/);
+    expect(code).toMatch(/import \{ [^}]*(?:SPEECH_LOCALE_EN|ukLetterSpeechOptions)[^}]*\} from '[^']*speechLocale'/);
     // Every English Speech.speak names the locale — none silently inherits
     // whatever the device happens to be set to.
     for (const call of code.match(/Speech\.speak\([\s\S]*?\);/g) || []) {
-      expect(call).toMatch(/SPEECH_LOCALE_EN|ukSpeechOptions\(/);
+      expect(call).toMatch(/SPEECH_LOCALE_EN|ukSpeechOptions\(|ukLetterSpeechOptions\(/);
     }
   });
 

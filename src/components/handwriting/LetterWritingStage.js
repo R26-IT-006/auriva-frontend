@@ -50,6 +50,11 @@ import {
   PAD, COL_L, LETTER_CARD_SIZE, CANVAS_W, CANVAS_H, aspectX,
   LINE_1, LINE_2, LINE_3, LINE_4,
 } from '../../constants/letterCanvasLayout';
+import {
+  LEFT_PREVIEW_SHAPES,
+  LEFT_PREVIEW_STROKE_WIDTH,
+  LEFT_PREVIEW_VIEW_BOX,
+} from '../../constants/leftLetterPreviewShapes';
 
 // The column allocation stays fixed so CANVAS_W and the entire writing side
 // remain unchanged. Only the card inside the left column is reduced slightly.
@@ -126,27 +131,35 @@ function getGhostDots(rawPath) {
   return dots;
 }
 
-/**
- * Fit the canonical canvas-space letter into a square without stretching it.
- * The path itself remains the exact rawPath used by the writing target.
- */
-function getCanonicalPreviewViewBox(rawPath) {
-  const points = normalizeStrokes(rawPath)
-    .flat()
-    .filter((point) => Number.isFinite(point?.fx) && Number.isFinite(point?.fy))
-    .map((point) => ({ x: aspectX(point.fx) * CANVAS_W, y: point.fy * CANVAS_H }));
-
-  if (points.length === 0) return `0 0 ${CANVAS_W} ${CANVAS_H}`;
-
-  const minX = Math.min(...points.map((point) => point.x));
-  const maxX = Math.max(...points.map((point) => point.x));
-  const minY = Math.min(...points.map((point) => point.y));
-  const maxY = Math.max(...points.map((point) => point.y));
-  const side = Math.max(maxX - minX, maxY - minY, 1) * 1.20;
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
-
-  return `${centerX - side / 2} ${centerY - side / 2} ${side} ${side}`;
+/** Render one display-only alphabet shape; no writing geometry enters here. */
+function LeftPreviewShape({ shape, color }) {
+  return (
+    <Svg
+      width={PREVIEW_GLYPH_SIZE}
+      height={PREVIEW_GLYPH_SIZE}
+      viewBox={LEFT_PREVIEW_VIEW_BOX}
+      preserveAspectRatio="xMidYMid meet"
+      pointerEvents="none"
+      accessible={false}
+    >
+      {shape.elements.map((element, index) => {
+        const common = {
+          key: `preview-shape-${index}`,
+          stroke: color,
+          strokeWidth: LEFT_PREVIEW_STROKE_WIDTH,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          vectorEffect: 'non-scaling-stroke',
+          fill: 'none',
+        };
+        if (element.type === 'path') return <Path {...common} d={element.d} />;
+        if (element.type === 'line') {
+          return <Line {...common} x1={element.x1} y1={element.y1} x2={element.x2} y2={element.y2} />;
+        }
+        return null;
+      })}
+    </Svg>
+  );
 }
 
 export const LETTER_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'demo' });
@@ -202,6 +215,7 @@ export default function LetterWritingStage({
   canvasPointerEvents = 'auto',
 }) {
   const isDemo = mode === LETTER_STAGE_MODES.DEMO;
+  const previewShape = LEFT_PREVIEW_SHAPES[letter] ?? null;
 
   // The character is passed through with its own case — 'a' and 'A' are
   // different targets, and the old unconditional .toUpperCase() here made the
@@ -221,37 +235,16 @@ export default function LetterWritingStage({
   return (
     <View style={styles.mainRow}>
 
-      {/* Left column — canonical handwriting-form preview. */}
+      {/* Left column — only approved a/I use custom SVG. Every other value
+          uses the original pre-canonical-path Text preview from Git history. */}
       <View style={styles.letterCol}>
         <View style={[styles.letterCard, { backgroundColor: theme.button }]}>
-          {rawPath && (
-            <Svg
-              width={PREVIEW_GLYPH_SIZE}
-              height={PREVIEW_GLYPH_SIZE}
-              viewBox={getCanonicalPreviewViewBox(rawPath)}
-              preserveAspectRatio="xMidYMid meet"
-              pointerEvents="none"
-              accessible={false}
-            >
-              <Path
-                d={isAngular ? toStraightPath(rawPath) : toSmoothPath(rawPath)}
-                stroke={theme.buttonText}
-                strokeWidth={8}
-                strokeLinecap="round"
-                strokeLinejoin={isAngular ? 'miter' : 'round'}
-                vectorEffect="non-scaling-stroke"
-                fill="none"
-              />
-              {getGhostDots(rawPath).map((dot, idx) => (
-                <Circle
-                  key={`preview-dot-${idx}`}
-                  cx={dot.cx}
-                  cy={dot.cy}
-                  r={5}
-                  fill={theme.buttonText}
-                />
-              ))}
-            </Svg>
+          {previewShape ? (
+            <LeftPreviewShape shape={previewShape} color={theme.buttonText} />
+          ) : (
+            <Text style={[styles.letterCardText, { color: theme.buttonText }]}>
+              {letter}
+            </Text>
           )}
         </View>
       </View>
@@ -488,6 +481,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
+  },
+
+  // Exact original pre-canonical-path preview typography from c4f10f8^.
+  letterCardText: {
+    fontSize: Math.round(LETTER_CARD_SIZE * 0.60),
+    fontWeight: '900',
+    lineHeight: Math.round(LETTER_CARD_SIZE * 0.75),
   },
 
   contentCol: {

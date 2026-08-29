@@ -29,10 +29,10 @@ import ScreenBackButton from '../../components/handwriting/ScreenBackButton';
 import useGatedBack from '../../utils/useGatedBack';
 
 const AVATAR_MAP = {
-  boba:     require('../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../assets/avatar-images/Megatron.png'),
+  boba:     require('../../../assets/handwriting-avatars/Boba.png'),
+  glitter:  require('../../../assets/handwriting-avatars/Glitter.png'),
+  lily:     require('../../../assets/handwriting-avatars/Lily.png'),
+  megatron: require('../../../assets/handwriting-avatars/Megatron.png'),
 };
 
 export default function LetterPracticeScreen({ route, navigation }) {
@@ -133,6 +133,8 @@ export default function LetterPracticeScreen({ route, navigation }) {
   const uppercaseOpen    = canOpen(lowercaseDone);
   const uppercasePreview = isPreview(lowercaseDone);
   const lowercasePercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
+  const uppercasePercent = Math.min(100, Math.round((uppercaseProgress / 26) * 100));
+  const avatarSource = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
   return (
     <LinearGradient
@@ -167,16 +169,9 @@ export default function LetterPracticeScreen({ route, navigation }) {
               gated
               tint={theme.button}
               color={theme.button}
-              style={{ marginRight: 12 }}
+              style={{ marginRight: 2 }}
             />
-            <View style={[styles.avatarRing, { borderColor: theme.button + '40' }]}>
-              <Image
-                source={AVATAR_MAP[student?.avatar_key]}
-                style={styles.avatarImg}
-                resizeMode="contain"
-              />
-            </View>
-            <View>
+            <View style={styles.headerTextBlock}>
               <Text style={[styles.studentName, { color: theme.headingText }]}>
                 {student?.full_name}
               </Text>
@@ -191,19 +186,13 @@ export default function LetterPracticeScreen({ route, navigation }) {
               theme,
               lowercaseProgress,
               uppercaseProgress,
-              // The student's adaptive order. Without it the report can only
-              // fall back to the default category order — see
-              // ProgressReportScreen's next-letter derivation.
               letterSequence,
-              // Where back should return to — see utils/backToOrigin.js.
               originRoute: 'LetterPractice',
             })}
             activeOpacity={0.8}
           >
             <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
-            <Text style={[styles.reportBtnText, { color: theme.buttonText }]}>
-              View Progress Report
-            </Text>
+            <Text style={[styles.reportBtnText, { color: theme.buttonText }]}>View Letter Progress</Text>
           </TouchableOpacity>
         </View>
 
@@ -212,17 +201,17 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
           {/* Hero section */}
           <View style={styles.heroSection}>
-            <Image
-              source={AVATAR_MAP[student?.avatar_key]}
-              style={styles.heroAvatar}
-              resizeMode="contain"
-            />
-            <Text style={[styles.heroGreeting, { color: theme.headingText }]}>
-              Choose your practice!
-            </Text>
-            <Text style={[styles.heroSubtitle, { color: theme.button }]}>
-              What would you like to write today?
-            </Text>
+            <View style={styles.heroTextBlock}>
+              <Text style={[styles.heroGreeting, { color: theme.headingText }]}>Choose your practice!</Text>
+              <Text style={[styles.heroSubtitle, { color: theme.button }]}>What would you like to write today?</Text>
+            </View>
+            <View style={styles.heroAvatarCard}>
+              <Image
+                source={avatarSource}
+                style={styles.heroAvatar}
+                resizeMode="contain"
+              />
+            </View>
           </View>
 
           {/* ── Card ── */}
@@ -230,17 +219,40 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
             {/* Progress section */}
             <View style={styles.progressSection}>
-              <View style={styles.progressHeader}>
-                <View style={styles.progressHeaderLeft}>
-                  <Ionicons name="trophy-outline" size={18} color="#F57F17" />
-                  <Text style={styles.progressHeaderText}>
-                    Lowercase: {lowercaseProgress} / 26 completed
+              <View style={styles.progressCaseBlock}>
+                <View style={styles.progressHeader}>
+                  <View style={styles.progressHeaderLeft}>
+                    <Ionicons name="trophy-outline" size={18} color="#F57F17" />
+                    <Text style={styles.progressHeaderText}>
+                      Lowercase: {lowercaseProgress} / 26 completed
+                    </Text>
+                  </View>
+                  <Text style={styles.progressPercent}>{lowercasePercent}%</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${lowercasePercent}%` }]} />
+                </View>
+              </View>
+
+              <View style={styles.progressCaseBlock}>
+                <View style={styles.progressHeader}>
+                  <View style={styles.progressHeaderLeft}>
+                    <Ionicons name="arrow-up-circle-outline" size={18} color="#9575CD" />
+                    <Text style={styles.progressHeaderText}>
+                      Uppercase: {uppercaseProgress} / 26 completed
+                    </Text>
+                  </View>
+                  <Text style={[styles.progressPercent, styles.uppercaseProgressPercent]}>
+                    {uppercasePercent}%
                   </Text>
                 </View>
-                <Text style={styles.progressPercent}>{lowercasePercent}%</Text>
-              </View>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${lowercasePercent}%` }]} />
+                <View style={styles.progressTrack}>
+                  <View style={[
+                    styles.progressFill,
+                    styles.uppercaseProgressFill,
+                    { width: `${uppercasePercent}%` },
+                  ]} />
+                </View>
               </View>
             </View>
 
@@ -450,26 +462,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 22,
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
-  avatarRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: 'center',
+  headerTextBlock: {
     justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
   },
   studentName: {
     fontSize: 17,
@@ -485,73 +486,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
   },
   reportBtnText: {
     fontSize: 13,
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
   },
-
   // Main content
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
-    paddingBottom: 24,
-    gap: 20,
+    paddingBottom: 18,
+    gap: 14,
   },
 
   // Hero section
   heroSection: {
+    width: '100%',
+    maxWidth: 680,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 20,
+  },
+  heroTextBlock: {
+    flex: 1,
+    alignItems: 'flex-start',
+    paddingLeft: 28,
+  },
+  heroAvatarCard: {
+    width: 260,
+    height: 210,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroAvatar: {
-    width: 100,
-    height: 100,
-    marginBottom: 4,
+    width: '100%',
+    height: '100%',
   },
   heroGreeting: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '900',
     fontFamily: 'Nunito_900Black',
-    textAlign: 'center',
+    textAlign: 'left',
     letterSpacing: 0.3,
   },
   heroSubtitle: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
-    textAlign: 'center',
+    textAlign: 'left',
     opacity: 0.85,
+    marginTop: 6,
   },
 
   // Card
   card: {
     width: '100%',
-    maxWidth: 580,
+    maxWidth: 680,
+    minHeight: 350,
     backgroundColor: '#FFFFFF',
     borderRadius: 26,
-    padding: 24,
+    padding: 30,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
-    gap: 18,
+    gap: 22,
   },
 
   // Progress section
   progressSection: {
+    gap: 14,
+  },
+  progressCaseBlock: {
     gap: 8,
   },
   progressHeader: {
@@ -588,6 +607,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     borderRadius: 5,
   },
+  uppercaseProgressPercent: {
+    color: '#9575CD',
+  },
+  uppercaseProgressFill: {
+    backgroundColor: '#9575CD',
+  },
 
   // Pills row
   pillsRow: {
@@ -600,9 +625,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F1F8E9',
     borderRadius: 22,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    minHeight: 190,
+    paddingVertical: 28,
+    paddingHorizontal: 22,
+    minHeight: 220,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
@@ -642,9 +667,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3E5F5',
     borderRadius: 22,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    minHeight: 190,
+    paddingVertical: 28,
+    paddingHorizontal: 22,
+    minHeight: 220,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,

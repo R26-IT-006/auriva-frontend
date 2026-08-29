@@ -128,8 +128,8 @@ describe('SENTINEL — the child is not told their handwriting failed', () => {
     expect(body).not.toMatch(/Keep practising/);
   });
 
-  it.each(SCREENS)('%s still uses the practice wording for a REAL failed cycle', (_name, src) => {
-    expect(stripComments(src)).toMatch(/show\('Keep practising/);
+  it.each(SCREENS)('%s does not add a second child-facing failure toast for a REAL failed cycle', (_name, src) => {
+    expect(stripComments(src)).not.toMatch(/show\('Keep practising/);
   });
 });
 

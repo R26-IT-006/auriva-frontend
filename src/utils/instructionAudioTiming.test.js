@@ -1,10 +1,88 @@
 const fs = require('fs');
 const path = require('path');
+const {
+  INSTRUCTION_WRITE_UNLOCK_RATIO,
+  createInstructionTargetSpeechQueue,
+  hasReachedInstructionWriteThreshold,
+} = require('./instructionAudioGate');
 
 const ROOT = path.resolve(__dirname, '../..');
 const read = (relativePath) => fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 
-describe('instruction-first handwriting timing', () => {
+describe('75% instruction-audio writing threshold', () => {
+  test.each([
+    [0, false],
+    [2000, false],
+    [2999, false],
+    [3000, true],
+    [3500, true],
+  ])('4000 ms recording at %i ms => writable %s', (positionMillis, expected) => {
+    expect(hasReachedInstructionWriteThreshold({
+      isLoaded: true,
+      durationMillis: 4000,
+      positionMillis,
+      isPlaying: true,
+    })).toBe(expected);
+  });
+
+  test('uses 75% and keeps unknown durations locked for lifecycle fallback', () => {
+    expect(INSTRUCTION_WRITE_UNLOCK_RATIO).toBe(0.75);
+    expect(hasReachedInstructionWriteThreshold({ isLoaded: true, positionMillis: 3000 })).toBe(false);
+    expect(hasReachedInstructionWriteThreshold({
+      isLoaded: true,
+      durationMillis: 0,
+      positionMillis: 3000,
+    })).toBe(false);
+  });
+});
+
+describe('instruction/target speech sequencing', () => {
+  test('first touch in the final 25% queues target speech and completion speaks once', () => {
+    const queue = createInstructionTargetSpeechQueue();
+    const speak = jest.fn();
+    queue.begin({ reset: true });
+    queue.request(speak);
+    queue.request(speak);
+    expect(speak).not.toHaveBeenCalled();
+    queue.complete();
+    queue.complete();
+    expect(speak).toHaveBeenCalledTimes(1);
+  });
+
+  test('touch after instruction completion speaks immediately', () => {
+    const queue = createInstructionTargetSpeechQueue();
+    const speak = jest.fn();
+    queue.begin({ reset: true });
+    queue.complete();
+    queue.request(speak);
+    expect(speak).toHaveBeenCalledTimes(1);
+  });
+
+  test('attempt reset discards an old queued target', () => {
+    const queue = createInstructionTargetSpeechQueue();
+    const oldAttempt = jest.fn();
+    const newAttempt = jest.fn();
+    queue.begin({ reset: true });
+    queue.request(oldAttempt);
+    queue.begin({ reset: true });
+    queue.request(newAttempt);
+    queue.complete();
+    expect(oldAttempt).not.toHaveBeenCalled();
+    expect(newAttempt).toHaveBeenCalledTimes(1);
+  });
+
+  test('manual replay preserves a queued target without duplicating it', () => {
+    const queue = createInstructionTargetSpeechQueue();
+    const speak = jest.fn();
+    queue.begin({ reset: true });
+    queue.request(speak);
+    queue.begin();
+    queue.complete();
+    expect(speak).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('screen wiring for the 75% gate', () => {
   const lower = read('src/screens/handwriting/LetterWritingScreen.js');
   const upper = read('src/screens/handwriting/uppercase/UppercaseWritingScreen.js');
   const wordWriting = read('src/screens/handwriting/words/WordWritingScreen.js');
@@ -16,41 +94,41 @@ describe('instruction-first handwriting timing', () => {
   test.each([
     ['lowercase', lower],
     ['uppercase', upper],
-  ])('%s gates the canvas and speaks its target once per attempt', (_name, source) => {
-    expect(source).toContain('autoPlay: Boolean(instructionKey)');
-    expect(source).toContain('canWriteRef.current = !instructionPlaying');
+  ])('%s accepts strokes at the threshold and queues first-touch target speech', (_name, source) => {
+    expect(source).toContain('canWriteRef.current = canWrite');
     expect(source).toContain('onStartShouldSetPanResponder: () => canWriteRef.current');
     expect(source).toContain('if (!canWriteRef.current) return;');
-    expect(source).toMatch(/targetSpokenAttemptRef\.current = false; \}, \[letter, attempt\]\)/);
-    expect(source).toContain('if (!targetSpokenAttemptRef.current)');
-    expect(source).toMatch(/canvasPointerEvents=\{(?:attemptFeedback \|\| )?instructionPlaying \? 'none' : 'auto'\}/);
-    expect(source).not.toMatch(/useEffect\([\s\S]{0,300}playLetterSound\(letter\)/);
+    expect(source).toContain('requestTargetSpeech(() => playLetterSoundRef.current?.())');
+    expect(source).toContain("!canWrite ? 'none' : 'auto'");
   });
 
-  test('Word Writing follows the same gate without changing its approved target-word speech', () => {
-    expect(wordWriting).toContain('autoPlay: true');
-    expect(wordWriting).toContain('canWriteRef.current = !instructionPlaying');
-    expect(wordWriting).toContain('if (!canWriteRef.current) return;');
-    expect(wordWriting).toMatch(/targetSpokenAttemptRef\.current = false; \}, \[wordEntry\?\.word, attempt\]\)/);
-    expect(wordWriting).toContain('spellWordRef.current?.();');
-    expect(wordWriting).toContain("canvasPointerEvents={instructionPlaying ? 'none' : 'auto'}");
+  test('Word Writing uses the same gate and retains current-word speech', () => {
+    expect(wordWriting).toContain('canWriteRef.current = canWrite');
+    expect(wordWriting).toContain('requestTargetSpeech(() => spellWordRef.current?.())');
+    expect(wordWriting).toContain("canvasPointerEvents={canWrite ? 'auto' : 'none'}");
+    expect(wordWriting).toContain('language: SPEECH_LOCALE_EN');
   });
 
-  test('Word Practice gates only Exercise E and speaks the visible word on its first valid stroke', () => {
+  test('Word Practice gates only Activity E and queues its visible target word', () => {
     expect(wordActivity).toContain("autoPlay: currentExercise === 'E'");
-    expect(wordActivity).toContain('canWrite: !instructionPlaying');
-    expect(wordActivity).toMatch(/currentExercise === 'E' && instructionPlaying/);
-    expect(exerciseE).toContain('canWriteRef.current = canWrite');
-    expect(exerciseE).toContain('if (!canWriteRef.current || doneRef.current) return;');
-    expect(exerciseE).toContain('if (!targetSpokenRef.current)');
+    expect(wordActivity).toContain("canWrite: currentExercise !== 'E' || instructionCanWrite");
+    expect(wordActivity).toContain('requestTargetSpeech,');
+    expect(exerciseE).toContain('requestTargetSpeech(() => {');
     expect(exerciseE).toContain('const spoken = spokenWord(wordEntry);');
     expect(exerciseE).toContain('language: SPEECH_LOCALE_EN');
-    expect(exerciseE).toContain("pointerEvents={canWrite ? 'auto' : 'none'}");
   });
 
-  test('manual replay re-gates and does not clear existing drawing state', () => {
+  test('real playback status unlocks; completion/failure provide safe fallback', () => {
+    expect(player).toContain('onPlaybackStatus?.(status)');
+    expect(hook).toContain('hasReachedInstructionWriteThreshold(status)');
+    expect(hook).toMatch(/reason === 'failed'[\s\S]{0,180}unlockWriting\(\)/);
+    expect(hook).toMatch(/reason === 'completed'[\s\S]{0,80}finishRun\(\)/);
+  });
+
+  test('manual replay does not reset an already-open gate or drawing state', () => {
+    expect(hook).toContain('resetWriteGate = false');
+    expect(hook).toContain('replay({ resetWriteGate: true })');
     for (const source of [lower, upper, wordWriting]) {
-      expect(source).toContain('onPlayInstruction={replaySupportInstruction}');
       const replay = source.slice(
         source.indexOf('const replaySupportInstruction'),
         source.indexOf('const replaySupportInstruction') + 450,
@@ -58,17 +136,5 @@ describe('instruction-first handwriting timing', () => {
       expect(replay).toContain('replayInstruction()');
       expect(replay).not.toMatch(/setAllPaths|setCurrentPath|resetCanvas/);
     }
-    expect(wordActivity).toContain('onPress={replayCurrentInstruction}');
-  });
-
-  test('actual playback completion drives unlock and failure fallback cannot leave a permanent gate', () => {
-    expect(player).toMatch(/status\.didJustFinish[\s\S]*finish\('completed'\)/);
-    expect(player).toContain("finish('failed')");
-    expect(hook).toContain("if (reason === 'failed') startFallback();");
-    expect(hook).toContain('onDone: finishRun');
-    expect(hook).toContain('onStopped: finishRun');
-    expect(hook).toContain('onError: finishRun');
-    expect(hook).toMatch(/catch \{[\s\S]{0,80}finishRun\(\)/);
-    expect(hook).toContain('playback.token !== autoPlayToken');
   });
 });

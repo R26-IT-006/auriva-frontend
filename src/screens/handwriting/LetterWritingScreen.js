@@ -81,7 +81,7 @@ import {
 } from '../../components/handwriting/LetterWritingStage';
 import { instructionForSupport, SUPPORT_INSTRUCTION_KEY } from '../../constants/childInstructions';
 import { useInstructionAudioState } from '../../utils/useInstructionAudio';
-import { SPEECH_LOCALE_EN } from '../../constants/speechLocale';
+import { ukLetterSpeechOptions } from '../../constants/speechLocale';
 import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
 import { actionRowMinHeight } from '../../constants/writingActionRow';
 import { startGuideReplayCycle } from '../../utils/guideReplayCycle';
@@ -701,13 +701,18 @@ export default function LetterWritingScreen({ route, navigation }) {
   const instructionKey = masteredSequenceReady && letterObj
     ? SUPPORT_INSTRUCTION_KEY[supportLevel]
     : null;
-  const { replay: replayInstruction, instructionPlaying } = useInstructionAudioState(instructionKey, {
+  const {
+    replay: replayInstruction,
+    instructionPlaying,
+    canWrite,
+    requestTargetSpeech,
+  } = useInstructionAudioState(instructionKey, {
     autoPlay: Boolean(instructionKey),
     autoPlayToken: `${letter}:${attempt}:${supportLevel}`,
     fallbackText: instructionForSupport(supportLevel).en,
   });
   const canWriteRef = useRef(false);
-  canWriteRef.current = !instructionPlaying;
+  canWriteRef.current = canWrite;
   const targetSpokenAttemptRef = useRef(false);
   useEffect(() => { targetSpokenAttemptRef.current = false; }, [letter, attempt]);
   const supportPresentation = getSupportPresentation({ supportLevel, attempt, collectionMode });
@@ -800,7 +805,7 @@ export default function LetterWritingScreen({ route, navigation }) {
     const spoken = String(l ?? letter ?? '');
     if (!spoken) return;
     Speech.stop();
-    Speech.speak(spoken.toUpperCase(), { rate: 0.8, pitch: 1.0, language: SPEECH_LOCALE_EN });
+    Speech.speak(spoken.toUpperCase(), ukLetterSpeechOptions());
   }, [letter]);
 
   // Keep a stable ref so the PanResponder closure can call it without staling
@@ -1117,7 +1122,7 @@ export default function LetterWritingScreen({ route, navigation }) {
         // Speak the letter name when the child first touches the canvas
         if (!targetSpokenAttemptRef.current) {
           targetSpokenAttemptRef.current = true;
-          playLetterSoundRef.current?.();
+          requestTargetSpeech(() => playLetterSoundRef.current?.());
         }
       },
       onPanResponderMove: (evt) => {
@@ -1584,9 +1589,6 @@ export default function LetterWritingScreen({ route, navigation }) {
             handleCaptureIncomplete(response.data.retry_session_key);
             return;
           }
-          if (response.data.completed === false) {
-            show('Keep practising — try again!', 'info');
-          }
           // Feature 5 Step 3 — a full 3-attempt cycle has now definitively
           // failed (backend-confirmed). Schedule (never await) the spaced-
           // repetition evaluation before the existing immediate retry
@@ -1827,7 +1829,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           canvasRef={canvasRef}
           onCanvasLayout={measureCanvasOrigin}
           panHandlers={panResponder.panHandlers}
-          canvasPointerEvents={attemptFeedback || instructionPlaying ? 'none' : 'auto'}
+          canvasPointerEvents={attemptFeedback || !canWrite ? 'none' : 'auto'}
         />
 
         {/* â”€â”€ Feedback pill â”€â”€ */}

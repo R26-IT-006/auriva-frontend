@@ -34,7 +34,8 @@ describe('child feedback never gates progression or pass/fail', () => {
   });
 
   test("ExerciseE_WriteWord's pass gate reads only authoritative.passed, never the layout advisory", () => {
-    expect(exerciseE).toContain('if (!authoritative.passed) { actionIdRef.current=null; return; }');
+    expect(exerciseE).toMatch(/if \(!authoritative\.passed\) \{[\s\S]*actionIdRef\.current = null;[\s\S]*return;/);
+    expect(exerciseE).not.toMatch(/if \([^)]*layoutMessage[^)]*\)[\s\S]{0,120}(return|setDone)/);
   });
 });
 

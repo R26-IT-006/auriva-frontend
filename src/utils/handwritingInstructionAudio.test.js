@@ -71,8 +71,8 @@ describe('screen wiring and TTS boundary', () => {
   );
 
   test('dynamic target letter and current-word en-GB TTS remains', () => {
-    expect(lower).toMatch(/Speech\.speak\([\s\S]*?language: SPEECH_LOCALE_EN/);
-    expect(upper).toMatch(/Speech\.speak\([\s\S]*?language: SPEECH_LOCALE_EN/);
+    expect(lower).toMatch(/Speech\.speak\([\s\S]*?ukLetterSpeechOptions\(\)/);
+    expect(upper).toMatch(/Speech\.speak\([\s\S]*?ukLetterSpeechOptions\(\)/);
     expect(wordPractice).toMatch(/spokenWord\(currentWord\)/);
     expect(wordPractice).toContain('language: SPEECH_LOCALE_EN');
   });
@@ -170,6 +170,24 @@ describe('instruction player serialization and failure safety', () => {
     onStatus({ isLoaded: true, isPlaying: false, didJustFinish: true });
     expect(onPlaybackEnd).toHaveBeenCalledTimes(1);
     expect(onPlaybackEnd).toHaveBeenCalledWith('completed');
+  });
+
+  test('forwards real duration and position playback status', async () => {
+    const sound = makeSound();
+    const onPlaybackStatus = jest.fn();
+    mockCreateAsync.mockResolvedValue({ sound });
+
+    await player.playInstructionAudio('WATCH_TRACE', { onPlaybackStatus });
+    const onStatus = sound.setOnPlaybackStatusUpdate.mock.calls[0][0];
+    const status = {
+      isLoaded: true,
+      isPlaying: true,
+      didJustFinish: false,
+      durationMillis: 4000,
+      positionMillis: 3000,
+    };
+    onStatus(status);
+    expect(onPlaybackStatus).toHaveBeenCalledWith(status);
   });
 
   test('reports a runtime decoder/playback error so the fallback can release the gate', async () => {

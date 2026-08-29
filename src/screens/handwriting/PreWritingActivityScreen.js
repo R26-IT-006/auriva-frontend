@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   PanResponder,
@@ -24,13 +23,13 @@ import { normalizeStrokesForDTW } from '../../utils/dtwNormalization';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../utils/adaptiveSequencing';
 import { DEFAULT_N_POINTS, selectPreWritingActivities } from '../../constants/preWritingActivities';
 import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
-import { PRE_WRITING_REASON } from '../../utils/preWritingSessionGuard';
 import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
 import { useLockLandscape } from '../../utils/useOrientationLock';
 import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
 import { useInstructionAudio } from '../../utils/useInstructionAudio';
+import { actionRowMinHeight } from '../../constants/writingActionRow';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -41,11 +40,6 @@ const CANVAS_BORDER_WIDTH = 2;
 // They used to carry a name AND a prompt each — 36 strings, two of them on
 // screen at once, for one action. One instruction, one future recording.
 const PRE_WRITING_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.FOLLOW_PATH];
-
-// Shown ONLY when this warm-up was reached from two failed cycles on one
-// letter. A category transition or an adaptive detour renders exactly what it
-// rendered before — no lead-in, no layout change.
-const REMEDIATION_LEAD_IN = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.PRACTISE_FIRST];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -60,13 +54,6 @@ const POINTER_SIZE = 14;
 const POINTER_HALF = POINTER_SIZE / 2;
 
 const ATTEMPT_FEEDBACK_MS = 2200;
-
-const AVATAR_MAP = {
-  boba:     require('../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../assets/avatar-images/Megatron.png'),
-};
 
 // ─── Feature calculation (smoothness formula matches ShapeAssessmentScreen's
 //     calculateFeatures exactly, DTW path matches its zigzag/curve_wave path)
@@ -176,14 +163,11 @@ export default function PreWritingActivityScreen({ route, navigation }) {
   const {
     student, theme,
     activities:    activitiesParam,
-    warmupReason,
     primitiveGroup,
     selectionOptions,
     nextRoute, nextParams,
     onComplete,
   } = route.params;
-
-  const isRemediation = warmupReason === PRE_WRITING_REASON.CYCLE_3_REMEDIATION;
 
   const activities = useMemo(() => {
     if (Array.isArray(activitiesParam)) return activitiesParam;
@@ -515,12 +499,6 @@ export default function PreWritingActivityScreen({ route, navigation }) {
             <View style={[styles.instructionCard, { borderLeftColor: theme.button }]}>
               <View style={styles.instructionInner}>
                 <View style={styles.instructionTexts}>
-                  {isRemediation && (
-                    <>
-                      <Text style={styles.leadInEn}>{REMEDIATION_LEAD_IN.en}</Text>
-                      <Text style={styles.leadInSi}>{REMEDIATION_LEAD_IN.si}</Text>
-                    </>
-                  )}
                   <Text style={styles.instructionEn}>{PRE_WRITING_INSTRUCTION.en}</Text>
                   <Text style={styles.instructionSi}>{PRE_WRITING_INSTRUCTION.si}</Text>
                 </View>
@@ -652,15 +630,8 @@ export default function PreWritingActivityScreen({ route, navigation }) {
             avatarKey={student?.avatar_key}
             passed={attemptFeedback.passed}
             attempt={attemptFeedback.attempt}
+            note={attemptFeedback.passed ? 'Great job!' : 'Try again!'}
             theme={theme}
-          />
-        )}
-
-        {!attemptFeedback && (
-          <Image
-            source={AVATAR_MAP[student?.avatar_key]}
-            style={styles.avatarImage}
-            resizeMode="contain"
           />
         )}
 
@@ -745,6 +716,7 @@ const styles = StyleSheet.create({
     maxWidth: 520,
     alignSelf: 'center',
     marginTop: 8,
+    minHeight: 108,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -755,40 +727,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    minHeight: 84,
   },
   instructionTexts: {
     flex: 1,
-    gap: 2,
-  },
-  leadInEn: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-    color: '#6A6A85',
-    textAlign: 'center',
-  },
-  leadInSi: {
-    fontSize: 18,
-    lineHeight: 26,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    color: '#6A6A85',
-    textAlign: 'center',
-    marginBottom: 4,
+    minWidth: 0,
+    minHeight: 76,
+    gap: 8,
+    justifyContent: 'center',
   },
   instructionSi: {
     fontSize: 20,
-    lineHeight: 28,
+    lineHeight: 32,
     fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
     color: '#7B7B9E',
     textAlign: 'center',
   },
   instructionEn: {
-    flex: 1,
     fontSize: 20,
-    lineHeight: 26,
+    lineHeight: 28,
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
     color: '#444444',
@@ -797,6 +754,7 @@ const styles = StyleSheet.create({
   speakerBtn: {
     width: 48,
     height: 48,
+    flexShrink: 0,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
@@ -853,6 +811,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   buttonsRow: {
+    minHeight: actionRowMinHeight({
+      maxButtonPaddingVertical: 13,
+      maxButtonBorderWidth: 1.5,
+    }),
     flexDirection: 'row',
     gap: 16,
     alignItems: 'center',
@@ -883,14 +845,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
-  },
-
-  avatarImage: {
-    position: 'absolute',
-    bottom: -10,
-    right: 8,
-    width: 250,
-    height: 320,
-    zIndex: 10,
   },
 });

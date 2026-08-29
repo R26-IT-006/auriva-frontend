@@ -59,6 +59,11 @@ import WordPracticeResultCard from '../../../components/word/WordPracticeResultC
 
 // The same dwell the letter screens give their feedback.
 const ATTEMPT_FEEDBACK_MS = 2200;
+const INCOMPLETE_WORD_FEEDBACK = Object.freeze({
+  passed: false,
+  isWriting: true,
+  note: 'Finish every letter',
+});
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -170,7 +175,12 @@ export default function WordActivityScreen({ route, navigation }) {
   // Arranging letter tiles into an order is genuinely new, so it is shown
   // once, the first time the child reaches it.
   const currentExercise = EXERCISES[exIdx];
-  const { replay: replayInstruction, instructionPlaying } = useInstructionAudioState(
+  const {
+    replay: replayInstruction,
+    instructionPlaying,
+    canWrite: instructionCanWrite,
+    requestTargetSpeech,
+  } = useInstructionAudioState(
     EXERCISE_INSTRUCTION_KEY[currentExercise],
     {
       autoPlay: currentExercise === 'E',
@@ -261,6 +271,7 @@ export default function WordActivityScreen({ route, navigation }) {
   const [wordResult, setWordResult] = useState(null);
   const advancingRef  = useRef(false);
   const answerFeedbackRef = useRef(false);
+  const incompleteFeedbackRef = useRef(false);
   const resultContinuingRef = useRef(false);
   const feedbackTimerRef = useRef(null);
   const wrongTimerRef    = useRef(null);
@@ -292,6 +303,19 @@ export default function WordActivityScreen({ route, navigation }) {
     () => showChoiceAnswerFeedback(false), [showChoiceAnswerFeedback]);
   const showCorrectAnswerFeedback = useCallback(
     () => showChoiceAnswerFeedback(true), [showChoiceAnswerFeedback]);
+  const showIncompleteWritingFeedback = useCallback(() => {
+    if (advancingRef.current || incompleteFeedbackRef.current) return Promise.resolve(false);
+    incompleteFeedbackRef.current = true;
+    clearTimeout(feedbackTimerRef.current);
+    setActivityFeedback(INCOMPLETE_WORD_FEEDBACK);
+    return new Promise((resolve) => {
+      feedbackTimerRef.current = setTimeout(() => {
+        setActivityFeedback(null);
+        incompleteFeedbackRef.current = false;
+        resolve(true);
+      }, ATTEMPT_FEEDBACK_MS);
+    });
+  }, []);
   const handleExerciseComplete = useCallback(async (wasCorrect, note) => {
     // `advancing` is the double-progression guard. Each exercise already
     // waits ~500ms before reporting, and the feedback below adds its own
@@ -371,7 +395,9 @@ export default function WordActivityScreen({ route, navigation }) {
       onComplete: handleExerciseComplete,
       onWrongAnswer: showWrongAnswerFeedback,
       onCorrectAnswer: showCorrectAnswerFeedback,
-      canWrite: !instructionPlaying,
+      onIncomplete: showIncompleteWritingFeedback,
+      canWrite: currentExercise !== 'E' || instructionCanWrite,
+      requestTargetSpeech,
     };
     switch (exKey) {
       case 'A': return <ExerciseA_WriteFirst  key={`${currentWord.word}-A`} {...props} />;

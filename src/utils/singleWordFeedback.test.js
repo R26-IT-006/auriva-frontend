@@ -148,14 +148,15 @@ describe('the advisory is the avatar, not a second thing beside it', () => {
     // Neither of the two places it used to be rendered.
     expect(code).not.toMatch(/layoutHintText/);
     expect(code).not.toMatch(/result\.layoutMessage \? `/);
-    // The completion prompt, which is about finishing the word, stays.
-    expect(code).toMatch(/'Finish every letter, then try Done again'/);
+    expect(code).not.toMatch(/Finish every letter, then try Done again/);
+    expect(code).toMatch(/onIncomplete\?\.\(\)/);
   });
 
   it('the word activity carries the note to the avatar', () => {
     const code = readCode(ACTIVITY);
     expect(code).toMatch(/handleExerciseComplete = useCallback\(async \(wasCorrect, note\) =>/);
     expect(code).toMatch(/setActivityFeedback\(\{ passed: wasCorrect, isWriting: true, note \}\)/);
+    expect(code).toMatch(/INCOMPLETE_WORD_FEEDBACK[\s\S]*note: 'Finish every letter'/);
     expect(code).toMatch(/note=\{activityFeedback\.note\}/);
   });
 
@@ -178,7 +179,7 @@ describe('nothing about scoring or pass/fail moved', () => {
     const e = readCode(EX_E);
     const at = e.indexOf('const nextResult');
     expect(e.slice(at, at + 400)).toMatch(/passed:authoritative\.passed/);
-    expect(e).toMatch(/if \(!authoritative\.passed\) \{ actionIdRef\.current=null; return; \}/);
+    expect(e).toMatch(/if \(!authoritative\.passed\) \{[\s\S]*actionIdRef\.current = null;[\s\S]*onIncomplete\?\.\(\)[\s\S]*return;/);
     expect(readCode(WRITING)).toMatch(/setFeedbackData\(getFeedbackFromScore\(saved\?\.score\)\)/);
   });
 

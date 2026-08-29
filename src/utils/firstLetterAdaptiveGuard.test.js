@@ -273,10 +273,11 @@ describe('SENTINEL — §11 nothing else changed', () => {
       .match(/strokeVariants: \{ half_circle: '(cap|cup)' \}/g) || [])).toHaveLength(11);
   });
 
-  it('the PRACTISE_FIRST UI is untouched', () => {
+  it('Cycle-3 omits PRACTISE_FIRST while keeping FOLLOW_PATH', () => {
     const screen = readCode('../screens/handwriting/PreWritingActivityScreen.js');
-    expect(screen).toMatch(/const isRemediation = warmupReason === PRE_WRITING_REASON\.CYCLE_3_REMEDIATION;/);
-    expect(screen).toMatch(/\{REMEDIATION_LEAD_IN\.en\}/);
+    expect(screen).not.toMatch(/PRACTISE_FIRST|REMEDIATION_LEAD_IN/);
+    expect(screen).toMatch(/CHILD_INSTRUCTIONS\[INSTRUCTION_KEYS\.FOLLOW_PATH\]/);
+    expect(screen).toMatch(/useInstructionAudio\(INSTRUCTION_KEYS\.FOLLOW_PATH/);
     expect(screen).not.toMatch(/isSessionEntryLetter/);
   });
 
