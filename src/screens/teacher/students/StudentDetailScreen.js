@@ -15,12 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../components/common/Avatar';
 import { MasteryRing } from '../../../components/charts/MasteryRing';
 import { GroupGrid } from '../../../components/charts/GroupGrid';
-import { Colors } from '../../../constants/colors';
+import { ConceptThumb } from '../../../components/charts/ConceptThumb';
+import { CategoryConceptsModal } from '../../../components/concept/CategoryConceptsModal';
+import { Colors, BACKDROP } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
 import { formatDate, ageFrom } from '../../../utils/formatters';
-import { ROUND } from '../../../constants/teacherWording';
+import { ROUND, ACTION, sinceWords } from '../../../constants/teacherWording';
 
 // Same tinted pairs the teacher dashboard uses for its section panels, so a
 // profile opened from a dashboard card keeps the same visual language.
@@ -29,11 +31,15 @@ const TINTS = {
   green:  { bg: '#E3F7EC', fg: '#3FAE6F' },
   blue:   { bg: '#E6F1FC', fg: '#3B82C4' },
   amber:  { bg: '#FDF1DC', fg: '#E89A2E' },
+  // The sign-in button's own green, in the deepened form that carries text. The
+  // module panel takes it so the page reads as one surface with the identity card
+  // above it rather than a green header with a purple panel under it.
+  brand:  { bg: '#E4F4EC', fg: Colors.brandDeep },
 };
 
 const SECTION = {
   contact:  { icon: 'call-outline',        ...TINTS.green },
-  progress: { icon: 'stats-chart-outline', ...TINTS.purple },
+  progress: { icon: 'stats-chart-outline', ...TINTS.brand },
 };
 
 const PANEL_PAD = 16;
@@ -42,6 +48,11 @@ const PANEL_PAD = 16;
 // section read as laid out rather than assembled.
 const PANEL_PAD_LG = 24;
 const CARD_GAP     = 16;
+
+// Four thumbnails fit one row at the narrowest width this panel reaches, and the
+// overflow count carries the rest. A teacher acting on this opens the group; they
+// do not work through nineteen pictures on a summary card.
+const REVISIT_SHOWN = 4;
 
 // ── Panel shell ──────────────────────────────────────────────────────────────
 
@@ -88,12 +99,23 @@ function Panel({ title, section, action, onAction, children, flush, size = 'md' 
             {title}
           </Text>
 
+          {/* On the large panel this is a pill rather than a word. Bare text next
+              to a 52px icon plate and a 24px title read as a caption on the
+              header, not as the way out of it — and it is the only control up
+              there, so it has to look like one. Tinted rather than filled: the
+              panel already ends in a solid gradient button to the same place, and
+              two identical fills would leave neither looking primary. */}
           {action ? (
             <TouchableOpacity
               onPress={onAction}
               activeOpacity={0.75}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
+              accessibilityLabel={`${action}, opens everything this child has done`}
+              style={lg ? [
+                styles.panelActionBtn,
+                { backgroundColor: accent.bg, borderColor: accent.fg + '3D' },
+              ] : null}
             >
               <Text style={[
                 styles.panelAction,
@@ -102,6 +124,7 @@ function Panel({ title, section, action, onAction, children, flush, size = 'md' 
               ]}>
                 {action}
               </Text>
+              {lg ? <Ionicons name="arrow-forward" size={15} color={accent.fg} /> : null}
             </TouchableOpacity>
           ) : null}
         </View>
@@ -196,6 +219,9 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
   const [activeModule, setActiveModule] = useState('concept');
+  // The group whose contents are open, or null. Holds the category itself rather
+  // than a boolean so the sheet's title stays right while it animates out.
+  const [openCategory, setOpenCategory] = useState(null);
   // The newest note a teacher has written about this child, for the identity card.
   // Null until it loads and null if it fails — the card simply shows the address
   // instead, rather than an empty quote box.
@@ -246,8 +272,21 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   // Categories the child has actually touched — showing all nine when eight are
   // empty buries the signal.
   const activeCategories = (concepts?.categories || []).filter((c) => c.started > 0);
-  const needsAttention = (concepts?.categories || [])
-    .reduce((n, c) => n + c.needs_attention.length, 0);
+
+  // The concepts themselves, not a count of them. `needs_attention` has always
+  // carried the keys and the panel only ever measured the array — which meant the
+  // most actionable thing on the screen was the one thing it withheld.
+  const revisit = (concepts?.categories || []).flatMap((c) =>
+    (c.needs_attention || []).map((k) => ({
+      category_key: c.category_key,
+      concept_key:  k,
+    })),
+  );
+
+  // Older clients can reach a backend that has not been restarted; a missing
+  // field reads as nothing learned this week rather than as NaN on the tile.
+  const learnedThisWeek = concepts?.totals?.learned_last_7_days ?? 0;
+
   const age = ageFrom(student.date_of_birth);
   const activeMeta = MODULES.find((m) => m.key === activeModule) ?? MODULES[0];
   const firstName  = student.full_name.split(' ')[0];
@@ -262,7 +301,17 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const avatarDeep = avatarPair[avatarPair.length - 1];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    // The same backdrop the report uses. The profile is the screen you pass
+    // through on the way to that report, and it was the one flat Colors.background
+    // between the dashboard and the report — so the two ends of the journey shared
+    // a surface and the middle dropped it.
+    <LinearGradient
+      colors={BACKDROP.colors}
+      start={BACKDROP.start}
+      end={BACKDROP.end}
+      style={styles.safe}
+    >
+      <SafeAreaView style={styles.safeInner} edges={['bottom']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetch(); }} />}
@@ -380,7 +429,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
           section="progress"
           size="lg"
           flush
-          action={activeModule === 'concept' && hasProgress ? 'Report' : null}
+          action={activeModule === 'concept' && hasProgress ? ACTION.history : null}
           onAction={() => navigation.navigate('ConceptReport', { student })}
         >
           {/* One track holding four equal tabs, rather than a scrolling row of
@@ -400,10 +449,27 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                   accessibilityState={{ selected: active }}
                   style={[styles.tab, active && styles.tabActive]}
                 >
+                  {/* The selected tab is the sign-in button in miniature — same
+                      two hues on the same diagonal — so "the thing you pressed"
+                      looks the same here as it does at the front door. Deepened,
+                      because the raw pair puts white at 2.3:1 and a tab label has
+                      to be read, not just recognised. */}
+                  {active ? (
+                    <LinearGradient
+                      colors={Colors.brandGradientDeep}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.tabFill}
+                    />
+                  ) : null}
+
+                  {/* `secondary`, not `muted`: muted on the track is 2.48:1, under
+                      the 3:1 floor for a control's icon, and these sit next to a
+                      selected tab that is now considerably stronger. */}
                   <Ionicons
                     name={m.icon}
                     size={16}
-                    color={active ? '#FFFFFF' : Colors.text.muted}
+                    color={active ? '#FFFFFF' : Colors.text.secondary}
                   />
                   <Text
                     style={[styles.tabText, active && styles.tabTextActive]}
@@ -448,12 +514,23 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
               <View style={styles.conceptBody}>
               {/* The ring beside a 2x2 of figures. It stays here — unlike the
                   full report, where it restated the Learned tile — because this
-                  panel has no headline sentence, so the ring IS the summary.
-                  Both sides are cards on the same light fill so the row reads as
-                  one block of five surfaces rather than a chart with a list. */}
+                  panel has no headline sentence, so the ring IS the summary. */}
               <View style={styles.statRow}>
                 <View style={styles.ringCard}>
-                  <MasteryRing value={concepts.totals.mastery_pct} size={168} label="learned" />
+                  {/* Explicit colour, not scoreColor's good/fair/poor ramp.
+                      That ramp grades accuracy — did the child get it right —
+                      and this figure is coverage: 11 of 93 concepts in the whole
+                      catalogue. Left to the ramp, anything under 45% draws in
+                      alarm red, so a child three weeks in gets a red ring for
+                      having worked through eleven things, which is not a verdict
+                      the number supports. The panel's own green says "this is
+                      how far along we are" without passing judgement on it. */}
+                  <MasteryRing
+                    value={concepts.totals.mastery_pct}
+                    size={168}
+                    label="learned"
+                    color={Colors.brandDeep}
+                  />
                 </View>
 
                 <View style={styles.statGrid}>
@@ -462,16 +539,67 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                     value={String(concepts.totals.mastered)}
                     of={concepts.totals.catalogue_concepts}
                   />
-                  <ProgressStat label="Tried so far" value={String(concepts.totals.started)} />
+                  {/* The only figure on the panel with a time bound. Without it
+                      every number here is a lifetime total, and a child who
+                      learned twenty things last month reads the same as one who
+                      learned them last month and stopped. */}
+                  <ProgressStat label="This week" value={`+${learnedThisWeek}`} />
+                  {/* The two rounds side by side. Mastery needs both, so the gap
+                      between them is where the child is actually stuck — knowing
+                      forty pictures and seventeen words says the naming is the
+                      problem, which neither number says alone. */}
                   <ProgressStat label={ROUND.tier1.label} value={String(concepts.totals.tier1_passed)} />
-                  {/* Coral whatever the count, matching the Revisit tile on the
-                      report. The two show the same figure and had drifted to
-                      different rules for the zero case. */}
-                  <ProgressStat
-                    label="Worth another look"
-                    value={String(needsAttention)}
-                    tint="#C4674F"
-                  />
+                  <ProgressStat label={ROUND.tier2.label} value={String(concepts.totals.tier2_passed)} />
+                </View>
+              </View>
+
+              {/* Two things that are not counts, so they are not tiles. A date and
+                  a row of pictures never sat well in a box built for a big number,
+                  and the four tiles above have to stay a 2x2 anyway to keep their
+                  height matched to the ring. */}
+              <View style={styles.context}>
+                <View style={styles.lastWorked}>
+                  <Ionicons name="time-outline" size={15} color={Colors.text.secondary} />
+                  <Text style={styles.lastWorkedLabel}>Last worked</Text>
+                  <Text style={styles.lastWorkedValue}>
+                    {sinceWords(concepts.last_activity_at)}
+                  </Text>
+                </View>
+
+                <View style={styles.revisit}>
+                  <Text style={styles.revisitLabel}>Worth another look</Text>
+
+                  {revisit.length === 0 ? (
+                    <Text style={styles.revisitEmpty}>
+                      Nothing needs revisiting right now.
+                    </Text>
+                  ) : (
+                    <View style={styles.revisitRow}>
+                      {revisit.slice(0, REVISIT_SHOWN).map((r) => (
+                        <TouchableOpacity
+                          key={`${r.category_key}/${r.concept_key}`}
+                          activeOpacity={0.75}
+                          onPress={() => setOpenCategory(
+                            (concepts.categories || [])
+                              .find((c) => c.category_key === r.category_key) ?? null,
+                          )}
+                          accessibilityRole="button"
+                        >
+                          <ConceptThumb
+                            categoryKey={r.category_key}
+                            conceptKey={r.concept_key}
+                            size={44}
+                            showLabel
+                          />
+                        </TouchableOpacity>
+                      ))}
+                      {revisit.length > REVISIT_SHOWN ? (
+                        <Text style={styles.revisitMore}>
+                          +{revisit.length - REVISIT_SHOWN} more
+                        </Text>
+                      ) : null}
+                    </View>
+                  )}
                 </View>
               </View>
 
@@ -489,6 +617,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                 categories={concepts.categories || []}
                 showLegend
                 initialCount={6}
+                onSelect={setOpenCategory}
               />
 
               </View>
@@ -496,13 +625,40 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
               {/* On its own ruled footer. Floating at the end of the last bar it
                   read as belonging to that category rather than to the panel. */}
               <View style={styles.reportFooter}>
+                {/* Two different questions. This one answers "how was a named
+                    week or month", which the live view structurally cannot —
+                    its figures move every time it is opened. Text-and-icon
+                    rather than a second filled button: two solid buttons side by
+                    side would read as a choice between equals, and most days the
+                    live view is the one a teacher wants. */}
+                <TouchableOpacity
+                  style={styles.archiveBtn}
+                  activeOpacity={0.75}
+                  onPress={() => navigation.navigate('ConceptReports', { student })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Saved reports for each week and month"
+                >
+                  <Ionicons name="document-text-outline" size={15} color={Colors.text.secondary} />
+                  <Text style={styles.archiveBtnText}>Reports</Text>
+                </TouchableOpacity>
+
+                {/* The panel's one primary action, so it wears the primary action
+                    colour — the same green as the selected tab and the sign-in
+                    button. Charcoal made it read as a neutral control on a page
+                    that now has a colour for exactly this. */}
                 <TouchableOpacity
                   style={styles.reportBtn}
                   activeOpacity={0.85}
                   onPress={() => navigation.navigate('ConceptReport', { student })}
                   accessibilityRole="button"
                 >
-                  <Text style={styles.reportBtnText}>View full report</Text>
+                  <LinearGradient
+                    colors={Colors.brandGradientDeep}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.reportBtnFill}
+                  />
+                  <Text style={styles.reportBtnText}>{ACTION.historyFor(firstName)}</Text>
                   <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
@@ -511,7 +667,18 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         </Panel>
 
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Outside the ScrollView: a Modal nested in a scroller inherits its
+          clipping on Android and comes up cropped. */}
+      <CategoryConceptsModal
+        visible={!!openCategory}
+        category={openCategory}
+        studentId={student.sid}
+        accent={Colors.brandDeep}
+        onClose={() => setOpenCategory(null)}
+      />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
@@ -527,18 +694,33 @@ const styles = StyleSheet.create({
   },
 
   reportFooter: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Layout.spacing.md,
     paddingHorizontal: PANEL_PAD_LG,
     paddingBottom: PANEL_PAD_LG,
     paddingTop: Layout.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
   },
-  // Carries the same surface, radius and border as the four tiles beside it, so
-  // the row reads as five cards of one family. It used to be bare on the argument
-  // that the ring is already a closed shape — true of the ring alone, but with
-  // tiles either side the bare version read as a gap in the row rather than as a
-  // deliberate absence.
+  // Text-and-icon, so the primary action beside it keeps the weight.
+  archiveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: Layout.spacing.sm,
+  },
+  archiveBtnText: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_600SemiBold',
+    color: Colors.text.secondary,
+  },
+  // No fill and no border. The ring is already a closed shape on a plain white
+  // panel, so a plate behind it drew a second boundary around something that had
+  // one; the tiles beside it need their surfaces because a bare number has no
+  // edge of its own. Keeps its sizing so the row still squares off against the
+  // grid's two 108pt rows.
   ringCard: {
     flexGrow: 1,
     flexBasis: 260,
@@ -547,10 +729,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Layout.radius.xl,
-    backgroundColor: Colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
   },
   progressStat: {
     // Just under half, so two sit per row with the gap between them. Fixed height
@@ -571,16 +749,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+  // `secondary`, not `muted`. Muted on the tile fill is 2.48:1 — these are 11px
+  // uppercase, the smallest type on the panel, and they were the faintest too.
+  // At `secondary` they reach 5.90:1 and still read as captions, because size and
+  // case were doing that work already.
   progressStatLabel: {
     fontSize: 11,
     fontFamily: 'DMSans_700Bold',
-    color: Colors.text.muted,
+    color: Colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   progressStatRow:   { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8 },
   progressStatValue: { fontSize: 30, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  progressStatOf:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold', color: Colors.text.muted },
+  progressStatOf:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary },
 
   // Margins rather than relying on conceptBody's gap alone: the breakdown is a
   // second subject under the same tab, so it wants a wider gap above it than the
@@ -598,8 +780,9 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
   },
 
-  // Dark and filled, not a text link. It leaves this screen for another, which is
-  // a bigger move than anything else on the panel and should look like one.
+  // Filled, not a text link. It leaves this screen for another, which is a bigger
+  // move than anything else on the panel and should look like one. Fill comes
+  // from the gradient child; overflow clips it to the pill.
   reportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -607,8 +790,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: Layout.radius.full,
-    backgroundColor: '#2B2E32',
+    overflow: 'hidden',
   },
+  reportBtnFill: { ...StyleSheet.absoluteFillObject },
   reportBtnText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },
 
   // ── Identity card ──────────────────────────────────────────────────────────
@@ -743,9 +927,16 @@ const styles = StyleSheet.create({
   },
 
 
-  safe: { flex: 1, backgroundColor: Colors.background },
+  // Colour comes from the BACKDROP gradient this is applied to.
+  safe:      { flex: 1 },
+  safeInner: { flex: 1 },
   scroll: {
     padding: Layout.spacing.lg,
+    // More clearance above the identity card than the sides carry. It is the
+    // first thing under the navigation bar, and at an even 24 all round it sat
+    // tight against that bar — the one edge where the card has a hard boundary
+    // above it rather than open backdrop.
+    paddingTop: Layout.spacing.xl + Layout.spacing.sm,
     paddingBottom: Layout.spacing.xxl,
     gap: Layout.spacing.lg,
   },
@@ -811,6 +1002,17 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   panelActionLg: { fontSize: Layout.fontSize.md },
+  // ~38pt tall, which reads as a peer of the 52pt icon plate across the header
+  // rather than as something floating beside the title.
+  panelActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: Layout.radius.full,
+    borderWidth: 1,
+  },
 
   // ── Info rows ─────────────────────────────────────────────────────────────
   infoRow: {
@@ -858,10 +1060,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: Layout.radius.md,
   },
+  // Fill comes from the gradient child; this carries only the lift that separates
+  // the selected tab from the track it sits in.
   tabActive: {
-    backgroundColor: SECTION.progress.fg,
     ...Layout.shadow.sm,
-    shadowColor: SECTION.progress.fg,
+    shadowColor: Colors.brandDeep,
+    shadowOpacity: 0.30,
+  },
+  tabFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: Layout.radius.md,
   },
   tabText: {
     fontSize: Layout.fontSize.sm,
@@ -923,5 +1131,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: CARD_GAP,
+  },
+
+  // ── Context strip ─────────────────────────────────────────────────────────
+  // Ruled off rather than tiled. These two are context for the figures above,
+  // not more figures, and giving them tile surfaces would have made six cards of
+  // which two were not counts.
+  context: {
+    gap: Layout.spacing.md,
+    paddingTop: Layout.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.divider,
+  },
+  lastWorked: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  lastWorkedLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  lastWorkedValue: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.primary,
+  },
+
+  revisit: { gap: Layout.spacing.sm },
+  revisitLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  revisitEmpty: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.text.secondary,
+  },
+  // Wraps, so a narrow panel stacks the thumbnails rather than squeezing them.
+  revisitRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: Layout.spacing.md,
+  },
+  revisitMore: {
+    fontSize: Layout.fontSize.xs,
+    fontFamily: 'DMSans_600SemiBold',
+    color: Colors.text.muted,
+    alignSelf: 'center',
   },
 });

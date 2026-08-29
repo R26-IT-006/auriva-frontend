@@ -29,6 +29,7 @@ import { formatDateTime } from '../../../utils/formatters';
 import {
   HEADING, SUBHEADING, ROUND_BY_STATUS_KEY,
   countOf, seconds, duration, tries, firstNameOf, overviewSentence, difficultyWord, GAME_NAME,
+  ACTION,
 } from '../../../constants/teacherWording';
 
 const TIER_LABEL = ROUND_BY_STATUS_KEY;
@@ -363,6 +364,11 @@ function TierPill({ status }) {
 
 export default function ConceptReportScreen({ route, navigation }) {
   const student = route.params?.student;
+  // When present, this screen shows a SAVED report rather than the live rolling
+  // one. Same sections, same payload shape — the difference is that the figures
+  // are whatever they were when it was generated and will never move again.
+  const savedId = route.params?.reportId ?? null;
+  const frozen = savedId != null;
   const { width } = useWindowDimensions();
   // Same theme the child sees in the activities and the profile hero, so the one
   // coloured control in the drawing dialog belongs to this student too.
@@ -381,6 +387,9 @@ export default function ConceptReportScreen({ route, navigation }) {
   // rather than a boolean keeps the title and date in the modal correct while it
   // animates out.
   const [openArt, setOpenArt] = useState(null);
+  // The saved row around a frozen report: its period labels and when it was made.
+  // Null on the live screen.
+  const [saved, setSaved] = useState(null);
 
   // Deliberately separate from `report`: the narrative is a model call that can be
   // slow, disabled, or fail outright, and none of that may hold up or break the
@@ -393,14 +402,24 @@ export default function ConceptReportScreen({ route, navigation }) {
     if (!student?.sid) return;
     try {
       setError(null);
-      setReport(await teacherApi.getConceptReport(student.sid));
+      if (frozen) {
+        const row = await teacherApi.getSavedConceptReport(student.sid, savedId);
+        setSaved(row);
+        setReport(row.payload);
+        // Frozen with the report, not fetched: a snapshot a teacher showed a
+        // parent last week has to say the same thing today, and re-asking the
+        // model would quietly rewrite it.
+        setNarrative(row.narrative || { available: false });
+      } else {
+        setReport(await teacherApi.getConceptReport(student.sid));
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [student?.sid]);
+  }, [student?.sid, frozen, savedId]);
 
   const loadNarrative = useCallback(async (refresh = false) => {
     if (!student?.sid) return;
@@ -421,12 +440,31 @@ export default function ConceptReportScreen({ route, navigation }) {
   // the slowest request on the screen, and there is no reason to have it
   // competing with the data the teacher actually came for.
   useEffect(() => {
-    if (report) loadNarrative(false);
-  }, [report, loadNarrative]);
+    if (report && !frozen) loadNarrative(false);
+  }, [report, frozen, loadNarrative]);
 
   useEffect(() => {
-    navigation.setOptions({ title: student?.full_name ? `${student.full_name} · Concepts` : 'Concept Report' });
-  }, [navigation, student?.full_name]);
+    navigation.setOptions({
+      // A saved report is titled by its period. "Ayodya · Concepts" on an archived
+      // August report would leave a teacher with two identical-looking screens and
+      // no way to tell which one they are reading.
+      title: saved?.label
+        ? `${firstNameOf(student?.full_name)} · ${saved.label}`
+        : (student?.full_name ? `${student.full_name} · Concepts` : ACTION.historyHeading),
+      // Only on the live view. From a saved report the archive is already one
+      // Back away, and a second route to it would grow the stack every time.
+      headerRight: frozen ? undefined : () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ConceptReports', { student })}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Saved reports"
+        >
+          <Ionicons name="document-text-outline" size={20} color={Colors.icon.default} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, student, student?.full_name, saved?.label, frozen]);
 
   if (loading) {
     return (
@@ -608,8 +646,24 @@ export default function ConceptReportScreen({ route, navigation }) {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
+        refreshControl={frozen ? undefined : (
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />
+        )}
       >
+        {/* Says what a teacher is looking at before they read a single figure.
+            Without it a saved report is indistinguishable from the live one, and
+            the whole value of a snapshot is knowing which period it describes. */}
+        {frozen && saved ? (
+          <View style={styles.frozenBar}>
+            <Ionicons name="bookmark" size={14} color="#5E6B7A" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.frozenTitle}>{saved.label}</Text>
+              <Text style={styles.frozenSub}>
+                {saved.range_label} · saved {formatDateTime(saved.generated_at)}
+              </Text>
+            </View>
+          </View>
+        ) : null}
         {/* The glance layer, and now the ONLY thing above the fold.
 
             The summary card and the AI card used to be two cards saying the same
@@ -725,17 +779,21 @@ export default function ConceptReportScreen({ route, navigation }) {
                 <Ionicons name="sparkles" size={11} color={Colors.primary} />
                 <Text style={styles.aiTag}>Insights from {name}'s activity</Text>
                 <View style={{ flex: 1 }} />
-                <TouchableOpacity
-                  onPress={() => loadNarrative(true)}
-                  disabled={narrativeRefreshing}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rewrite these insights"
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  {narrativeRefreshing
-                    ? <ActivityIndicator size="small" color={Colors.icon.muted} />
-                    : <Ionicons name="refresh" size={14} color={Colors.icon.default} />}
-                </TouchableOpacity>
+                {/* Absent on a saved report. Rewriting the insights would change
+                    what a snapshot says after someone has already read it. */}
+                {frozen ? null : (
+                  <TouchableOpacity
+                    onPress={() => loadNarrative(true)}
+                    disabled={narrativeRefreshing}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rewrite these insights"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    {narrativeRefreshing
+                      ? <ActivityIndicator size="small" color={Colors.icon.muted} />
+                      : <Ionicons name="refresh" size={14} color={Colors.icon.default} />}
+                  </TouchableOpacity>
+                )}
               </View>
             ) : null}
 
@@ -1093,7 +1151,9 @@ export default function ConceptReportScreen({ route, navigation }) {
         {caveat ? <Text style={styles.caveat}>{caveat}</Text> : null}
 
         <Text style={styles.footnote}>
-          Covers the last {report.window_days} days.
+          {frozen && saved
+            ? `Covers ${saved.range_label}. These figures do not change.`
+            : `Covers the last ${report.window_days} days.`}
           {concepts.some((c) => !c.in_catalogue) ? '  * no longer in the list of things taught.' : ''}
         </Text>
       </ScrollView>
@@ -1506,6 +1566,21 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   strengthText: { flex: 1, fontSize: 12, color: Colors.text.secondary, lineHeight: 18 },
+
+  // A quiet slate band, not a warning colour. This states which period is on
+  // screen; it is orientation, not an alert about the child.
+  frozenBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.sm,
+    paddingVertical: Layout.spacing.sm + 2,
+    paddingHorizontal: Layout.spacing.md,
+    marginBottom: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: '#E7ECF1',
+  },
+  frozenTitle: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: '#2F3B47' },
+  frozenSub:   { fontSize: 11, color: '#5E6B7A', marginTop: 1 },
 
   caveat: {
     marginTop: Layout.spacing.lg,

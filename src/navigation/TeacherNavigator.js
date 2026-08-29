@@ -5,6 +5,7 @@ import { Layout } from '../constants/layout';
 import TeacherDashboardScreen    from '../screens/teacher/DashboardScreen';
 import TeacherStudentDetailScreen from '../screens/teacher/students/StudentDetailScreen';
 import ConceptReportScreen        from '../screens/teacher/students/ConceptReportScreen';
+import ConceptReportsScreen       from '../screens/teacher/students/ConceptReportsScreen';
 import WorkspaceSelectScreen      from '../screens/teacher/WorkspaceSelectScreen';
 import StudentPickerScreen        from '../screens/teacher/students/StudentPickerScreen';
 import StudentDashboardScreen     from '../screens/teacher/students/StudentDashboardScreen';
@@ -55,7 +56,13 @@ function TeacherWorkspace() {
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
       {/* Kept in this stack, not the root one, so the report keeps Colors theming
           rather than the student-workspace chrome. */}
-      <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
+      {/* Placeholder title only — the screen renames itself to the child once the
+          report loads. "Report" is the system's word for this and never a
+          teacher's; see the note on ACTION in teacherWording. */}
+      <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Learning history' }} />
+      {/* The archive of saved reports. Distinct from ConceptReport above, which
+          shows the live rolling view — or, given a reportId, one of these. */}
+      <Stack.Screen name="ConceptReports"       component={ConceptReportsScreen}       options={{ title: 'Reports' }} />
     </Stack.Navigator>
   );
 }

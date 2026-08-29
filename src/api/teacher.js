@@ -63,6 +63,42 @@ export const teacherApi = {
     return data;
   },
 
+  // ── Saved reports ─────────────────────────────────────────────────────────
+  // Which weeks and months actually hold something. Drives the picker, so a
+  // teacher is never offered a period that would generate an empty report.
+  async getConceptPeriods(studentId) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_CONCEPT_PERIODS(studentId));
+    return data;
+  },
+
+  // Already sorted newest first by the server. Do NOT re-sort in the client:
+  // two screens ordering the same list differently is how a teacher ends up
+  // reading the wrong week.
+  async listConceptReports(studentId) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_CONCEPT_REPORTS(studentId));
+    return data;
+  },
+
+  async getSavedConceptReport(studentId, reportId) {
+    const { data } = await client.get(ENDPOINTS.TEACHER_CONCEPT_REPORT_ONE(studentId, reportId));
+    return data;
+  },
+
+  // Slow and rate-limited: it runs the full aggregate and then a model call.
+  // Throws 422 when the period holds nothing — that message is written for the
+  // teacher and should be shown as-is.
+  async createConceptReport(studentId, periodType, periodStart) {
+    const { data } = await client.post(ENDPOINTS.TEACHER_CONCEPT_REPORTS(studentId), {
+      period_type: periodType,
+      period_start: periodStart,
+    });
+    return data;
+  },
+
+  async deleteConceptReport(studentId, reportId) {
+    await client.delete(ENDPOINTS.TEACHER_CONCEPT_REPORT_ONE(studentId, reportId));
+  },
+
   async getClassDigest(refresh = false) {
     const { data } = await client.get(ENDPOINTS.TEACHER_DASHBOARD_DIGEST, {
       params: refresh ? { refresh: true } : {},

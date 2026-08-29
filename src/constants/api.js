@@ -35,6 +35,14 @@ export const ENDPOINTS = {
   TEACHER_CONCEPT_NARRATIVE: (id) => `/teacher/students/${id}/concepts/narrative`,
   TEACHER_DASHBOARD_DIGEST:  "/teacher/dashboard/digest",
 
+  // Saved reports — frozen snapshots of one named period, listed newest first.
+  // The list endpoint deliberately omits each report's payload; fetch the one
+  // being opened rather than a year of them.
+  TEACHER_CONCEPT_PERIODS: (id) => `/teacher/students/${id}/concepts/periods`,
+  TEACHER_CONCEPT_REPORTS: (id) => `/teacher/students/${id}/concepts/reports`,
+  TEACHER_CONCEPT_REPORT_ONE: (id, reportId) =>
+    `/teacher/students/${id}/concepts/reports/${reportId}`,
+
   // Handwriting
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
   HANDWRITING_FINALIZE:       (id)       => `/handwriting/assessment/${id}/finalize`,

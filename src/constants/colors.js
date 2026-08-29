@@ -11,6 +11,21 @@ export const Colors = {
   brand: '#3A9BA8',
   brandGradient: ['#4AABB8', '#52C07C'],
 
+  // The same two hues, deepened until white text clears AA on them — 5.16:1 and
+  // 4.56:1, against 2.69 and 2.29 for the pair above. The raw gradient is sized
+  // for one short label on one button; anything larger, or any text that has to
+  // be read rather than recognised, uses these instead.
+  //
+  // `brandDeep` is the flat counterpart, for brand-coloured TEXT on a light
+  // surface — where the pale `brand` teal manages only 3.26:1.
+  //
+  // Dark enough to clear 4.5:1 on a pale brand TINT (4.56:1), not only on pure
+  // white (5.18:1). The two are not the same test, and brand text lands on a
+  // tinted plate at least as often as on white — an earlier value passed on white
+  // at exactly 4.50 and then failed at 3.95 the moment it sat on its own tint.
+  brandDeep: '#2A7B51',
+  brandGradientDeep: ['#31777E', '#36845A'],
+
   background: '#F0F2FA',
   surface: '#FFFFFF',
   surfaceAlt: '#F7F8FC',

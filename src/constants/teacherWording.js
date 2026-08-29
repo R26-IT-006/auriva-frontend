@@ -207,3 +207,50 @@ export const GAME_NAME = {
   pair_match: 'Photo and picture match',
   memory:     'Memory game',
 };
+
+// ─── Actions ─────────────────────────────────────────────────────────────────
+
+/**
+ * "Report" was the system's word for that screen, not a teacher's — rule 1. It
+ * also undersold it: what a teacher opens is every session the child has had,
+ * day by day, with the groups, the mix-ups and the drawings alongside. That is a
+ * history, and calling it one says what you get before you tap.
+ *
+ * The long form names the child, per rule 4. The short form is for a header where
+ * the child's name is already three inches above it.
+ */
+/**
+ * How long ago something happened, in words a teacher would use out loud.
+ *
+ * Deliberately coarse, per rule 3. "9 days ago at 14:32" is precision nobody can
+ * act on; what a teacher decides from is whether this was this week, a while back,
+ * or not at all — so the scale widens as the gap grows and stops at "a while ago"
+ * rather than counting months nobody is going to compare.
+ *
+ * Parsed from an ISO timestamp and compared on local calendar days, so an evening
+ * session still reads "Yesterday" the next morning rather than "2 days ago".
+ */
+export function sinceWords(iso) {
+  if (!iso) return 'Not yet started';
+
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return 'Not yet started';
+
+  const atDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days  = Math.round((atDay(new Date()) - atDay(then)) / 86400000);
+
+  // A clock skew or a just-written row can land a hair in the future; that is
+  // still "today" to a reader, never "-1 days ago".
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7)  return `${days} days ago`;
+  if (days < 14) return 'Last week';
+  if (days < 60) return `${Math.floor(days / 7)} weeks ago`;
+  return 'A while ago';
+}
+
+export const ACTION = {
+  history:        'History',
+  historyFor:     (name) => `See ${name}'s full history`,
+  historyHeading: 'Learning history',
+};

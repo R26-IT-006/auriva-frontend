@@ -8,6 +8,12 @@ import { DEPTH, GROUP_FACE, FALLBACK_FACE } from './GroupProgress';
 
 const INITIAL_GROUPS = 6;
 
+const GRID_GAP = 8;
+// Three across only while each card still clears ~140pt. Below that the icon, the
+// count and a two-line group name stop fitting and the row is three cramped cards
+// instead of two readable ones — so a portrait phone gets two.
+const THREE_COL_MIN = 140 * 3 + GRID_GAP * 2;
+
 /**
  * The same group breakdown as `GroupProgress`, packed two to a row.
  *
@@ -21,8 +27,9 @@ const INITIAL_GROUPS = 6;
  * restating them: a teacher moving between the two screens should find animals
  * the same pink and the bands meaning the same three rounds.
  */
-export function GroupGrid({ categories = [], showLegend = false, initialCount = INITIAL_GROUPS }) {
+export function GroupGrid({ categories = [], showLegend = false, initialCount = INITIAL_GROUPS, onSelect }) {
   const [showAll, setShowAll] = useState(false);
+  const [gridW, setGridW] = useState(0);
 
   const active = categories.filter((c) => c.started > 0);
   if (active.length === 0) {
@@ -41,10 +48,29 @@ export function GroupGrid({ categories = [], showLegend = false, initialCount = 
   const shown  = showAll ? sorted : sorted.slice(0, initialCount);
   const hidden = sorted.length - shown.length;
 
+  // Measured rather than a percentage basis, for two reasons that percentages
+  // cannot solve. A basis of '31%' plus a fixed 8px gap never adds to 100, so the
+  // row ends short and the grid has a ragged right edge; and letting the cards
+  // flexGrow to close that gap makes a lone card on the last row stretch to the
+  // full width, which at three columns looks like a mistake rather than a
+  // remainder. An exact width does neither.
+  const cols  = gridW >= THREE_COL_MIN ? 3 : 2;
+  const cardW = gridW ? Math.floor((gridW - GRID_GAP * (cols - 1)) / cols) : null;
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.grid}>
-        {shown.map((c) => <GroupCard key={c.category_key} category={c} />)}
+      <View
+        style={styles.grid}
+        onLayout={(e) => setGridW(e.nativeEvent.layout.width)}
+      >
+        {shown.map((c) => (
+          <GroupCard
+            key={c.category_key}
+            category={c}
+            width={cardW}
+            onPress={onSelect ? () => onSelect(c) : null}
+          />
+        ))}
       </View>
 
       {showLegend && (
@@ -73,7 +99,7 @@ export function GroupGrid({ categories = [], showLegend = false, initialCount = 
   );
 }
 
-function GroupCard({ category: c }) {
+function GroupCard({ category: c, width, onPress }) {
   const face = GROUP_FACE[c.category_key] || FALLBACK_FACE;
 
   // Three nested layers, widest first. They are subsets of one another — you
@@ -83,10 +109,22 @@ function GroupCard({ category: c }) {
   const wordPct  = c.total ? (c.tier2_passed / c.total) * 100 : 0;
   const videoPct = c.total ? (c.tier3_passed / c.total) * 100 : 0;
 
+  // Falls back to a plain View when no handler is passed, so the grid stays
+  // usable as a read-only chart wherever it is dropped in without one.
+  const Wrap = onPress ? TouchableOpacity : View;
+
   return (
-    <View
-      style={styles.card}
-      accessibilityLabel={`${c.label}, ${c.mastered} of ${c.total} learned`}
+    <Wrap
+      // `width` is null for the one frame before onLayout reports; the flex
+      // fallback in `card` covers it so nothing pops in from zero.
+      style={[styles.card, width ? { width, flexGrow: 0, flexBasis: 'auto' } : null]}
+      onPress={onPress || undefined}
+      activeOpacity={0.75}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={
+        `${c.label}, ${c.mastered} of ${c.total} learned` +
+        (onPress ? '. Opens the things in this group' : '')
+      }
     >
       <View style={styles.cardHead}>
         <View style={[styles.face, { backgroundColor: face.bg }]}>
@@ -107,7 +145,7 @@ function GroupCard({ category: c }) {
         <View style={[styles.seg, styles.segOver, { width: `${wordPct}%`,  backgroundColor: DEPTH[1] }]} />
         <View style={[styles.seg, styles.segOver, { width: `${videoPct}%`, backgroundColor: DEPTH[2] }]} />
       </View>
-    </View>
+    </Wrap>
   );
 }
 
@@ -123,12 +161,12 @@ function LegendDot({ color, label }) {
 const styles = StyleSheet.create({
   wrap: { gap: Layout.spacing.md },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.sm },
-  // Just under half so the gap fits, with flexGrow so an odd last card takes the
-  // whole row rather than sitting stranded at 47%.
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
+  // First-frame fallback only — the measured width above replaces both of these
+  // as soon as onLayout fires.
   card: {
     flexGrow: 1,
-    flexBasis: '47%',
+    flexBasis: '31%',
     gap: 7,
     padding: Layout.spacing.md - 4,
     borderRadius: Layout.radius.md,
