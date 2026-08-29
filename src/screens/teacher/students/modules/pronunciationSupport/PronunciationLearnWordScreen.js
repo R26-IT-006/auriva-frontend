@@ -89,6 +89,9 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
     ? Math.max(240, height - 210)
     : Math.max(280, height * 0.48);
   const sounds = selectedWord?.sounds || [];
+  // Words run 2-6 parts ("jellyfish" is the ceiling). Past four, the full-size
+  // tile wraps into a lopsided 5+1 on a tablet, so the tile steps down instead.
+  const isDenseWord = sounds.length >= 5;
   // Letter groups, not IPA symbols — /əl/ means nothing to a child, "le" is
   // the part of the written word they can find.
   const soundLetters = getSoundLetters(selectedWord);
@@ -335,14 +338,45 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
             ]}
           >
             <View style={styles.soundStage}>
-              {sounds.map((sound, index) => (
-                <View key={`${sound.text}-${index}`} style={styles.soundBlock}>
-                  <Text style={[styles.soundText, { color: theme.headingText }]}>
-                    {soundLetters[index] || sound.text}
-                  </Text>
-                  <Text style={styles.soundType}>{sound.type}</Text>
-                </View>
-              ))}
+              {/* The parts spell the word left to right, the direction the
+                  child will read it in. Stacked vertically they taught the
+                  opposite mapping and pushed the word image off-screen. */}
+              <View
+                style={styles.soundRow}
+                accessibilityRole="text"
+                accessibilityLabel={`Sound parts: ${sounds
+                  .map((sound, index) => soundLetters[index] || sound.text)
+                  .join(", ")}`}
+              >
+                {sounds.map((sound, index) => {
+                  const isVowel = sound.type === "vowel";
+                  return (
+                    <View
+                      key={`${sound.text}-${index}`}
+                      style={[
+                        styles.soundBlock,
+                        isDenseWord && styles.soundBlockDense,
+                        isVowel && styles.soundBlockVowel,
+                      ]}
+                    >
+                      <Text
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        style={[
+                          styles.soundText,
+                          isDenseWord && styles.soundTextDense,
+                          { color: theme.headingText },
+                        ]}
+                      >
+                        {soundLetters[index] || sound.text}
+                      </Text>
+                      <Text style={[styles.soundType, isVowel && styles.soundTypeVowel]}>
+                        {sound.type}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
 
               <ButtonFeedback
                 activeOpacity={0.88}
@@ -583,29 +617,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     gap: 16,
   },
+  soundRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "stretch",
+    justifyContent: "center",
+    maxWidth: "100%",
+    gap: 10,
+  },
   soundBlock: {
-    minWidth: 88,
+    minWidth: 76,
+    flexShrink: 1,
     paddingHorizontal: 14,
-    height: 92,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    minHeight: 92,
+    borderRadius: 14,
+    // Flat, not raised: these parts are read, not tapped. The shadowed white
+    // card read as a button next to the identically-shaped chips on Tap Sounds.
+    backgroundColor: "#F7F9FC",
     borderWidth: 1,
     borderColor: "#E1E7EF",
     alignItems: "center",
     justifyContent: "center",
-    ...Layout.shadow.sm,
+  },
+  soundBlockDense: {
+    minWidth: 62,
+    paddingHorizontal: 8,
+    minHeight: 82,
+  },
+  soundBlockVowel: {
+    backgroundColor: "#FFF6EA",
+    borderColor: "#F1DAC0",
   },
   soundText: {
     fontSize: 34,
     fontFamily: Layout.fonts.extrabold,
     color: "#3A4A61",
-    lineHeight: 38,
+    lineHeight: 40,
+  },
+  soundTextDense: {
+    fontSize: 26,
+    lineHeight: 32,
   },
   soundType: {
-    marginTop: 4,
-    fontSize: 10,
-    color: "#A2A9B4",
+    marginTop: 6,
+    fontSize: 11,
+    fontFamily: Layout.fonts.bold,
+    color: "#5C6A7E",
     textTransform: "lowercase",
+  },
+  soundTypeVowel: {
+    color: "#96610F",
   },
   hearBtnWrap: {
     borderRadius: 18,

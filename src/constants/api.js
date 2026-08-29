@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const LOCAL_API_HOST = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
-const DEFAULT_API_BASE_URL = `http://${LOCAL_API_HOST}:3000/api`;
+const DEFAULT_API_BASE_URL = `http://192.168.8.145:3000/api`;
 
 function normalizeApiBaseUrl(value) {
   if (!value) return DEFAULT_API_BASE_URL;

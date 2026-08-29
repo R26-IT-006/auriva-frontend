@@ -268,6 +268,38 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
               </ThemedGradientFill>
             </ButtonFeedback>
 
+            {/* An ordered task has to show the order it has captured so far.
+                Until now only the spent chips changed, so nothing on screen
+                said which position the child was filling next. */}
+            <View
+              style={styles.slotRow}
+              accessibilityRole="text"
+              accessibilityLabel={
+                isComplete
+                  ? "All sounds found"
+                  : `Sound ${Math.min(nextIndex + 1, orderedSounds.length)} of ${orderedSounds.length}`
+              }
+            >
+              {orderedSounds.map((sound, index) => {
+                const isFilled = index < nextIndex;
+                const isActive = index === nextIndex;
+                return (
+                  <View
+                    key={`slot-${index}`}
+                    style={[
+                      styles.slot,
+                      isActive && styles.slotActive,
+                      isFilled && styles.slotFilled,
+                    ]}
+                  >
+                    <Text style={[styles.slotText, isFilled && styles.slotTextFilled]}>
+                      {isFilled ? sound.label : ""}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+
             <View style={styles.chipsRow}>
               {chips.map((chip, index) => {
                 const isDone = chip.originalIndex < nextIndex;
@@ -410,7 +442,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: Layout.fontSize.sm,
     fontFamily: Layout.fonts.bold,
-    opacity: 0.65,
+    opacity: 0.85,
     textDecorationLine: "underline",
   },
   panel: {
@@ -445,15 +477,58 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.md,
     fontFamily: Layout.fonts.bold,
   },
-  chipsRow: {
-    flexDirection: "column",
+  slotRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
-    gap: 14,
+    justifyContent: "center",
+    gap: 8,
+  },
+  slot: {
+    // Sized so a 6-part word ("jellyfish") still assembles on one line at
+    // phone width rather than wrapping into a 5+1 that reads as two words.
+    minWidth: 44,
+    minHeight: 52,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#DCE4EF",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  slotActive: {
+    borderColor: Colors.primary,
+    backgroundColor: "#F4F7FE",
+  },
+  slotFilled: {
+    borderColor: Colors.status.success,
+    backgroundColor: Colors.status.successLight,
+  },
+  slotText: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontFamily: Layout.fonts.extrabold,
+    color: "#3A4A61",
+  },
+  slotTextFilled: {
+    // Colors.status.success on successLight is ~2:1 — legible as a border,
+    // not as text. The darker green keeps the same hue above 4.5:1.
+    color: "#166534",
+  },
+  chipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
   },
   soundChip: {
-    minWidth: 120,
+    minWidth: 88,
     paddingHorizontal: 18,
-    height: 86,
+    paddingVertical: 12,
+    minHeight: 86,
     borderRadius: 16,
     backgroundColor: "#FFFFFF",
     borderWidth: 2,
@@ -468,15 +543,15 @@ const styles = StyleSheet.create({
   soundChipDone: {
     backgroundColor: Colors.status.successLight,
     borderColor: Colors.status.success,
-    opacity: 0.85,
   },
   soundChipText: {
     fontSize: 32,
+    lineHeight: 40,
     fontFamily: Layout.fonts.extrabold,
     color: "#3A4A61",
   },
   soundChipTextDone: {
-    color: Colors.status.success,
+    color: "#166534",
   },
   soundChipBadge: {
     position: "absolute",
