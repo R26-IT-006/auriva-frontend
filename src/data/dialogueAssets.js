@@ -31,53 +31,32 @@ export const DIALOGUE_WORD_ASSETS = {
     contextWrong:   require('../../assets/dialogue-images/words/greetings/good_morning/context_wrong1.png'),
     contextWrong2:  require('../../assets/dialogue-images/words/greetings/good_morning/context_wrong2.png'),
   },
-  // good_afternoon has no asset folder under dialogue-images (real files only
-  // exist under dialogue-videos, out of scope to touch/move) — placeholder.
+  // good_afternoon — real assets uploaded 2026-08-24. scene (AnimatedWord)
+  // uses correct_context1, boldScene (BoldWord) uses correct_context2, so
+  // the two familiarisation screens show different photos of the same word.
   good_afternoon: {
-    scene:          require('../../assets/dialogue-images/placeholder.png'),
-    contextCorrect: require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong:   require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong2:  require('../../assets/dialogue-images/placeholder.png'),
+    scene:     require('../../assets/dialogue-images/words/greetings/good_afternoon/correct_context1.jpg'),
+    boldScene: require('../../assets/dialogue-images/words/greetings/good_afternoon/correct_context2.jpg'),
   },
-  // good_night has no asset folder under dialogue-images (real files only
-  // exist under dialogue-videos, out of scope to touch/move) — placeholder.
   good_night: {
-    scene:          require('../../assets/dialogue-images/placeholder.png'),
-    contextCorrect: require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong:   require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong2:  require('../../assets/dialogue-images/placeholder.png'),
+    scene:     require('../../assets/dialogue-images/words/greetings/good_night/correct_context1.jpg'),
+    boldScene: require('../../assets/dialogue-images/words/greetings/good_night/correct_context2.jpg'),
   },
-  // happy_birthday has no asset folder under dialogue-images (real files
-  // only exist under dialogue-videos, out of scope to touch/move) — placeholder.
   happy_birthday: {
-    scene:          require('../../assets/dialogue-images/placeholder.png'),
-    contextCorrect: require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong:   require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong2:  require('../../assets/dialogue-images/placeholder.png'),
+    scene:     require('../../assets/dialogue-images/words/greetings/happy_birthday/correct_context1.jpg'),
+    boldScene: require('../../assets/dialogue-images/words/greetings/happy_birthday/correct_context2.jpg'),
   },
-  // how_are_you has no asset folder under dialogue-images (real files only
-  // exist under dialogue-videos, out of scope to touch/move) — placeholder.
   how_are_you: {
-    scene:          require('../../assets/dialogue-images/placeholder.png'),
-    contextCorrect: require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong:   require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong2:  require('../../assets/dialogue-images/placeholder.png'),
+    scene:     require('../../assets/dialogue-images/words/greetings/how_are_you/correct_context1.jpg'),
+    boldScene: require('../../assets/dialogue-images/words/greetings/how_are_you/correct_context2.jpg'),
   },
-  // im_fine has no asset folder under dialogue-images (real files only exist
-  // under dialogue-videos, out of scope to touch/move) — placeholder.
   im_fine: {
-    scene:          require('../../assets/dialogue-images/placeholder.png'),
-    contextCorrect: require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong:   require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong2:  require('../../assets/dialogue-images/placeholder.png'),
+    scene:     require('../../assets/dialogue-images/words/greetings/im_fine/correct_context1.jpg'),
+    boldScene: require('../../assets/dialogue-images/words/greetings/im_fine/correct_context2.jpg'),
   },
-  // happy_new_year has no asset folder under dialogue-images (real files
-  // only exist under dialogue-videos, out of scope to touch/move) — placeholder.
   happy_new_year: {
-    scene:          require('../../assets/dialogue-images/placeholder.png'),
-    contextCorrect: require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong:   require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong2:  require('../../assets/dialogue-images/placeholder.png'),
+    scene:     require('../../assets/dialogue-images/words/greetings/happy_new_year/correct_context1.jpg'),
+    boldScene: require('../../assets/dialogue-images/words/greetings/happy_new_year/correct_context2.jpg'),
   },
 
   // ── Magic Words ──────────────────────────────────────────────────────────
@@ -91,13 +70,11 @@ export const DIALOGUE_WORD_ASSETS = {
     contextWrong:   require('../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
     contextWrong2:  require('../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
   },
-  // im_sorry has no asset folder under dialogue-images (real files only
-  // exist under dialogue-videos, out of scope to touch/move) — placeholder.
+  // im_sorry — real assets uploaded 2026-08-24 (same scene/boldScene split
+  // as the greetings words above).
   im_sorry: {
-    scene:          require('../../assets/dialogue-images/placeholder.png'),
-    contextCorrect: require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong:   require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong2:  require('../../assets/dialogue-images/placeholder.png'),
+    scene:     require('../../assets/dialogue-images/words/magic_words/im_sorry/correct_context1.jpg'),
+    boldScene: require('../../assets/dialogue-images/words/magic_words/im_sorry/correct_context2.jpg'),
   },
   // youre_welcome uses comic-strip naming (correct_contextN / context_wrongN)
   youre_welcome: {
@@ -111,13 +88,11 @@ export const DIALOGUE_WORD_ASSETS = {
     contextWrong3:   require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong3.png'),
     contextWrong4:   require('../../assets/dialogue-images/words/magic_words/youre_welcome/context_wrong4.png'),
   },
-  // excuse_me has no asset folder under dialogue-images (real files only
-  // exist under dialogue-videos, out of scope to touch/move) — placeholder.
+  // excuse_me — real assets uploaded 2026-08-24 (same scene/boldScene split
+  // as the greetings words above).
   excuse_me: {
-    scene:          require('../../assets/dialogue-images/placeholder.png'),
-    contextCorrect: require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong:   require('../../assets/dialogue-images/placeholder.png'),
-    contextWrong2:  require('../../assets/dialogue-images/placeholder.png'),
+    scene:     require('../../assets/dialogue-images/words/magic_words/excuse_me/correct_context1.jpg'),
+    boldScene: require('../../assets/dialogue-images/words/magic_words/excuse_me/correct_context2.jpg'),
   },
 };
 // Abilities: no entries — the scene/context-correct/context-wrong concept

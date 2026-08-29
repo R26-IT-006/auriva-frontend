@@ -14,6 +14,8 @@ import HandwritingNavigator from "./HandwritingNavigator";
 import TeacherReportScreen from "../screens/teacher/handwriting/reports/TeacherReportScreen";
 import DialogueLandingScreen      from '../screens/teacher/students/DialogueLandingScreen';
 import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
+import TrajectoryReportScreen     from '../screens/teacher/dialogue/TrajectoryReportScreen';
+import Level2ReportScreen         from '../screens/teacher/dialogue/Level2ReportScreen';
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
 import AnimatedWordScreen         from '../screens/teacher/dialogue/AnimatedWordScreen';
 import BoldWordScreen             from '../screens/teacher/dialogue/BoldWordScreen';
@@ -55,6 +57,9 @@ import L2QuestionnaireScreen   from '../screens/teacher/dialogue/level2/L2Questi
 import L2LoadingScreen         from '../screens/teacher/dialogue/level2/L2LoadingScreen';
 import L2ContrastiveScreen     from '../screens/teacher/dialogue/level2/L2ContrastiveScreen';
 import L2SentencePathScreen    from '../screens/teacher/dialogue/level2/L2SentencePathScreen';
+import L2ListenWatchScreen     from '../screens/teacher/dialogue/level2/L2ListenWatchScreen';
+import L2SentenceBuildScreen   from '../screens/teacher/dialogue/level2/L2SentenceBuildScreen';
+import L2FillGapScreen         from '../screens/teacher/dialogue/level2/L2FillGapScreen';
 import L2SentenceTeachScreen   from '../screens/teacher/dialogue/level2/L2SentenceTeachScreen';
 import L2ListenTogetherScreen  from '../screens/teacher/dialogue/level2/L2ListenTogetherScreen';
 import L2ProductionScreen      from '../screens/teacher/dialogue/level2/L2ProductionScreen';
@@ -121,6 +126,11 @@ function TeacherWorkspace() {
       {/* The archive of saved reports. Distinct from ConceptReport above, which
           shows the live rolling view — or, given a reportId, one of these. */}
       <Stack.Screen name="ConceptReports"       component={ConceptReportsScreen}       options={{ title: 'Reports' }} />
+      {/* The dialogue module's two reports. Same stack and same reason as the
+          concept ones above: teacher-facing reading screens that keep Colors
+          theming rather than the student-workspace chrome. */}
+      <Stack.Screen name="TrajectoryReport"     component={TrajectoryReportScreen}     options={{ title: 'Trajectory Report' }} />
+      <Stack.Screen name="Level2Report"         component={Level2ReportScreen}         options={{ title: 'Level 2 Report' }} />
       <Stack.Screen
         name="StudentHandwritingReport"
         component={TeacherReportScreen}
@@ -253,6 +263,12 @@ export default function TeacherNavigator() {
       <Stack.Screen name="L2Loading"         component={L2LoadingScreen} />
       <Stack.Screen name="L2Contrastive"     component={L2ContrastiveScreen} />
       <Stack.Screen name="L2SentencePath"    component={L2SentencePathScreen} />
+      {/* Sentence Familiarisation Ladder (TASK-18).
+          Flow per sentence stop: L2SentencePath → L2ListenWatch → L2SentenceBuild
+                                  → L2FillGap → L2SentenceTeach */}
+      <Stack.Screen name="L2ListenWatch"     component={L2ListenWatchScreen} />
+      <Stack.Screen name="L2SentenceBuild"   component={L2SentenceBuildScreen} />
+      <Stack.Screen name="L2FillGap"         component={L2FillGapScreen} />
       <Stack.Screen name="L2SentenceTeach"   component={L2SentenceTeachScreen} />
       <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />
       <Stack.Screen name="L2Production"      component={L2ProductionScreen} />

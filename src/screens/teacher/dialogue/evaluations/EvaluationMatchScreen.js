@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,12 @@ import {
   ActivityIndicator,
   Animated,
   BackHandler,
+  useWindowDimensions,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Line } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
@@ -21,63 +22,68 @@ import { evaluationApi } from '../../../../api/evaluation';
 
 const PLACEHOLDER_IMAGE = require('../../../../../assets/dialogue-images/placeholder.png');
 
+// Same feedback GIFs the Concept module's activity screen uses
+// (ConceptActivityScreen.js) — reused here for a consistent right/wrong
+// feel across modules.
+const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
+const WRONG_GIF   = require('../../../../../assets/feedback/wrong.gif');
+const FEEDBACK_MS = 1200;
+// Distance the feedback GIF travels in from the right edge.
+const FEEDBACK_OFFSCREEN = 280;
+
 const CATEGORY_LABEL = {
   greetings:    'Greetings',
   magic_words:  'Magic Words',
   abilities:    'Can You?',
 };
 
-// "Correct context" picture per word, keyed by asset_key — the same field the
-// evaluation-build API returns. NOT sourced from data/dialogueAssets.js:
-// that shared map (out of this task's Files in scope) assumes every word has
-// scene.png/context_correct.png/context_wrong.png/context_wrong_2.png, but
-// several folders on disk actually use the comic-strip naming
-// (correct_context1.png/context_wrong1.png, same convention already special-
-// cased for thank_you/youre_welcome in that file) — e.g. hello's real files
-// are correct_context1.png etc., not scene.png, which crashed Metro bundling
-// since dialogueAssets.js require()s every entry eagerly regardless of which
-// word is actually shown. Every path below was verified to exist on disk
-// (`ls assets/dialogue-images/words/<category>/<word>/`) before being added.
-// cat3_yes / cat3_no (abilities "Yes"/"No") have no image folder at all —
-// intentionally omitted, falls back to PLACEHOLDER_IMAGE.
+// "Scene" image per word, keyed by asset_key — the same field the
+// evaluation-build API returns. Every word folder has its own Non_Verbal.jpg.
+// Abilities uses a video instead (EVAL_ABILITIES_VIDEO below), not this map.
 const EVAL_WORD_IMAGE = {
   // Greetings
-  hello:           require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  goodbye:         require('../../../../../assets/dialogue-images/words/greetings/goodbye/correct_context1.png'),
-  good_morning:    require('../../../../../assets/dialogue-images/words/greetings/good_morning/correct_context1.png'),
-  good_afternoon:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  good_night:      require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  happy_birthday:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  how_are_you:     require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  im_fine:         require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-  happy_new_year:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+  hello:           require('../../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+  goodbye:         require('../../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+  good_morning:    require('../../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
+  good_afternoon:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
+  good_night:      require('../../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
+  happy_birthday:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+  how_are_you:     require('../../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+  im_fine:         require('../../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+  happy_new_year:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
 
   // Magic Words
-  thank_you:       require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
-  youre_welcome:   require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/correct_context1.png'),
-  im_sorry:        require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
-  excuse_me:       require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+  thank_you:       require('../../../../../assets/dialogue-images/words/magic_words/thank_you/Non_Verbal.jpg'),
+  youre_welcome:   require('../../../../../assets/dialogue-images/words/magic_words/youre_welcome/Non_Verbal.jpg'),
+  im_sorry:        require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/Non_Verbal.jpg'),
+  excuse_me:       require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/Non_Verbal.jpg'),
+};
 
-  // Abilities
-  clap:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  run:        require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  walk:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  jump:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  talk:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  dance:      require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  sing:       require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  can_you:    require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  yes_i_can:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  no_i_cant:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  i_can:      require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+// Abilities scene per word — Drag_Activity.mp4, the same video wired into
+// Cat3DragToLineScreen.js (difficulty 1 and 2 both).
+const EVAL_ABILITIES_VIDEO = {
+  cat3_yes: require('../../../../../assets/dialogue-videos/words/abilities/yes/Drag_Activity.mp4'),
+  cat3_no:  require('../../../../../assets/dialogue-videos/words/abilities/no/Drag_Activity.mp4'),
+  clap:     require('../../../../../assets/dialogue-videos/words/abilities/clap/Drag_Activity.mp4'),
+  run:      require('../../../../../assets/dialogue-videos/words/abilities/run/Drag_Activity.mp4'),
+  walk:     require('../../../../../assets/dialogue-videos/words/abilities/walk/Drag_Activity.mp4'),
+  jump:     require('../../../../../assets/dialogue-videos/words/abilities/jump/Drag_Activity.mp4'),
+  talk:     require('../../../../../assets/dialogue-videos/words/abilities/talk/Drag_Activity.mp4'),
+  dance:    require('../../../../../assets/dialogue-videos/words/abilities/dance/Drag_Activity.mp4'),
+  sing:     require('../../../../../assets/dialogue-videos/words/abilities/sing/Drag_Activity.mp4'),
+  brush:    require('../../../../../assets/dialogue-videos/words/abilities/brush/Drag_Activity.mp4'),
+  wash:     require('../../../../../assets/dialogue-videos/words/abilities/wash/Drag_Activity.mp4'),
+  eat:      require('../../../../../assets/dialogue-videos/words/abilities/eat/Drag_Activity.mp4'),
+  drink:    require('../../../../../assets/dialogue-videos/words/abilities/drink/Drag_Activity.mp4'),
+  write:    require('../../../../../assets/dialogue-videos/words/abilities/write/Drag_Activity.mp4'),
+  play:     require('../../../../../assets/dialogue-videos/words/abilities/play/Drag_Activity.mp4'),
+  sleep:    require('../../../../../assets/dialogue-videos/words/abilities/sleep/Drag_Activity.mp4'),
+  watch:    require('../../../../../assets/dialogue-videos/words/abilities/watch/Drag_Activity.mp4'),
 };
 
 // Standard word-pronunciation audio, reused from each category's Phase 2
-// WORD_AUDIO maps (Phase2ProductionScreen.js / GreetingPhase2ProductionScreen.js /
-// Cat3Phase2Screen.js). Only words with a REAL (non-placeholder) recording are
-// included — several greetings words fall back to a borrowed "Thank you" clip
-// in their own Phase 2 screen, which would be actively misleading here, so
-// those are intentionally left out; tapping them just skips audio.
+// WORD_AUDIO maps. Only words with a REAL (non-placeholder) recording are
+// included — tapping a tile without one just skips audio.
 const WORD_AUDIO_BY_KEY = {
   hello:         require('../../../../../assets/dialogue-audios/greetings/hello.mp3'),
   goodbye:       require('../../../../../assets/dialogue-audios/greetings/goodbye.mp3'),
@@ -97,45 +103,77 @@ const WORD_AUDIO_BY_KEY = {
   talk:  require('../../../../../assets/dialogue-audios/abilities/talk.mp3'),
 };
 
-const LINE_COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6'];
-
-const ROW_HEIGHT = 60;
-const ROW_GAP    = 14;
-const ROW_STEP   = ROW_HEIGHT + ROW_GAP;
-const COL_GAP    = 36;
-
-function rowCenterY(index) {
-  return index * ROW_STEP + ROW_HEIGHT / 2;
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 export default function EvaluationMatchScreen({ route, navigation }) {
   const { student, category } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
   const categoryLabel = CATEGORY_LABEL[category] ?? category;
+  const { width: screenWidth } = useWindowDimensions();
 
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState(null);
-  const [words,     setWords]     = useState([]);
-  const [images,    setImages]    = useState([]);
-  const [selectedWordId, setSelectedWordId] = useState(null);
-  const [pairs,      setPairs]      = useState({}); // { [word_id]: chosen_word_id_for_image }
-  const [confirming, setConfirming] = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [rounds,     setRounds]     = useState([]);
+  const [roundIndex, setRoundIndex] = useState(0);
+  const [selectedId, setSelectedId] = useState(null);
+  const [settled,    setSettled]    = useState(false); // locked while a GIF is showing
+  const [wrongCount, setWrongCount] = useState(0);      // wrong taps on the CURRENT round
+  const [feedback,   setFeedback]   = useState(null);   // 'correct' | 'wrong' | null
   const [completed,  setCompleted]  = useState(false);
-  const [rowsWidth,  setRowsWidth]  = useState(0);
   const [showGate,   setShowGate]   = useState(false);
+  // Abilities videos report their own aspect ratio asynchronously (see
+  // onReadyForDisplay below); 4:3 is just the default before that arrives.
+  const [videoAspectRatio, setVideoAspectRatio] = useState(4 / 3);
 
-  const soundRef = useRef(null);
-  const activeRef = useRef(true);
-  const starScale = useRef(new Animated.Value(0)).current;
+  const soundRef        = useRef(null);
+  const videoRef        = useRef(null);
+  const activeRef        = useRef(true);
+  const feedbackSlide    = useRef(new Animated.Value(FEEDBACK_OFFSCREEN)).current;
+  const starScale        = useRef(new Animated.Value(0)).current;
+  // One { word_id, chosen_word_id_for_image } per round, built from each
+  // round's FIRST tap — evaluation scoring reflects first-attempt accuracy
+  // even though the child can keep retrying afterwards to learn the answer.
+  const pairsRef          = useRef([]);
+  const firstAttemptRef   = useRef(null);
 
   useEffect(() => {
     let active = true;
     async function load() {
       try {
-        const data = await evaluationApi.build(student.sid, category);
+        const data  = await evaluationApi.build(student.sid, category);
+        const words  = data.words ?? [];
+        const images = data.images ?? [];
+        const assetKeyByWordId = Object.fromEntries(images.map((im) => [im.word_id, im.asset_key]));
+
+        const isVideo = category === 'abilities';
+        const built = shuffle(words).map((w) => {
+          const others      = words.filter((o) => o.word_id !== w.word_id);
+          const distractors = shuffle(others).slice(0, 2);
+          const assetKey     = assetKeyByWordId[w.word_id];
+          return {
+            word_id: w.word_id,
+            isVideo,
+            media: isVideo
+              ? (EVAL_ABILITIES_VIDEO[assetKey] ?? null)
+              : (EVAL_WORD_IMAGE[assetKey] ?? PLACEHOLDER_IMAGE),
+            audio: WORD_AUDIO_BY_KEY[assetKey],
+            tiles: shuffle([w, ...distractors]).map((t) => ({ word_id: t.word_id, text: t.text })),
+          };
+        });
+
         if (!active) return;
-        setWords(data.words ?? []);
-        setImages(data.images ?? []);
+        if (built.length === 0) {
+          setError('Could not load this evaluation. Please try again.');
+        } else {
+          setRounds(built);
+        }
       } catch {
         if (active) setError('Could not load this evaluation. Please try again.');
       } finally {
@@ -157,6 +195,9 @@ export default function EvaluationMatchScreen({ route, navigation }) {
       sub.remove();
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
+      // Abilities scenes are a looping video — stop it on blur, otherwise
+      // its audio keeps playing after the student navigates away.
+      videoRef.current?.pauseAsync().catch(() => {});
     };
   }, []));
 
@@ -166,17 +207,27 @@ export default function EvaluationMatchScreen({ route, navigation }) {
     }
   }, [completed]);
 
-  const assetKeyByWordId = useMemo(
-    () => Object.fromEntries(images.map((im) => [im.word_id, im.asset_key])),
-    [images]
-  );
+  // Reset per-round state whenever a new round begins
+  useEffect(() => {
+    setSelectedId(null);
+    setSettled(false);
+    setWrongCount(0);
+    firstAttemptRef.current = null;
+    setVideoAspectRatio(4 / 3); // reset the video default; the real ratio arrives via onReadyForDisplay below
+  }, [roundIndex]);
 
-  function imageSourceFor(wordId) {
-    const assetKey = assetKeyByWordId[wordId];
-    return EVAL_WORD_IMAGE[assetKey] ?? PLACEHOLDER_IMAGE;
-  }
+  const round = rounds[roundIndex] ?? null;
 
-  const allMatched = words.length > 0 && Object.keys(pairs).length === words.length;
+  // Size the scene box to match the actual media's own aspect ratio, so
+  // `contain` never has to letterbox with visible bars above/below. Local
+  // require()'d images resolve their real dimensions synchronously; videos
+  // report theirs asynchronously via onReadyForDisplay (tracked in state).
+  const resolvedImageSize = (round && !round.isVideo && round.media) ? Image.resolveAssetSource(round.media) : null;
+  const sceneAspectRatio = round?.isVideo
+    ? videoAspectRatio
+    : (resolvedImageSize?.width && resolvedImageSize?.height ? resolvedImageSize.width / resolvedImageSize.height : 4 / 3);
+  const sceneWidth  = Math.min(screenWidth * 0.85, 460);
+  const sceneHeight = Math.round(sceneWidth / sceneAspectRatio);
 
   async function playSound(source) {
     if (!source) return;
@@ -192,53 +243,58 @@ export default function EvaluationMatchScreen({ route, navigation }) {
     } catch { /* ignore */ }
   }
 
-  function handleWordTap(wordId) {
-    if (pairs[wordId] != null) {
-      // Tapping a matched word unmatches it — self-correction, mirrors the
-      // Phase 3 provisional-select philosophy.
-      setPairs((prev) => {
-        const next = { ...prev };
-        delete next[wordId];
-        return next;
-      });
-      if (selectedWordId === wordId) setSelectedWordId(null);
+  function showFeedbackGif(result) {
+    setFeedback(result);
+    Animated.spring(feedbackSlide, { toValue: 0, useNativeDriver: true, friction: 6, tension: 80 }).start();
+  }
+  function hideFeedbackGifThen(cb) {
+    Animated.timing(feedbackSlide, { toValue: FEEDBACK_OFFSCREEN, useNativeDriver: true, duration: 250 }).start(() => {
+      setFeedback(null);
+      cb();
+    });
+  }
+
+  function handleTileTap(tile) {
+    if (!round || settled) return;
+    setSelectedId(tile.word_id);
+    playSound(round.audio);
+    if (firstAttemptRef.current === null) firstAttemptRef.current = tile.word_id;
+
+    const isCorrect = tile.word_id === round.word_id;
+    setSettled(true);
+    showFeedbackGif(isCorrect ? 'correct' : 'wrong');
+
+    if (isCorrect) {
+      pairsRef.current.push({ word_id: round.word_id, chosen_word_id_for_image: firstAttemptRef.current });
+      setTimeout(() => {
+        hideFeedbackGifThen(() => {
+          if (!activeRef.current) return;
+          const isLast = roundIndex === rounds.length - 1;
+          if (isLast) finish();
+          else setRoundIndex((n) => n + 1);
+        });
+      }, FEEDBACK_MS);
     } else {
-      setSelectedWordId(wordId);
+      setWrongCount((n) => n + 1);
+      setTimeout(() => {
+        hideFeedbackGifThen(() => {
+          if (!activeRef.current) return;
+          setSettled(false);
+          setSelectedId(null);
+        });
+      }, FEEDBACK_MS);
     }
-    const assetKey = assetKeyByWordId[wordId];
-    playSound(WORD_AUDIO_BY_KEY[assetKey]);
   }
 
-  function handleImageTap(imgWordId) {
-    if (selectedWordId == null) return;
-    // Each picture can only be used once; if it's already claimed by a
-    // different word, this tap is a no-op — unmatch that word first.
-    const alreadyUsed = Object.values(pairs).includes(imgWordId);
-    if (alreadyUsed) return;
-
-    setPairs((prev) => ({ ...prev, [selectedWordId]: imgWordId }));
-    setSelectedWordId(null);
-  }
-
-  async function handleConfirm() {
-    if (!allMatched || confirming) return;
-    setConfirming(true);
-
-    const payload = Object.entries(pairs).map(([wordId, imgWordId]) => ({
-      word_id: Number(wordId),
-      chosen_word_id_for_image: imgWordId,
-    }));
-
+  async function finish() {
     try {
-      await evaluationApi.record(student.sid, category, payload);
+      await evaluationApi.record(student.sid, category, pairsRef.current);
     } catch {
       // Never show a fail state to the child — the score lives only in the
       // API record for the teacher; if the POST fails the child still gets
       // the celebration, they just won't have a record of this attempt.
     }
-
     if (!activeRef.current) return;
-    setConfirming(false);
     setCompleted(true);
   }
 
@@ -247,8 +303,9 @@ export default function EvaluationMatchScreen({ route, navigation }) {
     navigation.navigate('EvaluationMenu', { student });
   }
 
-  const leftColWidth  = rowsWidth > 0 ? (rowsWidth - COL_GAP) / 2 : 0;
-  const rightColLeftX = leftColWidth + COL_GAP;
+  // Once a round has taken 2+ wrong taps, softly highlight the correct
+  // tile so the child can find it themselves rather than getting stuck.
+  const showHint = wrongCount >= 2;
 
   return (
     <View style={styles.root}>
@@ -279,123 +336,63 @@ export default function EvaluationMatchScreen({ route, navigation }) {
             </View>
           )}
 
-          {!loading && !error && !completed && (
+          {!loading && !error && !completed && round && (
             <View style={styles.content}>
-              <Text style={[styles.title, { color: theme.headingText }]}>Match the Pictures</Text>
-              <Text style={[styles.subtitle, { color: theme.headingText }]}>
-                Tap a word, then tap its picture!
+              <Text style={[styles.progressLabel, { color: theme.headingText }]}>
+                Word {roundIndex + 1} of {rounds.length}
               </Text>
+              <Text style={[styles.title, { color: theme.headingText }]}>What word can be used in this scenario ?</Text>
 
-              <View
-                style={styles.rowsArea}
-                onLayout={(e) => setRowsWidth(e.nativeEvent.layout.width)}
-              >
-                {/* Connecting lines */}
-                {rowsWidth > 0 && (
-                  <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-                    {Object.entries(pairs).map(([wordId, imgWordId]) => {
-                      const wIdx = words.findIndex((w) => w.word_id === Number(wordId));
-                      const iIdx = images.findIndex((im) => im.word_id === imgWordId);
-                      if (wIdx === -1 || iIdx === -1) return null;
-                      const color = LINE_COLORS[wIdx % LINE_COLORS.length];
-                      return (
-                        <Line
-                          key={wordId}
-                          x1={leftColWidth}
-                          y1={rowCenterY(wIdx)}
-                          x2={rightColLeftX}
-                          y2={rowCenterY(iIdx)}
-                          stroke={color}
-                          strokeWidth={3}
-                          strokeLinecap="round"
-                        />
-                      );
-                    })}
-                  </Svg>
+              <View style={[styles.sceneWrap, { width: sceneWidth, height: sceneHeight, backgroundColor: theme.cardSurface }]}>
+                {round.isVideo ? (
+                  round.media && (
+                    <Video
+                      key={round.word_id}
+                      ref={videoRef}
+                      source={round.media}
+                      style={styles.sceneImg}
+                      resizeMode={ResizeMode.CONTAIN}
+                      useNativeControls={false}
+                      shouldPlay
+                      isLooping
+                      onReadyForDisplay={(e) => {
+                        const { width, height } = e.naturalSize ?? {};
+                        if (width && height) setVideoAspectRatio(width / height);
+                      }}
+                    />
+                  )
+                ) : (
+                  <Image source={round.media} style={styles.sceneImg} resizeMode="contain" />
                 )}
-
-                <View style={styles.rowsRow}>
-                  {/* Words column */}
-                  <View style={[styles.col, { width: leftColWidth || undefined }]}>
-                    {words.map((w, idx) => {
-                      const matched  = pairs[w.word_id] != null;
-                      const selected = selectedWordId === w.word_id;
-                      const color    = LINE_COLORS[idx % LINE_COLORS.length];
-                      return (
-                        <TouchableOpacity
-                          key={w.word_id}
-                          activeOpacity={0.8}
-                          onPress={() => handleWordTap(w.word_id)}
-                          style={[
-                            styles.wordCard,
-                            { height: ROW_HEIGHT, backgroundColor: theme.cardSurface },
-                            selected && { borderColor: theme.button, borderWidth: 3 },
-                            matched  && { borderColor: color, borderWidth: 3 },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.wordText,
-                              { color: theme.headingText },
-                              (selected || matched) && styles.wordTextBold,
-                            ]}
-                            numberOfLines={2}
-                          >
-                            {w.text}
-                          </Text>
-                          {matched && (
-                            <Ionicons name="checkmark-circle" size={18} color={color} style={styles.checkIcon} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  <View style={{ width: COL_GAP }} />
-
-                  {/* Images column */}
-                  <View style={[styles.col, { width: leftColWidth || undefined }]}>
-                    {images.map((im, idx) => {
-                      const pairedWordEntry = Object.entries(pairs).find(([, iw]) => iw === im.word_id);
-                      const matched = !!pairedWordEntry;
-                      const color = matched
-                        ? LINE_COLORS[words.findIndex((w) => w.word_id === Number(pairedWordEntry[0])) % LINE_COLORS.length]
-                        : null;
-                      return (
-                        <TouchableOpacity
-                          key={im.word_id}
-                          activeOpacity={0.8}
-                          onPress={() => handleImageTap(im.word_id)}
-                          style={[
-                            styles.imageCard,
-                            { height: ROW_HEIGHT, backgroundColor: theme.cardSurface },
-                            matched && { borderColor: color, borderWidth: 3 },
-                          ]}
-                        >
-                          <Image source={imageSourceFor(im.word_id)} style={styles.cardImage} resizeMode="contain" />
-                          {matched && (
-                            <Ionicons name="checkmark-circle" size={18} color={color} style={styles.checkIcon} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
               </View>
 
-              <View style={styles.actionRow}>
-                {confirming ? (
-                  <ActivityIndicator color={theme.button} />
-                ) : allMatched ? (
-                  <TouchableOpacity
-                    style={[styles.confirmButton, { backgroundColor: theme.button }]}
-                    onPress={handleConfirm}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="checkmark" size={18} color={theme.buttonText} />
-                    <Text style={[styles.confirmButtonText, { color: theme.buttonText }]}>Confirm</Text>
-                  </TouchableOpacity>
-                ) : null}
+              <View style={styles.tilesRow}>
+                {round.tiles.map((tile) => {
+                  const isSelected      = selectedId === tile.word_id;
+                  const isCorrectTile   = tile.word_id === round.word_id;
+                  const showGreen       = isSelected && feedback === 'correct';
+                  const showRed         = isSelected && feedback === 'wrong';
+                  const showHintOnTile  = showHint && isCorrectTile && !isSelected;
+                  return (
+                    <TouchableOpacity
+                      key={tile.word_id}
+                      activeOpacity={settled ? 1 : 0.82}
+                      disabled={settled}
+                      onPress={() => handleTileTap(tile)}
+                      style={[
+                        styles.tile,
+                        { borderColor: theme.cardOutline, backgroundColor: theme.cardSurface },
+                        showGreen      && styles.tileCorrect,
+                        showRed        && styles.tileWrong,
+                        showHintOnTile && styles.tileHint,
+                      ]}
+                    >
+                      <Text style={[styles.tileText, { color: theme.headingText }]}>{tile.text}</Text>
+                      {showGreen && <Ionicons name="checkmark-circle" size={20} color="#22C55E" />}
+                      {showRed   && <Ionicons name="close-circle"     size={20} color="#FF4D6D" />}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           )}
@@ -414,7 +411,7 @@ export default function EvaluationMatchScreen({ route, navigation }) {
                   Great Job! 🎉
                 </Text>
                 <Text style={[styles.completeSubtext, { color: theme.headingText }]}>
-                  You matched all the {categoryLabel.toLowerCase()} words!
+                  You finished the {categoryLabel.toLowerCase()} evaluation!
                 </Text>
               </View>
 
@@ -430,6 +427,21 @@ export default function EvaluationMatchScreen({ route, navigation }) {
 
         </SafeAreaView>
       </View>
+
+      {/* GIF feedback popup — same slide-in-from-right pattern as
+          ConceptActivityScreen.js */}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.gifPopup, { transform: [{ translateX: feedbackSlide }] }]}
+      >
+        {feedback && (
+          <ExpoImage
+            source={feedback === 'correct' ? CORRECT_GIF : WRONG_GIF}
+            style={styles.gifImage}
+            contentFit="contain"
+          />
+        )}
+      </Animated.View>
 
       <ParentGateModal
         visible={showGate}
@@ -475,88 +487,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  progressLabel: {
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '700',
+    opacity: 0.6,
+    marginBottom: 2,
+  },
   title: {
     fontSize: Layout.fontSize.xl,
     fontWeight: '900',
     textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: Layout.fontSize.sm,
-    textAlign: 'center',
-    opacity: 0.65,
     marginBottom: Layout.spacing.lg,
   },
 
-  rowsArea: {
-    width: '100%',
-    position: 'relative',
-  },
-  rowsRow: {
-    flexDirection: 'row',
-  },
-  col: {
-    gap: ROW_GAP,
-  },
-
-  wordCard: {
-    borderRadius: Layout.radius.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Layout.spacing.sm,
-    ...Layout.shadow.sm,
-  },
-  wordText: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  wordTextBold: {
-    fontWeight: '900',
-  },
-
-  imageCard: {
-    borderRadius: Layout.radius.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
+  sceneWrap: {
+    borderRadius: Layout.radius.xl,
     overflow: 'hidden',
-    ...Layout.shadow.sm,
-  },
-  cardImage: {
-    width: '85%',
-    height: '85%',
-  },
-
-  checkIcon: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#FFF',
-    borderRadius: 10,
-  },
-
-  actionRow: {
-    marginTop: Layout.spacing.xl,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.sm,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.full,
+    marginBottom: Layout.spacing.xl,
     ...Layout.shadow.md,
   },
-  confirmButtonText: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: '700',
+  sceneImg: { width: '100%', height: '100%' },
+
+  tilesRow: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Layout.spacing.md,
   },
+  tile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.xl,
+    borderRadius: Layout.radius.xl,
+    borderWidth: 2,
+    minWidth: 110,
+    justifyContent: 'center',
+    ...Layout.shadow.sm,
+  },
+  tileCorrect: { backgroundColor: '#DCFCE7', borderColor: '#22C55E' },
+  tileWrong:   { backgroundColor: '#FEE2E2', borderColor: '#EF4444' },
+  // Soft-yellow hint after a second wrong tap — points at the correct tile
+  // without giving it away as loudly as the green "correct" state.
+  tileHint:    { backgroundColor: '#FEF9C3', borderColor: '#EAB308' },
+  tileText:    { fontSize: Layout.fontSize.lg, fontWeight: '800' },
 
   stars: {
     fontSize: 48,
@@ -602,5 +578,19 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     fontSize: Layout.fontSize.lg,
     fontWeight: '700',
+  },
+
+  // Slides in from the right edge, vertically centred (same technique as
+  // ConceptActivityScreen.js's gifPopup).
+  gifPopup: {
+    position: 'absolute',
+    right: 24,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  gifImage: {
+    width: 200,
+    height: 200,
   },
 });

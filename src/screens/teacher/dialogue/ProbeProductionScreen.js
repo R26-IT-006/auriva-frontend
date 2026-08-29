@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { Layout } from '../../../constants/layout';
@@ -44,17 +44,26 @@ const DIALOGUE_WORD_AUDIO = {
 
 // Abilities: no entries in data/dialogueAssets.js by design (confirmed
 // 2026-07-28) — mirrors Cat3Phase1Screen.js's/Cat3Phase2Screen.js's own
-// CAT3_WORD_IMAGE/CAT3_WORD_AUDIO maps exactly (same keys, same asset paths).
-const CAT3_WORD_IMAGE = {
-  cat3_yes: require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  cat3_no:  require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  clap:     require('../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  run:      require('../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
-  walk:     require('../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-  jump:     require('../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  talk:     require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  dance:    require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  sing:     require('../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+// CAT3_WORD_AUDIO map exactly (same keys, same asset paths). The scene media
+// is Phase1And3.mp4 per word folder (every abilities word, difficulty 1 and 2).
+const CAT3_WORD_VIDEO = {
+  cat3_yes: require('../../../../assets/dialogue-videos/words/abilities/yes/Phase1And3.mp4'),
+  cat3_no:  require('../../../../assets/dialogue-videos/words/abilities/no/Phase1And3.mp4'),
+  clap:     require('../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4'),
+  run:      require('../../../../assets/dialogue-videos/words/abilities/run/Phase1And3.mp4'),
+  walk:     require('../../../../assets/dialogue-videos/words/abilities/walk/Phase1And3.mp4'),
+  jump:     require('../../../../assets/dialogue-videos/words/abilities/jump/Phase1And3.mp4'),
+  talk:     require('../../../../assets/dialogue-videos/words/abilities/talk/Phase1And3.mp4'),
+  dance:    require('../../../../assets/dialogue-videos/words/abilities/dance/Phase1And3.mp4'),
+  sing:     require('../../../../assets/dialogue-videos/words/abilities/sing/Phase1And3.mp4'),
+  brush:    require('../../../../assets/dialogue-videos/words/abilities/brush/Phase1And3.mp4'),
+  wash:     require('../../../../assets/dialogue-videos/words/abilities/wash/Phase1And3.mp4'),
+  eat:      require('../../../../assets/dialogue-videos/words/abilities/eat/Phase1And3.mp4'),
+  drink:    require('../../../../assets/dialogue-videos/words/abilities/drink/Phase1And3.mp4'),
+  write:    require('../../../../assets/dialogue-videos/words/abilities/write/Phase1And3.mp4'),
+  play:     require('../../../../assets/dialogue-videos/words/abilities/play/Phase1And3.mp4'),
+  sleep:    require('../../../../assets/dialogue-videos/words/abilities/sleep/Phase1And3.mp4'),
+  watch:    require('../../../../assets/dialogue-videos/words/abilities/watch/Phase1And3.mp4'),
 };
 const CAT3_WORD_AUDIO = {
   clap:  require('../../../../assets/dialogue-audios/abilities/clap.mp3'),
@@ -83,10 +92,12 @@ export default function ProbeProductionScreen({ route, navigation }) {
   const wordLabel = word ?? '';
 
   const isAbilities = category === 'abilities';
-  const wordImage = isAbilities ? CAT3_WORD_IMAGE[assetKey] : DIALOGUE_WORD_ASSETS[assetKey]?.scene;
-  const wordAudio = isAbilities ? CAT3_WORD_AUDIO[assetKey]  : DIALOGUE_WORD_AUDIO[assetKey];
+  const wordImage = isAbilities ? null : DIALOGUE_WORD_ASSETS[assetKey]?.scene;
+  const wordVideo = isAbilities ? CAT3_WORD_VIDEO[assetKey] : null;
+  const wordAudio = isAbilities ? CAT3_WORD_AUDIO[assetKey] : DIALOGUE_WORD_AUDIO[assetKey];
 
   const soundRef  = useRef(null);
+  const videoRef  = useRef(null);
   const activeRef = useRef(true);
   const [cloudText, setCloudText] = useState(`Can you say "${wordLabel}"?`);
   const [phase, setPhase] = useState('idle'); // idle | processing | done
@@ -97,6 +108,9 @@ export default function ProbeProductionScreen({ route, navigation }) {
       activeRef.current = false;
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
+      // Stop the scene video on blur — otherwise its audio keeps playing in
+      // the background after the student navigates away.
+      videoRef.current?.pauseAsync().catch(() => {});
     };
   }, []));
 
@@ -168,6 +182,19 @@ export default function ProbeProductionScreen({ route, navigation }) {
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.body}>
 
+            {wordVideo && (
+              <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
+                <Video
+                  ref={videoRef}
+                  source={wordVideo}
+                  style={styles.image}
+                  resizeMode={ResizeMode.COVER}
+                  useNativeControls={false}
+                  shouldPlay
+                  isLooping
+                />
+              </View>
+            )}
             {wordImage && (
               <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
                 <Image source={wordImage} style={styles.image} resizeMode="cover" />

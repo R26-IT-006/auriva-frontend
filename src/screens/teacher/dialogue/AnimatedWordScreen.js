@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, BackHandler, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -25,10 +25,26 @@ const STRUGGLING_EXTRA_LOOP_MS = 1800;
 // Receives word/image/audio via route params — no hardcoded words.
 export default function AnimatedWordScreen({ route, navigation }) {
   const {
-    student, wordText, wordImage, wordAudio, wordId,
+    student, wordText, wordImage, boldWordImage, wordAudio, wordId,
     trackExposure = false, nextScreen, nextParams, adaptiveDwell,
   } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  // Local require()'d images resolve synchronously to their real bundled
+  // dimensions (no waiting on onLoad, which is unreliable for local assets
+  // on some platforms and was causing the box to fall back to the 4:3
+  // default — visible as letterbox bars). The box is then bounded by BOTH a
+  // width budget and a height budget, whichever is stricter, so a near-
+  // square photo can't blow past a sensible height and push the Next button
+  // down off-comfortable.
+  const resolvedSize = wordImage ? Image.resolveAssetSource(wordImage) : null;
+  const imageAspectRatio = resolvedSize?.width && resolvedSize?.height
+    ? resolvedSize.width / resolvedSize.height
+    : 4 / 3;
+  const maxImageWidth  = Math.min(screenWidth * 0.58, 480);
+  const maxImageHeight = screenHeight * 0.42;
+  const imageWidth  = Math.min(maxImageWidth, maxImageHeight * imageAspectRatio);
+  const imageHeight = Math.round(imageWidth / imageAspectRatio);
 
   const [showGate, setShowGate] = useState(false);
   const soundRef = useRef(null);
@@ -103,8 +119,8 @@ export default function AnimatedWordScreen({ route, navigation }) {
 
   function goNext() {
     navigation.navigate('BoldWord', {
-      student, wordText, wordImage, wordAudio, wordId, trackExposure, nextScreen, nextParams,
-      adaptiveDwell,
+      student, wordText, wordImage: boldWordImage ?? wordImage, wordAudio, wordId, trackExposure,
+      nextScreen, nextParams, adaptiveDwell,
     });
   }
 
@@ -129,13 +145,13 @@ export default function AnimatedWordScreen({ route, navigation }) {
           <View style={styles.body}>
 
             {wordImage && (
-              <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
-                <Image source={wordImage} style={styles.image} resizeMode="cover" />
+              <View style={[styles.imageWrap, { width: imageWidth, height: imageHeight, backgroundColor: theme.cardSurface }]}>
+                <Image source={wordImage} style={styles.image} resizeMode="contain" />
               </View>
             )}
 
             <View style={styles.wordArea}>
-              <AnimatedWord word={wordText ?? ''} fontSize={48} />
+              <AnimatedWord word={wordText ?? ''} fontSize={85} />
             </View>
 
             <TouchableOpacity
@@ -201,14 +217,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.md,
+    paddingTop: Layout.spacing.xxl,
     paddingBottom: Layout.spacing.lg,
     gap: 20,
   },
 
   imageWrap: {
-    width: '100%',
-    height: '32%',
     borderRadius: Layout.radius.lg,
     overflow: 'hidden',
     ...Layout.shadow.md,

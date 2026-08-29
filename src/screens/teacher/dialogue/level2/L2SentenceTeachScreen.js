@@ -71,7 +71,7 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
   const theme     = getAvatarTheme(student?.avatar_key);
   const avatarImg = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
-  const [step,     setStep]     = useState(sentenceIndex === 5 ? 'activityPre' : 'step1');
+  const [step,     setStep]     = useState(sentenceIndex === 5 && sessionData?.topic === 'self_introduction' ? 'activityPre' : 'step1');
   const [showGate, setShowGate] = useState(false);
 
   useFocusEffect(useCallback(() => {
@@ -84,7 +84,9 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
 
   // Steps for this one sentence only: activityPre (sentence 5) is step 0 of 5;
   // everyone else is 4 steps (step1–step4).
-  const STEP_ORDER = sentenceIndex === 5 ? ['activityPre', 'step1', 'step2', 'step3', 'step4'] : ['step1', 'step2', 'step3', 'step4'];
+  const STEP_ORDER = sentenceIndex === 5 && sessionData?.topic === 'self_introduction'
+    ? ['activityPre', 'step1', 'step2', 'step3', 'step4']
+    : ['step1', 'step2', 'step3', 'step4'];
   const progress = (STEP_ORDER.indexOf(step) + 1) / STEP_ORDER.length;
 
   function advanceStep() {
@@ -150,10 +152,10 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
           {step === 'step2' && sentence && (
             <Step2DragOne sentence={sentence} theme={theme} onComplete={advanceStep} />
           )}
-          {step === 'step3' && sentence && sentenceIndex === 4 && (
+          {step === 'step3' && sentence && sentenceIndex === 4 && sessionData?.topic === 'self_introduction' && (
             <Step3Gender theme={theme} gender={sessionData?.gender} onSelect={handleGenderTap} />
           )}
-          {step === 'step3' && sentence && sentenceIndex !== 4 && (
+          {step === 'step3' && sentence && !(sentenceIndex === 4 && sessionData?.topic === 'self_introduction') && (
             <Step3DragTwo sentence={sentence} theme={theme} onResult={handleStep3Result} />
           )}
           {step === 'step4' && sentence && (
@@ -203,7 +205,6 @@ function Step1Listen({ sentence, theme, avatarImg, onNext }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 1 · Listen</Text>
-      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 1 · සවන් දෙන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>
@@ -329,7 +330,6 @@ function Step2DragOne({ sentence, theme, onComplete }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 2 · Drag & Drop</Text>
-      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 2 · ඇදගෙන නවත්වන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>
@@ -343,9 +343,6 @@ function Step2DragOne({ sentence, theme, onComplete }) {
       </View>
       <Text style={[styles.dragHint, { color: theme.headingText }]}>
         <Ionicons name="hand-left-outline" size={14} /> Drag the card below into the blank
-      </Text>
-      <Text style={[styles.dragHintSinhala, { color: theme.headingText }]}>
-        පහළ ඇති කාඩ්ය හිස් ස්ථානයට ඇදගෙන යන්න
       </Text>
       {!placed && (
         <Animated.View style={[styles.tile, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] }]} {...panResponder.panHandlers}>
@@ -418,7 +415,6 @@ function Step3DragTwo({ sentence, theme, onResult }) {
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 3 · Pick the Right One</Text>
-      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 3 · නිවැරදි එක තෝරන්න</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
       <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>{before}</Text>
@@ -444,12 +440,8 @@ function Step3Gender({ theme, gender, onSelect }) {
   return (
     <View style={styles.genderBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 3 · Tap the Picture</Text>
-      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 3 · රූපය තෝරන්න </Text>
       <Text style={[styles.genderPrompt, { color: theme.headingText }]}>
         Tap the picture that looks like you!
-      </Text>
-      <Text style={[styles.genderPromptSinhala, { color: theme.headingText }]}>
-        ඔබට සමාන රූපය තෝරන්න!
       </Text>
       <View style={styles.genderRow}>
         {[{ g: 'boy', img: SAMAN_IMG, label: 'Boy' }, { g: 'girl', img: ANJALI_IMG, label: 'Girl' }].map(({ g, img, label }) => (
@@ -468,9 +460,8 @@ function ActivityPreScreen({ sessionData, theme, onSelect }) {
   const [selected, setSelected] = useState(null);
   return (
     <View style={styles.actPreBody}>
-      <Text style={[styles.actPreTitle, { color: theme.headingText }]}>Getting Ready · Sentence 5  ·  සූදානම් වෙමු · වාක්‍යය 5</Text>
+      <Text style={[styles.actPreTitle, { color: theme.headingText }]}>Getting Ready · Sentence 5</Text>
       <Text style={[styles.actPrePrompt, { color: theme.headingText }]}>What do you like doing?</Text>
-      <Text style={[styles.actPreSinhala, { color: theme.headingText }]}>ඔබ කිරීමට කැමති දෙය කුමක්ද?</Text>
       <View style={styles.actGrid}>
         {ALL_ACTIVITIES.map(act => {
           const sel = selected === act;
@@ -546,11 +537,9 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
   return (
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 4 · Say It!</Text>
-      <Text style={[styles.stepTitleSinhala, { color: theme.headingText }]}>පියවර 4 · කියන්න!</Text>
       <View style={styles.bubbleRow}>
         <View style={[styles.bubble, { backgroundColor: theme.cardSurface }]}>
           <Text style={[styles.bubbleText, { color: theme.headingText }]}>Repeat after me!</Text>
-          <Text style={[styles.bubbleSinhala, { color: theme.headingText }]}>මා සමඟ නැවත කියන්න!</Text>
           <View style={[styles.bubbleTail, { borderLeftColor: theme.cardSurface }]} />
         </View>
         <Image source={avatarImg} style={styles.avatarMd} resizeMode="contain" />

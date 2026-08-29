@@ -119,6 +119,10 @@ export default function Cat3Phase2Screen({ route, navigation }) {
   const avatarAudioEndRef = useRef(null); // RC3
   const recordingStartRef = useRef(null); // RC3
   const micDelayRef       = useRef(0);    // RC3
+  // TASK-12: Non-Verbal Adaptive Wait-Time Escalation. Populated on mount by
+  // getSpeechState(); at streak 0 multiplier is 1.0 — behaviour unchanged.
+  const waitMultiplierRef    = useRef(1.0);
+  const autoNonverbalRef     = useRef(false);
   const settingsFade  = useRef(new Animated.Value(0)).current;
 
   function setPhase(p) {
@@ -133,6 +137,10 @@ export default function Cat3Phase2Screen({ route, navigation }) {
   function clearTimer() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   }
+
+  // TASK-12: scale a wait duration by today's speech-escalation multiplier.
+  // At multiplier 1.0 (streak 0) this is a no-op — byte-identical to pre-TASK-12.
+  function w(ms) { return Math.round(ms * waitMultiplierRef.current); }
 
   const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
     rc3Refs: { recordingStartRef, micDelayRef },
@@ -210,6 +218,31 @@ export default function Cat3Phase2Screen({ route, navigation }) {
   useEffect(() => {
     let cancelled = false;
     async function init() {
+      // TASK-12: fetch today's speech escalation state before any timer fires.
+      // Must happen first so waitMultiplierRef is set when startListening() runs.
+      // Failure is silent — multiplier defaults to 1.0 (normal behaviour).
+      if (student?.sid) {
+        try {
+          const state = await dialogueApi.getSpeechState(student.sid);
+          waitMultiplierRef.current = state?.wait_multiplier ?? 1.0;
+          autoNonverbalRef.current  = state?.auto_nonverbal_today ?? false;
+        } catch { /* degrade gracefully to multiplier 1.0 */ }
+      }
+      if (cancelled) return;
+
+      // TASK-12: ≥3 consecutive refusals today → skip production entirely;
+      // route straight to the existing non-verbal pathway (no production UI shown).
+      if (autoNonverbalRef.current) {
+        await delay(50); // yield so component finishes mounting before navigating
+        if (activeRef.current) {
+          navigation.navigate('Cat3Phase2NonVerbal', {
+            student, wordId, wordKey, wordLabel,
+            sessionId: sessionIdRef.current,
+          });
+        }
+        return;
+      }
+
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => {});
       if (cancelled) return;
       startListening();
@@ -253,7 +286,8 @@ export default function Cat3Phase2Screen({ route, navigation }) {
         .then(() => { avatarAudioEndRef.current = Date.now(); })
         .catch(() => {});
     }
-    timerRef.current = setTimeout(enterNoResponse, 15_000);
+    // TASK-12: w() scales the duration by today's wait_multiplier (1.0 at streak 0 → no-op)
+    timerRef.current = setTimeout(enterNoResponse, w(15_000));
   }
 
   async function enterNoResponse() {
@@ -265,7 +299,7 @@ export default function Cat3Phase2Screen({ route, navigation }) {
     await playSound(AUDIO.tapRecordBtn);
     avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
-    timerRef.current = setTimeout(enterReprompt, 10_000);
+    timerRef.current = setTimeout(enterReprompt, w(10_000)); // TASK-12
   }
 
   async function enterReprompt() {
@@ -277,7 +311,7 @@ export default function Cat3Phase2Screen({ route, navigation }) {
     await playSound(AUDIO.youCanDoIt);
     avatarAudioEndRef.current = Date.now(); // RC3
     if (!activeRef.current) return;
-    timerRef.current = setTimeout(goNonverbal, 20_000);
+    timerRef.current = setTimeout(goNonverbal, w(20_000)); // TASK-12
   }
 
   async function goNonverbal() {

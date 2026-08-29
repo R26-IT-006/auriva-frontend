@@ -156,7 +156,7 @@ export default function AvatarSelectionScreen({ navigation, route }) {
           <View style={styles.rightRail}>
             <View style={styles.dock}>
               {AVATARS.map((av) => (
-                <AvatarCard
+                <AvatarIcon
                   key={av.key}
                   avatar={av}
                   selected={selected?.key === av.key}

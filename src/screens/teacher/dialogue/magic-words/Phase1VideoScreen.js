@@ -52,15 +52,15 @@ const THANK_YOU_VIDEOS = [
 // Placeholders — swap source for the real video files when assets arrive
 const IM_SORRY_VIDEOS = [
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/im_sorry/im-sorry_V1.mp4'),
     caption: 'Saman bumps into Anjalie by accident.\nHe says "I\'m sorry"',
   },
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/im_sorry/im-sorry_V2.mp4'),
     caption: 'Anjalie spills Saman\'s juice.\nShe says "I\'m sorry"',
   },
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/im_sorry/im-sorry_V3.mp4'),
     caption: 'Saman breaks Anjalie\'s pencil by mistake.\nHe says "I\'m sorry"',
   },
 ];
@@ -82,15 +82,15 @@ const YOURE_WELCOME_VIDEOS = [
 
 const EXCUSE_ME_VIDEOS = [
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/excuse_me/excuse-me_V1.mp4'),
     caption: 'Saman needs to pass by Anjalie.\nHe says "Excuse me"',
   },
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/excuse_me/excuse-me_V2.mp4'),
     caption: 'Anjalie is walking through a crowd.\nShe says "Excuse me"',
   },
   {
-    source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4'),
+    source:  require('../../../../../assets/dialogue-videos/words/magic_words/excuse_me/excuse-me_V3.mp4'),
     caption: 'Saman needs to reach something behind Anjalie.\nHe says "Excuse me"',
   },
 ];
@@ -188,6 +188,7 @@ export default function Phase1VideoScreen({ route, navigation }) {
         student,
         wordText: WORD_LABELS[wordKey] ?? wordKey.replace(/_/g, ' '),
         wordImage: DIALOGUE_WORD_ASSETS[wordKey]?.scene,
+        boldWordImage: DIALOGUE_WORD_ASSETS[wordKey]?.boldScene,
         wordAudio: WORD_AUDIO[wordKey],
         wordId,
         trackExposure: true,
@@ -319,7 +320,7 @@ export default function Phase1VideoScreen({ route, navigation }) {
             <View style={styles.btnRow}>
               {!hasFinished && (
                 <Text style={[styles.watchHint, { color: theme.headingText }]}>
-                  Watch the video to continue  ·  ඉදිරියට යාමට වීඩියෝව නරඹන්න
+                  Watch the video to continue
                 </Text>
               )}
               <TouchableOpacity

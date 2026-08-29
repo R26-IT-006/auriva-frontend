@@ -13,6 +13,7 @@ import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../api/dialogue';
+import { clearRestartCount } from '../../../utils/sessionRetryTracker';
 
 function getCategoryStartScreen(category) {
   switch (category) {
@@ -60,11 +61,13 @@ export default function WordCompleteScreen({ route, navigation }) {
   }, []);
 
   function tryAgain() {
+    clearRestartCount(student?.sid, wordId);
     navigation.navigate(getCategoryStartScreen(category), { student, wordKey, wordId });
   }
 
   async function goNextWord() {
     setLoadingNext(true);
+    clearRestartCount(student?.sid, wordId);
     try {
       const nextWord = await dialogueApi.getNextWord(student?.sid, {
         category,

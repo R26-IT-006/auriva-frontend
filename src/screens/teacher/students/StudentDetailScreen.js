@@ -21,6 +21,8 @@ import { Colors, BACKDROP } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
+import { dialogueApi } from '../../../api/dialogue';
+import { level2Api } from '../../../api/level2';
 import { formatDate, ageFrom } from '../../../utils/formatters';
 import { ROUND, ACTION, sinceWords } from '../../../constants/teacherWording';
 
@@ -205,6 +207,15 @@ function IdFact({ icon, label, value }) {
 
 // Only Concept Learning reports progress today; the rest render an unavailable
 // panel until those modules ship, so the selector stays honest about coverage.
+// The three Level 1 word categories, in the order the child meets them. Used to
+// filter the overview payload — it can carry words from categories this panel
+// does not summarise, and counting those would inflate every figure below.
+const DIALOGUE_CATEGORIES = [
+  { key: 'greetings',   label: 'Greetings' },
+  { key: 'magic_words', label: 'Magic words' },
+  { key: 'abilities',   label: 'Abilities' },
+];
+
 const MODULES = [
   { key: 'concept',       tab: 'Concepts',      title: 'Concept Learning',     icon: 'school-outline' },
   { key: 'writing',       tab: 'Writing',       title: 'Writing Module',       icon: 'create-outline' },
@@ -218,6 +229,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
+  // Dialogue Level 1 word progress and the Level 2 report's totals. Both null
+  // until they load and null if they fail — the tab shows an inline message
+  // rather than blanking, matching how `concepts` behaves above.
+  const [dialogue, setDialogue] = useState(null);
+  const [dialogueLoading, setDialogueLoading] = useState(true);
+  const [level2, setLevel2] = useState(null);
   const [activeModule, setActiveModule] = useState('concept');
   // The group whose contents are open, or null. Holds the category itself rather
   // than a boolean so the sheet's title stays right while it animates out.
@@ -250,6 +267,33 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
+  // Reads word *progress*, not the trajectory model. Deriving trajectory counts
+  // here would run a prediction — and possibly SHAP — for every word on every
+  // visit to this screen; that work belongs in the report the link opens.
+  const fetchDialogue = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    try {
+      setDialogue(await dialogueApi.getLevel1Overview(initialStudent.sid));
+    } catch {
+      setDialogue(null);
+    } finally {
+      setDialogueLoading(false);
+    }
+  }, [initialStudent?.sid]);
+
+  // Level 2's summary comes from its own report endpoint's `totals`. Unlike
+  // Level 1 there is no cheaper per-topic call covering all three topics at
+  // once, and this report is plain database reads with no model behind it.
+  const fetchLevel2 = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    try {
+      const resp = await level2Api.getReport(initialStudent.sid);
+      setLevel2(resp?.data ?? resp ?? null);
+    } catch {
+      setLevel2(null);
+    }
+  }, [initialStudent?.sid]);
+
   const fetchNote = useCallback(async () => {
     if (!initialStudent?.sid) return;
     try {
@@ -275,7 +319,11 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   useEffect(() => { fetchNote(); }, [fetchNote]);
 
   // Refetch on focus so returning from the report reflects a session just played.
-  useFocusEffect(useCallback(() => { fetchConcepts(); }, [fetchConcepts]));
+  useFocusEffect(useCallback(() => {
+    fetchConcepts();
+    fetchDialogue();
+    fetchLevel2();
+  }, [fetchConcepts, fetchDialogue, fetchLevel2]));
 
   if (!student) return null;
 
@@ -296,6 +344,31 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   // Older clients can reach a backend that has not been restarted; a missing
   // field reads as nothing learned this week rather than as NaN on the tile.
   const learnedThisWeek = concepts?.totals?.learned_last_7_days ?? 0;
+
+  // Dialogue Level 1. `status` here is the mastery state, not the trajectory
+  // label — the report's 'struggling' is a prediction about where a word is
+  // heading, this one is a record of what has already happened, so it is
+  // surfaced as "Needs work" to keep the two readable side by side.
+  const dialogueWords = (Array.isArray(dialogue) ? dialogue : [])
+    .filter((w) => DIALOGUE_CATEGORIES.some((c) => c.key === w.category));
+  const dialogueTotals = {
+    total:      dialogueWords.length,
+    mastered:   dialogueWords.filter((w) => w.status === 'mastered').length,
+    inProgress: dialogueWords.filter((w) => w.status === 'in_progress').length,
+    needsWork:  dialogueWords.filter((w) => w.status === 'struggling').length,
+  };
+  const dialogueStarted = dialogueWords.filter((w) => w.status !== 'not_started').length;
+  // A FRACTION, not a percentage: MasteryRing clamps to 0..1 and does its own
+  // ×100 for the label. Passing 18 here rendered "1800%" on a ring clamped full.
+  // Null when there is nothing to divide — the ring draws grey with an em dash
+  // rather than a definite-looking 0%.
+  const dialogueMastery = dialogueTotals.total > 0
+    ? dialogueTotals.mastered / dialogueTotals.total
+    : null;
+
+  // Level 2 lives in this same tab, below Level 1.
+  const level2Totals  = level2?.totals ?? null;
+  const level2Started = level2Totals?.topics_started ?? 0;
 
   const age = ageFrom(student.date_of_birth);
   const activeMeta = MODULES.find((m) => m.key === activeModule) ?? MODULES[0];
@@ -530,6 +603,149 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                 </View>
               </TouchableOpacity>
             </View>
+          ) : activeModule === 'dialogue' ? (
+            dialogueLoading ? (
+              <View style={styles.conceptLoading}>
+                <ActivityIndicator color={SECTION.progress.fg} />
+              </View>
+            ) : !dialogue ? (
+              <View style={styles.conceptEmpty}>
+                <Ionicons name="cloud-offline-outline" size={22} color={Colors.text.muted} />
+                <Text style={styles.conceptEmptyText}>Couldn't load dialogue progress.</Text>
+                <TouchableOpacity onPress={() => { setDialogueLoading(true); fetchDialogue(); }}>
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.conceptBody}>
+                  {/* The module has two levels, shown as two labelled blocks in
+                      one tab — matching how the child-facing DialogueLanding
+                      presents them as two cards under one module rather than as
+                      two separate modules. */}
+                  <Text style={styles.levelHeading}>Level 1 · Word learning</Text>
+
+                  {dialogueStarted === 0 ? (
+                    <View style={styles.conceptEmpty}>
+                      <Ionicons name="chatbubbles-outline" size={22} color={Colors.text.muted} />
+                      <Text style={styles.conceptEmptyText}>
+                        No Level 1 activity yet. Progress appears here once {firstName} starts a session.
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      {/* Same ring-beside-tiles shape as the concept panel above,
+                          and the same brand green rather than the ramp — this is
+                          coverage, not a grade, so the ramp's alarm red would be
+                          a verdict the number does not support. */}
+                      <View style={styles.statRow}>
+                        <View style={styles.ringCard}>
+                          <MasteryRing
+                            value={dialogueMastery}
+                            size={168}
+                            label="mastered"
+                            color={Colors.brandDeep}
+                          />
+                        </View>
+
+                        <View style={styles.statGrid}>
+                          <ProgressStat
+                            label="Mastered"
+                            value={String(dialogueTotals.mastered)}
+                            of={dialogueTotals.total}
+                          />
+                          <ProgressStat label="Started"     value={String(dialogueStarted)} />
+                          <ProgressStat label="In progress" value={String(dialogueTotals.inProgress)} />
+                          <ProgressStat label="Needs work"  value={String(dialogueTotals.needsWork)} />
+                        </View>
+                      </View>
+
+                      <View style={styles.breakdownHead}>
+                        <Ionicons name="list-outline" size={16} color={Colors.text.secondary} />
+                        <Text style={styles.breakdownTitle}>Category breakdown</Text>
+                      </View>
+
+                      {/* Categories the child has actually touched. An untouched
+                          category is omitted rather than shown as 0 / 0, for the
+                          same reason the concept panel filters on started > 0. */}
+                      <View style={styles.dialogueCats}>
+                        {DIALOGUE_CATEGORIES.map((c) => {
+                          const rows = dialogueWords.filter((w) => w.category === c.key);
+                          if (rows.length === 0) return null;
+                          const mastered = rows.filter((w) => w.status === 'mastered').length;
+                          return (
+                            <View key={c.key} style={styles.dialogueCatRow}>
+                              <Text style={styles.dialogueCatLabel}>{c.label}</Text>
+                              <Text style={styles.dialogueCatValue}>
+                                {mastered} / {rows.length} mastered
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </>
+                  )}
+
+                  {/* Always shown once the report has loaded, so the level is
+                      visible — and its report reachable — even before the child
+                      has started it. An untouched Level 2 gets a plain
+                      not-started line rather than a block of zeroes. */}
+                  {level2Totals ? (
+                    <>
+                      <Text style={styles.levelHeading}>Level 2 · Sentence construction</Text>
+
+                      {level2Started === 0 ? (
+                        <View style={styles.conceptEmpty}>
+                          <Ionicons name="chatbubble-ellipses-outline" size={22} color={Colors.text.muted} />
+                          <Text style={styles.conceptEmptyText}>
+                            Not started yet — all {level2Totals.topics_total} topics are
+                            waiting for {firstName}'s first session.
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.statGridWide}>
+                          <ProgressStat
+                            label="Mastered"
+                            value={String(level2Totals.mastered)}
+                            of={level2Totals.topics_total}
+                          />
+                          <ProgressStat label="Started"       value={String(level2Totals.topics_started)} />
+                          <ProgressStat label="In progress"   value={String(level2Totals.in_progress)} />
+                          <ProgressStat label="Needs support" value={String(level2Totals.struggling)} />
+                        </View>
+                      )}
+                    </>
+                  ) : null}
+                </View>
+
+                {/* Same ruled footer as the concept panel. Two reports rather
+                    than one, so neither wears the filled gradient — two solid
+                    buttons side by side would read as a choice between equals. */}
+                <View style={styles.reportFooter}>
+                  <TouchableOpacity
+                    style={styles.archiveBtn}
+                    activeOpacity={0.75}
+                    onPress={() => navigation.navigate('TrajectoryReport', { student })}
+                    accessibilityRole="button"
+                    accessibilityLabel="Level 1 word trajectory report"
+                  >
+                    <Ionicons name="trending-up-outline" size={15} color={Colors.text.secondary} />
+                    <Text style={styles.archiveBtnText}>Level 1 report</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.archiveBtn}
+                    activeOpacity={0.75}
+                    onPress={() => navigation.navigate('Level2Report', { student })}
+                    accessibilityRole="button"
+                    accessibilityLabel="Level 2 sentence construction report"
+                  >
+                    <Ionicons name="document-text-outline" size={15} color={Colors.text.secondary} />
+                    <Text style={styles.archiveBtnText}>Level 2 report</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )
           ) : activeModule !== 'concept' ? (
             <View style={styles.conceptEmpty}>
               <Ionicons name={activeMeta.icon} size={22} color={Colors.text.muted} />
@@ -1179,6 +1395,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: CARD_GAP,
+  },
+
+  // ── Dialogue module ───────────────────────────────────────────────────────
+  // Separates the module's two levels inside one tab. Small caps rather than a
+  // heading weight: these divide a panel that already has a title, so competing
+  // with `panelTitleLg` would give the section two headings of equal rank.
+  levelHeading: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: Layout.spacing.lg,
+    marginBottom: Layout.spacing.sm,
+  },
+  // Level 2 has no ring beside it, so its tiles take the full panel width
+  // instead of sharing the row with one.
+  statGridWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: CARD_GAP,
+  },
+  dialogueCats: {
+    marginTop: Layout.spacing.sm,
+    gap: 2,
+  },
+  // Label left, figure right — a three-row list of counts, which reads faster as
+  // rows than as three more tiles competing with the four above.
+  dialogueCatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Layout.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.divider,
+  },
+  dialogueCatLabel: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_600SemiBold',
+    color: Colors.text.primary,
+  },
+  dialogueCatValue: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.secondary,
   },
 
   // ── Context strip ─────────────────────────────────────────────────────────

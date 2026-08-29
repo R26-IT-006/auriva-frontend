@@ -2,14 +2,13 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Modal,
   Animated,
   BackHandler,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,17 +17,25 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 
-// Scene images for Phase 3 — use Phase3 where available
+// Scene videos for Phase 3 — same Phase1And3.mp4 as Phase 1, per word folder
 const CAT3_CONTEXT_CORRECT = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Phase3.jpeg'),
-  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Phase3.jpeg'),
-  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Phase3.jpeg'),
-  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Phase3.jpeg'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/context_correct.png'),
+  cat3_yes: require('../../../../../assets/dialogue-videos/words/abilities/yes/Phase1And3.mp4'),
+  cat3_no:  require('../../../../../assets/dialogue-videos/words/abilities/no/Phase1And3.mp4'),
+  clap:     require('../../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4'),
+  run:      require('../../../../../assets/dialogue-videos/words/abilities/run/Phase1And3.mp4'),
+  walk:     require('../../../../../assets/dialogue-videos/words/abilities/walk/Phase1And3.mp4'),
+  jump:     require('../../../../../assets/dialogue-videos/words/abilities/jump/Phase1And3.mp4'),
+  talk:     require('../../../../../assets/dialogue-videos/words/abilities/talk/Phase1And3.mp4'),
+  dance:    require('../../../../../assets/dialogue-videos/words/abilities/dance/Phase1And3.mp4'),
+  sing:     require('../../../../../assets/dialogue-videos/words/abilities/sing/Phase1And3.mp4'),
+  brush:    require('../../../../../assets/dialogue-videos/words/abilities/brush/Phase1And3.mp4'),
+  wash:     require('../../../../../assets/dialogue-videos/words/abilities/wash/Phase1And3.mp4'),
+  eat:      require('../../../../../assets/dialogue-videos/words/abilities/eat/Phase1And3.mp4'),
+  drink:    require('../../../../../assets/dialogue-videos/words/abilities/drink/Phase1And3.mp4'),
+  write:    require('../../../../../assets/dialogue-videos/words/abilities/write/Phase1And3.mp4'),
+  play:     require('../../../../../assets/dialogue-videos/words/abilities/play/Phase1And3.mp4'),
+  sleep:    require('../../../../../assets/dialogue-videos/words/abilities/sleep/Phase1And3.mp4'),
+  watch:    require('../../../../../assets/dialogue-videos/words/abilities/watch/Phase1And3.mp4'),
 };
 
 const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abilities/Phase3_prompt_generic.mp3');
@@ -36,7 +43,10 @@ const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abili
 const PROGRESS_FRACTION = 0.90;
 
 // All Cat3 word labels for picking distractors
-const ALL_CAT3_LABELS = ['Yes', 'No', 'Clap', 'Run', 'Walk', 'Jump', 'Talk', 'Dance', 'Sing'];
+const ALL_CAT3_LABELS = [
+  'Yes', 'No', 'Clap', 'Run', 'Walk', 'Jump', 'Talk', 'Dance', 'Sing',
+  'Brush', 'Wash', 'Eat', 'Drink', 'Write', 'Play', 'Sleep', 'Watch',
+];
 
 const WORD_LABELS = {
   cat3_yes: 'Yes',
@@ -48,9 +58,17 @@ const WORD_LABELS = {
   talk:     'Talk',
   dance:    'Dance',
   sing:     'Sing',
+  brush:    'Brush',
+  wash:     'Wash',
+  eat:      'Eat',
+  drink:    'Drink',
+  write:    'Write',
+  play:     'Play',
+  sleep:    'Sleep',
+  watch:    'Watch',
 };
 
-function getSceneImage(wordKey) {
+function getSceneVideo(wordKey) {
   return CAT3_CONTEXT_CORRECT[wordKey] ?? null;
 }
 
@@ -67,7 +85,7 @@ export default function Cat3Phase3Screen({ route, navigation }) {
   const { student, wordId, wordKey, wordLabel: labelParam, sessionId } = route.params ?? {};
   const theme     = getAvatarTheme(student?.avatar_key);
   const wordLabel = labelParam ?? WORD_LABELS[wordKey] ?? wordKey;
-  const sceneImg  = getSceneImage(wordKey);
+  const sceneVideo = getSceneVideo(wordKey);
 
   const distractors = useMemo(() => pickDistractors(wordLabel), [wordLabel]);
   const tiles = useMemo(() => {
@@ -99,6 +117,7 @@ export default function Cat3Phase3Screen({ route, navigation }) {
 
   // ── NEW — audio playback (this screen had none before) ─────────────
   const soundRef = useRef(null);
+  const videoRef = useRef(null);
 
   // ── RC2 feature capture refs ──────────────────────────────────────────
   const attemptRenderRef                = useRef(Date.now());
@@ -151,6 +170,9 @@ export default function Cat3Phase3Screen({ route, navigation }) {
       sub.remove();
       soundRef.current?.stopAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
+      // Stop the scene video on blur — otherwise its audio keeps playing in
+      // the background after the student navigates away.
+      videoRef.current?.pauseAsync().catch(() => {});
     };
   }, []));
 
@@ -299,10 +321,18 @@ export default function Cat3Phase3Screen({ route, navigation }) {
               Tap the correct word!
             </Text>
 
-            {/* Scene image */}
-            {sceneImg ? (
+            {/* Scene video */}
+            {sceneVideo ? (
               <View style={[styles.sceneWrap, { backgroundColor: theme.cardSurface }]}>
-                <Image source={sceneImg} style={styles.sceneImg} resizeMode="contain" />
+                <Video
+                  ref={videoRef}
+                  source={sceneVideo}
+                  style={styles.sceneImg}
+                  resizeMode={ResizeMode.CONTAIN}
+                  useNativeControls={false}
+                  shouldPlay
+                  isLooping
+                />
               </View>
             ) : (
               <View style={[styles.sceneWrap, { backgroundColor: theme.button + '33', alignItems: 'center', justifyContent: 'center' }]}>

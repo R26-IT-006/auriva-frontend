@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import FriendNameStep from './FriendNameStep';
+import PetPicker from './PetPicker';
 import {
   View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, ActivityIndicator, Image,
 } from 'react-native';
@@ -27,8 +29,8 @@ const COVER_IMAGES = {
 // status: 'available' | 'locked'
 const TOPICS = [
   { key: 'self_introduction', label: 'Self-Introduction', icon: 'person-outline', status: 'available', from: '#FF9A73', to: '#FF6B45' },
-  { key: 'describing_friend', label: 'Describing a Friend', icon: 'people-outline', status: 'locked' },
-  { key: 'describing_pet', label: 'Describing a Pet', icon: 'paw-outline', status: 'locked' },
+  { key: 'describing_friend', label: 'Describing a Friend', icon: 'people-outline', status: 'available' },
+  { key: 'describing_pet', label: 'Describing a Pet', icon: 'paw-outline', status: 'available' },
   { key: 'draw_yourself', label: 'Draw Yourself', icon: 'color-palette-outline', status: 'available' },
 ];
 
@@ -108,17 +110,7 @@ function TopicCard({ topic, pos, cardW, cardH, theme, onPress, extraBadge, fonts
           >
             {topic.label}
           </Text>
-          {locked && (
-            <Text
-              style={[
-                styles.topicSub,
-                { color: '#C8D0D8' },
-                fontsLoaded && { fontFamily: 'DMSans_600SemiBold', fontWeight: 'normal' },
-              ]}
-            >
-              Coming soon
-            </Text>
-          )}
+          {/* locked: Coming soon label — currently all topics are available */}
         </View>
       </View>
     </TouchableOpacity>
@@ -133,6 +125,9 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
 
   const [loading, setLoading] = useState(false);
   const [portraitStrokes, setPortraitStrokes] = useState(null);
+  const [questionnaire, setQuestionnaire] = useState(null);
+  const [friendModalVisible, setFriendModalVisible] = useState(false);
+  const [petModalVisible,    setPetModalVisible]    = useState(false);
 
   const [fontsLoaded] = useFonts({
     Colora: require('../../../../../assets/fonts/COLORA.ttf'),
@@ -142,8 +137,11 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
 
   useEffect(() => {
     level2Api.getQuestionnaire(student.sid)
-      .then((resp) => setPortraitStrokes(resp?.data?.portrait_strokes ?? null))
-      .catch(() => setPortraitStrokes(null));
+      .then((resp) => {
+        setPortraitStrokes(resp?.data?.portrait_strokes ?? null);
+        setQuestionnaire(resp?.data ?? null);
+      })
+      .catch(() => { setPortraitStrokes(null); setQuestionnaire(null); });
   }, []);
 
   async function handleTopicSelect(topicKey) {
@@ -151,21 +149,55 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
       navigation.navigate('L2Portrait', { student });
       return;
     }
-    if (topicKey !== 'self_introduction') return;
 
     setLoading(true);
     try {
       const resp = await level2Api.getQuestionnaire(student.sid);
-      if (resp?.data) {
-        navigation.navigate('L2Loading', { student, questionnaire: resp.data });
-      } else {
-        navigation.navigate('L2Questionnaire', { student });
+      const q = resp?.data ?? null;
+      // Keep local copy in sync so modals always have the latest data
+      setQuestionnaire(q);
+
+      if (topicKey === 'self_introduction') {
+        if (q) {
+          navigation.navigate('L2Loading', { student, questionnaire: q, topic: 'self_introduction' });
+        } else {
+          navigation.navigate('L2Questionnaire', { student });
+        }
+        return;
+      }
+
+      if (topicKey === 'describing_friend') {
+        if (q?.friend_name && q?.friend_gender) {
+          // Friend data already saved → start session directly
+          navigation.navigate('L2Loading', { student, questionnaire: q, topic: 'describe_friend' });
+        } else {
+          // Collect friend data first
+          setFriendModalVisible(true);
+        }
+        return;
+      }
+
+      if (topicKey === 'describing_pet') {
+        if (q?.pet_type) {
+          // Pet data already saved → start session directly
+          navigation.navigate('L2Loading', { student, questionnaire: q, topic: 'describe_pet' });
+        } else {
+          // Collect pet data first
+          setPetModalVisible(true);
+        }
       }
     } catch (err) {
-      if (err?.response?.status === 404 || !err?.response) {
-        navigation.navigate('L2Questionnaire', { student });
+      if (topicKey === 'self_introduction') {
+        if (err?.response?.status === 404 || !err?.response) {
+          navigation.navigate('L2Questionnaire', { student });
+        } else {
+          toast.show('Could not load questionnaire. Please try again.', 'error');
+        }
       } else {
-        toast.show('Could not load questionnaire. Please try again.', 'error');
+        // For friend/pet: questionnaire row may not exist yet — open modal anyway
+        setQuestionnaire(null);
+        if (topicKey === 'describing_friend') setFriendModalVisible(true);
+        else if (topicKey === 'describing_pet')  setPetModalVisible(true);
       }
     } finally {
       setLoading(false);
@@ -359,6 +391,39 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
         </View>
 
         {loading && <ActivityIndicator color={theme.button} size="large" style={styles.loadingSpinner} />}
+
+        {/* describe_friend data capture */}
+        <FriendNameStep
+          visible={friendModalVisible}
+          student={student}
+          existing={questionnaire}
+          onSaved={(fields) => {
+            setFriendModalVisible(false);
+            navigation.navigate('L2Loading', {
+              student,
+              questionnaire: { ...questionnaire, ...fields },
+              topic: 'describe_friend',
+            });
+          }}
+          onCancel={() => setFriendModalVisible(false)}
+        />
+
+        {/* describe_pet data capture */}
+        <PetPicker
+          visible={petModalVisible}
+          student={student}
+          existing={questionnaire}
+          onSaved={(fields) => {
+            setPetModalVisible(false);
+            navigation.navigate('L2Loading', {
+              student,
+              questionnaire: { ...questionnaire, ...fields },
+              topic: 'describe_pet',
+            });
+          }}
+          onCancel={() => setPetModalVisible(false)}
+        />
+
       </SafeAreaView>
     </LinearGradient>
   );

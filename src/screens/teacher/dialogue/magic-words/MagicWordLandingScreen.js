@@ -19,6 +19,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import ProbeBanner from '../../../../components/common/ProbeBanner';
 import { dialogueApi } from '../../../../api/dialogue';
+import { clearRestartCount } from '../../../../utils/sessionRetryTracker';
 
 const WORD_LABELS = {
   thank_you:        'THANK YOU',
@@ -122,11 +123,13 @@ export default function MagicWordLandingScreen({ route, navigation }) {
   }
 
   function handleSkipWord() {
+    clearRestartCount(student?.sid, wordId);
     closeSettings();
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
 
   function handleExitSession() {
+    clearRestartCount(student?.sid, wordId);
     closeSettings();
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
@@ -180,9 +183,6 @@ export default function MagicWordLandingScreen({ route, navigation }) {
             <Text style={[styles.title, { color: theme.headingText }]}>
               {"Let's learn the word"}
             </Text>
-            <Text style={[styles.titleSinhala, { color: theme.headingText }]}>
-              වචනය ඉගෙනගනිමු!
-            </Text>
             <Text style={[styles.wordHighlight, { color: theme.button }]}>
               "{wordLabel}"
             </Text>
@@ -204,9 +204,10 @@ export default function MagicWordLandingScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.nextBtn, { backgroundColor: theme.button }]}
               activeOpacity={0.85}
-              onPress={() =>
-                navigation.navigate('Phase1Video', { student, wordKey, wordId, startIndex: 0 })
-              }
+              onPress={() => {
+                clearRestartCount(student?.sid, wordId);
+                navigation.navigate('Phase1Video', { student, wordKey, wordId, startIndex: 0 });
+              }}
             >
               <Text style={[styles.nextBtnText, { color: theme.buttonText }]}>Next</Text>
               <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />

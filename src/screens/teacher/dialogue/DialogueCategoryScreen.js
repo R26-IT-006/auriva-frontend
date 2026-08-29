@@ -1,10 +1,13 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
+  Animated,
+  FlatList,
   useWindowDimensions,
   BackHandler,
 } from 'react-native';
@@ -19,47 +22,70 @@ const CATEGORIES = [
   {
     key: 'magic_words',
     label: 'Magic Words',
-    subtitle: 'Please, Thank You, and more!',
     icon: require('../../../../assets/dialogue-icons/magic words.png'),
-    gradient: ['#C4B5FD', '#8B5CF6'],
   },
   {
     key: 'greetings',
     label: 'Greetings',
-    subtitle: 'Say hello to the world!',
     icon: require('../../../../assets/dialogue-icons/greetings.png'),
-    gradient: ['#FDA4AF', '#FB7185'],
   },
   {
     key: 'abilities',
     label: 'Can You?',
-    subtitle: 'Run, jump, and climb in English!',
     icon: require('../../../../assets/dialogue-icons/activities.png'),
-    gradient: ['#7DD3FC', '#38BDF8'],
   },
   {
     key: 'evaluations',
     label: 'Evaluations',
-    subtitle: 'Show what you\'ve learned!',
     // No bespoke Evaluations icon exists yet (later asset task); reusing
     // days_of_the_week.png as the most neutral unused asset in dialogue-icons/
     // (magic words / greetings / activities are all already claimed above).
     icon: require('../../../../assets/dialogue-icons/days_of_the_week.png'),
-    gradient: ['#FDE68A', '#F59E0B'],
   },
 ];
 
-const H_PAD = 14;
-const GAP   = 12;
+// Mirrors ConceptCategoriesScreen's CategoryCard (press animation, surface/outline
+// theming, rounded card + image + label) so the two module screens read as one
+// visual system.
+function CategoryCard({ item, cardW, cardH, theme, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
 
-const ROWS = [CATEGORIES.slice(0, 2), CATEGORIES.slice(2, 4)];
+  function pressIn() {
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={[
+          styles.card,
+          { width: cardW, height: cardH, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+        ]}
+      >
+        <Image source={item.icon} style={styles.cardImage} resizeMode="contain" />
+        <Text style={styles.cardLabel} numberOfLines={2}>{item.label}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export default function DialogueCategoryScreen({ route, navigation }) {
   const student = route.params?.student;
   const theme   = getAvatarTheme(student?.avatar_key);
-  const { height } = useWindowDimensions();
-  // Cap each row so tiles don't over-stretch on tall screens
-  const rowH = Math.min(Math.round(height * 0.25), 175);
+  const { width, height } = useWindowDimensions();
+
+  const isLandscape = width > height;
+  const NUM_COLUMNS = isLandscape ? 4 : 3;
+  const H_PAD = Layout.spacing.xl;
+  const GAP   = 22;
+  const cardW = (width - H_PAD * 2 - GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
+  const cardH = cardW * 1.05;
 
   // Intercept Android hardware back → same destination as the UI back arrow
   useFocusEffect(useCallback(() => {
@@ -70,201 +96,183 @@ export default function DialogueCategoryScreen({ route, navigation }) {
     return () => sub.remove();
   }, [student]));
 
-  return (
-    <View style={styles.root}>
+  function goToCategory(item) {
+    if (item.key === 'evaluations') {
+      navigation.navigate('EvaluationMenu', { student });
+    } else {
+      navigation.navigate('Level1Overview', { student, categoryKey: item.key });
+    }
+  }
 
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <SafeAreaView
-        style={{ backgroundColor: theme.headerBackground }}
-        edges={['top']}
-      >
-        <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
+  function renderCard({ item }) {
+    return (
+      <CategoryCard
+        item={item}
+        cardW={cardW}
+        cardH={cardH}
+        theme={theme}
+        onPress={() => goToCategory(item)}
+      />
+    );
+  }
+
+  return (
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      {/* Decorative floating shapes — same treatment as ConceptCategoriesScreen */}
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
+
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+
+        {/* Top bar */}
+        <View style={styles.topBar}>
           <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
             onPress={() => navigation.navigate('DialogueLanding', { student })}
             activeOpacity={0.7}
-            style={styles.backBtn}
           >
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.headingText }]}>Level 1</Text>
-          <View style={styles.backBtn} />
-        </View>
-      </SafeAreaView>
 
-      {/* ── Body (fills remaining space — no scroll) ───────────── */}
-      <LinearGradient
-        colors={theme.backgroundGradient}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
-        <SafeAreaView style={styles.safe} edges={['bottom']}>
-          <View style={styles.body}>
-
-            {/* Heading */}
-            <Text style={[styles.heading, { color: theme.headingText }]}>
-              {'Ready to '}
-              <Text style={[styles.accent, { color: theme.button }]}>grow</Text>
-              {' your English?'}
-            </Text>
-            <Text style={[styles.subheading, { color: theme.headingText }]}>
-              Pick a category and start your adventure!
-            </Text>
-
-            {/* 2 × 2 grid — flex fills the rest */}
-            <View style={styles.grid}>
-              {ROWS.map((row, ri) => (
-                <View
-                  key={ri}
-                  style={[styles.row, { height: rowH }, ri < ROWS.length - 1 && { marginBottom: GAP }]}
-                >
-                  {row.map((cat, ci) => (
-                    <TouchableOpacity
-                      key={cat.key}
-                      activeOpacity={0.85}
-                      style={[styles.card, ci === 1 && { marginLeft: GAP }]}
-                      onPress={() =>
-                        cat.key === 'evaluations'
-                          ? navigation.navigate('EvaluationMenu', { student })
-                          : navigation.navigate('Level1Overview', { student, categoryKey: cat.key })
-                      }
-                    >
-                      <LinearGradient
-                        colors={cat.gradient}
-                        style={styles.cardGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 0.3, y: 1 }}
-                      >
-                        {/* Image zone — flex fills space above label */}
-                        <View style={styles.imgZone}>
-                          <Image
-                            source={cat.icon}
-                            style={styles.cardImg}
-                            resizeMode="contain"
-                          />
-                        </View>
-
-                        {/* Labels */}
-                        <Text style={styles.cardTitle}>{cat.label}</Text>
-                        <Text style={styles.cardSub}>{cat.subtitle}</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ))}
+          <View style={styles.titleRow}>
+            <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="chatbubbles" size={18} color="#FFF" />
             </View>
-
+            <Text style={[styles.title, { color: theme.headingText }]}>Level 1</Text>
           </View>
-        </SafeAreaView>
-      </LinearGradient>
 
-    </View>
+          <View style={styles.iconBtn} />
+        </View>
+
+        <Text style={[styles.subtitle, { color: theme.headingText }]}>
+          Pick a category and start your adventure!
+        </Text>
+
+        <FlatList
+          data={CATEGORIES}
+          keyExtractor={(item) => item.key}
+          numColumns={NUM_COLUMNS}
+          key={NUM_COLUMNS}
+          renderItem={renderCard}
+          style={styles.list}
+          contentContainerStyle={[styles.listContent, { paddingHorizontal: H_PAD }]}
+          columnWrapperStyle={{ gap: GAP, justifyContent: 'center' }}
+          ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
+          showsVerticalScrollIndicator={false}
+        />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  backBtn: {
-    width: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
-  body: {
-    flex: 1,
-    paddingHorizontal: H_PAD,
-    paddingTop: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.lg,
-    justifyContent: 'center',
+  // ── Decorative background shapes ──────────────────────────────────────────
+  blob: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.08,
+  },
+  blobTopRight: {
+    width: 220,
+    height: 220,
+    top: -60,
+    right: -60,
+  },
+  blobBottomLeft: {
+    width: 260,
+    height: 260,
+    bottom: -80,
+    left: -80,
   },
 
-  heading: {
-    fontSize: 20,
-    fontWeight: '900',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-    marginBottom: 2,
-  },
-  accent: { fontWeight: '900' },
-
-  subheading: {
-    fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
-    opacity: 0.6,
-    marginBottom: Layout.spacing.md,
-  },
-
-  grid: {},
-
-  row: {
+  topBar: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
   },
-
-  card: {
-    flex: 1,
-    borderRadius: 22,
-    overflow: 'hidden',
+  iconBtn: {
+    width: 40, height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 70,
+  },
+  titleIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
   },
-
-  cardGradient: {
-    flex: 1,
-    alignItems: 'center',
-    paddingBottom: 12,
-    paddingHorizontal: 8,
+  title: {
+    fontSize: 32,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
   },
-
-  imgZone: {
+  subtitle: {
+    fontSize: 13,
+    fontFamily: 'DMSans_600SemiBold',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginBottom: Layout.spacing.sm,
+    marginTop: 2,
+  },
+  list: {
     flex: 1,
-    width: '100%',
+  },
+  listContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: Layout.spacing.md,
+  },
+  card: {
+    borderRadius: 20,
+    borderWidth: 2,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 10,
-    paddingBottom: 4,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-
-  cardImg: {
+  cardImage: {
     width: '70%',
-    height: '90%',
+    height: '58%',
+    marginBottom: 8,
   },
-
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  cardLabel: {
+    fontSize: 14,
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    marginBottom: 2,
-  },
-
-  cardSub: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-    lineHeight: 13,
+    lineHeight: 18,
+    color: '#1A1A1A',
   },
 });
