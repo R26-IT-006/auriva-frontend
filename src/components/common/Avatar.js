@@ -56,6 +56,6 @@ const styles = StyleSheet.create({
   },
   initials: {
     color: '#FFFFFF',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 });

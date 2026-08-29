@@ -66,14 +66,14 @@ const styles = StyleSheet.create({
   pairLine: { flexDirection: 'row', alignItems: 'center' },
   correct: {
     fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.primary,
     maxWidth: '34%',
   },
   arrow:   { marginHorizontal: 5 },
   selected: {
     fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.status.error,
     maxWidth: '34%',
   },
@@ -84,12 +84,12 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.sm,
     backgroundColor: Colors.surfaceAlt,
   },
-  tierChipText: { fontSize: 10, color: Colors.text.muted, fontFamily: 'Nunito_700Bold' },
+  tierChipText: { fontSize: 10, color: Colors.text.muted, fontFamily: 'DMSans_700Bold' },
   count: {
     marginLeft: 'auto',
     fontSize: Layout.fontSize.xs,
     color: Colors.text.secondary,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 
   track: { height: 6, borderRadius: 3, backgroundColor: Colors.borderLight, overflow: 'hidden' },

@@ -116,12 +116,12 @@ const col = StyleSheet.create({
   itemText: {
     fontSize: Layout.fontSize.lg,
     color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
   itemTextActive: {
     fontSize: Layout.fontSize.xl,
     color: K.purple,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 });
 
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.secondary,
     marginBottom: 2,
   },
@@ -305,11 +305,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
   placeholder: {
     color: Colors.text.muted,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
   },
   error: {
     fontSize: Layout.fontSize.xs,
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.primary,
   },
 
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: Layout.fontSize.xs,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.muted,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   doneBtnText: {
     fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
   },
 });

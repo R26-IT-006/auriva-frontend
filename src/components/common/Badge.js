@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: Layout.fontSize.xs,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     letterSpacing: 0.3,
   },
 });

@@ -15,8 +15,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
+import { ActivityPickerModal } from '../../../components/concept/ActivityPickerModal';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItemsForCategory } from '../../../data/conceptData';
+import {
+  getConceptItemsForCategory,
+  categoryHasVideo,
+  categoryHasPairMatch,
+} from '../../../data/conceptData';
+import { getConclusionForCategory } from '../../../data/conceptConclusions';
+import { getPairableItems, MIN_PAIRS } from '../../../data/conceptPairMatch';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
@@ -41,6 +48,15 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
   const isProgress   = item.tier1_status === 'in_progress';
   const isPriority   = item.is_priority && !isPassed;
 
+  // A confusion node: this concept gets mixed up with at least one other.
+  //
+  // Deliberately NOT gated on !isPassed, unlike every other badge here. A pair
+  // has two ends and the child usually passes one of them — in `animals`, dog and
+  // sparrow are the closest-looking pair in the category, the child confused them,
+  // and both ended up passed. The star could never mark either, so the one real
+  // signal on the screen was invisible while ten displaced concepts wore stars.
+  const isConfused = (item.confused_with || []).length > 0;
+
   return (
     <Animated.View style={{ transform: [{ scale: popAnim }] }}>
       <TouchableOpacity
@@ -57,7 +73,10 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
                            : isResume    ? theme.button
                            : isLocked    ? '#D0D0D0'
                            : theme.cardOutline,
-            borderWidth: isResume || isPriority ? 5 : 4,
+            // Passed sits above resume/priority here for the same reason it does
+            // in borderColor above: once a concept is green, that is the state
+            // worth reading across a grid of 11 at a glance.
+            borderWidth: isPassed ? 5 : isResume || isPriority ? 4 : 3,
           },
         ]}
         onPress={onPress}
@@ -97,6 +116,15 @@ function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
           </View>
         )}
 
+        {/* Confusion badge — this concept gets mixed up with another one.
+            Bottom-left: the other three corners are taken, and it must be able to
+            sit alongside the passed tick rather than replace it. */}
+        {isConfused && !isLocked && (
+          <View style={styles.confusedBadge}>
+            <Ionicons name="swap-horizontal" size={13} color="#7B1FA2" />
+          </View>
+        )}
+
         {/* Resume badge — replaces progress dot */}
         {isResume ? (
           <View style={[styles.resumeBadge, { backgroundColor: theme.button }]}>
@@ -118,6 +146,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
   const [loading,        setLoading]        = useState(true);
   const [gateVisible,    setGateVisible]    = useState(false);
   const [activityStatus, setActivityStatus] = useState(null);
+  const [pickerVisible,  setPickerVisible]  = useState(false);
 
   const theme    = getAvatarTheme(student?.avatar_key);
   const H_PAD    = Layout.spacing.md;
@@ -167,8 +196,12 @@ export default function ConceptItemsScreen({ route, navigation }) {
     const s = serverMap[local.key];
     return {
       ...local,
-      is_unlocked:  s?.is_unlocked  ?? (local.key === localItems[0]?.key),
+      // Nothing is gated — the sequence is a recommendation, not a gate. Kept
+      // as a field so the server can reintroduce locking without a client change.
+      is_unlocked:  true,
       is_priority:  s?.is_priority  || false,
+      // Both ends of every confusion pair this child has produced in the category.
+      confused_with: s?.confused_with || [],
       tier1_status: s?.tier1_status || 'not_started',
       tier1_score:  s?.tier1_score  ?? null,
       tier2_status: s?.tier2_status || 'not_started',
@@ -176,13 +209,30 @@ export default function ConceptItemsScreen({ route, navigation }) {
     };
   });
 
-  // Re-entry point: first unlocked concept not yet fully through tier 3
+  // Where the ladder ends for this category. Without the video stage nothing ever
+  // sets tier3_status, so treating it as the finish line would leave every concept
+  // looking unfinished forever.
+  const hasVideo  = categoryHasVideo(category.key);
+  const isFinished = (i) => (hasVideo ? i.tier3_status === 'passed' : i.tier2_status === 'passed');
+
+  // Re-entry point: first unlocked concept not yet through the last stage
   const resumeKey = loading
     ? null
-    : (merged.find((i) => i.is_unlocked && i.tier3_status !== 'passed')?.key ?? null);
+    : (merged.find((i) => i.is_unlocked && !isFinished(i))?.key ?? null);
 
   // Category complete when every concept has passed tier 1
   const allTier1Passed = !loading && merged.length > 0 && merged.every((i) => i.tier1_status === 'passed');
+
+  // Same predicate the server counts mastery with — tier 1 and tier 2 passed,
+  // tier 3 excluded because it is a video watch with no assessment.
+  //
+  // Kept as keys, not just a count: the card games need the actual concepts when
+  // their startGameActivity call fails, and this screen is the only place on the
+  // client that already knows which ones this child has been taught.
+  const masteredKeys = merged
+    .filter((i) => i.tier1_status === 'passed' && i.tier2_status === 'passed')
+    .map((i) => i.key);
+  const masteredCount = masteredKeys.length;
 
   // Bottom 3 by tier1_score for the review section (only when all passed)
   const weakConcepts = allTier1Passed
@@ -201,7 +251,7 @@ export default function ConceptItemsScreen({ route, navigation }) {
       const screen = item.tier2_status === 'in_progress' ? 'Tier2Activity' : 'Tier2Image';
       return [screen, { student, category, conceptKey: item.key, sessionId: null }];
     }
-    if (item.tier3_status !== 'passed') {
+    if (hasVideo && item.tier3_status !== 'passed') {
       return ['Tier3Video', { student, category, conceptKey: item.key }];
     }
     // Fully complete — allow re-practice from the top
@@ -222,6 +272,78 @@ export default function ConceptItemsScreen({ route, navigation }) {
         }}
       />
     );
+  }
+
+  // What the Activities button offers for this category. Everything is listed
+  // whether or not it is available yet — a locked row explains what opens it,
+  // which is friendlier than a menu that silently changes length as a child
+  // progresses.
+  const conclusion    = getConclusionForCategory(category.key);
+  const coloringItems = localItems.filter((i) => i.coloring);
+  const pairableItems = getPairableItems(category.key);
+
+  // The mixed practice activity is not listed here — it has its own banner at
+  // the top of the list, which announces itself when it becomes available.
+  const activities = [
+    ...(conclusion ? [{
+      key:            'conclusion',
+      screen:         conclusion.screen,
+      icon:           conclusion.icon,
+      title:          conclusion.title,
+      subtitle:       conclusion.subtitle,
+      // Open from the first mastered concept rather than at full mastery: the
+      // sort game works with whatever the child knows, and holding it back to
+      // the end of a category made it unreachable for most of the module.
+      disabledReason: masteredCount >= 1
+        ? null
+        : `Unlocks once you master your first ${category.label.toLowerCase()} concept.`,
+    }] : []),
+    // Both card games unlock at MIN_PAIRS mastered concepts, not at one.
+    //
+    // At one or two the game opened, the server could not fill it from what the
+    // child had actually been taught, and the builders quietly dealt from the whole
+    // category instead — so a child met concepts for the first time inside an
+    // activity meant to consolidate what they knew, and the score was recorded as
+    // though it meant something. Measured against the real data, 14 of 24
+    // student/category pairs were being dealt that way.
+    //
+    // `masteredKeys` rather than a count is passed onward so the game screens have
+    // something true to fall back on when the server is unreachable.
+    ...(categoryHasPairMatch(category.key) && pairableItems.length >= MIN_PAIRS ? [{
+      key:      'pairmatch',
+      screen:   'ConceptPairMatch',
+      icon:     'git-compare',
+      title:    'Photo & Picture Match',
+      subtitle: 'Match each photo to its drawing.',
+      params:   { masteredKeys },
+      disabledReason: masteredCount >= MIN_PAIRS
+        ? null
+        : `Unlocks once you master ${MIN_PAIRS} ${category.label.toLowerCase()} concepts.`,
+    }] : []),
+    ...(pairableItems.length >= MIN_PAIRS ? [{
+      key:      'memory',
+      screen:   'ConceptMemory',
+      icon:     'grid',
+      title:    'Memory Game',
+      subtitle: 'Turn the cards over and find the pairs.',
+      params:   { masteredKeys },
+      disabledReason: masteredCount >= MIN_PAIRS
+        ? null
+        : `Unlocks once you master ${MIN_PAIRS} ${category.label.toLowerCase()} concepts.`,
+    }] : []),
+    ...(coloringItems.length > 0 ? [{
+      key:      'coloring',
+      icon:     'color-palette',
+      title:    'Colouring',
+      subtitle: `Colour any of the ${coloringItems.length} pictures.`,
+      // No lock: colouring is free play, and there is nothing to get wrong.
+      disabledReason: null,
+    }] : []),
+  ];
+
+  function handlePickActivity(screen, params) {
+    setPickerVisible(false);
+    navigation.navigate(screen, { student, category, sessionId: null, ...params });
   }
 
   // Deliberately a banner and not an auto-navigate: dropping a child straight into
@@ -270,6 +392,46 @@ export default function ConceptItemsScreen({ route, navigation }) {
     );
   }
 
+  // The end-of-category send-off, offered once every concept here is mastered
+  // (tier 1 and tier 2 — `fully_mastered` comes from the same predicate the
+  // dashboard and analytics count with). Like the activity banner above it, this
+  // waits to be tapped rather than auto-navigating.
+  function renderConclusionBanner() {
+    if (!conclusion || !activityStatus?.fully_mastered) return null;
+
+    return (
+      <TouchableOpacity
+        style={[styles.activityBanner, styles.conclusionBanner]}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate(conclusion.screen, { student, category })}
+      >
+        <View style={styles.activityBannerIcon}>
+          <Ionicons name="trophy" size={26} color="#C77800" />
+        </View>
+
+        <View style={styles.activityBannerText}>
+          <Text style={[styles.activityBannerTitle, { color: '#4A2E00' }]}>
+            {conclusion.title} 🏆
+          </Text>
+          <Text style={[styles.activityBannerSub, { color: '#4A2E00' }]}>
+            You finished {category.label}! {conclusion.subtitle}
+          </Text>
+        </View>
+
+        <Ionicons name="chevron-forward" size={22} color="#4A2E00" />
+      </TouchableOpacity>
+    );
+  }
+
+  function renderHeader() {
+    return (
+      <>
+        {renderConclusionBanner()}
+        {renderActivityBanner()}
+      </>
+    );
+  }
+
   function renderReviewSection() {
     if (weakConcepts.length === 0) return null;
     return (
@@ -310,25 +472,37 @@ export default function ConceptItemsScreen({ route, navigation }) {
 
         {/* Top bar */}
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={() => navigation.navigate('ConceptCategories', { student })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
-          </TouchableOpacity>
+          {/* Left and right take equal space, so the title lands on the screen's
+              centre line rather than being pushed off it by the wider right
+              group. */}
+          <View style={styles.topBarSide}>
+            <TouchableOpacity
+              style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+              onPress={() => navigation.navigate('ConceptCategories', { student })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.titleRow}>
             <Text style={[styles.title, { color: theme.headingText }]}>{category.label.toUpperCase()}</Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={() => setGateVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="school" size={20} color={theme.headingText} />
-          </TouchableOpacity>
+          <View style={styles.topBarRight}>
+            <TouchableOpacity
+              style={[styles.activitiesBtn, { backgroundColor: theme.button }]}
+              onPress={() => setPickerVisible(true)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Choose an activity"
+            >
+              <Ionicons name="game-controller" size={18} color={theme.buttonText} />
+              <Text style={[styles.activitiesBtnText, { color: theme.buttonText }]}>
+                Activities
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -347,12 +521,21 @@ export default function ConceptItemsScreen({ route, navigation }) {
             contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD }]}
             columnWrapperStyle={{ gap: GAP }}
             ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
-            ListHeaderComponent={renderActivityBanner}
+            ListHeaderComponent={renderHeader}
             ListFooterComponent={renderReviewSection}
             showsVerticalScrollIndicator={false}
           />
         )}
       </SafeAreaView>
+
+      <ActivityPickerModal
+        visible={pickerVisible}
+        theme={theme}
+        activities={activities}
+        coloringItems={coloringItems}
+        onPick={handlePickActivity}
+        onClose={() => setPickerVisible(false)}
+      />
 
       <ParentGateModal
         visible={gateVisible}
@@ -384,19 +567,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  topBarSide: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  topBarRight: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  activitiesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  activitiesBtnText: {
+    fontSize: 15,
+    fontFamily: 'DMSans_700Bold',
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    // Shrinks rather than pushing the buttons apart when a category name is long.
+    flexShrink: 1,
     gap: 6,
   },
   title: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: 1.5,
   },
   subtitle: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,
@@ -423,7 +637,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardImageBox: {
-    width: '72%',
+    width: '58%',
     aspectRatio: 1,
     borderRadius: 8,
     overflow: 'hidden',
@@ -438,7 +652,7 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: 15,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
     color: '#1A1A1A',
   },
@@ -455,6 +669,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
+  },
+  confusedBadge: {
+    position: 'absolute',
+    bottom: 5,
+    left: 5,
   },
   priorityBadge: {
     position: 'absolute',
@@ -495,6 +714,13 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
+  // Gold rather than the avatar theme's button colour, so finishing a category
+  // does not look like one more practice prompt.
+  conclusionBanner: {
+    backgroundColor: '#FFC93C',
+    borderWidth: 3,
+    borderColor: '#E0A100',
+  },
   activityBannerIcon: {
     width: 46,
     height: 46,
@@ -506,11 +732,11 @@ const styles = StyleSheet.create({
   activityBannerText: { flex: 1, gap: 2 },
   activityBannerTitle: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   activityBannerSub: {
     fontSize: 12,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.85,
   },
   activityBannerPreviews: {
@@ -535,7 +761,7 @@ const styles = StyleSheet.create({
   },
   reviewHeading: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 0.3,
   },
   reviewRow: {
@@ -568,7 +794,7 @@ const styles = StyleSheet.create({
   },
   reviewLabel: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
     color: '#1A1A1A',
     marginBottom: 4,
@@ -581,7 +807,7 @@ const styles = StyleSheet.create({
   },
   reviewScoreText: {
     fontSize: 12,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#E65100',
   },
 });

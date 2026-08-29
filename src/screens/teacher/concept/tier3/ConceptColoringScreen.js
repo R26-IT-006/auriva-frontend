@@ -7,9 +7,11 @@ import {
   StyleSheet,
   PanResponder,
   Animated,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { captureRef } from 'react-native-view-shot';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,11 +48,15 @@ export default function ConceptColoringScreen({ route, navigation }) {
   const [activeColor, setActiveColor] = useState('#E53935');
   const [strokes,     setStrokes]     = useState([]);
   const [current,     setCurrent]     = useState(null);
+  const [saving,      setSaving]      = useState(false);
 
   const activeColorRef = useRef('#E53935');
   const currentDRef    = useRef('');
   const sessionStart   = useRef(Date.now());
   const colorScales    = useRef(COLORS.map(() => new Animated.Value(1))).current;
+  // The view captured on Continue — artwork plus strokes, without the palette,
+  // buttons or the themed background around them.
+  const canvasRef      = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -108,14 +114,41 @@ export default function ConceptColoringScreen({ route, navigation }) {
   function handleUndo()  { setStrokes(prev => prev.slice(0, -1)); }
   function handleReset() { currentDRef.current = ''; setCurrent(null); setStrokes([]); }
 
-  function handleContinue() {
+  async function handleContinue() {
+    if (saving) return;
     Speech.stop();
+
+    const timeSpentMs = Date.now() - sessionStart.current;
+
     conceptApi.logInteraction({
       studentId: student.sid, sessionId: null,
       categoryKey: category.key, conceptKey,
       tier: 4, eventType: 'coloring_complete',
-      eventData: { stroke_count: strokes.length, time_spent_ms: Date.now() - sessionStart.current },
+      eventData: { stroke_count: strokes.length, time_spent_ms: timeSpentMs },
     }).catch(() => {});
+
+    // Save the picture the child actually made. An empty page is not artwork, so
+    // a colouring with no strokes just moves on.
+    if (strokes.length > 0) {
+      setSaving(true);
+      try {
+        const uri = await captureRef(canvasRef, { format: 'png', quality: 1, result: 'tmpfile' });
+        await conceptApi.saveColoring({
+          studentId:   student.sid,
+          categoryKey: category.key,
+          conceptKey,
+          uri,
+          strokeCount: strokes.length,
+          timeSpentMs,
+        });
+      } catch {
+        // The child is finished either way — a failed upload must not trap them
+        // on this screen or turn their session into an error message.
+      } finally {
+        setSaving(false);
+      }
+    }
+
     navigation.replace('ConceptItems', { student, category });
   }
 
@@ -166,6 +199,8 @@ export default function ConceptColoringScreen({ route, navigation }) {
 
           {/* Canvas */}
           <View
+            ref={canvasRef}
+            collapsable={false}
             style={[
               styles.canvasBox,
               { width: CANVAS_SIZE, height: CANVAS_SIZE, borderColor: theme.cardOutline },
@@ -238,12 +273,17 @@ export default function ConceptColoringScreen({ route, navigation }) {
 
         {/* Continue */}
         <TouchableOpacity
-          style={[styles.continueBtn, { backgroundColor: theme.button }]}
+          style={[styles.continueBtn, { backgroundColor: theme.button }, saving && styles.continueBtnBusy]}
           onPress={handleContinue}
+          disabled={saving}
           activeOpacity={0.85}
         >
-          <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>Continue</Text>
-          <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
+          <Text style={[styles.continueBtnText, { color: theme.buttonText }]}>
+            {saving ? 'Saving…' : 'Continue'}
+          </Text>
+          {saving
+            ? <ActivityIndicator size="small" color={theme.buttonText} />
+            : <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />}
         </TouchableOpacity>
 
       </SafeAreaView>
@@ -274,13 +314,13 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 22,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 0.5,
     textAlign: 'center',
   },
   pillTextSi: {
     fontSize: 15,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
     marginTop: 2,
@@ -368,7 +408,7 @@ const styles = StyleSheet.create({
   },
   toolBtnText: {
     fontSize: 15,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 
   continueBtn: {
@@ -386,8 +426,11 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
+  continueBtnBusy: {
+    opacity: 0.7,
+  },
   continueBtnText: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 });

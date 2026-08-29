@@ -31,7 +31,7 @@ export const conceptApi = {
     return data;
   },
 
-  async logMatchAttempt({ studentId, sessionId, categoryKey, conceptKey, attemptNumber, selectedKey, correctKey, timeTakenMs, wasCorrect }) {
+  async logMatchAttempt({ studentId, sessionId, categoryKey, conceptKey, attemptNumber, selectedKey, correctKey, timeTakenMs, wasCorrect, optionKeys, distractorSource }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_TIER1_ATTEMPT, {
       student_id:     studentId,
       session_id:     sessionId    || null,
@@ -42,6 +42,11 @@ export const conceptApi = {
       correct_key:    correctKey,
       time_taken_ms:  timeTakenMs  || null,
       was_correct:    wasCorrect,
+      // The options actually presented. A picked option is only ever one the
+      // policy offered, so without this the logs cannot distinguish a genuine
+      // confusion from the distractor policy's own choice.
+      ...(optionKeys ? { option_keys: optionKeys } : {}),
+      ...(distractorSource ? { distractor_source: distractorSource } : {}),
     });
     return data;
   },
@@ -59,7 +64,7 @@ export const conceptApi = {
     return data;
   },
 
-  async logAdaptiveAttempt({ studentId, sessionId, categoryKey, conceptKey, confusedConceptKey, roundNumber, wasCorrect, timeTakenMs }) {
+  async logAdaptiveAttempt({ studentId, sessionId, categoryKey, conceptKey, confusedConceptKey, roundNumber, wasCorrect, timeTakenMs, optionKeys, distractorSource }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_ADAPTIVE_ATTEMPT, {
       student_id:           studentId,
       session_id:           sessionId           || null,
@@ -69,6 +74,11 @@ export const conceptApi = {
       round_number:         roundNumber,
       was_correct:          wasCorrect,
       time_taken_ms:        timeTakenMs         || null,
+      // The adaptive round is always a forced choice between the target and one
+      // confused concept, but log it explicitly rather than leaving the analysis
+      // to infer the pair.
+      ...(optionKeys ? { option_keys: optionKeys } : {}),
+      ...(distractorSource ? { distractor_source: distractorSource } : {}),
     });
     return data;
   },
@@ -121,6 +131,58 @@ export const conceptApi = {
     return data;
   },
 
+  // ── Card games (pair match, memory) ───────────────────────────────────────
+  // The server picks the concepts from the child's tier 1 + tier 2 mastery, so
+  // the game screens ask for a set rather than choosing one themselves.
+
+  async startGameActivity({ studentId, categoryKey, activityType, conceptCount }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_GAME_START, {
+      student_id:    studentId,
+      category_key:  categoryKey,
+      activity_type: activityType,
+      concept_count: conceptCount,
+    });
+    return data;
+  },
+
+  async completeGameActivity({ studentId, sessionId, activityId, pairResults }) {
+    const { data } = await client.post(ENDPOINTS.CONCEPT_GAME_COMPLETE, {
+      student_id:   studentId,
+      session_id:   sessionId || null,
+      activity_id:  activityId,
+      pair_results: pairResults,
+    });
+    return data;
+  },
+
+  /**
+   * Upload a finished Tier 3 colouring. `uri` is a local file from view-shot;
+   * multipart rather than JSON so the PNG is not base64-inflated on the wire.
+   */
+  async saveColoring({ studentId, categoryKey, conceptKey, uri, strokeCount, timeSpentMs }) {
+    const form = new FormData();
+    form.append('image', { uri, name: 'coloring.png', type: 'image/png' });
+    form.append('student_id',   String(studentId));
+    form.append('category_key', categoryKey);
+    form.append('concept_key',  conceptKey);
+    if (strokeCount != null) form.append('stroke_count',  String(strokeCount));
+    if (timeSpentMs != null) form.append('time_spent_ms', String(timeSpentMs));
+
+    const { data } = await client.post(ENDPOINTS.CONCEPT_COLORING_SAVE, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // A picture takes longer than the default 15s on a slow classroom network.
+      timeout: 40000,
+    });
+    return data;
+  },
+
+  async listColoring({ studentId, categoryKey }) {
+    const { data } = await client.get(ENDPOINTS.CONCEPT_COLORING_LIST(studentId), {
+      params: categoryKey ? { category_key: categoryKey } : undefined,
+    });
+    return data;
+  },
+
   async completeAdaptive({ studentId, sessionId, categoryKey, conceptKey, confusedKeys, roundResults, allPassed }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_ADAPTIVE_COMPLETE, {
       student_id:    studentId,
@@ -152,7 +214,7 @@ export const conceptApi = {
     return data;
   },
 
-  async logActivityAttempt({ studentId, sessionId, activityId, categoryKey, conceptKey, roundNumber, questionType, selectedKey, wasCorrect, timeTakenMs, optionKeys }) {
+  async logActivityAttempt({ studentId, sessionId, activityId, categoryKey, conceptKey, roundNumber, questionType, selectedKey, wasCorrect, timeTakenMs, optionKeys, distractorSource }) {
     const { data } = await client.post(ENDPOINTS.CONCEPT_ACTIVITY_ATTEMPT, {
       student_id:    studentId,
       session_id:    sessionId  || null,
@@ -165,6 +227,7 @@ export const conceptApi = {
       was_correct:   wasCorrect,
       time_taken_ms: timeTakenMs || 0,
       option_keys:   optionKeys  || [],
+      ...(distractorSource ? { distractor_source: distractorSource } : {}),
     });
     return data;
   },

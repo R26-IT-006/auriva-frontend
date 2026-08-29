@@ -268,26 +268,26 @@ const styles = StyleSheet.create({
   },
   backBtnText: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: TEAL,
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────
   cardTitle: {
     fontSize: 26,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
     marginBottom: 8,
   },
   cardSubtitle: {
     fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
     lineHeight: 22,
     marginBottom: 28,
   },
   emailHighlight: {
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: TEAL,
   },
 
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E4EE',
     backgroundColor: '#F5F7FA',
     fontSize: 22,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#1A1A2E',
   },
   otpBoxFilled: {
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   btnText: {
     color: '#FFF',
     fontSize: 16,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.4,
   },
 
@@ -340,17 +340,17 @@ const styles = StyleSheet.create({
   },
   resendLabel: {
     fontSize: 13,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
   },
   resendTimer: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#9B9FB0',
   },
   resendLink: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: TEAL,
   },
   resendLinkDisabled: {
@@ -392,13 +392,13 @@ const styles = StyleSheet.create({
   toastIconError:   { backgroundColor: '#FDF0EE' },
   toastTitle: {
     fontSize: 20,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
     textAlign: 'center',
   },
   toastMessage: {
     fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#666',
     textAlign: 'center',
     lineHeight: 22,
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   toastBtnText: {
     color: '#FFF',
     fontSize: 15,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.3,
   },
 
@@ -429,6 +429,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.8,
     color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
 });

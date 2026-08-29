@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,22 +13,135 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../components/common/Avatar';
-import { Badge } from '../../../components/common/Badge';
-import { Card } from '../../../components/common/Card';
 import { MasteryRing } from '../../../components/charts/MasteryRing';
-import { TierBar, TierLegend } from '../../../components/charts/TierBar';
-import { Colors } from '../../../constants/colors';
+import { GroupGrid } from '../../../components/charts/GroupGrid';
+import { ConceptThumb } from '../../../components/charts/ConceptThumb';
+import { CategoryConceptsModal } from '../../../components/concept/CategoryConceptsModal';
+import { Colors, BACKDROP } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
-import { teacherApi } from '../../../api/teacher';
-import { formatDate } from '../../../utils/formatters';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
+import { teacherApi } from '../../../api/teacher';
+import { formatDate, ageFrom } from '../../../utils/formatters';
+import { ROUND, ACTION, sinceWords } from '../../../constants/teacherWording';
 
-function InfoRow({ icon, label, value }) {
-  if (!value) return null;
+// Same tinted pairs the teacher dashboard uses for its section panels, so a
+// profile opened from a dashboard card keeps the same visual language.
+const TINTS = {
+  purple: { bg: '#EFEBFA', fg: '#6C5CE0' },
+  green:  { bg: '#E3F7EC', fg: '#3FAE6F' },
+  blue:   { bg: '#E6F1FC', fg: '#3B82C4' },
+  amber:  { bg: '#FDF1DC', fg: '#E89A2E' },
+  // The sign-in button's own green, in the deepened form that carries text. The
+  // module panel takes it so the page reads as one surface with the identity card
+  // above it rather than a green header with a purple panel under it.
+  brand:  { bg: '#E4F4EC', fg: Colors.brandDeep },
+};
+
+const SECTION = {
+  contact:  { icon: 'call-outline',        ...TINTS.green },
+  progress: { icon: 'stats-chart-outline', ...TINTS.brand },
+};
+
+const PANEL_PAD = 16;
+// The module panel's own rhythm. Everything inside it — header, tab bar, cards,
+// the gaps between them — is a multiple of this, which is most of what makes the
+// section read as laid out rather than assembled.
+const PANEL_PAD_LG = 24;
+const CARD_GAP     = 16;
+
+// Four thumbnails fit one row at the narrowest width this panel reaches, and the
+// overflow count carries the rest. A teacher acting on this opens the group; they
+// do not work through nineteen pictures on a summary card.
+const REVISIT_SHOWN = 4;
+
+// ── Panel shell ──────────────────────────────────────────────────────────────
+
+/**
+ * `size="lg"` is the spacious variant, used for the one panel that carries a
+ * whole workspace rather than a list of fields.
+ *
+ * The difference is not only scale. The small panel wears its accent as a tinted
+ * header band, which is what tells a short list of contact details apart from the
+ * card above it. At the module panel's size that band became a coloured stripe
+ * across the widest thing on the screen and started competing with the content
+ * under it, so the large variant keeps the accent to the icon plate and the
+ * action, and lets the title carry the weight in plain ink.
+ */
+function Panel({ title, section, action, onAction, children, flush, size = 'md' }) {
+  const accent = SECTION[section];
+  const lg = size === 'lg';
+
+  return (
+    // Shadow on the outer view, clipping on the inner one: a view with
+    // overflow:hidden clips its own shadow on iOS, so the two can't be the same.
+    <View style={[styles.panelShadowWrap, lg && styles.panelShadowWrapLg]}>
+      <View style={[
+        styles.panel,
+        lg ? styles.panelLg : { borderColor: accent.fg + '33' },
+      ]}>
+        <View style={[
+          styles.panelHeader,
+          lg
+            ? styles.panelHeaderLg
+            : { backgroundColor: accent.bg, borderBottomColor: accent.fg + '26' },
+        ]}>
+          <View style={[
+            styles.panelIcon,
+            lg && [styles.panelIconLg, { backgroundColor: accent.bg }],
+          ]}>
+            <Ionicons name={accent.icon} size={lg ? 22 : 16} color={accent.fg} />
+          </View>
+
+          <Text
+            style={[styles.panelTitle, lg ? styles.panelTitleLg : { color: accent.fg }]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+
+          {/* On the large panel this is a pill rather than a word. Bare text next
+              to a 52px icon plate and a 24px title read as a caption on the
+              header, not as the way out of it — and it is the only control up
+              there, so it has to look like one. Tinted rather than filled: the
+              panel already ends in a solid gradient button to the same place, and
+              two identical fills would leave neither looking primary. */}
+          {action ? (
+            <TouchableOpacity
+              onPress={onAction}
+              activeOpacity={0.75}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel={`${action}, opens everything this child has done`}
+              style={lg ? [
+                styles.panelActionBtn,
+                { backgroundColor: accent.bg, borderColor: accent.fg + '3D' },
+              ] : null}
+            >
+              <Text style={[
+                styles.panelAction,
+                lg && styles.panelActionLg,
+                { color: accent.fg },
+              ]}>
+                {action}
+              </Text>
+              {lg ? <Ionicons name="arrow-forward" size={15} color={accent.fg} /> : null}
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View style={flush ? null : styles.panelBody}>{children}</View>
+      </View>
+    </View>
+  );
+}
+
+// ── Info rows ────────────────────────────────────────────────────────────────
+
+function InfoRow({ icon, label, value, accent }) {
   return (
     <View style={styles.infoRow}>
-      <View style={styles.infoIcon}>
-        <Ionicons name={icon} size={15} color={Colors.icon.active} />
+      <View style={[styles.infoIcon, { backgroundColor: accent.bg }]}>
+        <Ionicons name={icon} size={15} color={accent.fg} />
       </View>
       <View style={styles.infoContent}>
         <Text style={styles.infoLabel}>{label}</Text>
@@ -38,27 +151,54 @@ function InfoRow({ icon, label, value }) {
   );
 }
 
-function StatLine({ label, value }) {
+/**
+ * Renders only the rows that have a value, with dividers *between* them.
+ *
+ * Interleaving here rather than at each call site is what stops a missing
+ * optional field (no father's name, say) from leaving a divider stranded at the
+ * top of the card with nothing above it.
+ */
+function InfoList({ rows, section }) {
+  const accent  = SECTION[section];
+  const visible = rows.filter((r) => r.value);
+  if (visible.length === 0) return null;
+
   return (
-    <View style={styles.statLine}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+    <View>
+      {visible.map((r, i) => (
+        <React.Fragment key={r.label}>
+          {i > 0 ? <View style={styles.divider} /> : null}
+          <InfoRow icon={r.icon} label={r.label} value={r.value} accent={accent} />
+        </React.Fragment>
+      ))}
     </View>
   );
 }
 
-function SectionHeader({ icon, title, action, onAction }) {
+/** One figure on the progress panel: a small-caps label over a large number. */
+function ProgressStat({ label, value, of, tint }) {
   return (
-    <View style={styles.sectionHeader}>
-      <View style={styles.sectionIcon}>
-        <Ionicons name={icon} size={13} color={Colors.text.link} />
+    <View style={styles.progressStat}>
+      <Text style={styles.progressStatLabel} numberOfLines={2}>{label}</Text>
+      <View style={styles.progressStatRow}>
+        <Text style={[styles.progressStatValue, tint ? { color: tint } : null]}>{value}</Text>
+        {of ? <Text style={styles.progressStatOf}>/ {of}</Text> : null}
       </View>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {action ? (
-        <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
-          <Text style={styles.sectionAction}>{action}</Text>
-        </TouchableOpacity>
-      ) : null}
+    </View>
+  );
+}
+
+/** One fact on the identity card: an icon plate, a small-caps label, the value. */
+function IdFact({ icon, label, value }) {
+  return (
+    <View style={styles.idFact}>
+      <View style={styles.idFactIcon}>
+        <Ionicons name={icon} size={17} color="rgba(255,255,255,0.95)" />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.idFactLabel}>{label}</Text>
+        <Text style={styles.idFactValue} numberOfLines={2}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -72,91 +212,6 @@ const MODULES = [
   { key: 'dialogue',      tab: 'Dialogue',      title: 'Dialogue Module',      icon: 'chatbubbles-outline' },
 ];
 
-/** Whole years between a date of birth and today; null when unparseable. */
-function ageFrom(dateStr) {
-  if (!dateStr) return null;
-  const dob = new Date(dateStr);
-  if (Number.isNaN(dob.getTime())) return null;
-  const now = new Date();
-  let years = now.getFullYear() - dob.getFullYear();
-  const m = now.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) years -= 1;
-  return years >= 0 && years < 130 ? years : null;
-}
-
-const GLOBAL_DEFAULT = 55;
-
-function ThresholdCard({ thresholds = {} }) {
-  const effectiveDefault = typeof thresholds.default === 'number' ? thresholds.default : GLOBAL_DEFAULT;
-  const wasRaised  = effectiveDefault > GLOBAL_DEFAULT;
-
-  const letterOverrides = Object.entries(thresholds)
-    .filter(([k]) => k !== 'default')
-    .map(([letter, value]) => ({ letter, value }))
-    .sort((a, b) => a.letter.localeCompare(b.letter));
-
-  const noChanges = !wasRaised && letterOverrides.length === 0;
-
-  return (
-    <Card style={styles.infoCard}>
-      <View style={styles.thresholdHeader}>
-        <View style={[styles.thresholdIconWrap, wasRaised && styles.thresholdIconRaised]}>
-          <Ionicons
-            name="stats-chart-outline"
-            size={16}
-            color={wasRaised ? '#059669' : '#6366F1'}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.thresholdScore}>{effectiveDefault} / 100</Text>
-          <Text style={styles.thresholdNote}>
-            {wasRaised
-              ? `Raised from ${GLOBAL_DEFAULT} — student is improving consistently!`
-              : 'Using the default writing standard'}
-          </Text>
-        </View>
-        <View style={[styles.thresholdBadge, wasRaised && styles.thresholdBadgeGreen]}>
-          <Text style={[styles.thresholdBadgeText, wasRaised && styles.thresholdBadgeTextGreen]}>
-            {wasRaised ? '▲ Raised' : 'Default'}
-          </Text>
-        </View>
-      </View>
-
-      {letterOverrides.length > 0 && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.thresholdLetterSection}>
-            <Text style={styles.thresholdLetterHeading}>Letters with a lower standard:</Text>
-            {letterOverrides.map(({ letter, value }) => (
-              <View key={letter} style={styles.thresholdLetterRow}>
-                <View style={styles.thresholdLetterBadge}>
-                  <Text style={styles.thresholdLetterChar}>{letter.toUpperCase()}</Text>
-                </View>
-                <Text style={styles.thresholdLetterLabel}>Letter '{letter}'</Text>
-                <Text style={styles.thresholdLetterValue}>{value} / 100</Text>
-                <Text style={styles.thresholdLetterTag}>↓ adjusted</Text>
-              </View>
-            ))}
-            <Text style={styles.thresholdHint}>
-              These letters were automatically adjusted after the student struggled
-              with them repeatedly.
-            </Text>
-          </View>
-        </>
-      )}
-
-      {noChanges && (
-        <>
-          <View style={styles.divider} />
-          <Text style={styles.thresholdAllGood}>
-            No adjustments yet — all letters use the standard setting.
-          </Text>
-        </>
-      )}
-    </Card>
-  );
-}
-
 export default function TeacherStudentDetailScreen({ route, navigation }) {
   const initialStudent = route.params?.student;
   const [student, setStudent] = useState(initialStudent);
@@ -164,6 +219,13 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [concepts, setConcepts] = useState(null);
   const [conceptsLoading, setConceptsLoading] = useState(true);
   const [activeModule, setActiveModule] = useState('concept');
+  // The group whose contents are open, or null. Holds the category itself rather
+  // than a boolean so the sheet's title stays right while it animates out.
+  const [openCategory, setOpenCategory] = useState(null);
+  // The newest note a teacher has written about this child, for the identity card.
+  // Null until it loads and null if it fails — the card simply shows the address
+  // instead, rather than an empty quote box.
+  const [latestNote, setLatestNote] = useState(null);
 
   const fetch = useCallback(async () => {
     if (!initialStudent?.sid) { setRefreshing(false); return; }
@@ -188,6 +250,17 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
+  const fetchNote = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    try {
+      const notes = await teacherApi.getStudentNotes(initialStudent.sid);
+      const newest = Array.isArray(notes) ? notes[0] : null;
+      setLatestNote(newest?.body ?? null);
+    } catch {
+      setLatestNote(null);
+    }
+  }, [initialStudent?.sid]);
+
   // The handwriting report lives under the Writing module below, and is also
   // reachable from the section header's Report action while that tab is active.
   const openHandwritingReport = useCallback(() => {
@@ -199,6 +272,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   }, [navigation, student]);
 
   useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchNote(); }, [fetchNote]);
 
   // Refetch on focus so returning from the report reflects a session just played.
   useFocusEffect(useCallback(() => { fetchConcepts(); }, [fetchConcepts]));
@@ -208,131 +282,216 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   // Categories the child has actually touched — showing all nine when eight are
   // empty buries the signal.
   const activeCategories = (concepts?.categories || []).filter((c) => c.started > 0);
-  const needsAttention = (concepts?.categories || [])
-    .reduce((n, c) => n + c.needs_attention.length, 0);
+
+  // The concepts themselves, not a count of them. `needs_attention` has always
+  // carried the keys and the panel only ever measured the array — which meant the
+  // most actionable thing on the screen was the one thing it withheld.
+  const revisit = (concepts?.categories || []).flatMap((c) =>
+    (c.needs_attention || []).map((k) => ({
+      category_key: c.category_key,
+      concept_key:  k,
+    })),
+  );
+
+  // Older clients can reach a backend that has not been restarted; a missing
+  // field reads as nothing learned this week rather than as NaN on the tile.
+  const learnedThisWeek = concepts?.totals?.learned_last_7_days ?? 0;
+
   const age = ageFrom(student.date_of_birth);
   const activeMeta = MODULES.find((m) => m.key === activeModule) ?? MODULES[0];
   const firstName  = student.full_name.split(' ')[0];
+  const hasProgress = concepts && concepts.totals.started > 0;
+
+
+  // The card itself is the brand teal now, so the child's avatar theme survives
+  // as the badge on the photo — the deep end of their own pair. It is still the
+  // mark a teacher who knows Lily from Boba reads before the name, and it is
+  // still the colour the child sees in the concept activities.
+  const avatarPair = getAvatarTheme(student.avatar_key).heroGradient;
+  const avatarDeep = avatarPair[avatarPair.length - 1];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    // The same backdrop the report uses. The profile is the screen you pass
+    // through on the way to that report, and it was the one flat Colors.background
+    // between the dashboard and the report — so the two ends of the journey shared
+    // a surface and the middle dropped it.
+    <LinearGradient
+      colors={BACKDROP.colors}
+      start={BACKDROP.start}
+      end={BACKDROP.end}
+      style={styles.safe}
+    >
+      <SafeAreaView style={styles.safeInner} edges={['bottom']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetch(); }} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero */}
+        {/* The identity card, in the sign-in button's teal → green, on the same
+            diagonal as that button so it reads as the same surface rather than a
+            coincidence of hue. */}
         <LinearGradient
-          colors={Colors.primaryGradient}
+          colors={Colors.brandGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.hero}
+          style={styles.idCard}
         >
-          <View style={styles.avatarRing}>
-            <Avatar name={student.full_name} uri={student.profile_photo_url} size={72} />
-          </View>
+          {/* Measured, not taste. The brand pair is a button colour: white on it
+              is 2.69:1 at the teal end and 2.29:1 at the green, which is fine for
+              four words on a control and fails everything on a card carrying a
+              name, two dates and an address. The scrim deepens the same two hues
+              to 5.16:1 and 4.56:1 — so the card keeps the brand colour and the
+              text on it can actually be read. */}
+          <View style={styles.idScrim} pointerEvents="none" />
 
-          <View style={styles.heroMeta}>
-            <Text style={styles.heroName} numberOfLines={2}>{student.full_name}</Text>
-            <View style={styles.heroChips}>
-              {student.student_code ? (
-                <View style={styles.heroChip}>
-                  <Ionicons name="card-outline" size={11} color="#FFFFFF" />
-                  <Text style={styles.heroChipText}>{student.student_code}</Text>
+          <View style={styles.idBody}>
+            {/* Left: who they are. */}
+            <View style={styles.idLeft}>
+              <View style={styles.idAvatarWrap}>
+                <Avatar
+                  name={student.full_name}
+                  uri={student.profile_photo_url}
+                  size={104}
+                  style={styles.idAvatar}
+                />
+                {/* The child's own avatar colour, kept as a badge on the photo.
+                    It is the one thing a teacher recognises before reading, and
+                    it had nowhere left to live once the card went dark. */}
+                <View style={[styles.idAvatarBadge, { backgroundColor: avatarDeep }]}>
+                  <Ionicons name="school" size={14} color="#FFFFFF" />
                 </View>
-              ) : null}
-              {age != null ? (
-                <View style={styles.heroChip}>
-                  <Ionicons name="balloon-outline" size={11} color="#FFFFFF" />
-                  <Text style={styles.heroChipText}>{age} years old</Text>
+              </View>
+
+              <Text style={styles.idName} numberOfLines={2}>{student.full_name}</Text>
+
+              <View style={styles.idChips}>
+                {student.student_code ? (
+                  <View style={styles.idChip}>
+                    <Text style={styles.idChipText}>{student.student_code}</Text>
+                  </View>
+                ) : null}
+                {age != null ? (
+                  <>
+                    <View style={styles.idDot} />
+                    <Text style={styles.idAge}>{age} years old</Text>
+                  </>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Right: the facts, as tiles on the dark. */}
+            <View style={styles.idRight}>
+              <View style={styles.idFactRow}>
+                {student.date_of_birth ? (
+                  <IdFact icon="gift-outline" label="Date of birth" value={formatDate(student.date_of_birth)} />
+                ) : null}
+                {student.disability ? (
+                  <IdFact icon="pulse-outline" label="Diagnosis" value={student.disability} />
+                ) : null}
+              </View>
+
+              {/* The most recent note a teacher wrote about this child. Real, not a
+                  placeholder — an invented line here would read as clinical record.
+                  Absent until one exists, and absent if the fetch fails. */}
+              {latestNote ? (
+                <View style={styles.idNote}>
+                  <View style={styles.idNoteBadge}>
+                    <Text style={styles.idNoteQuote}>“</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.idFactLabel}>Teacher's note</Text>
+                    <Text style={styles.idNoteText} numberOfLines={3}>{latestNote}</Text>
+                  </View>
                 </View>
-              ) : null}
-              {student.disability ? (
-                <View style={styles.heroChip}>
-                  <Text style={styles.heroChipText} numberOfLines={1}>{student.disability}</Text>
+              ) : student.address ? (
+                <View style={styles.idNote}>
+                  <View style={styles.idNoteBadge}>
+                    <Ionicons name="home-outline" size={16} color="rgba(255,255,255,0.95)" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.idFactLabel}>Address</Text>
+                    <Text style={styles.idNoteText} numberOfLines={2}>{student.address}</Text>
+                  </View>
                 </View>
               ) : null}
             </View>
           </View>
         </LinearGradient>
 
-        {/* Writing Standard */}
-        <Text style={styles.sectionTitle}>Writing Standard</Text>
-        <ThresholdCard thresholds={student.personal_thresholds ?? {}} />
-
-        {/* Personal Info */}
-        <SectionHeader icon="person-outline" title="Student Information" />
-        <Card style={styles.infoCard} padding="none">
-          <InfoRow icon="calendar-outline" label="Date of Birth" value={formatDate(student.date_of_birth)} />
-          <View style={styles.divider} />
-          <InfoRow icon="medical-outline" label="Disability" value={student.disability} />
-          {student.address && <View style={styles.divider} />}
-          <InfoRow icon="home-outline" label="Address" value={student.address} />
-        </Card>
-
         {/* Contact */}
         {(student.father_name || student.mother_name || student.mobile_number || student.home_number) && (
-          <>
-            <SectionHeader icon="call-outline" title="Contact Information" />
-            <Card style={styles.infoCard} padding="none">
-              <InfoRow icon="person-outline" label="Father's Name" value={student.father_name} />
-              {student.mother_name && <View style={styles.divider} />}
-              <InfoRow icon="person-outline" label="Mother's Name" value={student.mother_name} />
-              {student.mobile_number && <View style={styles.divider} />}
-              <InfoRow icon="phone-portrait-outline" label="Mobile" value={student.mobile_number} />
-              {student.home_number && <View style={styles.divider} />}
-              <InfoRow icon="call-outline" label="Home" value={student.home_number} />
-            </Card>
-          </>
+          <Panel title="Contact Information" section="contact" flush>
+            <InfoList
+              section="contact"
+              rows={[
+                { icon: 'person-outline',          label: "Father's Name", value: student.father_name },
+                { icon: 'person-outline',          label: "Mother's Name", value: student.mother_name },
+                { icon: 'phone-portrait-outline',  label: 'Mobile',        value: student.mobile_number },
+                { icon: 'call-outline',            label: 'Home',          value: student.home_number },
+              ]}
+            />
+          </Panel>
         )}
 
         {/* Module progress */}
-        <SectionHeader
-          icon="stats-chart-outline"
+        <Panel
           title="Module Progress"
-          action={
-            activeModule === 'writing' ||
-            (activeModule === 'concept' && concepts && concepts.totals.started > 0)
-              ? 'Report'
-              : null
-          }
-          onAction={() =>
-            activeModule === 'writing'
-              ? openHandwritingReport()
-              : navigation.navigate('ConceptReport', { student })
-          }
-        />
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.moduleTabs}
+          section="progress"
+          size="lg"
+          flush
+          action={activeModule === 'concept' && hasProgress ? ACTION.history : null}
+          onAction={() => navigation.navigate('ConceptReport', { student })}
         >
-          {MODULES.map((m) => {
-            const active = m.key === activeModule;
-            return (
-              <TouchableOpacity
-                key={m.key}
-                onPress={() => setActiveModule(m.key)}
-                activeOpacity={0.8}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                style={[styles.moduleTab, active && styles.moduleTabActive]}
-              >
-                <Ionicons
-                  name={m.icon}
-                  size={15}
-                  color={active ? '#FFFFFF' : Colors.text.muted}
-                />
-                <Text style={[styles.moduleTabText, active && styles.moduleTabTextActive]}>
-                  {m.tab}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+          {/* One track holding four equal tabs, rather than a scrolling row of
+              chips. There are exactly four modules and there always will be until
+              one ships, so the set is small enough to show whole — and a fixed
+              set shown whole is a segmented control, which says "these are the
+              four choices" where a scroller says "there may be more offscreen". */}
+          <View style={styles.tabBar} accessibilityRole="tablist">
+            {MODULES.map((m) => {
+              const active = m.key === activeModule;
+              return (
+                <TouchableOpacity
+                  key={m.key}
+                  onPress={() => setActiveModule(m.key)}
+                  activeOpacity={0.8}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.tab, active && styles.tabActive]}
+                >
+                  {/* The selected tab is the sign-in button in miniature — same
+                      two hues on the same diagonal — so "the thing you pressed"
+                      looks the same here as it does at the front door. Deepened,
+                      because the raw pair puts white at 2.3:1 and a tab label has
+                      to be read, not just recognised. */}
+                  {active ? (
+                    <LinearGradient
+                      colors={Colors.brandGradientDeep}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.tabFill}
+                    />
+                  ) : null}
 
-        <Card style={styles.infoCard} padding="none">
+                  {/* `secondary`, not `muted`: muted on the track is 2.48:1, under
+                      the 3:1 floor for a control's icon, and these sit next to a
+                      selected tab that is now considerably stronger. */}
+                  <Ionicons
+                    name={m.icon}
+                    size={16}
+                    color={active ? '#FFFFFF' : Colors.text.secondary}
+                  />
+                  <Text
+                    style={[styles.tabText, active && styles.tabTextActive]}
+                    numberOfLines={1}
+                  >
+                    {m.tab}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           {activeModule === 'writing' ? (
             <View style={styles.writingPanel}>
               <TouchableOpacity
@@ -381,7 +540,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
             </View>
           ) : conceptsLoading ? (
             <View style={styles.conceptLoading}>
-              <ActivityIndicator color={Colors.icon.active} />
+              <ActivityIndicator color={SECTION.progress.fg} />
             </View>
           ) : !concepts ? (
             <View style={styles.conceptEmpty}>
@@ -391,218 +550,685 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                 <Text style={styles.retryText}>Retry</Text>
               </TouchableOpacity>
             </View>
-          ) : concepts.totals.started === 0 ? (
+          ) : !hasProgress ? (
             <View style={styles.conceptEmpty}>
               <Ionicons name="school-outline" size={22} color={Colors.text.muted} />
               <Text style={styles.conceptEmptyText}>
-                No concept activity yet. Progress appears here once {student.full_name.split(' ')[0]} starts a session.
+                No concept activity yet. Progress appears here once {firstName} starts a session.
               </Text>
             </View>
           ) : (
             <>
-              <View style={styles.conceptHeader}>
-                <MasteryRing value={concepts.totals.mastery_pct} size={92} label="mastery" />
-                <View style={styles.conceptStats}>
-                  <StatLine
-                    label="Mastered"
-                    value={`${concepts.totals.mastered} / ${concepts.totals.catalogue_concepts}`}
+              <View style={styles.conceptBody}>
+              {/* The ring beside a 2x2 of figures. It stays here — unlike the
+                  full report, where it restated the Learned tile — because this
+                  panel has no headline sentence, so the ring IS the summary. */}
+              <View style={styles.statRow}>
+                <View style={styles.ringCard}>
+                  {/* Explicit colour, not scoreColor's good/fair/poor ramp.
+                      That ramp grades accuracy — did the child get it right —
+                      and this figure is coverage: 11 of 93 concepts in the whole
+                      catalogue. Left to the ramp, anything under 45% draws in
+                      alarm red, so a child three weeks in gets a red ring for
+                      having worked through eleven things, which is not a verdict
+                      the number supports. The panel's own green says "this is
+                      how far along we are" without passing judgement on it. */}
+                  <MasteryRing
+                    value={concepts.totals.mastery_pct}
+                    size={168}
+                    label="learned"
+                    color={Colors.brandDeep}
                   />
-                  <StatLine label="Started" value={String(concepts.totals.started)} />
-                  <StatLine label="Identified" value={String(concepts.totals.tier1_passed)} />
-                  <StatLine label="Needs work" value={String(needsAttention)} />
+                </View>
+
+                <View style={styles.statGrid}>
+                  <ProgressStat
+                    label="Learned"
+                    value={String(concepts.totals.mastered)}
+                    of={concepts.totals.catalogue_concepts}
+                  />
+                  {/* The only figure on the panel with a time bound. Without it
+                      every number here is a lifetime total, and a child who
+                      learned twenty things last month reads the same as one who
+                      learned them last month and stopped. */}
+                  <ProgressStat label="This week" value={`+${learnedThisWeek}`} />
+                  {/* The two rounds side by side. Mastery needs both, so the gap
+                      between them is where the child is actually stuck — knowing
+                      forty pictures and seventeen words says the naming is the
+                      problem, which neither number says alone. */}
+                  <ProgressStat label={ROUND.tier1.label} value={String(concepts.totals.tier1_passed)} />
+                  <ProgressStat label={ROUND.tier2.label} value={String(concepts.totals.tier2_passed)} />
                 </View>
               </View>
 
-              <View style={styles.divider} />
+              {/* Two things that are not counts, so they are not tiles. A date and
+                  a row of pictures never sat well in a box built for a big number,
+                  and the four tiles above have to stay a 2x2 anyway to keep their
+                  height matched to the ring. */}
+              <View style={styles.context}>
+                <View style={styles.lastWorked}>
+                  <Ionicons name="time-outline" size={15} color={Colors.text.secondary} />
+                  <Text style={styles.lastWorkedLabel}>Last worked</Text>
+                  <Text style={styles.lastWorkedValue}>
+                    {sinceWords(concepts.last_activity_at)}
+                  </Text>
+                </View>
 
-              <View style={styles.categoryBlock}>
-                {activeCategories.map((c) => (
-                  <TierBar
-                    key={c.category_key}
-                    label={c.label}
-                    total={c.total}
-                    tier1={c.tier1_passed}
-                    tier2={c.tier2_passed}
-                    tier3={c.tier3_passed}
-                    right={`${c.mastered}/${c.total}`}
-                  />
-                ))}
-                <TierLegend />
+                <View style={styles.revisit}>
+                  <Text style={styles.revisitLabel}>Worth another look</Text>
+
+                  {revisit.length === 0 ? (
+                    <Text style={styles.revisitEmpty}>
+                      Nothing needs revisiting right now.
+                    </Text>
+                  ) : (
+                    <View style={styles.revisitRow}>
+                      {revisit.slice(0, REVISIT_SHOWN).map((r) => (
+                        <TouchableOpacity
+                          key={`${r.category_key}/${r.concept_key}`}
+                          activeOpacity={0.75}
+                          onPress={() => setOpenCategory(
+                            (concepts.categories || [])
+                              .find((c) => c.category_key === r.category_key) ?? null,
+                          )}
+                          accessibilityRole="button"
+                        >
+                          <ConceptThumb
+                            categoryKey={r.category_key}
+                            conceptKey={r.concept_key}
+                            size={44}
+                            showLabel
+                          />
+                        </TouchableOpacity>
+                      ))}
+                      {revisit.length > REVISIT_SHOWN ? (
+                        <Text style={styles.revisitMore}>
+                          +{revisit.length - REVISIT_SHOWN} more
+                        </Text>
+                      ) : null}
+                    </View>
+                  )}
+                </View>
               </View>
 
-              <TouchableOpacity
-                style={styles.reportLink}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('ConceptReport', { student })}
-              >
-                <Text style={styles.reportLinkText}>View full report</Text>
-                <Ionicons name="chevron-forward" size={16} color={Colors.text.link} />
-              </TouchableOpacity>
+              <View style={styles.breakdownHead}>
+                <Ionicons name="list-outline" size={16} color={Colors.text.secondary} />
+                <Text style={styles.breakdownTitle}>Category breakdown</Text>
+              </View>
+
+              {/* Cards two to a row rather than the report's full-width rows.
+                  Nothing opens here, so the row's horizontal space bought nothing
+                  and nine of them made this the tallest panel on the screen. Same
+                  faces and same three bands as the report, so it still reads as
+                  one chart across the two screens. */}
+              <GroupGrid
+                categories={concepts.categories || []}
+                showLegend
+                initialCount={6}
+                onSelect={setOpenCategory}
+              />
+
+              </View>
+
+              {/* On its own ruled footer. Floating at the end of the last bar it
+                  read as belonging to that category rather than to the panel. */}
+              <View style={styles.reportFooter}>
+                {/* Two different questions. This one answers "how was a named
+                    week or month", which the live view structurally cannot —
+                    its figures move every time it is opened. Text-and-icon
+                    rather than a second filled button: two solid buttons side by
+                    side would read as a choice between equals, and most days the
+                    live view is the one a teacher wants. */}
+                <TouchableOpacity
+                  style={styles.archiveBtn}
+                  activeOpacity={0.75}
+                  onPress={() => navigation.navigate('ConceptReports', { student })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Saved reports for each week and month"
+                >
+                  <Ionicons name="document-text-outline" size={15} color={Colors.text.secondary} />
+                  <Text style={styles.archiveBtnText}>Reports</Text>
+                </TouchableOpacity>
+
+                {/* The panel's one primary action, so it wears the primary action
+                    colour — the same green as the selected tab and the sign-in
+                    button. Charcoal made it read as a neutral control on a page
+                    that now has a colour for exactly this. */}
+                <TouchableOpacity
+                  style={styles.reportBtn}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('ConceptReport', { student })}
+                  accessibilityRole="button"
+                >
+                  <LinearGradient
+                    colors={Colors.brandGradientDeep}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.reportBtnFill}
+                  />
+                  <Text style={styles.reportBtnText}>{ACTION.historyFor(firstName)}</Text>
+                  <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
             </>
           )}
-        </Card>
+        </Panel>
+
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Outside the ScrollView: a Modal nested in a scroller inherits its
+          clipping on Android and comes up cropped. */}
+      <CategoryConceptsModal
+        visible={!!openCategory}
+        category={openCategory}
+        studentId={student.sid}
+        accent={Colors.brandDeep}
+        onClose={() => setOpenCategory(null)}
+      />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  scroll: { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl },
-  // ── Hero ──────────────────────────────────────────────────────────────────
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.lg,
-    ...Layout.shadow.md,
-  },
-  avatarRing: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.28)',
-  },
-  heroMeta:  { flex: 1, marginLeft: Layout.spacing.lg },
-  heroName:  {
-    fontSize: Layout.fontSize.xl,
-    fontFamily: 'Nunito_800ExtraBold',
-    color: '#FFFFFF',
-    lineHeight: Layout.fontSize.xl * 1.25,
-  },
-  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  heroChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: Layout.radius.full,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
-  heroChipText: {
-    fontSize: Layout.fontSize.xs,
-    color: '#FFFFFF',
-    fontFamily: 'Nunito_700Bold',
-    maxWidth: 150,
+  // ── Module progress ────────────────────────────────────────────────────────
+  // The panel is `flush`, so the body supplies its own padding. Without it the
+  // progress bars ran to the card's edges and the whole section read as though it
+  // had been pasted in rather than laid out.
+  conceptBody: {
+    padding: PANEL_PAD_LG,
+    paddingTop: Layout.spacing.lg,
+    gap: Layout.spacing.lg,
   },
 
-  // ── Section headers ───────────────────────────────────────────────────────
-  sectionHeader: {
+  reportFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Layout.spacing.sm,
-    marginBottom: Layout.spacing.sm,
-    marginTop: Layout.spacing.xs,
+    justifyContent: 'space-between',
+    gap: Layout.spacing.md,
+    paddingHorizontal: PANEL_PAD_LG,
+    paddingBottom: PANEL_PAD_LG,
+    paddingTop: Layout.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
   },
-  sectionIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Colors.status.infoLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: {
-    flex: 1,
-    fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
-    color: Colors.text.primary,
-  },
-  sectionAction: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.link,
-    fontFamily: 'Nunito_700Bold',
-  },
-  infoCard: { marginBottom: Layout.spacing.md },
-  infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Layout.spacing.sm, paddingHorizontal: Layout.spacing.md },
-  infoIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.status.infoLight, alignItems: 'center', justifyContent: 'center', marginRight: Layout.spacing.sm },
-  infoContent: { flex: 1 },
-  infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
-  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'Nunito_600SemiBold' },
-  divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 58 },
-
-  // ── Module selector ───────────────────────────────────────────────────────
-  moduleTabs: {
-    gap: Layout.spacing.sm,
-    paddingBottom: Layout.spacing.sm,
-    paddingRight: Layout.spacing.md,
-  },
-  moduleTab: {
+  // Text-and-icon, so the primary action beside it keeps the weight.
+  archiveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: Layout.spacing.md,
     paddingVertical: Layout.spacing.sm,
-    borderRadius: Layout.radius.full,
-    backgroundColor: Colors.surface,
+  },
+  archiveBtnText: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_600SemiBold',
+    color: Colors.text.secondary,
+  },
+  // No fill and no border. The ring is already a closed shape on a plain white
+  // panel, so a plate behind it drew a second boundary around something that had
+  // one; the tiles beside it need their surfaces because a bare number has no
+  // edge of its own. Keeps its sizing so the row still squares off against the
+  // grid's two 108pt rows.
+  ringCard: {
+    flexGrow: 1,
+    flexBasis: 260,
+    minWidth: 220,
+    paddingVertical: Layout.spacing.xl,
+    paddingHorizontal: Layout.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressStat: {
+    // Just under half, so two sit per row with the gap between them. Fixed height
+    // rather than content-sized: "Worth another look" wraps to two lines and used
+    // to make its row taller than the one above it. Two of these plus the gap is
+    // what sets the height the ring card stretches to.
+    flexGrow: 1,
+    flexBasis: '46%',
+    // 130, not 140. On a portrait phone the grid is ~292 wide, so two cards plus
+    // the 16 gap have 138 each — a 140 floor tipped them onto separate rows and
+    // turned the 2x2 into a stack of four.
+    minWidth: 130,
+    height: 108,
+    justifyContent: 'center',
+    paddingHorizontal: Layout.spacing.lg,
+    borderRadius: Layout.radius.xl,
+    backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
-  moduleTabActive: {
-    backgroundColor: Colors.text.link,
-    borderColor: Colors.text.link,
-  },
-  moduleTabText: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_700Bold',
+  // `secondary`, not `muted`. Muted on the tile fill is 2.48:1 — these are 11px
+  // uppercase, the smallest type on the panel, and they were the faintest too.
+  // At `secondary` they reach 5.90:1 and still read as captions, because size and
+  // case were doing that work already.
+  progressStatLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
-  moduleTabTextActive: { color: '#FFFFFF' },
+  progressStatRow:   { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8 },
+  progressStatValue: { fontSize: 30, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  progressStatOf:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary },
 
-  // ── Concept Learning ──────────────────────────────────────────────────────
-  conceptLoading: { paddingVertical: Layout.spacing.xl, alignItems: 'center' },
-  conceptEmpty: {
-    paddingVertical: Layout.spacing.lg,
-    paddingHorizontal: Layout.spacing.md,
+  // Margins rather than relying on conceptBody's gap alone: the breakdown is a
+  // second subject under the same tab, so it wants a wider gap above it than the
+  // one holding the stat row and the tabs together.
+  breakdownHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: Layout.spacing.md,
+    marginBottom: 0,
+  },
+  breakdownTitle: {
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: Colors.text.primary,
+  },
+
+  // Filled, not a text link. It leaves this screen for another, which is a bigger
+  // move than anything else on the panel and should look like one. Fill comes
+  // from the gradient child; overflow clips it to the pill.
+  reportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: Layout.radius.full,
+    overflow: 'hidden',
+  },
+  reportBtnFill: { ...StyleSheet.absoluteFillObject },
+  reportBtnText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },
+
+  // ── Identity card ──────────────────────────────────────────────────────────
+  // Colour comes from the gradient at the call site; the shadow takes the brand
+  // teal so the card does not cast the app's default blue over a green surface.
+  idCard: {
+    borderRadius: 28,
+    padding: Layout.spacing.lg,
+    marginBottom: Layout.spacing.lg,
+    ...Layout.shadow.md,
+    shadowColor: Colors.brand,
+  },
+  // Radius repeated rather than clipping the gradient with overflow:hidden — a
+  // clipping view swallows its own shadow on iOS, and the card wants its lift.
+  // Near-black teal rather than neutral black, so it deepens the hue instead of
+  // greying it.
+  idScrim: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 28,
+    backgroundColor: 'rgba(11,42,40,0.40)',
+  },
+  idBody: { flexDirection: 'row', gap: Layout.spacing.lg, flexWrap: 'wrap' },
+
+  idLeft:  { minWidth: 200, justifyContent: 'flex-start' },
+  idRight: { flex: 1, minWidth: 260, gap: 12 },
+
+  idAvatarWrap: { alignSelf: 'flex-start' },
+  idAvatar: {
+    borderRadius: 26,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  // On the photo's corner, carrying the child's own avatar hue — the one thing a
+  // teacher recognises before reading, which the card's own colour would lose.
+  //
+  // Ringed in white rather than in the card's colour: the card is a gradient now,
+  // so no single value matches it at the badge's position, and two of the five
+  // avatar hues are greens that would sink into it without a break.
+  idAvatarBadge: {
+    position: 'absolute',
+    right: -4, bottom: -4,
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+
+  idName: {
+    fontSize: 26,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    marginTop: Layout.spacing.md,
+  },
+  idChips: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' },
+  idChip: {
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: Layout.radius.full,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  idChipText: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: 'rgba(255,255,255,0.95)',
+    letterSpacing: 0.5,
+  },
+  idDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.45)' },
+  idAge: { fontSize: Layout.fontSize.sm, color: 'rgba(255,255,255,0.90)' },
+
+  // Wraps, and the tiles are allowed to be narrow. Two 160px minimums in a
+  // non-wrapping row needed 328pt in a column that is 294 on a portrait phone,
+  // so the second tile ran off the card.
+  idFactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  idFact: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    minWidth: 130,
+    flexDirection: 'row',
     alignItems: 'center',
     gap: Layout.spacing.sm,
+    padding: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+    // 0.06 was calibrated against the charcoal card it used to sit on. On a
+    // mid-tone teal it lifts the surface by 1.05x — invisible — so the tiles had
+    // stopped reading as tiles. 0.14 plus a hairline gives them their edge back.
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  idFactIcon: {
+    width: 38, height: 38, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.20)',
+  },
+  idFactLabel: {
+    fontSize: 10,
+    fontFamily: 'DMSans_700Bold',
+    color: 'rgba(255,255,255,0.90)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+  },
+  idFactValue: {
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_700Bold',
+    color: '#FFFFFF',
+    marginTop: 3,
+  },
+
+  // Same surface as the fact tiles either side of it, for the same reason.
+  idNote: {
+    flexDirection: 'row',
+    gap: Layout.spacing.sm,
+    padding: Layout.spacing.md,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  idNoteBadge: {
+    width: 38, height: 38, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.20)',
+  },
+  idNoteQuote: { fontSize: 20, lineHeight: 26, color: 'rgba(255,255,255,0.9)', fontFamily: 'DMSans_800ExtraBold' },
+  idNoteText: {
+    fontSize: Layout.fontSize.sm,
+    fontStyle: 'italic',
+    color: 'rgba(255,255,255,0.95)',
+    lineHeight: 20,
+    marginTop: 3,
+  },
+
+
+  // Colour comes from the BACKDROP gradient this is applied to.
+  safe:      { flex: 1 },
+  safeInner: { flex: 1 },
+  scroll: {
+    padding: Layout.spacing.lg,
+    // More clearance above the identity card than the sides carry. It is the
+    // first thing under the navigation bar, and at an even 24 all round it sat
+    // tight against that bar — the one edge where the card has a hard boundary
+    // above it rather than open backdrop.
+    paddingTop: Layout.spacing.xl + Layout.spacing.sm,
+    paddingBottom: Layout.spacing.xxl,
+    gap: Layout.spacing.lg,
+  },
+
+  // ── Hero ──────────────────────────────────────────────────────────────────
+  // backgroundColor and shadowColor are both supplied at the call site from the
+  // student's avatar theme; everything else about the card is fixed.
+  panelShadowWrap: {
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surface,
+    ...Layout.shadow.sm,
+  },
+  panel: {
+    backgroundColor: Colors.surface,
+    borderRadius: Layout.radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.sm,
+    paddingHorizontal: PANEL_PAD,
+    paddingVertical: Layout.spacing.md,
+    borderBottomWidth: 1,
+  },
+  panelIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panelTitle: {
+    flex: 1,
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
+  panelAction: {
+    fontSize: Layout.fontSize.xs,
+    fontFamily: 'DMSans_700Bold',
+  },
+  panelBody: { padding: PANEL_PAD },
+
+  // ── Panel, large variant ──────────────────────────────────────────────────
+  panelShadowWrapLg: { borderRadius: Layout.radius.xl, ...Layout.shadow.md },
+  panelLg: { borderRadius: Layout.radius.xl, borderWidth: 1, borderColor: Colors.borderLight },
+  // No tinted fill and no rule under it. At this width a coloured band read as a
+  // stripe across the panel; the space below the title is what separates the
+  // header from the tabs instead.
+  panelHeaderLg: {
+    gap: Layout.spacing.md,
+    paddingHorizontal: PANEL_PAD_LG,
+    paddingTop: PANEL_PAD_LG,
+    paddingBottom: Layout.spacing.lg,
+    borderBottomWidth: 0,
+  },
+  panelIconLg: { width: 52, height: 52, borderRadius: 16 },
+  panelTitleLg: {
+    fontSize: Layout.fontSize.xxl,
+    color: Colors.text.primary,
+    letterSpacing: -0.4,
+  },
+  panelActionLg: { fontSize: Layout.fontSize.md },
+  // ~38pt tall, which reads as a peer of the 52pt icon plate across the header
+  // rather than as something floating beside the title.
+  panelActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: Layout.radius.full,
+    borderWidth: 1,
+  },
+
+  // ── Info rows ─────────────────────────────────────────────────────────────
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Layout.spacing.md,
+    paddingHorizontal: PANEL_PAD,
+  },
+  infoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Layout.spacing.md,
+  },
+  infoContent: { flex: 1 },
+  infoLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginBottom: 2 },
+  infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
+  // Indented to clear the icon column (pad 16 + icon 32 + gap 16), so the rule
+  // separates the text, not the whole row.
+  divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 64 },
+
+  // ── Module selector ───────────────────────────────────────────────────────
+  // A single recessed track with the four tabs inside it. The track is what makes
+  // the unselected tabs read as available rather than as disabled text — they
+  // have no fill or border of their own, so the group has to supply the edge.
+  tabBar: {
+    flexDirection: 'row',
+    gap: 4,
+    padding: 5,
+    marginHorizontal: PANEL_PAD_LG,
+    borderRadius: Layout.radius.lg,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  tab: {
+    // Equal shares of the track, so the four sit on a regular rhythm rather than
+    // each taking the width of its own label.
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 13,
+    paddingHorizontal: 6,
+    borderRadius: Layout.radius.md,
+  },
+  // Fill comes from the gradient child; this carries only the lift that separates
+  // the selected tab from the track it sits in.
+  tabActive: {
+    ...Layout.shadow.sm,
+    shadowColor: Colors.brandDeep,
+    shadowOpacity: 0.30,
+  },
+  tabFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: Layout.radius.md,
+  },
+  tabText: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.secondary,
+  },
+  tabTextActive: { color: '#FFFFFF' },
+
+  // ── Concept Learning ──────────────────────────────────────────────────────
+  // Both sit in the same box the stat row would occupy, so switching to a module
+  // that has not shipped does not collapse the panel to a third of its height.
+  conceptLoading: {
+    minHeight: 232,
+    margin: PANEL_PAD_LG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Layout.radius.xl,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  conceptEmpty: {
+    minHeight: 232,
+    margin: PANEL_PAD_LG,
+    paddingHorizontal: Layout.spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Layout.spacing.md,
+    borderRadius: Layout.radius.xl,
+    backgroundColor: Colors.surfaceAlt,
   },
   conceptEmptyText: {
-    fontSize: Layout.fontSize.sm,
+    fontSize: Layout.fontSize.md,
     color: Colors.text.secondary,
     textAlign: 'center',
+    lineHeight: Layout.fontSize.md * 1.55,
+    maxWidth: 380,
   },
   retryText: {
     fontSize: Layout.fontSize.sm,
     color: Colors.text.link,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
-  conceptHeader: {
+  // `stretch` is what squares the two sides off against each other: the grid's
+  // two fixed-height rows set the row's height, and the ring card grows to match
+  // rather than ending short and leaving a notch beside it.
+  //
+  // Wrapping, not a hard breakpoint. On a portrait tablet the two bases fit side
+  // by side; on a phone the grid drops below the ring and both go full width,
+  // without either needing to know which device it is on.
+  statRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: Layout.spacing.md,
-    gap: Layout.spacing.lg,
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+    gap: CARD_GAP,
   },
-  conceptStats: { flex: 1, gap: 6 },
-  statLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted },
-  statValue: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.primary,
-    fontFamily: 'Nunito_700Bold',
-  },
-  categoryBlock: {
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.md,
-    gap: Layout.spacing.sm,
-  },
-  reportLink: {
+  statGrid: {
+    flexGrow: 1.5,
+    flexBasis: 340,
+    minWidth: 280,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.md,
+    flexWrap: 'wrap',
+    gap: CARD_GAP,
+  },
+
+  // ── Context strip ─────────────────────────────────────────────────────────
+  // Ruled off rather than tiled. These two are context for the figures above,
+  // not more figures, and giving them tile surfaces would have made six cards of
+  // which two were not counts.
+  context: {
+    gap: Layout.spacing.md,
+    paddingTop: Layout.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: Colors.divider,
   },
-  reportLinkText: {
+  lastWorked: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  lastWorkedLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  lastWorkedValue: {
     fontSize: Layout.fontSize.sm,
-    color: Colors.text.link,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.primary,
+  },
+
+  revisit: { gap: Layout.spacing.sm },
+  revisitLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+    color: Colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  revisitEmpty: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.text.secondary,
+  },
+  // Wraps, so a narrow panel stacks the thumbnails rather than squeezing them.
+  revisitRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: Layout.spacing.md,
+  },
+  revisitMore: {
+    fontSize: Layout.fontSize.xs,
+    fontFamily: 'DMSans_600SemiBold',
+    color: Colors.text.muted,
+    alignSelf: 'center',
   },
   // Wraps the report card inside the Writing module panel. The Card it now sits
   // in already supplies the outer surface, so this only adds inset padding.

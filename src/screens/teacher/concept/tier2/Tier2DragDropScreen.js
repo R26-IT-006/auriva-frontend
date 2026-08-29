@@ -55,6 +55,12 @@ export default function Tier2DragDropScreen({ route, navigation }) {
   const ZONE_SIZE = Math.min(width, height) * 0.28;
 
   const baseOptions = useRef(buildOptions(allItems, conceptKey));
+  // Until the distractor policy answers, the local sequential build is what is on
+  // screen — so that, not 'gkb', is the honest default here.
+  const distractorSource = useRef('client_sequential');
+  // Set on the first drop, so a late-arriving response can never rearrange the
+  // cards under a child who has already started.
+  const startedRef = useRef(false);
 
   const [currentAttempt, setCurrentAttempt] = useState(1);
   const [displayOptions, setDisplayOptions] = useState(() => shuffle(baseOptions.current));
@@ -65,6 +71,8 @@ export default function Tier2DragDropScreen({ route, navigation }) {
   const [zoneContent,    setZoneContent]    = useState(null); // { source, isCorrect }
   const [droppedKey,     setDroppedKey]     = useState(null); // card left in the box
 
+  // Horizontal offset for the feedback GIF: 250 parks it off the right edge
+  // (200 wide plus its 20 inset), 0 brings it on screen.
   const feedbackSlide  = useRef(new Animated.Value(250)).current;
   const dropZoneLayout = useRef(null);
   const dropZoneRef    = useRef(null);
@@ -113,6 +121,29 @@ export default function Tier2DragDropScreen({ route, navigation }) {
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ask the distractor policy for the options, as the tier 1 match and tier 2
+  // name rounds already do. This screen used to always show the next two concepts
+  // in sequence, which meant neither the GKB nor the exploration policy ever
+  // reached drag-drop — so its attempts could never contribute usable confusion
+  // evidence, only a restatement of the sequence.
+  useEffect(() => {
+    let cancelled = false;
+    conceptApi.getDistractors({ studentId: student.sid, categoryKey: category.key, conceptKey, tier: 2 })
+      .then((res) => {
+        if (cancelled || startedRef.current) return;
+        const keys = res?.distractors || [];
+        const d1 = keys[0] ? allItems.find((it) => it.key === keys[0]) : null;
+        const d2 = keys[1] ? allItems.find((it) => it.key === keys[1]) : null;
+        // Anything unusable leaves the sequential build and its label in place.
+        if (!(d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey)) return;
+        baseOptions.current      = [concept, d1, d2];
+        distractorSource.current = res?.distractor_source || 'gkb';
+        setDisplayOptions(shuffle(baseOptions.current));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function resetPans() {
     pans.current.forEach((pan) => pan.setValue({ x: 0, y: 0 }));
   }
@@ -158,6 +189,7 @@ export default function Tier2DragDropScreen({ route, navigation }) {
     }
 
     setLocked(true);
+    startedRef.current = true;
     const wasCorrect  = option.key === conceptKey;
     const timeTakenMs = Date.now() - attemptStart.current;
 
@@ -182,9 +214,15 @@ export default function Tier2DragDropScreen({ route, navigation }) {
       eventData: {
         attempt_number: currentAttempt,
         selected_key:   option.key,
+        // See the note in Tier2ActivityScreen: the concept under test is the
+        // right answer, recorded here so the row is self-describing.
+        correct_key:    conceptKey,
         was_correct:    wasCorrect,
         time_taken_ms:  timeTakenMs,
         hint_shown:     hintKey !== null,
+        // What the child was shown, and which policy chose it.
+        option_keys:       (baseOptions.current || []).map((o) => o.key),
+        distractor_source: distractorSource.current,
       },
     }).catch(() => {});
 
@@ -380,7 +418,7 @@ export default function Tier2DragDropScreen({ route, navigation }) {
       {/* GIF feedback popup */}
       <Animated.View
         pointerEvents="none"
-        style={[styles.gifPopup, { transform: [{ translateY: feedbackSlide }] }]}
+        style={[styles.gifPopup, { transform: [{ translateX: feedbackSlide }] }]}
       >
         {feedbackResult && (
           <ExpoImage
@@ -438,7 +476,7 @@ const styles = StyleSheet.create({
   },
   nameText: {
     fontSize: 28,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: 1.5,
   },
 
@@ -471,12 +509,15 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
+  // Slides in from the right edge at mid-height rather than up from the bottom:
+  // the drop zone sits low on this screen, and the popup was landing on it.
+  // Full height with the content centred, so feedbackSlide can drive translateX.
   gifPopup: {
     position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+    top: 0,
+    bottom: 0,
+    right: 20,
+    justifyContent: 'center',
   },
   gifImage: {
     width: 200,

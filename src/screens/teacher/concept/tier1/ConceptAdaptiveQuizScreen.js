@@ -54,9 +54,9 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
   const roundResultsRef  = useRef([]);
   const roundStartRef    = useRef(Date.now());
 
-  const CARD_GAP = 12;
+  const CARD_GAP = 28;
   const H_PAD    = Layout.spacing.md;
-  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
+  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.60;
   const CARD_H   = CARD_W;
   const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
 
@@ -111,6 +111,11 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
       roundNumber:        currentRound + 1,
       wasCorrect,
       timeTakenMs,
+      optionKeys:         (rounds[currentRound]?.pair || []).map((o) => o.key),
+      // Not getDistractors: this round is a forced choice against a concept the
+      // child has already been recorded confusing. Its own policy name, so the
+      // logs never let an adaptive round be mistaken for a distractor-policy pick.
+      distractorSource:   'adaptive_confusion',
     }).catch(() => {});
 
     setTappedKey(option.key);
@@ -313,7 +318,7 @@ const styles = StyleSheet.create({
   },
   roundText: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 
   roundDots: {
@@ -337,19 +342,21 @@ const styles = StyleSheet.create({
 
   questionBlock: {
     alignItems: 'center',
-    marginBottom: 32,
+    // Opens the gap to the cards: the pair is centred as one block, so a bigger
+    // gap lifts the question and drops the cards by about half of it each.
+    marginBottom: 72,
     paddingHorizontal: Layout.spacing.lg,
     gap: 4,
   },
   questionEn: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
     fontSize: 18,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
   },

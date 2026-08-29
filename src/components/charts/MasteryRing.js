@@ -67,12 +67,22 @@ export function MasteryRing({
 const styles = StyleSheet.create({
   wrap:   { alignItems: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  value:  { fontFamily: 'Nunito_800ExtraBold' },
+  value:  { fontFamily: 'DMSans_800ExtraBold' },
+  // Small caps under the figure, matching every other label on the report. It was
+  // sentence case, which read as a word the number was part of rather than as its
+  // caption.
+  //
+  // `secondary` rather than `muted`: at 10px this is the smallest type the
+  // component draws, and muted put it at 2.48:1 on the pale surfaces these rings
+  // sit on. The percentage above it is what carries the emphasis, not the
+  // caption's faintness.
   label:  {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
-    marginTop: 1,
+    fontSize: 10,
+    color: Colors.text.secondary,
+    fontFamily: 'DMSans_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    marginTop: 3,
   },
   sublabel: {
     fontSize: Layout.fontSize.xs,

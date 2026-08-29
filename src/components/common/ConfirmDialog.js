@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: Layout.fontSize.xl,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: K.text,
     textAlign: 'center',
   },
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   btnConfirmText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.3,
   },
   btnCancel: {
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   btnCancelText: {
     color: K.text,
     fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     letterSpacing: 0.3,
   },
 });

@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
 
   question: {
     fontSize: 24,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
     marginBottom: 12,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   labelText: {
     fontSize: 22,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: 0.2,
   },
 });

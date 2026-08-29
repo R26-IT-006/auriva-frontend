@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.lg,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.primary,
   },
   subtitle: {

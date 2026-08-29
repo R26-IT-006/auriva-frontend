@@ -11,9 +11,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem, getConceptItemsForCategory, getConceptQuestion, getConceptQuestionSi } from '../../../../data/conceptData';
 import { Layout } from '../../../../constants/layout';
+
+// The same celebration the real rounds play, so the demo rehearses exactly what
+// the child will see when they answer correctly.
+const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
 
 export default function ConceptDemoScreen({ route, navigation }) {
   const { student, category, conceptKey, sessionId } = route.params;
@@ -25,9 +30,9 @@ export default function ConceptDemoScreen({ route, navigation }) {
 
   const [showGreen, setShowGreen] = useState(false);
 
-  const CARD_GAP = 12;
+  const CARD_GAP = 28;
   const H_PAD    = Layout.spacing.md;
-  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.72;
+  const CARD_W   = ((width - H_PAD * 2 - CARD_GAP * 2) / 3) * 0.60;
   const CARD_H   = CARD_W;
   const IMG_SIZE = Math.floor(Math.min(CARD_W * 0.78, CARD_H * 0.68));
 
@@ -196,20 +201,18 @@ export default function ConceptDemoScreen({ route, navigation }) {
 
         </View>{/* end body */}
 
-        {/* Thumbs-up feedback bubble */}
+        {/* Correct-answer celebration */}
         <Animated.View
           style={[
-            styles.feedbackBubble,
+            styles.feedbackGif,
             {
-              opacity:         thumbsAnim,
-              transform:       [{ translateY: thumbsOffset }],
-              backgroundColor: '#4CAF50',
+              opacity:   thumbsAnim,
+              transform: [{ translateY: thumbsOffset }],
             },
           ]}
           pointerEvents="none"
         >
-          <Text style={styles.feedbackEmoji}>👍</Text>
-          <Text style={styles.feedbackText}>That's it!</Text>
+          <ExpoImage source={CORRECT_GIF} style={styles.feedbackGifImage} contentFit="contain" />
         </Animated.View>
 
       </SafeAreaView>
@@ -248,7 +251,7 @@ const styles = StyleSheet.create({
   watchEmoji: { fontSize: 15 },
   watchText: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   skipBtn: {
     paddingHorizontal: 16,
@@ -257,7 +260,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.7,
   },
 
@@ -270,13 +273,13 @@ const styles = StyleSheet.create({
   },
   questionEn: {
     fontSize: 26,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
     fontSize: 18,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
   },
@@ -329,26 +332,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  feedbackBubble: {
+  // Matches the popup the real round uses, so the celebration lands in the same
+  // place and at the same size the child will see it during play.
+  feedbackGif: {
     position: 'absolute',
-    bottom: 100,
-    flexDirection: 'row',
+    bottom: 20,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 8,
   },
-  feedbackEmoji: { fontSize: 26 },
-  feedbackText: {
-    fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
-    color: '#FFF',
+  feedbackGifImage: {
+    width: 200,
+    height: 200,
   },
 
 });

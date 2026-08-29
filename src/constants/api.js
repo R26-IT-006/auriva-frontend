@@ -1,11 +1,11 @@
 import Constants from "expo-constants";
 
-// Physical device on same WiFi → machine's LAN IP, e.g. http://172.28.8.184:3000/api
+// Physical device on same WiFi → machine's LAN IP, e.g. http://192.168.1.19:3000/api
 // Android emulator → 10.0.2.2 maps to the host machine's localhost
 // iOS simulator → http://localhost:3000/api
 // This is only the last-resort fallback: an EXPO_PUBLIC_API_BASE_URL env var or
 // the Expo host detected below both take precedence, so it rarely applies.
-const DEFAULT_API_BASE_URL = "http://172.28.8.184:3000/api";
+const DEFAULT_API_BASE_URL = "http://192.168.1.19:3000/api";
 
 function normalizeApiBaseUrl(value) {
   if (!value) return DEFAULT_API_BASE_URL;
@@ -54,8 +54,22 @@ export const ENDPOINTS = {
   TEACHER_STUDENTS: "/teacher/students",
   TEACHER_STUDENT: (id) => `/teacher/students/${id}`,
   TEACHER_STUDENT_AVATAR: (id) => `/teacher/students/${id}/avatar`,
+  TEACHER_STUDENT_NOTES: (id) => `/teacher/students/${id}/notes`,
+  TEACHER_STUDENT_NOTE: (id, noteId) => `/teacher/students/${id}/notes/${noteId}`,
   TEACHER_CONCEPT_SUMMARY: (id) => `/teacher/students/${id}/concepts/summary`,
   TEACHER_CONCEPT_REPORT:  (id) => `/teacher/students/${id}/concepts/report`,
+  // AI summaries — teacher-facing narration of the two payloads above. Optional
+  // by design: both may answer { available: false }.
+  TEACHER_CONCEPT_NARRATIVE: (id) => `/teacher/students/${id}/concepts/narrative`,
+  TEACHER_DASHBOARD_DIGEST:  "/teacher/dashboard/digest",
+
+  // Saved reports — frozen snapshots of one named period, listed newest first.
+  // The list endpoint deliberately omits each report's payload; fetch the one
+  // being opened rather than a year of them.
+  TEACHER_CONCEPT_PERIODS: (id) => `/teacher/students/${id}/concepts/periods`,
+  TEACHER_CONCEPT_REPORTS: (id) => `/teacher/students/${id}/concepts/reports`,
+  TEACHER_CONCEPT_REPORT_ONE: (id, reportId) =>
+    `/teacher/students/${id}/concepts/reports/${reportId}`,
 
   // Handwriting
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
@@ -103,6 +117,10 @@ export const ENDPOINTS = {
   CONCEPT_TIER2_COMPLETE:     '/teacher/concepts/tier2/complete',
   CONCEPT_TIER3_START:        '/teacher/concepts/tier3/start',
   CONCEPT_TIER3_COMPLETE:     '/teacher/concepts/tier3/complete',
+  CONCEPT_GAME_START:         '/teacher/concepts/game/start',
+  CONCEPT_GAME_COMPLETE:      '/teacher/concepts/game/complete',
+  CONCEPT_COLORING_SAVE:      '/teacher/concepts/tier3/coloring',
+  CONCEPT_COLORING_LIST:      (studentId) => `/teacher/concepts/coloring/${studentId}`,
   CONCEPT_DISTRACTORS:        '/teacher/concepts/distractors',
 
   // Concept Learning – cross-concept activities

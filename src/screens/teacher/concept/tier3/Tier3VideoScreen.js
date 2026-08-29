@@ -267,12 +267,12 @@ const styles = StyleSheet.create({
   },
   nameText: {
     fontSize: 30,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: 0.5,
   },
   nameTextSi: {
     fontSize: 17,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.6,
   },
 
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   },
   noVideoText: {
     fontSize: 16,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
   },
 
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
   },
   watchAgainText: {
     fontSize: 16,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   continueBtn: {
     flexDirection: 'row',
@@ -356,6 +356,6 @@ const styles = StyleSheet.create({
   },
   continueBtnText: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 });

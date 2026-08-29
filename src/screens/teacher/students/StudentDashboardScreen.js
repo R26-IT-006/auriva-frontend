@@ -21,8 +21,6 @@ const AVATAR_VIDEOS = {
   megatron: require('../../../../assets/avatar-videos/MegatronGreeting.mp4'),
 };
 
-const AVATAR_NAMES = { boba: 'Boba', glitter: 'Glitter', lily: 'Lily', megatron: 'Megatron' };
-
 const MODULE_ICONS = {
   concept:       require('../../../../assets/modules/Icons/Concept Learning Icon.png'),
   writing:       require('../../../../assets/modules/Icons/Writing Module Icon.png'),
@@ -40,16 +38,51 @@ const MODULES = [
   { key: 'dialogue',      label: 'Dialogue Module',      image: MODULE_ICONS.dialogue,      corner: 'br' },
 ];
 
+// Theme colours are opaque hex; the card needs the accent at low alpha for the
+// icon plate and the surface wash, so it stays a tint rather than a second block
+// of colour competing with the icon.
+function tint(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
 // ── Geometry ──────────────────────────────────────────────────────────────────
 /** Avatar at the centre, one module parked in each corner — no implied order. */
 function buildHub(width, height) {
   const cx  = width / 2;
   const cy  = height / 2;
-  const hubR   = Math.max(70, Math.min(115, Math.min(width, height) * 0.19));
-  const cardW  = Math.max(130, Math.min(225, width * 0.23));
-  const cardH  = Math.max(110, Math.min(170, cardW * 0.74));
-  const dx     = Math.max(cardW / 2 + hubR * 0.55, width * 0.27);
-  const dy     = Math.max(cardH / 2 + 6, height * 0.27);
+  // Sized from the space actually available rather than fixed pixel caps. The
+  // old caps (hub 115, card 225×170, spread at 27% of the box) were tuned for a
+  // phone, so on a tablet they drew small cards that stopped ~170dp short of
+  // each edge and left the screen mostly empty.
+  const gutter = 10;
+
+  // The cards are square, so one side length has to satisfy both axes. Two cards
+  // sit side by side and stacked, so it may not exceed half the box either way;
+  // those caps are applied last so they always beat the preferred size — a short
+  // landscape phone gets a smaller card rather than one that overflows.
+  const preferred = Math.max(160, Math.min(340, Math.min(width, height) * 0.40));
+  const cardSize  = Math.max(
+    100,
+    Math.min(preferred, width / 2 - gutter * 1.5, height / 2 - gutter * 1.5),
+  );
+  const cardW = cardSize;
+  const cardH = cardSize;
+
+  // Corner-most position, then drawn back toward the centre so the four cards
+  // read as one cluster around the child rather than four things pushed apart.
+  // Vertically they are pulled in less, which opens up the gap between the two
+  // cards stacked on each side.
+  const pullInX = 0.82;
+  const pullInY = 0.96;
+  const dx = (width  / 2 - cardW / 2 - gutter) * pullInX;
+  const dy = (height / 2 - cardH / 2 - gutter) * pullInY;
+
+  // The cards are placed first, so the hub takes whatever the middle leaves. It
+  // clears the corner cards as long as its box starts inboard of them on either
+  // axis — hence the max() of the two clearances, not the min().
+  const hubRoom = Math.max(dx - cardW / 2 - gutter, dy - cardH / 2 - gutter);
+  const hubR = Math.max(60, Math.min(hubRoom, Math.max(80, Math.min(190, Math.min(width, height) * 0.22))));
 
   const offsets = { tl: [-1, -1], tr: [1, -1], bl: [-1, 1], br: [1, 1] };
   const cards = MODULES.map((m) => {
@@ -57,11 +90,20 @@ function buildHub(width, height) {
     return { ...m, x: cx + sx * dx, y: cy + sy * dy };
   });
 
-  return { cx, cy, hubR, cardW, cardH, cards };
+  // Contents scale with the card, so a larger card is actually more readable
+  // rather than the same 66px icon floating in more padding. The plate, its gap
+  // and two lines of label have to clear the card height on the smallest card,
+  // which is what holds the icon down at a third of the side.
+  const iconSize   = Math.round(cardSize * 0.34);
+  const plateSize  = Math.round(iconSize * 1.44);
+  const labelSize  = Math.round(Math.max(12, Math.min(18, cardSize * 0.072)));
+  const cardRadius = Math.round(Math.max(22, Math.min(34, cardSize * 0.19)));
+
+  return { cx, cy, hubR, cardW, cardH, cards, iconSize, plateSize, labelSize, cardRadius };
 }
 
 // ── A module card ─────────────────────────────────────────────────────────────
-function ModuleCard({ item, index, w, h, theme, onPress }) {
+function ModuleCard({ item, index, w, h, iconSize, plateSize, labelSize, radius, theme, onPress }) {
   const enter = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(1)).current;
 
@@ -95,10 +137,40 @@ function ModuleCard({ item, index, w, h, theme, onPress }) {
         onPress={onPress}
         onPressIn={pressIn}
         onPressOut={pressOut}
-        style={[styles.card, { borderColor: theme.cardOutline }]}
+        accessibilityRole="button"
+        accessibilityLabel={item.label}
+        style={[styles.cardPress, { borderRadius: radius }]}
       >
-        <Image source={item.image} style={styles.cardIcon} resizeMode="contain" />
-        <Text style={styles.cardLabel} numberOfLines={2}>{item.label}</Text>
+        <View style={[styles.card, { borderRadius: radius, borderColor: theme.cardOutline }]}>
+          {/* The plate gives every icon the same footprint, so four artworks of
+              different weight and aspect stop looking randomly sized. */}
+          <View
+            style={[
+              styles.iconPlate,
+              {
+                width: plateSize, height: plateSize,
+                borderRadius: Math.round(plateSize * 0.32),
+                backgroundColor: tint(theme.cardOutline, 0.16),
+              },
+            ]}
+          >
+            <Image
+              source={item.image}
+              style={{ width: iconSize, height: iconSize }}
+              resizeMode="contain"
+            />
+          </View>
+
+          <Text
+            style={[
+              styles.cardLabel,
+              { fontSize: labelSize, lineHeight: Math.round(labelSize * 1.25), color: theme.headingText },
+            ]}
+            numberOfLines={2}
+          >
+            {item.label}
+          </Text>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -194,6 +266,10 @@ function ModuleHub({ student, theme, onModulePress }) {
               index={i}
               w={hub.cardW}
               h={hub.cardH}
+              iconSize={hub.iconSize}
+              plateSize={hub.plateSize}
+              labelSize={hub.labelSize}
+              radius={hub.cardRadius}
               theme={theme}
               onPress={() => onModulePress(c.key)}
             />
@@ -225,9 +301,8 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
   if (!student) return null;
 
-  const theme      = getAvatarTheme(student.avatar_key);
-  const avatarName = AVATAR_NAMES[student.avatar_key] ?? '';
-  const firstName  = student.full_name?.trim().split(/\s+/)[0] ?? '';
+  const theme     = getAvatarTheme(student.avatar_key);
+  const firstName = student.full_name?.trim().split(/\s+/)[0] ?? '';
 
   function handleModulePress(key) {
     if (key === 'concept') navigation.navigate('ConceptCategories', { student });
@@ -242,35 +317,31 @@ export default function StudentDashboardScreen({ route, navigation }) {
 
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
+        {/* Both take the child's own accent, the way the cards and the hub do */}
         <TouchableOpacity
-          style={styles.iconBtn}
+          style={[styles.iconBtn, { borderColor: tint(theme.cardOutline, 0.55) }]}
           onPress={() => setGateVisible(true)}
           activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Back to student list"
         >
-          <Ionicons name="arrow-back" size={20} color="#1A2E3B" />
+          <Ionicons name="arrow-back" size={24} color={theme.button} />
         </TouchableOpacity>
 
         <View style={styles.greeting}>
           <Text style={styles.greetingText}>Hi, {firstName}! 👋</Text>
-          {avatarName ? (
-            <View style={[styles.avatarPill, { borderColor: theme.cardOutline }]}>
-              <Text style={[styles.avatarPillText, { color: theme.button }]}>
-                with {avatarName}
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         <TouchableOpacity
-          style={styles.iconBtn}
+          style={[styles.iconBtn, { borderColor: tint(theme.cardOutline, 0.55) }]}
           onPress={() => setLogoutVisible(true)}
           activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
         >
-          <Ionicons name="exit-outline" size={20} color="#1A2E3B" />
+          <Ionicons name="exit-outline" size={24} color={theme.button} />
         </TouchableOpacity>
       </View>
-
-      <Text style={styles.prompt}>What shall we play today?</Text>
 
       <ModuleHub student={student} theme={theme} onModulePress={handleModulePress} />
 
@@ -304,27 +375,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   iconBtn: {
-    width: 42, height: 42, borderRadius: 21,
+    width: 50, height: 50, borderRadius: 25,
     backgroundColor: '#FFFFFF',
+    // borderColor is set per button — accent for back, red for sign out.
+    borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
   },
-  greeting: { alignItems: 'center', gap: 4 },
+  // Sits a little below the two icon buttons it shares the row with, rather than
+  // centred against them.
+  greeting: { alignItems: 'center', gap: 5, marginTop: 28 },
   greetingText: {
-    fontSize: 22, fontFamily: 'Nunito_900Black', color: '#1A2E3B',
+    fontSize: 27, fontFamily: 'DMSans_900Black', color: '#1A2E3B',
   },
-  avatarPill: {
-    borderWidth: 1.5, borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 2,
-  },
-  avatarPillText: { fontSize: 12, fontFamily: 'Nunito_600SemiBold' },
-
-  prompt: {
-    fontSize: 14, fontFamily: 'Nunito_600SemiBold',
-    color: '#7A8A9A', textAlign: 'center', marginTop: 2,
-  },
-
   // ── Hub ───────────────────────────────────────────────────────────────────
   hubArea: { flex: 1, marginHorizontal: 16, marginBottom: 12 },
 
@@ -349,20 +413,31 @@ const styles = StyleSheet.create({
 
   // ── Module cards ──────────────────────────────────────────────────────────
   cardWrap: { position: 'absolute' },
-  card: {
+  // The shadow and the fill live on the Pressable, the border on the view inside
+  // it: a shadow on the clipping view would be cut off with the corners.
+  cardPress: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    shadowColor: '#1A2E3B', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.13, shadowRadius: 16, elevation: 5,
+  },
+  card: {
+    flex: 1,
+    overflow: 'hidden',
     borderWidth: 2.5,
     alignItems: 'center', justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 10, paddingVertical: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+    gap: 9,
+    paddingHorizontal: 12, paddingVertical: 12,
   },
-  cardIcon: { width: 66, height: 66 },
+  iconPlate: {
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // fontSize / lineHeight are set per-card from buildHub so the label tracks the
+  // card size; everything else is fixed.
   cardLabel: {
-    fontSize: 13, fontFamily: 'Nunito_800ExtraBold',
-    color: '#1A2E3B', textAlign: 'center', lineHeight: 17,
+    // Slight negative tracking — DM Sans Bold is a touch loose at display size.
+    fontFamily: 'DMSans_700Bold',
+    color: '#1A2E3B', textAlign: 'center',
+    letterSpacing: -0.2,
   },
 });

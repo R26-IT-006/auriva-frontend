@@ -112,14 +112,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 13,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#FFFFFF',
     letterSpacing: 0.1,
   },
   message: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.78)',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     lineHeight: 16,
   },
   iconWrap: {

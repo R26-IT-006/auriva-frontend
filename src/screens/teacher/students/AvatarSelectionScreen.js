@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { Video, ResizeMode } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { teacherApi } from '../../../api/teacher';
@@ -42,21 +43,6 @@ const AVATARS = [
   },
 ];
 
-function AvatarVideoBackground({ source }) {
-  const player = useVideoPlayer(source, p => {
-    p.loop = true;
-    p.play();
-  });
-  return (
-    <VideoView
-      player={player}
-      style={StyleSheet.absoluteFill}
-      contentFit="cover"
-      nativeControls={false}
-    />
-  );
-}
-
 function AvatarIcon({ avatar, selected, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -74,15 +60,19 @@ function AvatarIcon({ avatar, selected, onPress }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={avatar.name}
+        accessibilityState={{ selected }}
         style={[styles.avatarCard, selected && styles.avatarCardSelected]}
       >
-        <Image source={avatar.image} style={styles.avatarCardImage} resizeMode="contain" />
-        <Text style={[styles.avatarCardName, selected && styles.avatarCardNameSelected]}>
-          {avatar.name}
-        </Text>
+        <Image
+          source={avatar.image}
+          style={[styles.avatarCardImage, !selected && styles.avatarCardImageIdle]}
+          resizeMode="contain"
+        />
         {selected && (
           <View style={styles.checkBadge}>
-            <Ionicons name="checkmark-circle" size={18} color="#4AABB8" />
+            <Ionicons name="checkmark" size={13} color="#FFF" />
           </View>
         )}
       </TouchableOpacity>
@@ -94,17 +84,11 @@ export default function AvatarSelectionScreen({ navigation, route }) {
   const { student } = route.params;
   const [selected, setSelected] = useState(null);
   const [saving,   setSaving]   = useState(false);
-  const nameOpacity             = useRef(new Animated.Value(0)).current;
 
-  const handleSelect = useCallback((avatar) => {
-    setSelected(avatar);
-    nameOpacity.setValue(0);
-    Animated.timing(nameOpacity, {
-      toValue: 1,
-      duration: 350,
-      useNativeDriver: true,
-    }).start();
-  }, [nameOpacity]);
+  // Show the first avatar's video on entry so the screen never opens on a blank panel
+  const preview = selected ?? AVATARS[0];
+
+  const handleSelect = useCallback((avatar) => setSelected(avatar), []);
 
   async function handleConfirm() {
     if (!selected) return;
@@ -126,12 +110,14 @@ export default function AvatarSelectionScreen({ navigation, route }) {
   return (
     <View style={styles.root}>
 
-      {/* ── Full-screen video / plain background ─────────────── */}
-      {selected ? (
-        <AvatarVideoBackground key={selected.key} source={selected.video} />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, styles.noSelectionBg]} />
-      )}
+      {/* ── Full-screen video (defaults to Boba until a tap) ──── */}
+      <Video
+        source={preview.video}
+        style={StyleSheet.absoluteFill}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping
+      />
 
       {/* ── Overlay ──────────────────────────────────────────── */}
       <SafeAreaView style={styles.overlay} edges={['top', 'bottom', 'left', 'right']}>
@@ -143,7 +129,7 @@ export default function AvatarSelectionScreen({ navigation, route }) {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color="#333" />
+            <Ionicons name="arrow-back" size={20} color="#FFF" />
           </TouchableOpacity>
 
           <View style={styles.studentLabelPill}>
@@ -157,23 +143,18 @@ export default function AvatarSelectionScreen({ navigation, route }) {
         {/* ── Main content: left preview + right rail ───────────── */}
         <View style={styles.content}>
 
-          {/* Left pane: avatar name + SELECTED badge */}
+          {/* Left pane: hint only, so the video stays unobstructed */}
           <View style={styles.leftPane}>
-            {selected ? (
-              <Animated.View style={[styles.nameRow, { opacity: nameOpacity }]}>
-                <Text style={styles.avatarName}>{selected.name}</Text>
-                <View style={styles.selectedBadge}>
-                  <Text style={styles.selectedBadgeText}>SELECTED</Text>
-                </View>
-              </Animated.View>
-            ) : (
-              <Text style={styles.placeholderText}>Tap an avatar to preview</Text>
+            {!selected && (
+              <View style={styles.hintPill}>
+                <Text style={styles.hintText}>Tap an avatar to preview</Text>
+              </View>
             )}
           </View>
 
-          {/* Right rail: avatar cards + confirm button */}
+          {/* Right rail: avatar dock + confirm button */}
           <View style={styles.rightRail}>
-            <View style={styles.cardList}>
+            <View style={styles.dock}>
               {AVATARS.map((av) => (
                 <AvatarCard
                   key={av.key}
@@ -185,17 +166,28 @@ export default function AvatarSelectionScreen({ navigation, route }) {
             </View>
 
             <TouchableOpacity
-              style={[styles.confirmBtn, !selected && styles.confirmBtnDisabled]}
+              style={styles.confirmWrap}
               onPress={handleConfirm}
               disabled={!selected || saving}
               activeOpacity={0.85}
             >
-              {saving
-                ? <ActivityIndicator color="#FFF" size="small" />
-                : <Text style={styles.confirmText}>
-                    {selected ? `Choose\n${selected.name}` : 'Pick one'}
-                  </Text>
-              }
+              {selected ? (
+                <LinearGradient
+                  colors={TEAL_GRAD}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.confirmBtn}
+                >
+                  {saving
+                    ? <ActivityIndicator color="#FFF" size="small" />
+                    : <Text style={styles.confirmText}>Choose</Text>
+                  }
+                </LinearGradient>
+              ) : (
+                <View style={[styles.confirmBtn, styles.confirmBtnDisabled]}>
+                  <Text style={styles.confirmTextDisabled}>Pick one</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -205,14 +197,12 @@ export default function AvatarSelectionScreen({ navigation, route }) {
   );
 }
 
-const CARD_SIZE = 100;
+const CARD_SIZE = 88;
+const TEAL_GRAD = ['#4AABB8', '#52C07C'];
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#ECECEC',
-  },
-  noSelectionBg: {
     backgroundColor: '#ECECEC',
   },
   overlay: {
@@ -232,24 +222,28 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: 'rgba(18,34,30,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.30)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   studentLabelPill: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: 'rgba(18,34,30,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.30)',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   studentLabel: {
     fontSize: Layout.fontSize.sm,
-    color: '#666',
+    color: 'rgba(255,255,255,0.80)',
   },
   studentName: {
-    fontFamily: 'Nunito_700Bold',
-    color: '#333',
+    fontFamily: 'DMSans_700Bold',
+    color: '#FFFFFF',
   },
 
   // ── Content row ────────────────────────────────────────────
@@ -267,115 +261,99 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingBottom: Layout.spacing.md,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.sm,
+  hintPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(18,34,30,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.30)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
-  avatarName: {
-    fontSize: 52,
-    fontFamily: 'Nunito_900Black',
-    color: '#1A2E26',
-    letterSpacing: -1,
-    textShadowColor: 'rgba(255,255,255,0.9)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 12,
-  },
-  selectedBadge: {
-    backgroundColor: 'rgba(74,171,184,0.18)',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#4AABB8',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    alignSelf: 'center',
-    marginTop: 6,
-  },
-  selectedBadgeText: {
-    fontSize: 11,
-    fontFamily: 'Nunito_700Bold',
-    color: '#4AABB8',
-    letterSpacing: 1,
-  },
-  placeholderText: {
+  hintText: {
     fontSize: Layout.fontSize.sm,
-    color: 'rgba(0,0,0,0.28)',
+    fontFamily: 'DMSans_600SemiBold',
+    color: 'rgba(255,255,255,0.88)',
   },
 
   // ── Right rail ─────────────────────────────────────────────
   rightRail: {
-    width: CARD_SIZE + 20,
-    justifyContent: 'space-between',
+    width: CARD_SIZE + 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Layout.spacing.lg,
     paddingVertical: Layout.spacing.sm,
   },
-  cardList: {
-    gap: Layout.spacing.sm,
+  dock: {
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    borderRadius: 34,
+    backgroundColor: 'rgba(18,34,30,0.32)',
   },
 
   // ── Avatar card ────────────────────────────────────────────
   avatarCard: {
-    width: CARD_SIZE + 16,
-    borderRadius: 18,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.55)',
-    backgroundColor: '#FFFFFF',
+    width: CARD_SIZE,
+    height: CARD_SIZE,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.86)',
+    backgroundColor: 'rgba(255,255,255,0.86)',
     alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 6,
-    paddingHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    justifyContent: 'center',
   },
   avatarCardSelected: {
+    borderWidth: 2.5,
     borderColor: '#4AABB8',
     backgroundColor: '#FFFFFF',
   },
   avatarCardImage: {
-    width: CARD_SIZE * 0.72,
-    height: CARD_SIZE * 0.72,
+    width: CARD_SIZE * 0.82,
+    height: CARD_SIZE * 0.82,
   },
-  avatarCardName: {
-    fontSize: Layout.fontSize.xs,
-    fontFamily: 'Nunito_600SemiBold',
-    color: '#888',
-    marginTop: 3,
-  },
-  avatarCardNameSelected: {
-    color: '#4AABB8',
-    fontFamily: 'Nunito_700Bold',
+  avatarCardImageIdle: {
+    opacity: 0.82,
   },
   checkBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: -5,
+    right: -5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#4AABB8',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // ── Confirm button ─────────────────────────────────────────
+  confirmWrap: {
+    alignSelf: 'stretch',
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
   confirmBtn: {
-    borderRadius: 18,
-    backgroundColor: '#4AABB8',
-    paddingVertical: 12,
+    paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4AABB8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 5,
   },
   confirmBtnDisabled: {
-    backgroundColor: '#C8DCDF',
-    shadowOpacity: 0,
-    elevation: 0,
+    backgroundColor: 'rgba(18,34,30,0.32)',
   },
   confirmText: {
     color: '#FFF',
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 19,
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    lineHeight: 20,
+    letterSpacing: 0.2,
+  },
+  confirmTextDisabled: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_700Bold',
+    textAlign: 'center',
   },
 });

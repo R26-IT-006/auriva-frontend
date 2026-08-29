@@ -143,7 +143,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
 
               <Animated.Text
                 numberOfLines={1}
-                style={[styles.rowLabel, active && { color: WHITE, fontFamily: 'Nunito_700Bold' }, ls]}
+                style={[styles.rowLabel, active && { color: WHITE, fontFamily: 'DMSans_700Bold' }, ls]}
               >
                 {item.label}
               </Animated.Text>
@@ -231,8 +231,8 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   logoText: { flex: 1, overflow: 'hidden' },
-  logoTitle: { fontSize: 15, fontFamily: 'Nunito_900Black', color: WHITE, letterSpacing: 0.3 },
-  logoSub:   { fontSize: 9,  fontFamily: 'Nunito_600SemiBold', color: DIM, letterSpacing: 0.5, marginTop: 1 },
+  logoTitle: { fontSize: 15, fontFamily: 'DMSans_900Black', color: WHITE, letterSpacing: 0.3 },
+  logoSub:   { fontSize: 9,  fontFamily: 'DMSans_600SemiBold', color: DIM, letterSpacing: 0.5, marginTop: 1 },
   toggleBtn: {
     width: 28, height: 28, borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.06)',
@@ -258,12 +258,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.12)',
   },
-  avatarInitials: { fontSize: 13, fontFamily: 'Nunito_700Bold', color: WHITE },
+  avatarInitials: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: WHITE },
   profileInfo: { flex: 1, overflow: 'hidden', gap: 3 },
-  profileName: { fontSize: 13, fontFamily: 'Nunito_700Bold', color: WHITE },
+  profileName: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: WHITE },
   roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   roleDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: GREEN },
-  roleText: { fontSize: 10, fontFamily: 'Nunito_600SemiBold', color: MID },
+  roleText: { fontSize: 10, fontFamily: 'DMSans_600SemiBold', color: MID },
 
   // ── Divider ───────────────────────────────────────────────────────────────
   divider: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   // ── Category label ────────────────────────────────────────────────────────
   catLabel: {
     fontSize: 9,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: AMBER,
     letterSpacing: 1.3,
     paddingLeft: CX - 18 + 4,   // slight indent past icon left edge
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: MID,
     flex: 1,
     flexShrink: 1,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   },
   signOutLabel: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#F26B6B',
     flexShrink: 1,
   },
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   },
   tooltipText: {
     fontSize: 12,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
   },
 });

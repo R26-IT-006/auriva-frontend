@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { Layout } from '../../../constants/layout';
-import { getConceptItemsForCategory } from '../../../data/conceptData';
+import { getConceptItemsForCategory, categoryHasVideo } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 
 const S_COLOR = {
@@ -40,9 +40,12 @@ const S_ICON = {
   locked:      'lock-closed-outline',
 };
 
-function cardAccent(item, themeButton) {
+// Green is "finished the ladder". Where there is no video stage that is tier 2,
+// so the green has to come one step earlier — otherwise a child who has done
+// everything the category offers never sees a finished card.
+function cardAccent(item, themeButton, hasTier3) {
   if (item.tier3_status === 'passed') return '#4CAF50';
-  if (item.tier2_status === 'passed') return themeButton;
+  if (item.tier2_status === 'passed') return hasTier3 ? themeButton : '#4CAF50';
   if (item.tier1_status === 'passed') return '#FF9800';
   if (item.tier1_status === 'in_progress') return '#FFC107';
   return '#DDE0E8';
@@ -82,11 +85,11 @@ function StatCard({ count, total, label, sublabel, color, iconName, theme }) {
   );
 }
 
-function ConceptCard({ item, cardW, theme }) {
+function ConceptCard({ item, cardW, theme, showTier3 }) {
   const isLocked  = !item.is_unlocked;
   const t2Visible = item.tier1_status === 'passed' ? item.tier2_status : 'locked';
   const t3Visible = item.tier2_status === 'passed' ? item.tier3_status : 'locked';
-  const accent    = isLocked ? '#DDE0E8' : cardAccent(item, theme.button);
+  const accent    = isLocked ? '#DDE0E8' : cardAccent(item, theme.button, showTier3);
 
   return (
     <View style={[styles.card, { width: cardW, backgroundColor: theme.cardSurface, borderTopColor: accent }]}>
@@ -120,7 +123,7 @@ function ConceptCard({ item, cardW, theme }) {
         <View style={styles.pillRow}>
           <TierPill label="T1" status={item.tier1_status} />
           <TierPill label="T2" status={t2Visible} />
-          <TierPill label="T3" status={t3Visible} />
+          {showTier3 && <TierPill label="T3" status={t3Visible} />}
         </View>
       )}
 
@@ -167,7 +170,8 @@ export default function StudentConceptProgressScreen({ route, navigation }) {
     const s = serverMap[local.key];
     return {
       ...local,
-      is_unlocked:  s?.is_unlocked  ?? (local.key === localItems[0]?.key),
+      // Nothing is gated — matches the concept list and the server's rule.
+      is_unlocked:  true,
       is_priority:  s?.is_priority  || false,
       tier1_status: s?.tier1_status || 'not_started',
       tier1_score:  s?.tier1_score  ?? null,
@@ -180,6 +184,7 @@ export default function StudentConceptProgressScreen({ route, navigation }) {
   const t1Passed = merged.filter((i) => i.tier1_status === 'passed').length;
   const t2Passed = merged.filter((i) => i.tier2_status === 'passed').length;
   const t3Passed = merged.filter((i) => i.tier3_status === 'passed').length;
+  const showTier3 = categoryHasVideo(category.key);
 
   const displayName = student.full_name ?? student.name ?? 'Student';
   const initials    = displayName[0]?.toUpperCase() ?? '?';
@@ -242,12 +247,17 @@ export default function StudentConceptProgressScreen({ route, navigation }) {
               color={theme.button} iconName="text-outline"
               theme={theme}
             />
-            <StatCard
-              count={t3Passed} total={total}
-              label="Tier 3" sublabel="Video"
-              color="#FF9800" iconName="play-circle-outline"
-              theme={theme}
-            />
+            {/* Omitted where the category has no video stage: nothing ever sets
+                tier3_status there, so the card would sit at 0% permanently and
+                read as the child failing something they were never offered. */}
+            {showTier3 && (
+              <StatCard
+                count={t3Passed} total={total}
+                label="Tier 3" sublabel="Video"
+                color="#FF9800" iconName="play-circle-outline"
+                theme={theme}
+              />
+            )}
           </View>
         )}
 
@@ -260,7 +270,9 @@ export default function StudentConceptProgressScreen({ route, navigation }) {
             keyExtractor={(item) => item.key}
             numColumns={COLS}
             key={COLS}
-            renderItem={({ item }) => <ConceptCard item={item} cardW={cardW} theme={theme} />}
+            renderItem={({ item }) => (
+              <ConceptCard item={item} cardW={cardW} theme={theme} showTier3={showTier3} />
+            )}
             contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD }]}
             columnWrapperStyle={{ gap: GAP }}
             ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
@@ -318,15 +330,15 @@ const styles = StyleSheet.create({
   },
   headerAvatarText: {
     fontSize: 18,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
   },
   headerName: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   headerSub: {
     fontSize: 12,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     marginTop: 1,
   },
 
@@ -360,19 +372,19 @@ const styles = StyleSheet.create({
   },
   statCount: {
     fontSize: 24,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
   },
   statDenom: {
     fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
   statLabel: {
     fontSize: 12,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   statSublabel: {
     fontSize: 10,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#9E9E9E',
   },
   statTrack: {
@@ -388,7 +400,7 @@ const styles = StyleSheet.create({
   },
   statPct: {
     fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'right',
   },
 
@@ -429,7 +441,7 @@ const styles = StyleSheet.create({
   },
   cardName: {
     fontSize: 12,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
   },
   pillRow: {
@@ -449,7 +461,7 @@ const styles = StyleSheet.create({
   },
   tierPillLabel: {
     fontSize: 10,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   lockedRow: {
     flexDirection: 'row',
@@ -458,11 +470,11 @@ const styles = StyleSheet.create({
   },
   lockedText: {
     fontSize: 11,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#BDBDBD',
   },
   scoreText: {
     fontSize: 12,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 });

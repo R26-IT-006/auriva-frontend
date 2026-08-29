@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.lg,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,

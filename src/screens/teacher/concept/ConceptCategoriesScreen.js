@@ -87,8 +87,11 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
   const isLandscape = width > height;
   const NUM_COLUMNS = isLandscape ? 4 : 3;
   const H_PAD   = Layout.spacing.xl;
-  const GAP     = 22;
-  const cardW   = (width - H_PAD * 2 - GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
+  // Wider side-to-side than top-to-bottom: the cards are wider than they are
+  // tall, so an equal gap reads tighter between columns than between rows.
+  const COL_GAP = 38;
+  const ROW_GAP = 22;
+  const cardW   = (width - H_PAD * 2 - COL_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
   const cardH   = cardW * 0.85;
 
   function renderCard({ item }) {
@@ -152,8 +155,8 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
           key={NUM_COLUMNS}
           renderItem={renderCard}
           contentContainerStyle={[styles.list, { paddingHorizontal: H_PAD }]}
-          columnWrapperStyle={{ gap: GAP }}
-          ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
+          columnWrapperStyle={{ gap: COL_GAP }}
+          ItemSeparatorComponent={() => <View style={{ height: ROW_GAP }} />}
           showsVerticalScrollIndicator={false}
         />
       </SafeAreaView>
@@ -227,13 +230,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   title: {
-    fontSize: 32,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 34,
+    fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontSize: 15,
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
     marginBottom: Layout.spacing.sm,
@@ -258,13 +261,15 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '70%',
     height: '58%',
-    marginBottom: 8,
+    // Drops the label further below the artwork — the content block is centred,
+    // so the gap opens downward as much as upward.
+    marginBottom: 16,
   },
   cardLabel: {
-    fontSize: 14,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 16,
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 21,
     color: '#1A1A1A',
   },
 
@@ -292,8 +297,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   comingSoonText: {
-    fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
     color: '#8A8A8A',
   },
 });

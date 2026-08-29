@@ -21,12 +21,16 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { useAuthStore } from '../../store/authStore';
 
-const GREEN       = '#3A9BA8';
-const GREEN_GRAD  = ['#4AABB8', '#52C07C'];
+// Aliases onto the shared brand token. The sign-in button is where this colour
+// is defined for the product, so other screens borrow it from `Colors` — keeping
+// a second literal here is how the two would drift apart.
+const GREEN       = Colors.brand;
+const GREEN_GRAD  = Colors.brandGradient;
 const GREEN_LIGHT = '#E3F5F7';
 
 export default function LoginScreen({ navigation }) {
   const slideAnim    = useRef(new Animated.Value(0)).current;
+  const btnScale     = useRef(new Animated.Value(1)).current;
   const [selectorW, setSelectorW] = useState(0);
   const [role, setRole]           = useState('teacher');
   const [identifier, setIdentifier] = useState('');
@@ -56,6 +60,13 @@ export default function LoginScreen({ navigation }) {
     if (!password) e.password = 'Password cannot be empty.';
     setErrors(e);
     return Object.keys(e).length === 0;
+  }
+
+  function btnPressIn() {
+    Animated.spring(btnScale, { toValue: 0.97, speed: 40, bounciness: 4, useNativeDriver: true }).start();
+  }
+  function btnPressOut() {
+    Animated.spring(btnScale, { toValue: 1, speed: 20, bounciness: 8, useNativeDriver: true }).start();
   }
 
   async function handleLogin() {
@@ -170,25 +181,45 @@ export default function LoginScreen({ navigation }) {
                 </ButtonFeedback>
               )}
 
-              {/* Login button */}
-              <TouchableOpacity
-                onPress={handleLogin}
-                disabled={loading}
-                activeOpacity={0.85}
-                style={[styles.loginBtn, loading && { opacity: 0.75 }]}
+              {/* Sign in button — the one primary action on the screen, so it
+                  carries a lift and a press response the other controls don't. */}
+              <Animated.View
+                style={[
+                  styles.loginBtnWrap,
+                  { transform: [{ scale: btnScale }] },
+                  loading && styles.loginBtnWrapBusy,
+                ]}
               >
-                <LinearGradient
-                  colors={GREEN_GRAD}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.loginBtnGradient}
+                <Pressable
+                  onPress={handleLogin}
+                  onPressIn={btnPressIn}
+                  onPressOut={btnPressOut}
+                  disabled={loading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sign in"
+                  accessibilityState={{ disabled: loading, busy: loading }}
+                  style={styles.loginBtn}
                 >
-                  {loading
-                    ? <ActivityIndicator color="#FFF" size="small" />
-                    : <Text style={styles.loginBtnText}>Login</Text>
-                  }
-                </LinearGradient>
-              </TouchableOpacity>
+                  <LinearGradient
+                    colors={GREEN_GRAD}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.loginBtnGradient}
+                  >
+                    {loading ? (
+                      <View style={styles.loginBtnRow}>
+                        <ActivityIndicator color="#FFF" size="small" />
+                        <Text style={styles.loginBtnText}>Signing in…</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.loginBtnRow}>
+                        <Text style={styles.loginBtnText}>Sign In</Text>
+                        <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                      </View>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+              </Animated.View>
             </View>
 
             <Text style={styles.footer}>AURIVA 2026</Text>
@@ -246,25 +277,25 @@ const styles = StyleSheet.create({
   logoLetter: {
     color: '#FFF',
     fontSize: 22,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   logoText: {
     fontSize: 24,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#1A1A2E',
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────
   cardTitle: {
     fontSize: 28,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
     textAlign: 'center',
     marginBottom: 6,
   },
   cardSubtitle: {
     fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
     textAlign: 'center',
     marginBottom: 28,
@@ -299,7 +330,7 @@ const styles = StyleSheet.create({
   },
   rolePillText: {
     fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#9B9FB0',
   },
   rolePillTextActive: {
@@ -314,25 +345,45 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#4AABB8',
   },
 
   // ── Login button ──────────────────────────────────────────────────────────
-  loginBtn: {
-    borderRadius: 14,
-    overflow: 'hidden',
+  // The lift sits on the wrapper: the button itself clips its gradient, and a
+  // shadow on a clipping view is cut off with the corners.
+  loginBtnWrap: {
     marginTop: 4,
+    borderRadius: 16,
+    shadowColor: GREEN,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.30,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  loginBtnWrapBusy: {
+    opacity: 0.75,
+    shadowOpacity: 0.12,
+    elevation: 2,
+  },
+  loginBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   loginBtnGradient: {
-    height: 54,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loginBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   loginBtnText: {
     color: '#FFF',
     fontSize: 16,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.4,
   },
 
@@ -343,7 +394,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.8,
     color: Colors.text.muted,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
 
   // ── Error modal ───────────────────────────────────────────────────────────
@@ -380,7 +431,7 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: Layout.fontSize.xl,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     color: '#1A1A2E',
     textAlign: 'center',
   },
@@ -403,7 +454,7 @@ const styles = StyleSheet.create({
   errorBtnText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.2,
   },
 });

@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { getConceptItem } from '../../../data/conceptData';
+import { getConceptItem, categoryHasVideo } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
 
@@ -81,7 +81,7 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
     correctCount = 3,
     totalCount   = 3,
     completedTier = 1,
-    mode = 'tier',        // 'tier' | 'activity'
+    mode = 'tier',        // 'tier' | 'activity' | 'conclusion'
   } = route.params;
 
   const concept = getConceptItem(category.key, conceptKey);
@@ -146,7 +146,12 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
     setTimeout(() => {
       Speech.speak(
-        `Well done! You got ${correctCount} out of ${totalCount}!`,
+        // A conclusion is the end of a whole category, so it gets a line about
+        // finishing rather than a score read-out — the number here counts
+        // first-try placements, which isn't what the child was playing for.
+        mode === 'conclusion'
+          ? `You finished all the ${category.label.toLowerCase()}! Amazing work!`
+          : `Well done! You got ${correctCount} out of ${totalCount}!`,
         { language: 'en-US', rate: 0.8 },
       );
     }, 600);
@@ -163,8 +168,9 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
   function handleContinue() {
     Speech.stop();
-    // Activities are no-fail and don't feed the tier ladder — always back to the grid.
-    if (mode === 'activity') {
+    // Activities and conclusions are no-fail and don't feed the tier ladder —
+    // always back to the grid.
+    if (mode === 'activity' || mode === 'conclusion') {
       navigation.navigate('ConceptItems', { student, category });
       return;
     }
@@ -177,7 +183,19 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
         navigation.navigate('Tier2Image', { student, category, conceptKey, sessionId: null });
       }
     } else if (completedTier === 2) {
-      navigation.navigate('Tier3Video', { student, category, conceptKey, needsReplay: correctCount < 3 });
+      if (categoryHasVideo(category.key)) {
+        navigation.navigate('Tier3Video', { student, category, conceptKey, needsReplay: correctCount < 3 });
+      } else {
+        // No video stage here, so tier 2 is the end of the ladder. Hand over to the
+        // colouring page the video would have led to, or back to the grid when the
+        // concept has none — never to Tier3Video, which would sit on a blank player.
+        const concept = getConceptItem(category.key, conceptKey);
+        if (concept?.coloring) {
+          navigation.navigate('ConceptColoring', { student, category, conceptKey });
+        } else {
+          navigation.navigate('ConceptItems', { student, category });
+        }
+      }
     } else {
       navigation.navigate('ConceptItems', { student, category });
     }
@@ -254,6 +272,12 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
             {mode === 'activity' ? (
               <Text style={[styles.conceptName, { color: theme.button }]}>Practice Activity</Text>
+            ) : mode === 'conclusion' ? (
+              // No conceptKey is passed for a conclusion — it closes out the whole
+              // category, so the category is what gets named here.
+              <Text style={[styles.conceptName, { color: theme.button }]}>
+                {category.label} Complete!
+              </Text>
             ) : concept ? (
               <Text style={[styles.conceptName, { color: theme.button }]}>{concept.label}</Text>
             ) : null}
@@ -374,12 +398,12 @@ const styles = StyleSheet.create({
 
   heading: {
     fontSize: 30,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.5,
   },
   conceptName: {
     fontSize: 20,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 
   scorePill: {
@@ -397,18 +421,18 @@ const styles = StyleSheet.create({
   },
   pillCount: {
     fontSize: 17,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     marginLeft: 4,
   },
   pillLabel: {
     fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.65,
   },
 
   encouragement: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
     marginTop: 8,
@@ -446,7 +470,7 @@ const styles = StyleSheet.create({
   },
   continueBtnText: {
     fontSize: 18,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
 
   fallingStar: {

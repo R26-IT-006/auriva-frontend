@@ -3,8 +3,8 @@ import { Colors } from '../constants/colors';
 import { Layout } from '../constants/layout';
 
 import ConceptReportScreen        from '../screens/teacher/students/ConceptReportScreen';
+import ConceptReportsScreen       from '../screens/teacher/students/ConceptReportsScreen';
 import TeacherDashboardScreen from "../screens/teacher/DashboardScreen";
-import TeacherStudentListScreen from "../screens/teacher/students/StudentListScreen";
 import TeacherStudentDetailScreen from "../screens/teacher/students/StudentDetailScreen";
 import WorkspaceSelectScreen from "../screens/teacher/WorkspaceSelectScreen";
 import StudentPickerScreen from "../screens/teacher/students/StudentPickerScreen";
@@ -73,6 +73,9 @@ import Tier2DragDropScreen           from '../screens/teacher/concept/tier2/Tier
 import Tier3VideoScreen              from '../screens/teacher/concept/tier3/Tier3VideoScreen';
 import ConceptColoringScreen              from '../screens/teacher/concept/tier3/ConceptColoringScreen';
 import ConceptActivityScreen              from '../screens/teacher/concept/tier1/ConceptActivityScreen';
+import ConceptBasketSortScreen            from '../screens/teacher/concept/conclusion/ConceptBasketSortScreen';
+import ConceptPairMatchScreen             from '../screens/teacher/concept/activities/ConceptPairMatchScreen';
+import ConceptMemoryScreen                from '../screens/teacher/concept/activities/ConceptMemoryScreen';
 import StudentConceptProgressScreen      from '../screens/teacher/concept/StudentConceptProgressScreen';
 import L2PortraitScreen        from '../screens/teacher/dialogue/level2/L2PortraitScreen';
 import PronunciationSessionSetupScreen from "../screens/teacher/pronunciation/PronunciationSessionSetupScreen";
@@ -89,7 +92,7 @@ const Stack = createNativeStackNavigator();
 const stackOptions = {
   headerStyle: { backgroundColor: Colors.surface },
   headerTitleStyle: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.primary,
     fontSize: Layout.fontSize.lg,
   },
@@ -101,15 +104,23 @@ const stackOptions = {
 
 // The teacher workspace — reached via "Teacher Workspace". A single stack: the
 // dashboard is the entry point and navigates onward to the student screens.
+//
+// Every screen in here is portrait-locked; see the `TeacherMain` entry below for
+// why the lock is declared on the container rather than repeated per screen.
 function TeacherWorkspace() {
   return (
     <Stack.Navigator screenOptions={stackOptions}>
       <Stack.Screen name="TeacherHome"          component={TeacherDashboardScreen}   options={{ headerShown: false }} />
-      <Stack.Screen name="TeacherStudentList"   component={TeacherStudentListScreen}  options={{ title: 'My Students' }} />
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
-      {/* Both reports stay in this stack, not the root one, so they keep Colors
+      {/* These reports stay in this stack, not the root one, so they keep Colors
           theming rather than the student-workspace chrome. */}
-      <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Concept Report' }} />
+      {/* Placeholder title only — the screen renames itself to the child once the
+          report loads. "Report" is the system's word for this and never a
+          teacher's; see the note on ACTION in teacherWording. */}
+      <Stack.Screen name="ConceptReport"        component={ConceptReportScreen}        options={{ title: 'Learning history' }} />
+      {/* The archive of saved reports. Distinct from ConceptReport above, which
+          shows the live rolling view — or, given a reportId, one of these. */}
+      <Stack.Screen name="ConceptReports"       component={ConceptReportsScreen}       options={{ title: 'Reports' }} />
       <Stack.Screen
         name="StudentHandwritingReport"
         component={TeacherReportScreen}
@@ -124,7 +135,22 @@ export default function TeacherNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WorkspaceSelect" component={WorkspaceSelectScreen} />
-      <Stack.Screen name="TeacherMain"     component={TeacherWorkspace} />
+      {/* Portrait for the whole teacher workspace — the dashboard and everything
+          it opens. These are dense reading screens (a report, a profile, tables of
+          chips) laid out as single columns, and they gain nothing from landscape
+          while a rotation mid-read costs the teacher their place.
+
+          Declared here rather than on each nested screen because react-native-
+          screens resolves a screen's orientation by walking up to the nearest
+          ancestor that sets one: the workspace's own screens leave it unset, so
+          they inherit this, and any screen added to the stack later is covered
+          without having to remember. The sibling routes below leave it unset too,
+          which is what keeps the child-facing activities free to rotate. */}
+      <Stack.Screen
+        name="TeacherMain"
+        component={TeacherWorkspace}
+        options={{ orientation: 'portrait' }}
+      />
       <Stack.Screen name="StudentPicker"    component={StudentPickerScreen} />
       <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
       <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
@@ -143,6 +169,9 @@ export default function TeacherNavigator() {
       <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />
       <Stack.Screen name="ConceptColoring"          component={ConceptColoringScreen} />
       <Stack.Screen name="ConceptActivity"          component={ConceptActivityScreen} />
+      <Stack.Screen name="ConceptBasketSort"        component={ConceptBasketSortScreen} />
+      <Stack.Screen name="ConceptPairMatch"         component={ConceptPairMatchScreen} />
+      <Stack.Screen name="ConceptMemory"            component={ConceptMemoryScreen} />
       <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
       <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
       <Stack.Screen

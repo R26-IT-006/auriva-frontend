@@ -306,18 +306,18 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 11,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: GREEN,
   },
   greeting: {
     fontSize: 22,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: TEXT_DARK,
     lineHeight: 28,
   },
   dateText: {
     fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: TEXT_MUTED,
     marginTop: 2,
   },
@@ -350,13 +350,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 11,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: TEXT_MUTED,
     letterSpacing: 1.2,
   },
   viewAll: {
     fontSize: 12,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: BLUE,
   },
 
@@ -396,17 +396,17 @@ const styles = StyleSheet.create({
   },
   statBadgeTxt: {
     fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   statValue: {
     fontSize: 24,
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_900Black',
     color: TEXT_DARK,
     lineHeight: 28,
   },
   statLabel: {
     fontSize: 11,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: TEXT_MUTED,
     marginTop: 2,
   },
@@ -419,12 +419,12 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 10,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: TEXT_MUTED,
   },
   progressPct: {
     fontSize: 10,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
   progressTrack: {
     height: 4,
@@ -456,12 +456,12 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     fontSize: 13,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: TEXT_DARK,
   },
   actionSub: {
     fontSize: 11,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'DMSans_400Regular',
     color: TEXT_MUTED,
   },
 });

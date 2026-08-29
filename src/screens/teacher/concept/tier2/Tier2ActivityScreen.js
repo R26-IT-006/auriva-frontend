@@ -90,6 +90,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
   const { width, height } = useWindowDimensions();
 
   const optionsRef = useRef(null);
+  const distractorSource = useRef(null);
 
   function buildSequentialOptions() {
     const idx   = allItems.findIndex((it) => it.key === conceptKey);
@@ -108,7 +109,7 @@ export default function Tier2ActivityScreen({ route, navigation }) {
   const feedbackSlide  = useRef(new Animated.Value(250)).current;
   const attemptStart   = useRef(Date.now());
 
-  const imgSize = Math.min(width, height) * 0.42;
+  const imgSize = Math.min(width, height) * 0.54;
 
   function showFeedback() {
     Animated.spring(feedbackSlide, { toValue: 0, useNativeDriver: true, friction: 6, tension: 80 }).start();
@@ -138,16 +139,22 @@ export default function Tier2ActivityScreen({ route, navigation }) {
         const keys = res?.distractors || [];
         const d1 = keys[0] ? allItems.find((it) => it.key === keys[0]) : null;
         const d2 = keys[1] ? allItems.find((it) => it.key === keys[1]) : null;
-        const opts = (d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey)
-          ? [concept, d1, d2]
-          : buildSequentialOptions();
+        const usedServerKeys = !!(d1 && d2 && d1.key !== conceptKey && d2.key !== conceptKey);
+        const opts = usedServerKeys ? [concept, d1, d2] : buildSequentialOptions();
         optionsRef.current = opts;
+        // Which policy actually chose these, for the attempt log. When the server
+        // keys are unusable we fall back locally, so the server's own label would
+        // be wrong. Mirrors ConceptMatchScreen.
+        distractorSource.current = usedServerKeys
+          ? (res?.distractor_source || 'gkb')
+          : 'client_sequential';
         setDisplayLabels(shuffle(opts));
       })
       .catch(() => {
         if (cancelled) return;
         const opts = buildSequentialOptions();
         optionsRef.current = opts;
+        distractorSource.current = 'client_sequential';
         setDisplayLabels(shuffle(opts));
       });
     return () => { cancelled = true; };
@@ -181,7 +188,20 @@ export default function Tier2ActivityScreen({ route, navigation }) {
       conceptKey,
       tier:        2,
       eventType:   'name_match_attempt',
-      eventData:   { attempt_number: currentAttempt, selected_key: option.key, was_correct: wasCorrect, time_taken_ms: timeTakenMs },
+      eventData:   {
+        attempt_number: currentAttempt,
+        selected_key: option.key,
+        // The concept under test is the right answer. Logged explicitly so a
+        // consumer can build a (correct, selected) pair from this row alone,
+        // rather than having to know that concept_key doubles as the target.
+        correct_key: conceptKey,
+        was_correct: wasCorrect,
+        time_taken_ms: timeTakenMs,
+        // What the child was shown. Without it the log cannot distinguish a real
+        // confusion from the distractor policy's own choice.
+        option_keys: (optionsRef.current || []).map((o) => o.key),
+        distractor_source: distractorSource.current,
+      },
     }).catch(() => {});
 
     if (currentAttempt < 3) {
@@ -377,16 +397,16 @@ const styles = StyleSheet.create({
   },
 
   questionSi: {
-    fontSize: 18,
-    fontFamily: 'Nunito_700Bold',
+    fontSize: 20,
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
     marginBottom: 8,
     paddingHorizontal: 24,
   },
   question: {
-    fontSize: 24,
-    fontFamily: 'Nunito_900Black',
+    fontSize: 27,
+    fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
     marginTop: 4,
@@ -438,8 +458,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   labelText: {
-    fontSize: 22,
-    fontFamily: 'Nunito_900Black',
+    fontSize: 27,
+    fontFamily: 'DMSans_900Black',
     letterSpacing: 0.2,
   },
 

@@ -15,7 +15,7 @@ export default function AuthNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: Colors.surface },
         headerTitleStyle: {
-          fontFamily: 'Nunito_700Bold',
+          fontFamily: 'DMSans_700Bold',
           color: Colors.text.primary,
           fontSize: Layout.fontSize.lg,
         },
