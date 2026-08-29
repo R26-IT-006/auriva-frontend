@@ -16,6 +16,12 @@ import { useLockLandscape } from '../../utils/useOrientationLock';
 // assessment — see utils/demoPolicy.js for why it is once and not six times.
 import { claimDemoIfDue } from '../../utils/demoDetour';
 import { DEMO_KEYS } from '../../utils/demoPolicy';
+import useGatedBack from '../../utils/useGatedBack';
+import {
+  ASSESSMENT_FLOW_ROUTES,
+  returnToAssessmentFlowRoute,
+} from '../../utils/moduleSelectionBack';
+import ScreenBackButton from '../../components/handwriting/ScreenBackButton';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/handwriting-avatars/Boba.png'),
@@ -32,6 +38,12 @@ export default function StudentWelcomeScreen({ route, navigation }) {
   useLockLandscape();
 
   const { student, theme } = route.params;
+  const returnToTeacherInstructions = () => returnToAssessmentFlowRoute(
+    navigation,
+    ASSESSMENT_FLOW_ROUTES.INSTRUCTIONS,
+    { student, theme },
+  );
+  const { requestBack, gateModal } = useGatedBack(returnToTeacherInstructions);
 
   /**
    * Start the assessment — via the demonstration the first time only.
@@ -182,6 +194,14 @@ export default function StudentWelcomeScreen({ route, navigation }) {
       }]} />
 
       <SafeAreaView style={styles.safe}>
+        <ScreenBackButton
+          onPress={requestBack}
+          gated
+          tint={theme.button}
+          color={theme.button}
+          accessibilityLabel="Back"
+          style={styles.flowBackButton}
+        />
         <View style={[styles.center, { paddingHorizontal: width * 0.08 }]}>
 
           {/* ── Avatar ───────────────────────────────────────────────────── */}
@@ -226,6 +246,7 @@ export default function StudentWelcomeScreen({ route, navigation }) {
           </View>
 
         </View>
+        {gateModal}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -234,6 +255,12 @@ export default function StudentWelcomeScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
+  flowBackButton: {
+    position: 'absolute',
+    top: 16,
+    left: 22,
+    zIndex: 10,
+  },
 
   bgCircleLarge: {
     position: 'absolute',

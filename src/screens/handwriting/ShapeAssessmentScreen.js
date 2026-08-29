@@ -12,9 +12,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line, Circle, Polyline, Path, G, Defs, Marker } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
 import client from '../../api/client';
 import { ENDPOINTS } from '../../constants/api';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
 // computeDTW / normalizeStrokesForDTW / normalizePointsForDTW previously
 // imported here directly for the zigzag/curve_wave-only DTW branch below;
 // that branch is now the shape-agnostic computeInvariantDtwDistance import
@@ -41,8 +41,9 @@ import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../utils/collectionSession';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import { useInstructionAudio } from '../../utils/useInstructionAudio';
+import { stopInstructionAudio } from '../../utils/handwritingInstructionAudio';
 import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
-import { SPEECH_LOCALE_EN } from '../../constants/speechLocale';
 import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import { actionRowMinHeight } from '../../constants/writingActionRow';
 
@@ -72,51 +73,39 @@ console.log(`CANVAS_HEIGHT=${CANVAS_HEIGHT}`);
 const N_POINTS     = 100;
 const ASSESSMENT_FEEDBACK_MS = 1600;
 
-// Instruction text — kept deliberately short (2-4 words), one idea per
-// line, same "Trace ___" opening word every time. Short + predictable
-// wording reduces reading/processing load for an ASD child, matching the
-// slowed-down pointer demo below.
+// Shape identity, order and progress labels remain shape-specific. All six
+// steps share the canonical bilingual instruction and recording.
+const ASSESSMENT_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.FOLLOW_PATH];
+
 const SHAPES = [
   {
     id: 'horizontal_line',
     label: 'Draw a straight line',
-    instruction:   'Trace left to right',
-    instructionSi: 'වමේ සිට දකුණට අඳින්න',
     pageLabel: 'Assessment 1 of 6',
   },
   {
     id: 'vertical_line',
     label: 'Draw a straight line down',
-    instruction:   'Trace top to bottom',
-    instructionSi: 'ඉහළ සිට පහළට අඳින්න',
     pageLabel: 'Assessment 2 of 6',
   },
   {
     id: 'full_circle',
     label: 'Draw a full circle',
-    instruction:   'Trace the circle',
-    instructionSi: 'වෘත්තය අඳින්න',
     pageLabel: 'Assessment 3 of 6',
   },
   {
     id: 'half_circle',
     label: 'Draw a half circle',
-    instruction:   'Trace the curve',
-    instructionSi: 'වක්‍රය අඳින්න',
     pageLabel: 'Assessment 4 of 6',
   },
   {
     id: 'zigzag',
     label: 'Draw the zigzag pattern',
-    instruction:   'Trace the zigzag',
-    instructionSi: 'සිග්සැග් රේඛාව අඳින්න',
     pageLabel: 'Assessment 5 of 6',
   },
   {
     id: 'curve_wave',
     label: 'Draw the wave',
-    instruction:   'Trace the wave',
-    instructionSi: 'රැළි රේඛාව අඳින්න',
     pageLabel: 'Assessment 6 of 6',
   },
 ];
@@ -288,6 +277,16 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const advancingRef         = useRef(false);
 
   const currentShape = SHAPES[currentShapeIndex];
+  const displayedShape = useMemo(() => ({
+    ...currentShape,
+    instruction: ASSESSMENT_INSTRUCTION.en,
+    instructionSi: ASSESSMENT_INSTRUCTION.si,
+  }), [currentShape]);
+  const replayInstruction = useInstructionAudio(INSTRUCTION_KEYS.FOLLOW_PATH, {
+    autoPlay: true,
+    autoPlayToken: currentShapeIndex,
+    delayMs: 300,
+  });
 
   const pulseScale = useMemo(
     () => pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }),
@@ -309,19 +308,6 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     () => bgAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] }),
     [bgAnim],
   );
-
-  // Shape instructions are dynamic assessment copy, not any of the nine fixed
-  // handwriting instruction keys. Keep the existing autoplay/replay controls
-  // functional without inventing or statically requiring shape MP3 assets.
-  const speakShapeInstruction = useCallback((shape) => {
-    if (!shape?.instruction) return;
-    Speech.stop();
-    Speech.speak(shape.instruction, {
-      rate: 0.82,
-      pitch: 1.0,
-      language: SPEECH_LOCALE_EN,
-    });
-  }, []);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
@@ -373,7 +359,8 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     outputRange: hasPointerPath ? pathPoints.map(p => p.y - POINTER_HALF) : [0, 0],
   });
 
-  // Restart animations and speak on shape change
+  // Restart the visual guide on shape change. FOLLOW_PATH audio autoplay and
+  // lifecycle cleanup are handled by the shared fixed-instruction hook above.
   useEffect(() => {
     animValue.setValue(0);
     pulseAnim.setValue(0);
@@ -404,14 +391,9 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     pulseLoopRef.current = pulseLoop;
     pulseLoop.start();
 
-    const shape = SHAPES[currentShapeIndex];
-    const t = setTimeout(() => { speakShapeInstruction(shape); }, 300);
-
     return () => {
       pointerLoop.stop();
       pulseLoop.stop();
-      clearTimeout(t);
-      Speech.stop();
     };
   }, [currentShapeIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -513,7 +495,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const handleNext = useCallback(async () => {
     if (advancingRef.current) return;
     advancingRef.current = true;
-    Speech.stop();
+    stopInstructionAudio();
     const idx = currentShapeIndexRef.current;
     const shapeId = SHAPES[idx].id;
     const shapeData = {
@@ -635,7 +617,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
           <ShapeAssessmentStage
             mode="practice"
             theme={theme}
-            shape={currentShape}
+            shape={displayedShape}
             startDot={startDot}
             allPaths={allPaths}
             currentPath={currentPath}
@@ -644,7 +626,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
             pulseOpacity={pulseOpacity}
             pointerLeft={pointerLeft}
             pointerTop={pointerTop}
-            onSpeak={() => speakShapeInstruction(currentShape)}
+            onSpeak={replayInstruction}
             canvasRef={canvasRef}
             onCanvasLayout={measureCanvasOrigin}
             panHandlers={panResponder.panHandlers}

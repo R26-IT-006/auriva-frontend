@@ -84,11 +84,8 @@ describe('No severity/priority applied to Feature 8 recommendations (spec §6/§
 });
 
 describe('No teacher-action affordances added (spec §28/§29)', () => {
-  it('the new subsection never references accept/dismiss/assign/complete/download/print/PDF/share', () => {
-    const source = readScreen();
-    const match = source.match(/Adaptive Practice Recommendations[\s\S]{0,3000}?<\/SectionCard>/);
-    expect(match).not.toBeNull();
-    expect(match[0]).not.toMatch(/accept|dismiss|assign|mark completed|download|print|pdf/i);
+  it('the progress report no longer renders the adaptive subsection or its actions', () => {
+    expect(readScreen()).not.toMatch(/>Adaptive Practice Recommendations</);
   });
 });
 
@@ -113,19 +110,14 @@ describe('Independent per-card expand/collapse (spec §50)', () => {
 });
 
 describe('No raw diagnostics rendered (spec §38)', () => {
-  it('the new subsection never references windowSize/separationMs/requiredSeparationMs/validCycleCount/usableCycleCount', () => {
-    const source = readScreen();
-    const match = source.match(/Adaptive Practice Recommendations[\s\S]{0,3000}?<\/SectionCard>/);
-    expect(match).not.toBeNull();
-    expect(match[0]).not.toMatch(/windowSize|separationMs|requiredSeparationMs|validCycleCount|usableCycleCount/);
+  it('the removed subsection cannot expose raw diagnostics', () => {
+    expect(readScreen()).not.toMatch(/>Adaptive Practice Recommendations</);
   });
 });
 
 describe('Backend order preserved (spec §26/§45) — no local sort', () => {
-  it('the recommendations render maps the array directly, never calling .sort()', () => {
+  it('the retained recommendation data path still never sorts backend results', () => {
     const source = readScreen();
-    const match = source.match(/worksheetRecs\.recommendations\.map\(\(rec, i\) => \(/);
-    expect(match).not.toBeNull();
     expect(source).not.toMatch(/worksheetRecs\.recommendations\.sort/);
   });
 });

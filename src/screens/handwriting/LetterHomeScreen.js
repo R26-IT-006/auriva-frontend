@@ -54,7 +54,8 @@ import {
   canOpen, isPreview, PREVIEW_BADGE,
 } from '../../constants/demoAccess';
 import { useLockLandscape } from '../../utils/useOrientationLock';
-import { backToAssessmentStart } from '../../utils/moduleSelectionBack';
+import ScreenBackButton from '../../components/handwriting/ScreenBackButton';
+import { returnToStudentModuleSelection } from '../../utils/postAssessmentNavigation';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/handwriting-avatars/Boba.png'),
@@ -449,18 +450,7 @@ export default function LetterHomeScreen({ route, navigation }) {
     // cannot reach it unaided.
     else if (pendingGateAction === 'writingCheck') navigation.navigate('WritingCheck', { student, theme });
     else if (pendingGateAction === 'back') {
-      // Back from module selection returns to the assessment starting screen.
-      //
-      // This used to be `canGoBack() ? goBack() : navigate('TeacherMain')`,
-      // which made the destination depend on how the child arrived: after an
-      // assessment goBack() popped one entry onto AssessmentComplete, and on
-      // the already-complete path WelcomeScreen's replace() left nothing to
-      // go back to at all. See utils/moduleSelectionBack.js.
-      //
-      // The gate itself is unchanged - this only replaces what runs after it
-      // is passed. The teacher dashboard is still reachable through its own
-      // 'dashboard' action above.
-      backToAssessmentStart(navigation, { student, theme });
+      returnToStudentModuleSelection(navigation, { student });
     }
     setPendingGateAction(null);
   }
@@ -509,24 +499,17 @@ export default function LetterHomeScreen({ route, navigation }) {
               learning session is an adult decision, and a child tapping it
               mid-activity would otherwise drop straight out.
 
-              Target: goBack() when there is somewhere to go back to, else
-              TeacherMain. WelcomeScreen reaches this screen with
-              navigation.replace(), which removes itself from the stack, so
-              goBack() is not always available — the fallback keeps the button
-              working regardless of how the child got here. */}
+              This screen is the beginning of the explicit assessment Back
+              chain; its own gated Back retains the module-level exit. */}
           <View style={styles.leftGroup}>
-            <TouchableOpacity
-              style={[styles.backBtn, {
-                backgroundColor: theme.button + '14',
-                borderColor: theme.button + '40',
-              }]}
+            <ScreenBackButton
               onPress={() => requestGatedAction('back')}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Back — needs a grown-up code"
-            >
-              <Ionicons name="arrow-back" size={20} color={theme.button} />
-            </TouchableOpacity>
+              gated
+              tint={theme.button}
+              color={theme.button}
+              accessibilityLabel="Back"
+              style={{ marginRight: 2 }}
+            />
 
             {/* Avatar moved out of the top bar — it now appears large, once,
                 in the side column above "Your Progress" (see below), rather
@@ -561,22 +544,9 @@ export default function LetterHomeScreen({ route, navigation }) {
             </TouchableOpacity>
 
             {/* Assessment + Progress — same pill style as Dashboard above,
-                so all three top-bar buttons read as one consistent group.
+                so the top-bar buttons read as one consistent group.
                 Still gated by ParentGateModal on tap (requestGatedAction);
                 only the visual treatment matches Dashboard now. */}
-            <TouchableOpacity
-              style={[styles.dashboardBtn, {
-                backgroundColor: theme.button + '20',
-                borderColor: theme.button + '70',
-              }]}
-              onPress={() => requestGatedAction('writingCheck')}
-              activeOpacity={0.8}
-              accessibilityLabel="Writing Check — needs a code"
-            >
-              <Ionicons name="create-outline" size={17} color={theme.button} />
-              <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Writing Check</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={[styles.dashboardBtn, {
                 backgroundColor: theme.button + '20',
@@ -1039,14 +1009,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
   },
   nameRow: {
     flexDirection: 'column',

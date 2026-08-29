@@ -1025,44 +1025,6 @@ export default function TeacherReportScreen({ route, navigation }) {
               <View style={arp.divider} />
               <TeacherTargetNotice families={overrideFamilies} />
 
-              {/* ── Feature 8 Step 4 — a second, clearly-attributed recommendation
-                  source: longitudinal practice evidence, never conflated with the
-                  general recommendations above (Step 4 spec §3/§15). ── */}
-              <View style={arp.subHeader}>
-                <Ionicons name="analytics-outline" size={15} color="#0D9488" />
-                <Text style={arp.subTitle}>Adaptive Practice Recommendations</Text>
-              </View>
-              <Text style={arp.subSubtitle}>
-                Suggested handwriting practice based on patterns observed across separate practice periods.
-              </Text>
-
-              {worksheetRecs.status === 'loading' && (
-                <View style={arp.loadingRow}>
-                  <ActivityIndicator size="small" color="#0D9488" />
-                  <Text style={arp.loadingText}>Loading practice recommendations…</Text>
-                </View>
-              )}
-
-              {(worksheetRecs.status === 'read_failed' || worksheetRecs.status === 'invalid_input') && (
-                <Text style={arp.errorText}>Practice recommendations could not be loaded.</Text>
-              )}
-
-              {worksheetRecs.status === 'evaluated' && worksheetRecs.recommendations.length === 0 && (
-                <Text style={arp.emptyText}>{getWorksheetRecommendationEmptyState(worksheetRecs.summary)}</Text>
-              )}
-
-              {worksheetRecs.status === 'evaluated' && worksheetRecs.recommendations.length > 0 && (
-                <View style={{ gap: 10, marginTop: 4 }}>
-                  {worksheetRecs.recommendations.map((rec, i) => (
-                    <AdaptivePracticeRecommendationCard
-                      key={i}
-                      recommendation={rec}
-                      studentId={student?.sid}
-                      historyEvents={teacherHistory.events}
-                    />
-                  ))}
-                </View>
-              )}
             </SectionCard>
 
             <View style={{ height: 40 }} />

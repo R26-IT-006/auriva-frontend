@@ -9,6 +9,10 @@ const chooserReference = fs.readFileSync(
   path.resolve(__dirname, '../screens/handwriting/LetterHomeScreen.js'),
   'utf8',
 );
+const letterProgress = fs.readFileSync(
+  path.resolve(__dirname, '../screens/handwriting/ProgressReportScreen.js'),
+  'utf8',
+);
 
 describe('Letter Practice chooser UI cleanup', () => {
   it('keeps the student text header without the small header avatar', () => {
@@ -27,6 +31,11 @@ describe('Letter Practice chooser UI cleanup', () => {
     expect(call).toMatch(/uppercaseProgress,/);
     expect(call).toMatch(/letterSequence,/);
     expect(call).toMatch(/originRoute: 'LetterPractice'/);
+  });
+
+  it('labels the destination screen Letter Progress', () => {
+    expect(letterProgress).toMatch(/<Text style=\{\[styles\.headerTitle,[\s\S]*?>\s*Letter Progress\s*<\/Text>/);
+    expect(letterProgress).not.toMatch(/<Text style=\{\[styles\.headerTitle,[\s\S]*?>\s*Progress Report\s*<\/Text>/);
   });
 
   it('keeps the approved heading and authoritative progress calculations', () => {

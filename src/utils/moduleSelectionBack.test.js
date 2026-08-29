@@ -1,37 +1,24 @@
-// Back from module selection returns to the assessment starting screen.
-//
-// It used to depend on how the child arrived. After an assessment the stack
-// was [Welcome, Instructions, StudentWelcome, ShapeAssessment,
-// AssessmentComplete, LetterHome], so goBack() popped one entry onto the
-// congratulations screen. On the already-complete path WelcomeScreen calls
-// replace('LetterHome'), leaving [LetterHome] — canGoBack() was false and back
-// left the writing module entirely.
+// Visible, stack-safe reverse navigation through the initial-assessment flow.
 
 jest.mock('../api/client', () => ({ __esModule: true, default: { get: jest.fn(), post: jest.fn() } }));
 
 import fs from 'fs';
 import path from 'path';
-
 import {
-  ASSESSMENT_START_ROUTE,
-  resolveModuleSelectionBack,
-  backToAssessmentStart,
+  ASSESSMENT_FLOW_ROUTES,
+  resolveAssessmentFlowBack,
+  returnToAssessmentFlowRoute,
 } from './moduleSelectionBack';
 
-const read = (rel) => fs.readFileSync(path.resolve(__dirname, rel), 'utf8');
-const stripComments = (s) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-const readCode = (rel) => stripComments(read(rel));
+const read = (relativePath) => fs.readFileSync(path.resolve(__dirname, relativePath), 'utf8');
+const stripComments = (source) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+const readCode = (relativePath) => stripComments(read(relativePath));
 
 const HOME = '../screens/handwriting/LetterHomeScreen.js';
-
-// The stack as it really is after finishing the assessment.
-const AFTER_ASSESSMENT = [
-  'Welcome', 'Instructions', 'StudentWelcome', 'ShapeAssessment',
-  'AssessmentComplete', 'LetterHome',
-];
-// ...and as it really is when the assessment was already complete.
-const ALREADY_COMPLETE = ['LetterHome'];
+const PRESS_AND_DRAG = '../screens/handwriting/WelcomeScreen.js';
+const INSTRUCTIONS = '../screens/handwriting/InstructionScreen.js';
+const START = '../screens/handwriting/StudentWelcomeScreen.js';
 
 const navStub = (routeNames) => ({
   getState: () => ({ routes: routeNames.map((name) => ({ name })), index: routeNames.length - 1 }),
@@ -40,184 +27,164 @@ const navStub = (routeNames) => ({
   goBack: jest.fn(),
 });
 
-describe('the target is the assessment starting screen', () => {
-  it('is the screen with the Start Assessment button', () => {
-    expect(ASSESSMENT_START_ROUTE).toBe('StudentWelcome');
-    expect(readCode('../screens/handwriting/StudentWelcomeScreen.js'))
-      .toMatch(/Start Assessment/);
+describe('actual registered assessment-flow routes', () => {
+  test('uses the existing route names and their real screen copy', () => {
+    expect(ASSESSMENT_FLOW_ROUTES).toEqual({
+      START: 'StudentWelcome',
+      INSTRUCTIONS: 'Instructions',
+      PRESS_AND_DRAG: 'Welcome',
+      MODULE_SELECTION: 'LetterHome',
+    });
+    expect(readCode(START)).toMatch(/Start Assessment/);
+    expect(readCode(INSTRUCTIONS)).toMatch(/FOR TEACHER/);
+    expect(readCode(PRESS_AND_DRAG)).toMatch(/Press and drag right/);
+    expect(readCode(HOME)).toMatch(/Letter Writing/);
+  });
+
+  test('each route is registered exactly once', () => {
+    const navigator = readCode('../navigation/HandwritingNavigator.js');
+    for (const route of Object.values(ASSESSMENT_FLOW_ROUTES)) {
+      expect((navigator.match(new RegExp(`name="${route}"`, 'g')) ?? [])).toHaveLength(1);
+    }
   });
 });
 
-describe('after the assessment — it unwinds to the start, not to the last screen', () => {
-  it('pops back to StudentWelcome rather than AssessmentComplete', () => {
-    expect(resolveModuleSelectionBack({
-      stackRouteNames: AFTER_ASSESSMENT, currentIndex: 5,
-    })).toEqual({ action: 'popTo', route: 'StudentWelcome' });
+describe('stack-safe route application', () => {
+  test('pops to an existing earlier target instead of adding a duplicate', () => {
+    const routes = ['Welcome', 'Instructions', 'StudentWelcome', 'ShapeAssessment', 'LetterHome'];
+    expect(resolveAssessmentFlowBack({
+      stackRouteNames: routes,
+      currentIndex: 4,
+      targetRoute: 'Welcome',
+    })).toEqual({ action: 'popTo', route: 'Welcome' });
+
+    const navigation = navStub(routes);
+    returnToAssessmentFlowRoute(navigation, 'Welcome', { student: 1 });
+    expect(navigation.popTo).toHaveBeenCalledWith('Welcome');
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    expect(navigation.goBack).not.toHaveBeenCalled();
   });
 
-  it('popTo drops module selection and everything above it', () => {
-    const nav = navStub(AFTER_ASSESSMENT);
-    backToAssessmentStart(nav, { student: { sid: 1 }, theme: {} });
-    expect(nav.popTo).toHaveBeenCalledWith('StudentWelcome');
-    expect(nav.goBack).not.toHaveBeenCalled();
-    expect(nav.navigate).not.toHaveBeenCalled();
+  test('navigates with context when the target is not below the screen', () => {
+    const navigation = navStub(['LetterHome']);
+    const params = { student: { sid: 7 }, theme: { button: '#123' } };
+    returnToAssessmentFlowRoute(navigation, 'Welcome', params);
+    expect(navigation.navigate).toHaveBeenCalledWith('Welcome', params);
+    expect(navigation.popTo).not.toHaveBeenCalled();
+    expect(navigation.goBack).not.toHaveBeenCalled();
   });
 
-  it('never lands on the congratulations screen', () => {
-    const nav = navStub(AFTER_ASSESSMENT);
-    backToAssessmentStart(nav, {});
-    const targets = [...nav.popTo.mock.calls, ...nav.navigate.mock.calls].map((c) => c[0]);
-    expect(targets).not.toContain('AssessmentComplete');
-    expect(targets).toEqual(['StudentWelcome']);
-  });
-});
-
-describe('assessment already complete — replace() left nothing to pop to', () => {
-  it('pushes the start screen instead of leaving the module', () => {
-    expect(resolveModuleSelectionBack({
-      stackRouteNames: ALREADY_COMPLETE, currentIndex: 0,
-    })).toEqual({ action: 'navigate', route: 'StudentWelcome' });
-  });
-
-  it('navigates with the student and theme so it renders in context', () => {
-    const nav = navStub(ALREADY_COMPLETE);
-    const params = { student: { sid: 51 }, theme: { button: '#000' } };
-    backToAssessmentStart(nav, params);
-    expect(nav.navigate).toHaveBeenCalledWith('StudentWelcome', params);
-    expect(nav.popTo).not.toHaveBeenCalled();
-  });
-
-  it('never exits to the teacher dashboard', () => {
-    const nav = navStub(ALREADY_COMPLETE);
-    backToAssessmentStart(nav, {});
-    const targets = [...nav.popTo.mock.calls, ...nav.navigate.mock.calls].map((c) => c[0]);
-    expect(targets).not.toContain('TeacherMain');
+  test('malformed stacks safely use the explicit target', () => {
+    expect(resolveAssessmentFlowBack({ targetRoute: 'Instructions' }))
+      .toEqual({ action: 'navigate', route: 'Instructions' });
+    const navigation = { getState: () => null, navigate: jest.fn() };
+    expect(() => returnToAssessmentFlowRoute(navigation, 'Instructions', {})).not.toThrow();
+    expect(navigation.navigate).toHaveBeenCalledWith('Instructions', {});
   });
 });
 
-describe('it never pops one entry and hopes', () => {
-  it('goBack is not an outcome, on any stack', () => {
-    for (const names of [AFTER_ASSESSMENT, ALREADY_COMPLETE, [], ['A', 'B'], ['StudentWelcome']]) {
-      const nav = navStub(names);
-      backToAssessmentStart(nav, {});
-      expect(nav.goBack).not.toHaveBeenCalled();
-    }
-    for (const names of [AFTER_ASSESSMENT, ALREADY_COMPLETE, []]) {
-      expect(resolveModuleSelectionBack({ stackRouteNames: names }).action).not.toBe('goBack');
-    }
+describe('StudentWelcome -> Teacher Instruction', () => {
+  const code = readCode(START);
+
+  test('visible Back uses the shared chooser component and explicit Instructions target', () => {
+    expect(code).toMatch(/<ScreenBackButton[\s\S]*?onPress=\{requestBack\}[\s\S]*?gated[\s\S]*?accessibilityLabel="Back"/);
+    expect(code).toMatch(/returnToAssessmentFlowRoute\([\s\S]*?ASSESSMENT_FLOW_ROUTES\.INSTRUCTIONS[\s\S]*?\{ student, theme \}/);
+    expect(code).not.toMatch(/ASSESSMENT_FLOW_ROUTES\.(PRESS_AND_DRAG|MODULE_SELECTION)/);
   });
 
-  it('an instance at or above the current screen is not popped to', () => {
-    // Standing ON the start screen: there is nothing below to unwind to.
-    expect(resolveModuleSelectionBack({
-      stackRouteNames: ['StudentWelcome'], currentIndex: 0,
-    })).toEqual({ action: 'navigate', route: 'StudentWelcome' });
+  test('visible and hardware Back share the same gated function', () => {
+    expect(code).toMatch(/useGatedBack\(returnToTeacherInstructions\)/);
+    expect(code).toMatch(/\{gateModal\}/);
   });
 
-  it('with two instances it takes the nearest one below', () => {
-    const names = ['StudentWelcome', 'Instructions', 'StudentWelcome', 'LetterHome'];
-    expect(resolveModuleSelectionBack({ stackRouteNames: names, currentIndex: 3 }))
-      .toEqual({ action: 'popTo', route: 'StudentWelcome' });
-  });
+  test('pops to Instructions in a normal stack and navigates there in a replaced stack', () => {
+    const normal = navStub(['Welcome', 'Instructions', 'StudentWelcome']);
+    returnToAssessmentFlowRoute(normal, ASSESSMENT_FLOW_ROUTES.INSTRUCTIONS, {});
+    expect(normal.popTo).toHaveBeenCalledWith('Instructions');
 
-  it('malformed or missing state never throws', () => {
-    for (const bad of [undefined, {}, { stackRouteNames: null }, { stackRouteNames: 'x' }]) {
-      expect(() => resolveModuleSelectionBack(bad)).not.toThrow();
-      expect(resolveModuleSelectionBack(bad).route).toBe('StudentWelcome');
-    }
-    // Malformed STATE is realistic — a navigator mid-reset, or one whose
-    // getState() returns nothing. A navigator with no navigate() is not, and
-    // swallowing that would hide a wiring mistake rather than survive one.
-    for (const nav of [
-      { navigate: jest.fn() },
-      { getState: () => null, navigate: jest.fn() },
-      { getState: () => ({}), navigate: jest.fn() },
-    ]) {
-      expect(() => backToAssessmentStart(nav, {})).not.toThrow();
-      expect(nav.navigate).toHaveBeenCalledWith('StudentWelcome', {});
-    }
-  });
-
-  it('a navigator without popTo still reaches the start screen', () => {
-    const nav = { ...navStub(AFTER_ASSESSMENT), popTo: undefined };
-    backToAssessmentStart(nav, { student: 1 });
-    expect(nav.navigate).toHaveBeenCalledWith('StudentWelcome', { student: 1 });
+    const replaced = navStub(['StudentWelcome']);
+    const params = { student: 1, theme: 2 };
+    returnToAssessmentFlowRoute(replaced, ASSESSMENT_FLOW_ROUTES.INSTRUCTIONS, params);
+    expect(replaced.navigate).toHaveBeenCalledWith('Instructions', params);
   });
 });
 
-describe('the screen is wired to it, once, behind the existing gate', () => {
+describe('Teacher Instruction -> Press and drag right', () => {
+  const code = readCode(INSTRUCTIONS);
+
+  test('visible Back uses the shared chooser component and explicit Welcome target', () => {
+    expect(code).toMatch(/<ScreenBackButton[\s\S]*?onPress=\{requestBack\}[\s\S]*?gated[\s\S]*?accessibilityLabel="Back"/);
+    expect(code).toMatch(/returnToAssessmentFlowRoute\([\s\S]*?ASSESSMENT_FLOW_ROUTES\.PRESS_AND_DRAG[\s\S]*?\{ student, theme \}/);
+    expect(code).not.toMatch(/ASSESSMENT_FLOW_ROUTES\.START/);
+  });
+
+  test('visible and hardware Back share the same gated function', () => {
+    expect(code).toMatch(/useGatedBack\(returnToPressAndDrag\)/);
+    expect(code).toMatch(/\{gateModal\}/);
+  });
+
+  test('pops to Welcome when the forward-flow stack is present', () => {
+    const navigation = navStub(['Welcome', 'Instructions']);
+    returnToAssessmentFlowRoute(navigation, ASSESSMENT_FLOW_ROUTES.PRESS_AND_DRAG, {});
+    expect(navigation.popTo).toHaveBeenCalledWith('Welcome');
+  });
+});
+
+describe('Press and drag right -> Module Selection', () => {
+  const code = readCode(PRESS_AND_DRAG);
+
+  test('visible Back uses the shared chooser component and explicit LetterHome target', () => {
+    expect(code).toMatch(/<ScreenBackButton[\s\S]*?onPress=\{requestBack\}[\s\S]*?gated[\s\S]*?accessibilityLabel="Back"/);
+    expect(code).toMatch(/returnToAssessmentFlowRoute\([\s\S]*?ASSESSMENT_FLOW_ROUTES\.MODULE_SELECTION[\s\S]*?\{ student, theme \}/);
+    expect(code).not.toMatch(/ASSESSMENT_FLOW_ROUTES\.INSTRUCTIONS/);
+  });
+
+  test('visible and hardware Back share the same gated function', () => {
+    expect(code).toMatch(/useGatedBack\(returnToModuleSelection\)/);
+    expect(code).toMatch(/\{gateModal\}/);
+  });
+
+  test('uses an earlier LetterHome or explicitly navigates there when absent', () => {
+    const existing = navStub(['LetterHome', 'Welcome']);
+    returnToAssessmentFlowRoute(existing, ASSESSMENT_FLOW_ROUTES.MODULE_SELECTION, {});
+    expect(existing.popTo).toHaveBeenCalledWith('LetterHome');
+
+    const absent = navStub(['Welcome']);
+    const params = { student: 1, theme: 2 };
+    returnToAssessmentFlowRoute(absent, ASSESSMENT_FLOW_ROUTES.MODULE_SELECTION, params);
+    expect(absent.navigate).toHaveBeenCalledWith('LetterHome', params);
+  });
+});
+
+describe('LetterHome exits to the parent student module selection', () => {
   const code = readCode(HOME);
 
-  it('the gated back action calls it', () => {
-    expect(code).toMatch(/else if \(pendingGateAction === 'back'\) \{\s*backToAssessmentStart\(navigation, \{ student, theme \}\);\s*\}/);
-  });
-
-  it('the old conditional is gone', () => {
-    expect(code).not.toMatch(/if \(navigation\.canGoBack\(\)\) navigation\.goBack\(\);/);
-    expect(code).not.toMatch(/pendingGateAction === 'back'[\s\S]{0,200}navigate\('TeacherMain'\)/);
-  });
-
-  it('header back and hardware back run the SAME action', () => {
-    expect(code).toMatch(/onPress=\{\(\) => requestGatedAction\('back'\)\}/);
+  test('its own gated Back uses the explicit parent-module helper', () => {
+    expect(code).toMatch(/<ScreenBackButton[\s\S]*?onPress=\{\(\) => requestGatedAction\('back'\)\}/);
     expect(code).toMatch(/useGatedHardwareBack\(\(\) => requestGatedAction\('back'\), !gateVisible\)/);
-    // One handler, so the two cannot diverge.
-    expect((code.match(/backToAssessmentStart\(/g) || [])).toHaveLength(1);
-  });
-
-  it('the parent gate is unchanged — back still asks first', () => {
-    expect(code).toMatch(/function requestGatedAction/);
-    expect(code).toMatch(/<ParentGateModal/);
-    // Never navigated straight from a tap.
-    expect(code).not.toMatch(/onPress=\{\(\) => backToAssessmentStart/);
-  });
-
-  it('the teacher dashboard keeps its own route out', () => {
-    expect(code).toMatch(/pendingGateAction === 'dashboard'\) navigation\.navigate\('TeacherMain'\)/);
+    expect(code).toMatch(/pendingGateAction === 'back'[\s\S]*?returnToStudentModuleSelection\(navigation, \{ student \}\)/);
+    expect(code).not.toMatch(/backToPressAndDrag/);
   });
 });
 
-describe('no other navigation flow moved', () => {
-  it('the shared report helper is untouched', () => {
-    const origin = readCode('./backToOrigin.js');
-    expect(origin).toMatch(/export function resolveBackTarget/);
-    expect(origin).toMatch(/navigation\.goBack\(\);\n\}/);   // its goBack fallback stays
-    expect(origin).not.toMatch(/ASSESSMENT_START_ROUTE|backToAssessmentStart/);
+describe('shared visible control and flow safety', () => {
+  test('all four screens use ScreenBackButton with the Back label', () => {
+    for (const file of [HOME, PRESS_AND_DRAG, INSTRUCTIONS, START]) {
+      const code = readCode(file);
+      expect(code).toMatch(/import ScreenBackButton/);
+      expect(code).toMatch(/accessibilityLabel="Back"/);
+    }
+    const shared = readCode('../components/handwriting/ScreenBackButton.js');
+    expect(shared).toMatch(/accessibilityRole="button"/);
+    expect(shared).toMatch(/Ionicons name="arrow-back" size=\{20\}/);
+    expect(shared).toMatch(/width: 40,[\s\S]*?height: 40,[\s\S]*?borderRadius: 20/);
   });
 
-  it('the report screens still return to their own origin', () => {
-    expect(readCode('../screens/handwriting/ProgressReportScreen.js'))
-      .toMatch(/goBackToOrigin\(navigation, route\.params\?\.originRoute\)/);
-    expect(readCode('../screens/handwriting/reports/TeacherReportScreen.js'))
-      .toMatch(/goBackToOrigin\(navigation, /);
-  });
-
-  it('the other back handlers in the module are unchanged', () => {
-    expect(readCode('../screens/handwriting/LetterPracticeScreen.js'))
-      .toMatch(/navigation\.canGoBack\(\) \? navigation\.goBack\(\) : navigation\.navigate\('LetterHome', \{ student, theme \}\)/);
+  test('forward assessment destinations remain present', () => {
+    expect(readCode(PRESS_AND_DRAG)).toMatch(/navigation\.navigate\('Instructions', \{ student, theme \}\)/);
+    expect(readCode(INSTRUCTIONS)).toMatch(/navigation\.navigate\('StudentWelcome', \{ student, theme \}\)/);
+    expect(readCode(START)).toMatch(/navigation\.navigate\('ShapeAssessment', assessmentParams\)/);
     expect(readCode('../screens/handwriting/AssessmentCompleteScreen.js'))
-      .toMatch(/useGatedBack\(\(\) => navigation\.navigate\('StudentWelcome', \{ student, theme \}\)\)/);
-    expect(readCode('../screens/handwriting/words/WordLetterSelectScreen.js'))
-      .toMatch(/useGatedBack\(\(\) => navigation\.goBack\(\)\)/);
-  });
-
-  it('the routes into module selection are unchanged', () => {
-    expect(readCode('../screens/handwriting/WelcomeScreen.js'))
-      .toMatch(/navigation\.replace\('LetterHome', \{ student, theme \}\)/);
-    expect(readCode('../screens/handwriting/AssessmentCompleteScreen.js'))
-      .toMatch(/navigation\.navigate\('LetterHome', \{/);
-  });
-
-  it('no screen was added or duplicated', () => {
-    const nav = readCode('../navigation/HandwritingNavigator.js');
-    expect((nav.match(/name="StudentWelcome"/g) || [])).toHaveLength(1);
-    expect((nav.match(/name="LetterHome"/g) || [])).toHaveLength(1);
-    const names = nav.match(/name="(\w+)"/g) || [];
-    expect(new Set(names).size).toBe(names.length);
-  });
-
-  it('the Initial Assessment screen itself was not touched', () => {
-    const start = readCode('../screens/handwriting/StudentWelcomeScreen.js');
-    expect(start).toMatch(/navigation\.navigate\('ShapeAssessment', assessmentParams\)/);
-    expect(start).not.toMatch(/moduleSelectionBack|backToAssessmentStart/);
+      .toMatch(/resetToPostAssessmentPractice\(navigation, \{/);
   });
 });

@@ -171,10 +171,9 @@ describe('No severity/priority wording introduced by Teacher Review styling (spe
 });
 
 describe('Recommendation never suppressed by teacher judgement (spec §31/§41)', () => {
-  it('the recommendations.map render is never conditioned on a validation/dismissed check', () => {
+  it('the progress report no longer renders recommendation cards to suppress', () => {
     const source = readScreen();
-    const match = source.match(/\{worksheetRecs\.status === 'evaluated' && worksheetRecs\.recommendations\.length > 0 && \([\s\S]*?\)\)\}\s*\n\s*<\/View>\s*\n\s*\)\}/);
-    expect(match).not.toBeNull();
-    expect(match[0]).not.toMatch(/dismissed|filter\(/);
+    expect(source).not.toMatch(/>Adaptive Practice Recommendations</);
+    expect(source).not.toMatch(/worksheetRecs\.recommendations\.map/);
   });
 });

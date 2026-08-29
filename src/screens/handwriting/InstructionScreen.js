@@ -13,34 +13,37 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import useGatedBack from '../../utils/useGatedBack';
+import { ASSESSMENT_FLOW_ROUTES, returnToAssessmentFlowRoute } from '../../utils/moduleSelectionBack';
+import ScreenBackButton from '../../components/handwriting/ScreenBackButton';
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
 const STEPS = [
   {
     icon: 'pencil-outline',
-    title: 'Position the stylus',
-    desc: 'Ensure the child is comfortably holding the stylus or using their finger.',
+    title: 'Comfortable grip',
+    desc: 'Let the child use a stylus or finger.',
   },
   {
     icon: 'chatbubble-ellipses-outline',
-    title: 'Explain the activity',
-    desc: 'Ask the child to trace or draw the shapes shown on the screen.',
+    title: 'Trace each shape',
+    desc: 'Ask the child to follow the shape on screen.',
   },
   {
     icon: 'hand-left-outline',
-    title: 'Avoid guiding',
-    desc: "Do not hold or guide the child's hand unless needed to start.",
+    title: 'Let the child lead',
+    desc: 'Only guide their hand if they need help starting.',
   },
   {
     icon: 'time-outline',
-    title: 'Allow natural pace',
-    desc: 'Let the child draw at their own speed without rushing.',
+    title: 'Take your time',
+    desc: 'Let the child draw without rushing.',
   },
   {
     icon: 'desktop-outline',
-    title: 'Automatic recording',
-    desc: 'The system records movement, speed, pauses, and stroke stability automatically.',
+    title: 'Recording is automatic',
+    desc: 'The app records movement, speed, pauses, and stroke steadiness.',
   },
 ];
 
@@ -61,6 +64,12 @@ export default function InstructionScreen({ route, navigation }) {
   useLockLandscape();
 
   const { student, theme } = route.params;
+  const returnToPressAndDrag = () => returnToAssessmentFlowRoute(
+    navigation,
+    ASSESSMENT_FLOW_ROUTES.PRESS_AND_DRAG,
+    { student, theme },
+  );
+  const { requestBack, gateModal } = useGatedBack(returnToPressAndDrag);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
@@ -168,6 +177,14 @@ export default function InstructionScreen({ route, navigation }) {
       }]} />
 
       <SafeAreaView style={styles.safe}>
+        <ScreenBackButton
+          onPress={requestBack}
+          gated
+          tint={theme.button}
+          color={theme.button}
+          accessibilityLabel="Back"
+          style={styles.flowBackButton}
+        />
 
         <View style={[styles.root, isLandscape && styles.rootLandscape]}>
 
@@ -196,8 +213,7 @@ export default function InstructionScreen({ route, navigation }) {
                 Initial Motor Assessment
               </Text>
               <Text style={styles.intro}>
-                Set up a calm writing moment for {student?.full_name ?? 'the child'}.
-                Use these quick checks before the drawing tasks begin.
+                Help {student?.full_name ?? 'the child'} get comfortable, then follow these five steps.
               </Text>
             </Animated.View>
 
@@ -205,10 +221,7 @@ export default function InstructionScreen({ route, navigation }) {
             <View
               style={[
                 styles.stepsContainer,
-                {
-                  backgroundColor: theme.button + '0B',
-                  borderColor: theme.button + '22',
-                },
+                { backgroundColor: theme.button + '0B' },
               ]}
             >
               {STEPS.map((step, index) => (
@@ -284,6 +297,7 @@ export default function InstructionScreen({ route, navigation }) {
           )}
 
         </View>
+        {gateModal}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -338,6 +352,12 @@ function StepCard({ step, index, theme, progress }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
+  flowBackButton: {
+    position: 'absolute',
+    top: 16,
+    left: 22,
+    zIndex: 10,
+  },
 
   // Decorative background bubbles
   bgBubbleLarge: {
@@ -417,15 +437,9 @@ const styles = StyleSheet.create({
   // ── Steps ─────────────────────────────────────────────────────────────────
   stepsContainer: {
     backgroundColor: 'rgba(255,255,255,0.58)',
-    borderWidth: 1,
     borderRadius: 24,
     padding: 10,
     gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 3,
   },
 
   stepCard: {
@@ -434,16 +448,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderLeftWidth: 5,
-    borderWidth: 1,
-    borderColor: '#E8EDF7',
     paddingHorizontal: 13,
     paddingVertical: 10,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    elevation: 2,
   },
 
   stepCircle: {

@@ -291,11 +291,10 @@ describe('63. stale-response guard', () => {
 // ─── 64-68: independence/privacy re-confirmation ─────────────────────────
 
 describe('64. no recommendation suppression', () => {
-  it('the recommendation-card render block never filters on validation/dismissed state', () => {
+  it('the removed recommendation-card block cannot filter or suppress cards', () => {
     const source = readScreen();
-    const match = source.match(/\{worksheetRecs\.status === 'evaluated' && worksheetRecs\.recommendations\.length > 0 && \([\s\S]*?\)\)\}\s*\n\s*<\/View>\s*\n\s*\)\}/);
-    expect(match).not.toBeNull();
-    expect(match[0]).not.toMatch(/dismissed|\.filter\(/);
+    expect(source).not.toMatch(/>Adaptive Practice Recommendations</);
+    expect(source).not.toMatch(/worksheetRecs\.recommendations\.map/);
   });
 });
 

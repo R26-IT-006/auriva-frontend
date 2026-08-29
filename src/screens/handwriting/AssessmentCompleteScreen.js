@@ -18,6 +18,7 @@ import { attemptFinalization } from '../../utils/finalizeSync';
 import { DATA_COLLECTION_PROTOCOL } from '../../constants/dataCollectionProtocol';
 import { useToast } from '../../context/ToastContext';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import { resetToPostAssessmentPractice } from '../../utils/postAssessmentNavigation';
 import useGatedBack from '../../utils/useGatedBack';
 
 const SHAPE_LABELS = {
@@ -270,7 +271,12 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
 
                   {/* Right: accuracy bar + strokes */}
                   <View style={styles.resultRight}>
-                    <Text style={styles.metaLabel}>Accuracy</Text>
+                    <View style={styles.accuracyHeader}>
+                      <Text style={styles.metaLabel}>Accuracy</Text>
+                      <Text style={[styles.accuracyValue, { color: difficulty.color }]}>
+                        {score != null ? `${score}%` : 'N/A'}
+                      </Text>
+                    </View>
                     <View style={styles.barTrack}>
                       <View
                         style={[
@@ -293,14 +299,6 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
             <Text style={styles.summaryText}>
               {student.full_name} completed all {assessmentData.length} shape assessments.
             </Text>
-            <TouchableOpacity
-              style={[styles.retakeButton, { borderColor: theme.button }]}
-              onPress={requestBack}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="arrow-back" size={16} color={theme.button} />
-              <Text style={[styles.retakeText, { color: theme.button }]}>Back to Assessment</Text>
-            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.doneButton, { backgroundColor: theme.button }, isSaving && styles.doneButtonDisabled]}
               onPress={async () => {
@@ -388,7 +386,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
 
                 setIsSaving(false);
 
-                navigation.navigate('LetterHome', {
+                resetToPostAssessmentPractice(navigation, {
                   student,
                   theme,
                   assessmentData,
@@ -557,6 +555,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 3,
   },
+  accuracyHeader: {
+    width: 110,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  accuracyValue: {
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
+  },
   metaLabel: {
     fontSize: 11,
     color: '#999999',
@@ -576,8 +585,10 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     alignItems: 'center',
-    gap: 10,
-    paddingTop: 10,
+    justifyContent: 'center',
+    gap: 8,
+    paddingTop: 8,
+    paddingBottom: 2,
   },
   summaryText: {
     fontSize: 13,
@@ -585,24 +596,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  retakeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 36,
-    paddingVertical: 11,
-    borderRadius: 50,
-    borderWidth: 1.5,
-  },
-  retakeText: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-  },
   doneButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    minWidth: 180,
     paddingHorizontal: 48,
     paddingVertical: 14,
     borderRadius: 50,

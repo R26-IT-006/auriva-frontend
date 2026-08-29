@@ -39,10 +39,17 @@ describe('LetterHome dashboard presentation', () => {
     expect(source).toContain('const wordsUnlocked   = isWordsUnlocked(lowercaseProgress, uppercaseProgress);');
   });
 
-  test('top controls are clearer without changing their gated actions', () => {
+  test('top controls retain their remaining gated actions without Writing Check', () => {
     expect(source).toContain('accessibilityState={{ selected: true }}');
-    for (const action of ['dashboard', 'writingCheck', 'assessment', 'progress']) {
+    for (const action of ['dashboard', 'assessment', 'progress']) {
       expect(source).toContain(`requestGatedAction('${action}')`);
     }
+
+    const topControls = source.slice(
+      source.indexOf('<View style={styles.topBtnGroup}>'),
+      source.indexOf('</View>', source.indexOf('<View style={styles.topBtnGroup}>')),
+    );
+    expect(topControls).not.toContain("requestGatedAction('writingCheck')");
+    expect(topControls).not.toContain('Writing Check');
   });
 });

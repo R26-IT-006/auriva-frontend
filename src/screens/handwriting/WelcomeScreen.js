@@ -17,6 +17,9 @@ import {
   generateCollectionSessionId, getDeviceMetadata, PROTOCOL_VERSION,
 } from '../../utils/collectionSession';
 import { useLockLandscape } from '../../utils/useOrientationLock';
+import useGatedBack from '../../utils/useGatedBack';
+import { ASSESSMENT_FLOW_ROUTES, returnToAssessmentFlowRoute } from '../../utils/moduleSelectionBack';
+import ScreenBackButton from '../../components/handwriting/ScreenBackButton';
 
 const AVATAR_MAP = {
   boba:     require('../../../assets/avatar-images/Boba.png'),
@@ -58,6 +61,12 @@ export default function WelcomeScreen({ route, navigation }) {
   // untouched here). A network failure fails OPEN (shows the assessment
   // flow as before) rather than risking blocking a student from starting.
   const [checkingReturningStudent, setCheckingReturningStudent] = useState(true);
+  const returnToModuleSelection = () => returnToAssessmentFlowRoute(
+    navigation,
+    ASSESSMENT_FLOW_ROUTES.MODULE_SELECTION,
+    { student, theme },
+  );
+  const { requestBack, gateModal } = useGatedBack(returnToModuleSelection);
   const floatLarge = useRef(new Animated.Value(0)).current;
   const floatMedium = useRef(new Animated.Value(0)).current;
   const floatSmall = useRef(new Animated.Value(0)).current;
@@ -405,6 +414,14 @@ export default function WelcomeScreen({ route, navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
+        <ScreenBackButton
+          onPress={requestBack}
+          gated
+          tint={themeColor}
+          color={themeColor}
+          accessibilityLabel="Back"
+          style={styles.flowBackButton}
+        />
 
         {/* ── Left panel ─────────────────────────────────────────────────── */}
         <View style={styles.left}>
@@ -593,6 +610,7 @@ export default function WelcomeScreen({ route, navigation }) {
         </View>
 
       </View>
+      {gateModal}
     </SafeAreaView>
   );
 }
@@ -600,6 +618,12 @@ export default function WelcomeScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#E8EEF8' },
   root: { flex: 1, flexDirection: 'row' },
+  flowBackButton: {
+    position: 'absolute',
+    top: 16,
+    left: 22,
+    zIndex: 10,
+  },
 
   // ── Left panel ──────────────────────────────────────────────────────────────
   left: {

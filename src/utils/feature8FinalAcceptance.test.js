@@ -250,20 +250,16 @@ describe('Item 46 — no backend family activity strings duplicated in frontend 
 // ─── Item 47 — no assign/accept/dismiss ────────────────────────────────────
 
 describe('Item 47 — no teacher-action affordances', () => {
-  it('the Adaptive Practice Recommendations block never references accept/dismiss/assign/complete', () => {
-    const match = readScreen().match(/Adaptive Practice Recommendations[\s\S]{0,3000}?<\/SectionCard>/);
-    expect(match).not.toBeNull();
-    expect(match[0]).not.toMatch(/accept|dismiss|assign|mark completed/i);
+  it('the removed Adaptive Practice Recommendations block exposes no actions', () => {
+    expect(readScreen()).not.toMatch(/>Adaptive Practice Recommendations</);
   });
 });
 
 // ─── Item 48 — no PDF/download/print ───────────────────────────────────────
 
 describe('Item 48 — no PDF/download/print wording or packages', () => {
-  it('the Adaptive Practice Recommendations block never references pdf/download/print', () => {
-    const match = readScreen().match(/Adaptive Practice Recommendations[\s\S]{0,3000}?<\/SectionCard>/);
-    expect(match).not.toBeNull();
-    expect(match[0]).not.toMatch(/pdf|download|print/i);
+  it('the removed Adaptive Practice Recommendations block exposes no export UI', () => {
+    expect(readScreen()).not.toMatch(/>Adaptive Practice Recommendations</);
   });
 
   // Proposal FR-19/FR-20, Phase 7C/7D added expo-print + expo-sharing as a

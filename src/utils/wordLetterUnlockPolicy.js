@@ -1,37 +1,35 @@
-/**
- * Sequential access for the word-letter chooser.
- *
- * Completion comes from the existing authoritative WordActivityProgress
- * evidence: every catalogue word for the letter must satisfy the established
- * all-of-A-E completion predicate.
- */
-import { getSelectedWords } from './wordWorkflow';
+'use strict';
+
 import { completedWordsForLetter } from './wordCompletionHistory';
+import { getSelectedWords } from './wordWorkflow';
 
 export const WORD_LETTERS = Object.freeze('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
 export const INITIAL_WORD_LETTERS = Object.freeze(['A', 'B', 'C']);
 
 export function isWordPracticeLetterCompleted(progress, letter) {
-  const key = String(letter ?? '').trim().toLowerCase();
-  if (key.length !== 1) return false;
-  const requiredWords = getSelectedWords(key);
-  if (requiredWords.length === 0) return false;
+  const key = typeof letter === 'string' ? letter.trim().toLowerCase() : '';
+  if (!/^[a-z]$/.test(key)) return false;
+
+  const catalogueWords = getSelectedWords(key);
+  if (catalogueWords.length === 0) return false;
+
   const completed = completedWordsForLetter(progress, key);
-  return requiredWords.every(({ word }) => completed.has(String(word).trim().toLowerCase()));
+  return catalogueWords.every(({ word }) => completed.has(String(word).toLowerCase()));
 }
 
 export function computeWordLetterUnlocks(progress) {
-  const completed = new Set(
-    WORD_LETTERS.filter((letter) => isWordPracticeLetterCompleted(progress, letter)),
-  );
-  const initialGateComplete = INITIAL_WORD_LETTERS.every((letter) => completed.has(letter));
+  const unlocked = Object.fromEntries(WORD_LETTERS.map((letter) => [letter, false]));
+  INITIAL_WORD_LETTERS.forEach((letter) => { unlocked[letter] = true; });
 
-  return Object.fromEntries(WORD_LETTERS.map((letter, index) => {
-    if (index < INITIAL_WORD_LETTERS.length) return [letter, true];
-    if (!initialGateComplete) return [letter, false];
-    // D opens once A/B/C are complete. Every later letter opens only after
-    // every preceding sequential letter from D onward is complete.
-    const priorSequentialLetters = WORD_LETTERS.slice(INITIAL_WORD_LETTERS.length, index);
-    return [letter, priorSequentialLetters.every((prior) => completed.has(prior))];
-  }));
+  unlocked.D = INITIAL_WORD_LETTERS.every((letter) =>
+    isWordPracticeLetterCompleted(progress, letter)
+  );
+
+  for (let index = 4; index < WORD_LETTERS.length; index += 1) {
+    const previous = WORD_LETTERS[index - 1];
+    unlocked[WORD_LETTERS[index]] =
+      unlocked[previous] && isWordPracticeLetterCompleted(progress, previous);
+  }
+
+  return unlocked;
 }

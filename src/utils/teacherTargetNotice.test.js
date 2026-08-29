@@ -183,12 +183,11 @@ describe('the notice in the report', () => {
     expect(notice).toMatch(/<View style=\{tov\.wrap\}>/);
   });
 
-  it('sits in Teacher Recommendations, beside the adaptive subsection', () => {
+  it('stays in Teacher Recommendations after the adaptive subsection is removed', () => {
     const idx = report.indexOf('<TeacherTargetNotice');
     const recs = report.indexOf('Teacher Recommendations');
-    const adaptive = report.indexOf('Adaptive Practice Recommendations');
     expect(idx).toBeGreaterThan(recs);
-    expect(idx).toBeLessThan(adaptive);
+    expect(report).not.toMatch(/>Adaptive Practice Recommendations</);
   });
 
   it('its fetch is non-fatal and fails closed to no notice', () => {

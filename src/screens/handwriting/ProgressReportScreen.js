@@ -226,7 +226,7 @@ export default function ProgressReportScreen({ route, navigation }) {
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>
-            Progress Report
+            Letter Progress
           </Text>
           <View style={{ width: 36 }} />
         </View>

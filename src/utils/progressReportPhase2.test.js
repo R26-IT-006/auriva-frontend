@@ -122,7 +122,7 @@ describe('Motor Difficulty Analysis is not rendered', () => {
 
   it('Teacher Recommendations remains the teacher-facing guidance section', () => {
     expect(report).toMatch(/title="Teacher Recommendations"/);
-    expect(report).toMatch(/Adaptive Practice Recommendations/);
+    expect(report).not.toMatch(/>Adaptive Practice Recommendations</);
   });
 });
 

@@ -14,6 +14,8 @@ import path from 'path';
 
 const screen = fs.readFileSync(
   path.resolve(__dirname, '../screens/handwriting/LetterHomeScreen.js'), 'utf8');
+const sharedBackButton = fs.readFileSync(
+  path.resolve(__dirname, '../components/handwriting/ScreenBackButton.js'), 'utf8');
 
 function stripComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -27,29 +29,30 @@ function slice(source, startMarker, endMarker) {
 }
 
 describe('back button exists on the letter-or-word choice screen', () => {
-  it('renders a back arrow in the top bar', () => {
+  it('renders the shared chooser back control in the top bar', () => {
     const topBar = slice(screen, '{/* ── Top bar ── */}', '<View style={styles.topBtnGroup}>');
-    expect(topBar).toMatch(/<Ionicons name="arrow-back"/);
-    expect(topBar).toMatch(/style=\{\[styles\.backBtn/);
+    expect(topBar).toMatch(/<ScreenBackButton/);
+    expect(sharedBackButton).toMatch(/<Ionicons name="arrow-back" size=\{20\}/);
   });
 
-  it('carries an accessible label that names the code requirement', () => {
-    expect(screen).toMatch(/accessibilityLabel="Back — needs a grown-up code"/);
-    expect(screen).toMatch(/accessibilityRole="button"/);
+  it('carries the requested accessible Back label and button role', () => {
+    expect(screen).toMatch(/accessibilityLabel="Back"/);
+    expect(sharedBackButton).toMatch(/accessibilityRole="button"/);
   });
 
-  it('has its own styles rather than reusing an unrelated pill', () => {
-    expect(screen).toMatch(/backBtn: \{/);
+  it('reuses the chooser component instead of maintaining a local clone', () => {
+    expect(screen).toMatch(/import ScreenBackButton from ['"]\.\.\/\.\.\/components\/handwriting\/ScreenBackButton['"]/);
+    expect(screen).not.toMatch(/backBtn: \{/);
     expect(screen).toMatch(/leftGroup: \{/);
   });
 });
 
 describe('the back button is gated, never a direct navigation', () => {
   it('its onPress opens the parent gate and does not navigate', () => {
-    const button = slice(screen, 'style={[styles.backBtn', '</TouchableOpacity>');
+    const button = slice(screen, '<ScreenBackButton', '/>');
     expect(button).toContain("requestGatedAction('back')");
     // The critical property: no navigation call inside the button itself.
-    expect(button).not.toMatch(/navigation\.(navigate|goBack|replace|popToTop)\(/);
+    expect(button).not.toMatch(/navigation\.(navigate|goBack|replace|popTo|popToTop)\(/);
   });
 
   it("'back' is part of the documented gate-action vocabulary", () => {
@@ -59,11 +62,8 @@ describe('the back button is gated, never a direct navigation', () => {
   it('navigation happens only inside handleGateSuccess, after the code is accepted', () => {
     const handler = slice(screen, 'function handleGateSuccess()', 'function handleGateCancel()');
     expect(handler).toContain("pendingGateAction === 'back'");
-    // Back now returns to the assessment starting screen rather than popping
-    // one entry or exiting the module - see utils/moduleSelectionBack.js.
-    // The GATE is unchanged: this still runs only after the code is accepted.
-    expect(handler).toMatch(/backToAssessmentStart\(navigation, \{ student, theme \}\)/);
-    expect(handler).toMatch(/navigation\.navigate\('TeacherMain'\)/);
+    expect(handler).toMatch(/returnToStudentModuleSelection\(navigation, \{ student \}\)/);
+    expect(handler).not.toMatch(/backToPressAndDrag|returnToAssessmentFlowRoute/);
   });
 
   it('cancelling the gate performs no navigation at all', () => {
@@ -80,11 +80,12 @@ describe('the back button is gated, never a direct navigation', () => {
 describe('the gate cannot be bypassed by the back button itself', () => {
   it('the back action reaches exactly one destination, and only via the gate', () => {
     const handler = slice(screen, "pendingGateAction === 'back'", 'setPendingGateAction(null);');
-    // One call, one destination: the assessment starting screen.
-    expect((handler.match(/backToAssessmentStart\(/g) ?? []).length).toBe(1);
-    expect(handler.match(/navigation\.navigate\('([^']+)'\)/g) ?? []).toEqual([]);
-    // And it is still unreachable without passing the gate first.
-    expect(screen).not.toMatch(/onPress=\{\(\) => backToAssessmentStart/);
+    expect((handler.match(/returnToStudentModuleSelection\(/g) ?? []).length).toBe(1);
+    expect(handler).not.toMatch(/navigation\.(goBack|navigate|replace|reset|popTo)\(/);
+    expect(handler).not.toMatch(/AssessmentComplete|ShapeAssessment|StudentWelcome|Instructions|Welcome/);
+    // The module-level exit remains unreachable without passing the gate first.
+    const button = slice(screen, '<ScreenBackButton', '/>');
+    expect(button).not.toMatch(/navigation\./);
   });
 
   it('does not introduce a hardware/gesture back path that skips the gate', () => {
