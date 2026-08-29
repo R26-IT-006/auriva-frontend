@@ -43,7 +43,7 @@ const AVATARS = [
   },
 ];
 
-function AvatarIcon({ avatar, selected, onPress }) {
+function AvatarCard({ avatar, selected, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
@@ -339,6 +339,11 @@ const styles = StyleSheet.create({
     paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#4AABB8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5,
   },
   confirmBtnDisabled: {
     backgroundColor: 'rgba(18,34,30,0.32)',

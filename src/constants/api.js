@@ -87,15 +87,38 @@ export const ENDPOINTS = {
   DIALOGUE_LEVEL1_PHASE2_NONVERBAL: (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/phase2-nonverbal`,
   DIALOGUE_LEVEL1_PHASE3_SCENARIO:  (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/phase3-scenario`,
   DIALOGUE_LEVEL1_PHASE3_COMPLETE:  (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/phase3-complete`,
+  DIALOGUE_TRAJECTORY:              (sid, wid) => `/teacher/student/${sid}/word/${wid}/trajectory`,
 
-  // Days of the Week – specific endpoints
-  DAYS_PHASE3_QUESTION:         (sid, wid) => `/teacher/student/${sid}/level1/days/phase3-question/${wid}`,
-  DAYS_SPINNING_WHEEL:          (sid, ids) => `/teacher/student/${sid}/level1/days/spinning-wheel${ids?.length ? `?attempted_word_ids=${ids.join(',')}` : ''}`,
-  DAYS_SPINNING_WHEEL_ATTEMPT:  (sid) => `/teacher/student/${sid}/level1/days/spinning-wheel/attempt`,
+  // Dialogue – TASK-43 explainable trajectory predictions (teacher reports).
+  // The report screen calls the batch endpoint; the per-word one explains a
+  // single word.
+  DIALOGUE_TRAJECTORY_EXPLAIN:      (sid, wid) => `/teacher/student/${sid}/word/${wid}/trajectory/explain`,
+  DIALOGUE_TRAJECTORY_REPORT:       (sid) => `/teacher/student/${sid}/dialogue/trajectory-report`,
+
+  // Dialogue – TASK-47 practice-trend timelines (module-level and per-word).
+  DIALOGUE_TIMELINE:                (sid) => `/teacher/student/${sid}/dialogue/timeline`,
+  DIALOGUE_WORD_TIMELINE:           (sid, wid) => `/teacher/student/${sid}/word/${wid}/dialogue/timeline`,
+
+  // Dialogue – TASK-12 Non-Verbal Adaptive Wait-Time Escalation
+  DIALOGUE_SPEECH_STATE:            (sid) => `/teacher/student/${sid}/speech-state`,
+
+  // Dialogue – Rule 5 periodic production probe (TASK-37/TASK-39)
+  DIALOGUE_PROBE_CANDIDATE: (sid) => `/teacher/student/${sid}/level1/probe-candidate`,
+  DIALOGUE_PROBE_RESULT:    (sid, wid) => `/teacher/student/${sid}/level1/word/${wid}/probe-result`,
+
+  // Dialogue – Level 1 Evaluations (TASK-15)
+  DIALOGUE_EVALUATIONS_STATUS: (sid) => `/teacher/dialogue/evaluations/${sid}`,
+  DIALOGUE_EVALUATIONS_BUILD:  (sid, category) => `/teacher/dialogue/evaluations/${sid}/${category}`,
+  DIALOGUE_EVALUATIONS_RECORD: (sid, category) => `/teacher/dialogue/evaluations/${sid}/${category}`,
 
   // Dialogue – Level 2
   LEVEL2_QUESTIONNAIRE:         (sid) => `/teacher/student/${sid}/level2/questionnaire`,
   LEVEL2_PROGRESS:              (sid) => `/teacher/student/${sid}/level2/progress`,
+  // TASK-46 — teacher-facing Level 2 report, all three topics in one call.
+  LEVEL2_REPORT:                (sid) => `/teacher/student/${sid}/level2/report`,
+  // TASK-47 — practice-trend timelines (module-level and per-topic).
+  LEVEL2_TIMELINE:              (sid) => `/teacher/student/${sid}/level2/timeline`,
+  LEVEL2_TOPIC_TIMELINE:        (sid, topic) => `/teacher/student/${sid}/level2/topic/${topic}/timeline`,
   LEVEL2_SESSION_START:         (sid) => `/teacher/student/${sid}/level2/session/start`,
   LEVEL2_SESSION_COMPLETE:      (sid, sessId) => `/teacher/student/${sid}/level2/session/${sessId}/complete`,
   LEVEL2_STEP3:                 (sid, sessId, sentIdx) => `/teacher/student/${sid}/level2/session/${sessId}/sentence/${sentIdx}/step3`,

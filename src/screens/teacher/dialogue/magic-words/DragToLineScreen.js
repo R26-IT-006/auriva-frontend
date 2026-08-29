@@ -18,6 +18,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
 
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
@@ -57,13 +58,13 @@ const ACTIVITIES = {
   im_sorry: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context3.jpg'),
       prompt: 'Saman bumps into Anjalie.\nHe should say...',
       cards:  [{ label: "I'm Sorry", correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context3.jpg'),
       prompt: 'Saman bumps into Anjalie.\nHe should say...',
       cards:  [
         { label: "I'm Sorry", correct: true  },
@@ -72,7 +73,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context4.jpg'),
       prompt: 'Anjalie spills Saman\'s juice.\nShe should say...',
       cards:  [
         { label: "I'm Sorry", correct: true  },
@@ -111,13 +112,13 @@ const ACTIVITIES = {
   excuse_me: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context3.jpg'),
       prompt: 'Saman needs to pass by Anjalie.\nHe should say...',
       cards:  [{ label: 'Excuse Me', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context3.jpg'),
       prompt: 'Saman needs to pass by Anjalie.\nHe should say...',
       cards:  [
         { label: 'Excuse Me',  correct: true  },
@@ -126,7 +127,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context4.jpg'),
       prompt: 'Anjalie needs to walk through\na crowd. She should say...',
       cards:  [
         { label: 'Excuse Me',  correct: true  },
@@ -347,14 +348,36 @@ export default function DragToLineScreen({ route, navigation }) {
 
   const handleWrongDrop = useCallback(() => {
     const isLastActivity = activityIdx === activities.length - 1;
-    if (isLastActivity) {
+    if (!isLastActivity) {
+      showFeedback("Oops! Try again! 😊", 'wrong');
+      return;
+    }
+
+    // TASK-44 — same-sitting loop cap: only rewatch the video once for a
+    // failed gate check.
+    const alreadyRestarted = getRestartCount(student?.sid, wordId) >= MAX_SAME_SITTING_RESTARTS;
+
+    if (!alreadyRestarted) {
+      incrementRestartCount(student?.sid, wordId);
       showFeedback("Let's watch again! 👀", 'wrong');
       setTimeout(() => {
         navigation.replace('Phase1Video', { student, wordKey, wordId, startIndex: 1 });
       }, 1800);
-    } else {
-      showFeedback("Oops! Try again! 😊", 'wrong');
+      return;
     }
+
+    // Loop cap hit: don't rewatch a second time. Record the honest
+    // gate-failed signal (previously never sent — see Objective) and let
+    // the child continue forward instead of looping again. No feedback
+    // banner here — Phase 1 is exposure, not a scored evaluation, and this
+    // path must not read as a right/wrong judgement to the child.
+    clearRestartCount(student?.sid, wordId);
+    if (wordId && student?.sid) {
+      dialogueApi.submitPhase1Gate(student.sid, wordId, false).catch(() => {});
+    }
+    setTimeout(() => {
+      navigation.navigate('Phase1Complete', { student, wordKey, wordId });
+    }, 1800);
   }, [activityIdx]);
 
   function openSettings() { setGatePurpose('settings'); setShowGate(true); }
@@ -437,7 +460,7 @@ export default function DragToLineScreen({ route, navigation }) {
                     {current.cards.find(c => c.correct)?.label} ✓
                   </Text>
                 ) : (
-                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here  ·  නිවැරදි වාක්‍ය ඛණ්ඩය මෙහි දමන්න</Text>
+                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here</Text>
                 )}
               </Animated.View>
 
@@ -445,7 +468,7 @@ export default function DragToLineScreen({ route, navigation }) {
               <View style={styles.cardsRow}>
                 <View style={styles.dragHint}>
                   <Ionicons name="hand-left-outline" size={16} color={theme.headingText} style={{ opacity: 0.5 }} />
-                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card  ·  කාඩ්ය ඇදගෙන යන්න</Text>
+                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card</Text>
                 </View>
                 <View style={styles.cardsArea}>
                   {current.cards.map((card) => (

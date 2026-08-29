@@ -34,74 +34,76 @@ const WORD_DISPLAY = {
 };
 
 const AVATAR_IMAGES = {
-  lily:     require('../../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
-  boba:     require('../../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
+  lily:     require('../../../../../assets/avatar-images/LilyCongratulations.png'),
+  megatron: require('../../../../../assets/avatar-images/MegatronCongratulations.png'),
+  boba:     require('../../../../../assets/avatar-images/BobaCongratulations.png'),
+  glitter:  require('../../../../../assets/avatar-images/GlitterCongratulations.png'),
 };
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
-// Non-verbal pathway images are not yet available.
-// Using context images as placeholders until dedicated NV assets arrive.
+// Every word folder now has its own Non_Verbal.jpg — `correct` is the
+// tapped word's own photo; wrong1/wrong2 borrow OTHER words' own
+// Non_Verbal.jpg as decoys, same cross-word-distractor pattern used in
+// ProbeRetentionCheckScreen.js / Cat3Phase2NonVerbalScreen.js.
 const NV_IMAGES = {
   hello: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
   },
   goodbye: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/goodbye/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
   },
   good_morning: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/good_morning/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/good_morning/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
   },
   good_afternoon: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
   },
   good_night: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/good_night/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
   },
   happy_birthday: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
   },
   how_are_you: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/how_are_you/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
   },
   im_fine: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/im_fine/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
   },
   happy_new_year: {
-    correct: require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
-    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong1.png'),
-    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/context_wrong2.png'),
+    correct: require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/Non_Verbal.jpg'),
+    wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/Non_Verbal.jpg'),
+    wrong2:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/Non_Verbal.jpg'),
   },
 };
 
 const NV_CAPTIONS = {
-  hello:          ['Friends greeting\neach other',        'A child saying\nGoodbye',            'A child eating\nlunch'],
-  goodbye:        ['Waving goodbye\nat the door',         'Playing at\nthe park',               'Eating dinner\ntogether'],
-  good_morning:   ['Morning greeting\nat school',         'Playing in\nthe evening',            'Reading a book\nat night'],
-  good_afternoon: ['Afternoon greeting\nafter school',    'Having breakfast\nin the morning',   'Playing outside\nat night'],
-  good_night:     ['Going to bed\nat night',              'Playing in\nthe morning',            'Having lunch\ntogether'],
-  happy_birthday: ['Birthday party\nwith friends',        'Eating lunch\ntogether',             'Playing football\noutside'],
-  how_are_you:    ['Asking a friend\nhow they are',       'Playing alone\noutside',             'Eating dinner\nquietly'],
-  im_fine:        ['Answering happily\n"I\'m Fine"',      'Running outside\nalone',             'Reading a\nstorybook'],
-  happy_new_year: ['New Year\ncelebration',               'Playing in\nthe garden',             'Eating breakfast\nalone'],
+  hello:          ['Friends greeting\neach other',                    'Waving goodbye\nat the door',       'Greeting teacher\nin the morning'],
+  goodbye:        ['Waving goodbye\nat the door',                     'Greeting teacher\nin the morning',  'Afternoon greeting\nafter school'],
+  good_morning:   ['Greeting teacher\nin the morning',                'Afternoon greeting\nafter school',  'Going to bed\nat night'],
+  good_afternoon: ['Afternoon greeting\nafter school',                'Going to bed\nat night',            'Birthday party\nwith friends'],
+  good_night:     ['Going to bed\nat night',                          'Birthday party\nwith friends',      'Asking a friend\nhow they are feeling'],
+  happy_birthday: ['Birthday party\nwith friends',                    'Asking a friend\nhow they are feeling', 'Answering happily\nwhen asked "How are you?"'],
+  how_are_you:    ['Asking a friend\nhow they are feeling',           'Answering happily\nwhen asked "How are you?"', 'New Year\ncelebration with family'],
+  im_fine:        ['Answering happily\nwhen asked "How are you?"',    'New Year\ncelebration with family', 'Friends greeting\neach other'],
+  happy_new_year: ['New Year\ncelebration with family',               'Friends greeting\neach other',      'Waving goodbye\nat the door'],
 };
 
 function shuffleArray(arr) {
@@ -121,7 +123,13 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
   const avatarImg = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
 
   const { width: screenWidth } = useWindowDimensions();
-  const cardW = Math.min(Math.floor((screenWidth - 64) / 3), 200);
+  // The source photos are wide (landscape), so cards are sized for 2 per row
+  // (wrapping a 3rd to its own centered row) instead of squeezing 3 into one
+  // row and cropping them into near-squares.
+  const cardW = Math.min(Math.floor((screenWidth - 64 - Layout.spacing.md) / 2), 380);
+  // Explicit pixel height (not aspectRatio) so all three cards are always
+  // exactly the same size, regardless of each source photo's own proportions.
+  const cardImageH = Math.round(cardW * 3 / 4);
 
   const nvImages = NV_IMAGES[wordKey] ?? NV_IMAGES.hello;
   const captions = NV_CAPTIONS[wordKey] ?? NV_CAPTIONS.hello;
@@ -145,6 +153,17 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
   const activeRef     = useRef(true);
   const apiCalledRef  = useRef(false);
   const settingsFade  = useRef(new Animated.Value(0)).current;
+  const avatarPop     = useRef(new Animated.Value(0)).current;
+
+  function popAvatar() {
+    avatarPop.setValue(0);
+    Animated.spring(avatarPop, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 10,
+    }).start();
+  }
 
   function goBackSmart() {
     if (navigation.canGoBack()) {
@@ -213,6 +232,7 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
     if (item.isCorrect) {
       setSettled(true);
       setCloudText('Good job!');
+      popAvatar();
       await playSound(AUDIO_GOOD_JOB).catch(() => {});
       goToPhase3(true);
     } else {
@@ -221,14 +241,17 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
 
       if (newCount === 1) {
         setCloudText('Try again!');
+        popAvatar();
         setTimeout(() => { if (activeRef.current) setSelectedId(null); }, 1200);
       } else if (newCount === 2) {
         setCloudText('Look carefully!');
+        popAvatar();
         setTimeout(() => { if (activeRef.current) setSelectedId(null); }, 1200);
       } else {
         setSettled(true);
         setCorrectRevealed(true);
         setCloudText("Let's keep going!");
+        popAvatar();
         goToPhase3(false);
       }
     }
@@ -294,9 +317,6 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               Look at the pictures and tap the correct scene
             </Text>
-            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
-              රූප බලා නිවැරදි දර්ශනය ස්පර්ශ කරන්න
-            </Text>
 
             <View style={styles.cardsRow}>
               {imageItems.map(item => {
@@ -316,8 +336,8 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
                       showRedDim      && styles.cardWrong,
                     ]}
                   >
-                    <View style={[styles.imageWrap, { height: cardW }]}>
-                      <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
+                    <View style={[styles.imageWrap, { height: cardImageH }]}>
+                      <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
                       {showGreenBorder && (
                         <View style={styles.correctBadge}>
                           <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
@@ -343,7 +363,22 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
                   <View style={[styles.bubbleTail, { borderTopColor: '#FFFFFF' }]} />
                 </View>
               ) : null}
-              <Image source={avatarImg} style={styles.avatarImg} resizeMode="contain" />
+              {cloudText ? (
+                <Animated.Image
+                  source={avatarImg}
+                  resizeMode="contain"
+                  style={[
+                    styles.avatarImg,
+                    {
+                      opacity: avatarPop,
+                      transform: [
+                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) },
+                        { translateY: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+                      ],
+                    },
+                  ]}
+                />
+              ) : null}
             </View>
 
           </View>
@@ -409,10 +444,10 @@ const styles = StyleSheet.create({
   },
 
   title: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, textAlign: 'center', marginBottom: Layout.spacing.xs },
-  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xs },
+  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
   subtitleSinhala: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
-  cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.sm },
+  cardsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Layout.spacing.md },
   imageCard: {
     borderRadius: Layout.radius.lg,
     overflow: 'hidden',
@@ -426,7 +461,7 @@ const styles = StyleSheet.create({
   },
   cardCorrect: { borderColor: '#22C55E', borderWidth: 3 },
   cardWrong:   { borderColor: '#FF4D6D', borderWidth: 2, opacity: 0.65 },
-  imageWrap:   { position: 'relative', overflow: 'hidden' },
+  imageWrap:   { position: 'relative', overflow: 'hidden', width: '100%' },
   cardImage:   { width: '100%', height: '100%' },
   correctBadge: {
     position: 'absolute',
@@ -443,14 +478,14 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
 
-  avatarRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: Layout.spacing.md },
-  bubbleWrap: { alignItems: 'flex-end', marginBottom: 6, marginRight: -4 },
+  avatarRow: { flexDirection: 'column', alignItems: 'flex-end', marginTop: Layout.spacing.md },
+  bubbleWrap: { width: 145, alignItems: 'center', alignSelf: 'flex-end', marginBottom: 2 },
   speechBubble: {
     backgroundColor: '#FFFFFF',
     borderRadius: Layout.radius.lg,
     paddingHorizontal: Layout.spacing.md,
     paddingVertical: Layout.spacing.sm,
-    maxWidth: 160,
+    maxWidth: 180,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.10,
@@ -459,8 +494,8 @@ const styles = StyleSheet.create({
   },
   speechText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, textAlign: 'center' },
   bubbleTail: {
-    alignSelf: 'flex-end',
-    marginRight: 24,
+    alignSelf: 'center',
+    marginTop: -1,
     width: 0,
     height: 0,
     borderLeftWidth: 8,
@@ -469,7 +504,7 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   },
-  avatarImg: { width: 115, height: 135 },
+  avatarImg: { width: 145, height: 170 },
 
   settingsOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -3,44 +3,36 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 
-const ANJALI = require('../../../../../assets/avatar_actions-images/Anjalie_Jumping.png');
+const ANJALI_VIDEO = require('../../../../../assets/dialogue-videos/words/abilities/jump/Phase1And3.mp4');
 
 export default function VerbActivityScreen({ route, navigation }) {
   const { student, verb = 'jump' } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
 
-  const jumpY     = useRef(new Animated.Value(0)).current;
-  const scaleY    = useRef(new Animated.Value(1)).current;
-  const [hasJumped, setHasJumped] = useState(false);
+  const videoRef  = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  function handleAvatarPress() {
-    setHasJumped(true);
+  async function handleAvatarPress() {
+    if (!videoRef.current || isPlaying) return;
+    await videoRef.current.setPositionAsync(0);
+    await videoRef.current.playAsync();
+    setIsPlaying(true);
+  }
 
-    Animated.sequence([
-      // Rise
-      Animated.parallel([
-        Animated.timing(jumpY,  { toValue: -110, duration: 220, useNativeDriver: true }),
-        Animated.timing(scaleY, { toValue: 1.08, duration: 220, useNativeDriver: true }),
-      ]),
-      // Fall + squash on land
-      Animated.parallel([
-        Animated.spring(jumpY,  { toValue: 0, bounciness: 10, speed: 14, useNativeDriver: true }),
-        Animated.sequence([
-          Animated.timing(scaleY, { toValue: 0.82, duration: 80, useNativeDriver: true }),
-          Animated.spring(scaleY, { toValue: 1, bounciness: 14, speed: 18, useNativeDriver: true }),
-        ]),
-      ]),
-    ]).start();
+  function onPlaybackStatusUpdate(status) {
+    if (!status.isLoaded) return;
+    if (status.didJustFinish) {
+      setIsPlaying(false);
+    }
   }
 
   function goNext() {
@@ -80,20 +72,22 @@ export default function VerbActivityScreen({ route, navigation }) {
               {prompt}
             </Text>
 
-            {/* Avatar — tappable jump trigger */}
+            {/* Avatar video — tap to play, no visible controls */}
             <View style={styles.avatarArea}>
               <TouchableOpacity
                 onPress={handleAvatarPress}
-                activeOpacity={0.9}
+                activeOpacity={1}
                 style={styles.avatarTouchable}
               >
-                <Animated.Image
-                  source={ANJALI}
-                  style={[
-                    styles.avatar,
-                    { transform: [{ translateY: jumpY }, { scaleY }] },
-                  ]}
-                  resizeMode="contain"
+                <Video
+                  ref={videoRef}
+                  source={ANJALI_VIDEO}
+                  style={[styles.avatar, { backgroundColor: theme.background }]}
+                  resizeMode={ResizeMode.CONTAIN}
+                  useNativeControls={false}
+                  shouldPlay={false}
+                  isLooping={false}
+                  onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                 />
               </TouchableOpacity>
             </View>

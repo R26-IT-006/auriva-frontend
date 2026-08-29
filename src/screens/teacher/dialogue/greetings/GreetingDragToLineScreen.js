@@ -17,6 +17,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
 
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
@@ -110,13 +111,13 @@ const ACTIVITIES = {
   good_afternoon: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/correct_context3.jpg'),
       prompt: 'It is the afternoon.\nYou see your neighbour.\nYou should say...',
       cards:  [{ label: 'Good Afternoon', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/correct_context3.jpg'),
       prompt: 'It is the afternoon.\nYou see your neighbour.\nYou should say...',
       cards:  [
         { label: 'Good Afternoon', correct: true  },
@@ -125,7 +126,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_afternoon/correct_context4.jpg'),
       prompt: 'You meet your teacher\nafter lunch. You should say...',
       cards:  [
         { label: 'Good Afternoon', correct: true  },
@@ -137,13 +138,13 @@ const ACTIVITIES = {
   good_night: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_night/correct_context3.jpg'),
       prompt: 'It is bedtime.\nYou should say...',
       cards:  [{ label: 'Good Night', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_night/correct_context3.jpg'),
       prompt: 'It is bedtime.\nYou should say...',
       cards:  [
         { label: 'Good Night', correct: true  },
@@ -152,7 +153,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/good_night/correct_context4.jpg'),
       prompt: 'You are going to sleep.\nYou should say...',
       cards:  [
         { label: 'Good Night',     correct: true  },
@@ -164,13 +165,13 @@ const ACTIVITIES = {
   happy_birthday: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/correct_context3.jpg'),
       prompt: 'It is your friend\'s birthday.\nYou should say...',
       cards:  [{ label: 'Happy Birthday', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/correct_context3.jpg'),
       prompt: 'It is your friend\'s birthday.\nYou should say...',
       cards:  [
         { label: 'Happy Birthday', correct: true  },
@@ -179,7 +180,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_birthday/correct_context4.jpg'),
       prompt: 'Your friend is celebrating.\nYou should say...',
       cards:  [
         { label: 'Happy Birthday', correct: true  },
@@ -191,13 +192,13 @@ const ACTIVITIES = {
   how_are_you: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/correct_context3.jpg'),
       prompt: 'You want to know how\nyour friend feels.\nYou should say...',
       cards:  [{ label: 'How Are You?', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/correct_context3.jpg'),
       prompt: 'You want to know how\nyour friend feels.\nYou should say...',
       cards:  [
         { label: 'How Are You?', correct: true  },
@@ -206,7 +207,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/how_are_you/correct_context4.jpg'),
       prompt: 'You see a friend\nyou haven\'t seen in a while.\nYou should say...',
       cards:  [
         { label: 'How Are You?', correct: true  },
@@ -218,13 +219,13 @@ const ACTIVITIES = {
   im_fine: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/correct_context3.jpg'),
       prompt: 'Someone asks how you are.\nYou should say...',
       cards:  [{ label: "I'm Fine", correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/correct_context3.jpg'),
       prompt: 'Someone asks how you are.\nYou should say...',
       cards:  [
         { label: "I'm Fine",    correct: true  },
@@ -233,7 +234,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/correct_context4.jpg'),
       prompt: 'Your teacher asks\nhow you are feeling.\nYou should say...',
       cards:  [
         { label: "I'm Fine", correct: true  },
@@ -245,13 +246,13 @@ const ACTIVITIES = {
   happy_new_year: [
     {
       id: 1,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/correct_context3.jpg'),
       prompt: 'It is the new year!\nYou should say...',
       cards:  [{ label: 'Happy New Year', correct: true }],
     },
     {
       id: 2,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/correct_context3.jpg'),
       prompt: 'It is the new year!\nYou should say...',
       cards:  [
         { label: 'Happy New Year', correct: true  },
@@ -260,7 +261,7 @@ const ACTIVITIES = {
     },
     {
       id: 3,
-      image:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context1.png'),
+      image:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/correct_context4.jpg'),
       prompt: 'Everyone is celebrating\nthe new year. You should say...',
       cards:  [
         { label: 'Happy New Year', correct: true  },
@@ -474,14 +475,36 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
 
   const handleWrongDrop = useCallback(() => {
     const isLastActivity = activityIdx === activities.length - 1;
-    if (isLastActivity) {
+    if (!isLastActivity) {
+      showFeedback("Oops! Try again! 😊", 'wrong');
+      return;
+    }
+
+    // TASK-44 — same-sitting loop cap: only rewatch the video once for a
+    // failed gate check.
+    const alreadyRestarted = getRestartCount(student?.sid, wordId) >= MAX_SAME_SITTING_RESTARTS;
+
+    if (!alreadyRestarted) {
+      incrementRestartCount(student?.sid, wordId);
       showFeedback("Let's watch again! 👀", 'wrong');
       setTimeout(() => {
         navigation.replace('GreetingPhase1Video', { student, wordKey, wordId, startIndex: 1 });
       }, 1800);
-    } else {
-      showFeedback("Oops! Try again! 😊", 'wrong');
+      return;
     }
+
+    // Loop cap hit: don't rewatch a second time. Record the honest
+    // gate-failed signal (previously never sent — see Objective) and let
+    // the child continue forward instead of looping again. No feedback
+    // banner here — Phase 1 is exposure, not a scored evaluation, and this
+    // path must not read as a right/wrong judgement to the child.
+    clearRestartCount(student?.sid, wordId);
+    if (wordId && student?.sid) {
+      dialogueApi.submitPhase1Gate(student.sid, wordId, false).catch(() => {});
+    }
+    setTimeout(() => {
+      navigation.navigate('GreetingPhase1Complete', { student, wordKey, wordId });
+    }, 1800);
   }, [activityIdx]);
 
   function openSettings() { setGatePurpose('settings'); setShowGate(true); }
@@ -556,14 +579,14 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
                     {current.cards.find(c => c.correct)?.label} ✓
                   </Text>
                 ) : (
-                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here  ·  නිවැරදි වාක්‍ය ඛණ්ඩය මෙහි දමන්න</Text>
+                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here</Text>
                 )}
               </Animated.View>
 
               <View style={styles.cardsRow}>
                 <View style={styles.dragHint}>
                   <Ionicons name="hand-left-outline" size={16} color={theme.headingText} style={{ opacity: 0.5 }} />
-                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card  ·  කාඩ්ය ඇදගෙන යන්න</Text>
+                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card</Text>
                 </View>
                 <View style={styles.cardsArea}>
                   {current.cards.map((card) => (

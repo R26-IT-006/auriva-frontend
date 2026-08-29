@@ -102,6 +102,47 @@ export const dialogueApi = {
     return data;
   },
 
+  // TASK-43 — why a word got its trajectory label.
+  // Returns { trajectory, tier, confidence, explanation, caveat }.
+  async getTrajectoryExplanation(studentId, wordId) {
+    const { data } = await client.get(
+      ENDPOINTS.DIALOGUE_TRAJECTORY_EXPLAIN(studentId, wordId)
+    );
+    return data;
+  },
+
+  // TASK-43 — one trajectory report per student, in a single call.
+  // Returns { totals, words: [...] }. SHAP is slow enough that one round trip
+  // per word would be visibly bad, hence the batch shape.
+  async getTrajectoryReport(studentId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_TRAJECTORY_REPORT(studentId));
+    return data;
+  },
+
+  // TASK-47 — module-level practice trend. Returns { points: [...] } ready for
+  // TrendSparkline. Cheap: one date-grouped query, no model involved.
+  async getModuleTimeline(studentId, days = 90) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_TIMELINE(studentId), {
+      params: { days },
+    });
+    return data;
+  },
+
+  // TASK-47 — one word's history across every date it was attempted. Fetched
+  // lazily, only when a teacher expands that row — never in the batch report.
+  async getWordTimeline(studentId, wordId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_WORD_TIMELINE(studentId, wordId));
+    return data;
+  },
+
+  // TASK-12 — Non-Verbal Adaptive Wait-Time Escalation
+  // Returns { consecutive_refusals_today, wait_multiplier, auto_nonverbal_today }.
+  // Fetched by each Phase 2 production screen on mount; failure degrades to 1.0×.
+  async getSpeechState(studentId) {
+    const { data } = await client.get(ENDPOINTS.DIALOGUE_SPEECH_STATE(studentId));
+    return data;
+  },
+
   // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend)
   async getProbeCandidate(studentId, category) {
     const { data } = await client.get(ENDPOINTS.DIALOGUE_PROBE_CANDIDATE(studentId), {
@@ -117,31 +158,6 @@ export const dialogueApi = {
         audio_base64: audioBase64,
         mime_type:    mimeType,
         session_id:   sessionId ?? undefined,
-      }
-    );
-    return data;
-  },
-};
-
-// Days of the Week – specific API methods
-export const daysApi = {
-  async getPhase3Question(studentId, wordId) {
-    const { data } = await client.get(ENDPOINTS.DAYS_PHASE3_QUESTION(studentId, wordId));
-    return data;
-  },
-
-  async getSpinningWheelRound(studentId, attemptedWordIds = []) {
-    const { data } = await client.get(ENDPOINTS.DAYS_SPINNING_WHEEL(studentId, attemptedWordIds));
-    return data;
-  },
-
-  async recordSpinningWheelAttempt(studentId, { targetWordId, selectedWordId, sessionId }) {
-    const { data } = await client.post(
-      ENDPOINTS.DAYS_SPINNING_WHEEL_ATTEMPT(studentId),
-      {
-        target_word_id:   targetWordId,
-        selected_word_id: selectedWordId,
-        session_id:       sessionId ?? undefined,
       }
     );
     return data;

@@ -137,9 +137,6 @@ export default function L2ProductionScreen({ route, navigation }) {
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>
             {section === 'full' ? 'Say the Whole Paragraph! 🌟' : `Sentence ${sxsIdx + 1} of ${sentences.length}`}
           </Text>
-          <Text style={[styles.headerSinhala, { color: theme.headingText }]}>
-            {section === 'full' ? 'සම්පූර්ණ ඡේදය කියන්න! 🌟' : `වාක්‍යය ${sxsIdx + 1} / ${sentences.length}`}
-          </Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.button }]} />
           </View>
@@ -150,9 +147,6 @@ export default function L2ProductionScreen({ route, navigation }) {
             <View style={[styles.bubble, { backgroundColor: theme.cardSurface }]}>
               <Text style={[styles.bubbleText, { color: theme.headingText }]}>
                 {section === 'full' ? 'Can you say the whole paragraph?' : 'Now say this sentence!'}
-              </Text>
-              <Text style={[styles.bubbleSinhala, { color: theme.headingText }]}>
-                {section === 'full' ? 'සම්පූර්ණ ඡේදය කිව හැකිද?' : 'දැන් මෙම වාක්‍යය කියන්න!'}
               </Text>
               <View style={[styles.bubbleTail, { borderLeftColor: theme.cardSurface }]} />
             </View>

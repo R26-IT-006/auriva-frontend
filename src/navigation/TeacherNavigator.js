@@ -15,6 +15,8 @@ import TeacherReportScreen from "../screens/teacher/handwriting/reports/TeacherR
 import DialogueLandingScreen      from '../screens/teacher/students/DialogueLandingScreen';
 import DialogueCategoryScreen     from '../screens/teacher/dialogue/DialogueCategoryScreen';
 import Level1OverviewScreen       from '../screens/teacher/dialogue/Level1OverviewScreen';
+import TrajectoryReportScreen     from '../screens/teacher/dialogue/TrajectoryReportScreen';
+import Level2ReportScreen         from '../screens/teacher/dialogue/Level2ReportScreen';
 import AnimatedWordScreen         from '../screens/teacher/dialogue/AnimatedWordScreen';
 import BoldWordScreen             from '../screens/teacher/dialogue/BoldWordScreen';
 import ProbeProductionScreen      from '../screens/teacher/dialogue/ProbeProductionScreen';
@@ -86,6 +88,11 @@ import PronunciationMouthShapeScreen from "../screens/teacher/pronunciation/Pron
 import PronunciationSpeakWordScreen from "../screens/teacher/pronunciation/PronunciationSpeakWordScreen";
 import PronunciationResultScreen from "../screens/teacher/pronunciation/PronunciationResultScreen";
 import PronunciationResultsHistoryScreen from "../screens/teacher/pronunciation/PronunciationResultsHistoryScreen";
+
+// Level 2 – Sentence Familiarisation Ladder (TASK-18)
+import L2ListenWatchScreen     from '../screens/teacher/dialogue/level2/L2ListenWatchScreen';
+import L2SentenceBuildScreen   from '../screens/teacher/dialogue/level2/L2SentenceBuildScreen';
+import L2FillGapScreen         from '../screens/teacher/dialogue/level2/L2FillGapScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -253,6 +260,17 @@ export default function TeacherNavigator() {
       <Stack.Screen name="L2Loading"         component={L2LoadingScreen} />
       <Stack.Screen name="L2Contrastive"     component={L2ContrastiveScreen} />
       <Stack.Screen name="L2SentencePath"    component={L2SentencePathScreen} />
+
+      {/* Level 2 – Sentence Familiarisation Ladder (TASK-18)
+          Inserted between L2SentencePath and L2SentenceTeach.
+          Flow per sentence stop: L2SentencePath → L2ListenWatch → L2SentenceBuild
+                                  → L2FillGap → L2SentenceTeach
+          (L2SentenceMatch — a tap-to-match review step — was removed; it
+          didn't fit the teaching flow.) */}
+      <Stack.Screen name="L2ListenWatch"     component={L2ListenWatchScreen} />
+      <Stack.Screen name="L2SentenceBuild"   component={L2SentenceBuildScreen} />
+      <Stack.Screen name="L2FillGap"         component={L2FillGapScreen} />
+
       <Stack.Screen name="L2SentenceTeach"   component={L2SentenceTeachScreen} />
       <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />
       <Stack.Screen name="L2Production"      component={L2ProductionScreen} />

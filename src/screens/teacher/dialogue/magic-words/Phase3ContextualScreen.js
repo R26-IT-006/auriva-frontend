@@ -18,6 +18,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
@@ -36,15 +37,13 @@ const WORD_DISPLAY = {
 };
 
 const AVATAR_IMAGES = {
-  lily:     require('../../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
-  boba:     require('../../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
+  lily:     require('../../../../../assets/avatar-images/LilyCongratulations.png'),
+  megatron: require('../../../../../assets/avatar-images/MegatronCongratulations.png'),
+  boba:     require('../../../../../assets/avatar-images/BobaCongratulations.png'),
+  glitter:  require('../../../../../assets/avatar-images/GlitterCongratulations.png'),
 };
 
 // Per-scenario images and captions (static require — React Native bundle constraint)
-// im_sorry, youre_welcome, please_excuse_me use thank_you images as placeholders;
-// swap each source for the real asset file once artwork is added.
 const PHASE3_SCENARIOS = {
   thank_you: {
     A: {
@@ -81,10 +80,15 @@ const PHASE3_SCENARIOS = {
     },
   },
 
+  // im_sorry — real assets uploaded 2026-08-24: `correct` now uses im_sorry's
+  // own correct_context1-4 (one per scene, matching thank_you's convention).
+  // wrong1/wrong2 stay on thank_you's context_wrong images — those are
+  // generic decoy photos (not tied to thank_you's own correct scenario), so
+  // reusing them here is intentional, not a placeholder leftover.
   im_sorry: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context1.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
@@ -92,7 +96,7 @@ const PHASE3_SCENARIOS = {
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context2.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
@@ -100,7 +104,7 @@ const PHASE3_SCENARIOS = {
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context3.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
@@ -108,7 +112,7 @@ const PHASE3_SCENARIOS = {
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/im_sorry/correct_context4.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
@@ -152,10 +156,11 @@ const PHASE3_SCENARIOS = {
     },
   },
 
+  // excuse_me — same treatment as im_sorry above.
   excuse_me: {
     A: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context1.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
@@ -163,7 +168,7 @@ const PHASE3_SCENARIOS = {
     },
     B: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context2.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
@@ -171,7 +176,7 @@ const PHASE3_SCENARIOS = {
     },
     C: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context3.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
@@ -179,7 +184,7 @@ const PHASE3_SCENARIOS = {
     },
     checkpoint: {
       images: {
-        correct: require('../../../../../assets/dialogue-images/words/magic_words/thank_you/correct_context1.png'),
+        correct: require('../../../../../assets/dialogue-images/words/magic_words/excuse_me/correct_context4.jpg'),
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
@@ -234,6 +239,7 @@ export default function Phase3ContextualScreen({ route, navigation }) {
   const soundRef     = useRef(null);
   const activeRef    = useRef(true);
   const settingsFade = useRef(new Animated.Value(0)).current;
+  const avatarPop    = useRef(new Animated.Value(0)).current;
   const [gatePurpose, setGatePurpose] = useState('settings');
 
   // ── RC2 feature capture refs ──────────────────────────────────────────
@@ -312,20 +318,29 @@ export default function Phase3ContextualScreen({ route, navigation }) {
     await new Promise(r => setTimeout(r, 1800));
     if (!activeRef.current) return;
 
-    if (allWrong) {
+    // TASK-44 — same-sitting loop cap: only rewatch once. A second
+    // consecutive all-wrong result on this word, this sitting, breaks out
+    // to WordComplete (using the result already computed above) instead of
+    // looping back to the video again.
+    const alreadyRestarted = getRestartCount(student?.sid, wordId) >= MAX_SAME_SITTING_RESTARTS;
+
+    if (allWrong && !alreadyRestarted) {
+      incrementRestartCount(student?.sid, wordId);
       navigation.navigate('Phase1Video', { student, wordKey, wordId });
-    } else {
-      navigation.navigate('WordComplete', {
-        student,
-        wordKey,
-        wordId,
-        wordLabel,
-        category:      'magic_words',
-        mastered:      result.mastered      ?? false,
-        sessionPassed: result.session_passed ?? false,
-        status:        result.status         ?? 'in_progress',
-      });
+      return;
     }
+
+    clearRestartCount(student?.sid, wordId);
+    navigation.navigate('WordComplete', {
+      student,
+      wordKey,
+      wordId,
+      wordLabel,
+      category:      'magic_words',
+      mastered:      result.mastered      ?? false,
+      sessionPassed: result.session_passed ?? false,
+      status:        result.status         ?? 'in_progress',
+    });
   }
 
   function advanceFromScenario(
@@ -385,7 +400,18 @@ export default function Phase3ContextualScreen({ route, navigation }) {
       setSelectedId(null);
       setSettled(false);
       setCloudText('');
+      avatarPop.setValue(0);
     }, 1600);
+  }
+
+  function popAvatar() {
+    avatarPop.setValue(0);
+    Animated.spring(avatarPop, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 10,
+    }).start();
   }
 
   // ── Image tap handler ─────────────────────────────────────────────────────
@@ -410,9 +436,11 @@ export default function Phase3ContextualScreen({ route, navigation }) {
     const chosen = imageItems.find(i => i.id === selectedId);
     if (chosen?.isCorrect) {
       setCloudText('Great job!');
+      popAvatar();
       await playSound(AUDIO_GOOD_JOB).catch(() => {});
     } else {
       setCloudText("Let's try the next one!");
+      popAvatar();
     }
 
     const selectionChangeCount = Math.min(selectionChangeCountRef.current, 2);
@@ -467,9 +495,12 @@ export default function Phase3ContextualScreen({ route, navigation }) {
 
   const progressFraction = SCENARIO_PROGRESS[scenario] ?? 0.92;
   const scenarioLabel    = scenario === 'checkpoint' ? 'Checkpoint' : `Scenario ${scenario}`;
+  // Non-vertical layout: the source photos are wide (landscape), so cards
+  // are sized for 2 per row (wrapping a 3rd to its own centered row) instead
+  // of squeezing 3 into one row and cropping them into near-squares.
   const cardW = isVerticalLayout
     ? screenWidth - 2 * Layout.spacing.lg
-    : Math.min(Math.floor((screenWidth - 64) / 3), 220);
+    : Math.min(Math.floor((screenWidth - 64 - Layout.spacing.md) / 2), 380);
 
   return (
     <View style={styles.root}>
@@ -509,9 +540,6 @@ export default function Phase3ContextualScreen({ route, navigation }) {
 
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
               {`Select the image where we can use the word '${wordLabel}'`}
-            </Text>
-            <Text style={[styles.subtitleSinhala, { color: theme.headingText }]}>
-              {`'${wordLabel}' වචනය භාවිතා කළ හැකි රූපය තෝරන්න`}
             </Text>
 
             {/* ── Image cards ── */}
@@ -574,8 +602,8 @@ export default function Phase3ContextualScreen({ route, navigation }) {
                         showRedDim      && styles.cardWrong,
                       ]}
                     >
-                      <View style={[styles.imageWrap, { height: cardW }]}>
-                        <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
+                      <View style={styles.imageWrap}>
+                        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
                         {showGreenBorder && (
                           <View style={styles.correctBadge}>
                             <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
@@ -623,7 +651,22 @@ export default function Phase3ContextualScreen({ route, navigation }) {
                   <View style={[styles.bubbleTail, { borderTopColor: '#FFFFFF' }]} />
                 </View>
               ) : null}
-              <Image source={avatarImg} style={styles.avatarImg} resizeMode="contain" />
+              {cloudText ? (
+                <Animated.Image
+                  source={avatarImg}
+                  resizeMode="contain"
+                  style={[
+                    styles.avatarImg,
+                    {
+                      opacity: avatarPop,
+                      transform: [
+                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) },
+                        { translateY: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+                      ],
+                    },
+                  ]}
+                />
+              ) : null}
             </View>
 
           </View>
@@ -722,7 +765,7 @@ const styles = StyleSheet.create({
     fontSize:     Layout.fontSize.sm,
     textAlign:    'center',
     opacity:      0.65,
-    marginBottom: Layout.spacing.xs,
+    marginBottom: Layout.spacing.xl,
   },
   subtitleSinhala: {
     fontSize:     Layout.fontSize.sm,
@@ -733,10 +776,7 @@ const styles = StyleSheet.create({
 
   cardsRow: {
     flexDirection:  'row',
-    justifyContent: 'center',
-    gap:            Layout.spacing.sm,
-  },
-  cardsRowTwo: {
+    flexWrap:       'wrap',
     justifyContent: 'center',
     gap:            Layout.spacing.md,
   },
@@ -771,8 +811,10 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
   },
   imageWrap: {
-    position: 'relative',
-    overflow: 'hidden',
+    position:    'relative',
+    overflow:    'hidden',
+    width:       '100%',
+    aspectRatio: 4 / 3,
   },
   cardImage: {
     width:  '100%',
@@ -795,15 +837,15 @@ const styles = StyleSheet.create({
 
   /* Avatar */
   avatarRow: {
-    flexDirection:  'row',
-    justifyContent: 'flex-end',
-    alignItems:     'flex-end',
-    marginTop:      Layout.spacing.md,
+    flexDirection: 'column',
+    alignItems:    'flex-end',
+    marginTop:     Layout.spacing.md,
   },
   bubbleWrap: {
-    alignItems:   'flex-end',
-    marginBottom: 6,
-    marginRight:  -4,
+    width:       145,
+    alignItems:  'center',
+    alignSelf:   'flex-end',
+    marginBottom: 2,
   },
   speechBubble: {
     backgroundColor:   '#FFFFFF',
@@ -823,8 +865,8 @@ const styles = StyleSheet.create({
     textAlign:  'center',
   },
   bubbleTail: {
-    alignSelf:        'flex-end',
-    marginRight:      24,
+    alignSelf:        'center',
+    marginTop:        -1,
     width:            0,
     height:           0,
     borderLeftWidth:  8,
@@ -834,8 +876,8 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
   },
   avatarImg: {
-    width:  115,
-    height: 135,
+    width:  145,
+    height: 170,
   },
 
   /* Settings */

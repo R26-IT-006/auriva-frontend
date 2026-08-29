@@ -2,7 +2,6 @@ import { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Modal,
@@ -12,23 +11,32 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 
-// Scene images for the DragToLine screen — use Drag_Act where available
+// Scene videos for the DragToLine screen — Drag_Activity.mp4 per word folder
 const CAT3_SCENE = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
-  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  cat3_yes: require('../../../../../assets/dialogue-videos/words/abilities/yes/Drag_Activity.mp4'),
+  cat3_no:  require('../../../../../assets/dialogue-videos/words/abilities/no/Drag_Activity.mp4'),
+  clap:     require('../../../../../assets/dialogue-videos/words/abilities/clap/Drag_Activity.mp4'),
+  run:      require('../../../../../assets/dialogue-videos/words/abilities/run/Drag_Activity.mp4'),
+  walk:     require('../../../../../assets/dialogue-videos/words/abilities/walk/Drag_Activity.mp4'),
+  jump:     require('../../../../../assets/dialogue-videos/words/abilities/jump/Drag_Activity.mp4'),
+  talk:     require('../../../../../assets/dialogue-videos/words/abilities/talk/Drag_Activity.mp4'),
+  dance:    require('../../../../../assets/dialogue-videos/words/abilities/dance/Drag_Activity.mp4'),
+  sing:     require('../../../../../assets/dialogue-videos/words/abilities/sing/Drag_Activity.mp4'),
+  brush:    require('../../../../../assets/dialogue-videos/words/abilities/brush/Drag_Activity.mp4'),
+  wash:     require('../../../../../assets/dialogue-videos/words/abilities/wash/Drag_Activity.mp4'),
+  eat:      require('../../../../../assets/dialogue-videos/words/abilities/eat/Drag_Activity.mp4'),
+  drink:    require('../../../../../assets/dialogue-videos/words/abilities/drink/Drag_Activity.mp4'),
+  write:    require('../../../../../assets/dialogue-videos/words/abilities/write/Drag_Activity.mp4'),
+  play:     require('../../../../../assets/dialogue-videos/words/abilities/play/Drag_Activity.mp4'),
+  sleep:    require('../../../../../assets/dialogue-videos/words/abilities/sleep/Drag_Activity.mp4'),
+  watch:    require('../../../../../assets/dialogue-videos/words/abilities/watch/Drag_Activity.mp4'),
 };
 
 const PROGRESS_FRACTION = 0.40;
@@ -43,6 +51,14 @@ const WORD_LABELS = {
   talk:     'Talk',
   dance:    'Dance',
   sing:     'Sing',
+  brush:    'Brush',
+  wash:     'Wash',
+  eat:      'Eat',
+  drink:    'Drink',
+  write:    'Write',
+  play:     'Play',
+  sleep:    'Sleep',
+  watch:    'Watch',
 };
 
 // One distractor per word for the 2-card layout
@@ -56,9 +72,17 @@ const DISTRACTOR = {
   talk:     'Dance',
   dance:    'Sing',
   sing:     'Talk',
+  brush:    'Wash',
+  wash:     'Eat',
+  eat:      'Drink',
+  drink:    'Write',
+  write:    'Play',
+  play:     'Sleep',
+  sleep:    'Watch',
+  watch:    'Brush',
 };
 
-function getSceneImage(wordKey) {
+function getSceneVideo(wordKey) {
   return CAT3_SCENE[wordKey] ?? null;
 }
 
@@ -142,7 +166,7 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
   const { student, wordId, wordKey, wordLabel: labelParam, sessionId } = route.params ?? {};
   const theme     = getAvatarTheme(student?.avatar_key);
   const wordLabel = labelParam ?? WORD_LABELS[wordKey] ?? wordKey;
-  const sceneImg  = getSceneImage(wordKey);
+  const sceneVideo = getSceneVideo(wordKey);
   const distractor = DISTRACTOR[wordKey] ?? 'Dance';
 
   const [attempt,      setAttempt]      = useState(1);   // 1 or 2
@@ -160,6 +184,7 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
   const settingsFade  = useRef(new Animated.Value(0)).current;
   const feedbackOp    = useRef(new Animated.Value(0)).current;
   const dropGlow      = useRef(new Animated.Value(0)).current;
+  const videoRef      = useRef(null);
 
   function goBackSmart() {
     if (navigation.canGoBack()) {
@@ -175,7 +200,14 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
       goBackSmart();
       return true;
     });
-    return () => { activeRef.current = false; sub.remove(); };
+    return () => {
+      activeRef.current = false;
+      sub.remove();
+      // Stop the scene video on blur — otherwise its audio keeps playing in
+      // the background after the student navigates away (expo-av Video
+      // doesn't auto-stop just because the screen loses focus).
+      videoRef.current?.pauseAsync().catch(() => {});
+    };
   }, []));
 
   function measureDropZone() {
@@ -288,10 +320,18 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.row}>
 
-            {/* Left: scene image */}
-            {sceneImg ? (
+            {/* Left: scene video */}
+            {sceneVideo ? (
               <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
-                <Image source={sceneImg} style={styles.sceneImg} resizeMode="cover" />
+                <Video
+                  ref={videoRef}
+                  source={sceneVideo}
+                  style={styles.sceneImg}
+                  resizeMode={ResizeMode.COVER}
+                  useNativeControls={false}
+                  shouldPlay
+                  isLooping
+                />
               </View>
             ) : (
               <View style={[styles.imageWrap, { backgroundColor: theme.button + '22', alignItems: 'center', justifyContent: 'center' }]}>

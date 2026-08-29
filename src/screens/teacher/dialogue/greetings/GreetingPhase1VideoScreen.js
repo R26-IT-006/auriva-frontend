@@ -31,27 +31,23 @@ const WORD_LABELS = {
   happy_new_year: 'Happy New Year',
 };
 
-// good_afternoon/good_night/happy_birthday/how_are_you/im_fine/happy_new_year
-// have no real word-audio asset yet — falls back to the same placeholder
-// GreetingPhase2ProductionScreen.js uses for these words.
-const PLACEHOLDER_WORD_AUDIO = require('../../../../../assets/dialogue-audios/magic_words/Thankyou.mp3');
-
+// All 9 greetings words now have real word-pronunciation audio (2026-08-20).
 const WORD_AUDIO = {
   hello:          require('../../../../../assets/dialogue-audios/greetings/hello.mp3'),
   goodbye:        require('../../../../../assets/dialogue-audios/greetings/goodbye.mp3'),
   good_morning:   require('../../../../../assets/dialogue-audios/greetings/good_morning.mp3'),
-  good_afternoon: PLACEHOLDER_WORD_AUDIO,
-  good_night:     PLACEHOLDER_WORD_AUDIO,
-  happy_birthday: PLACEHOLDER_WORD_AUDIO,
-  how_are_you:    PLACEHOLDER_WORD_AUDIO,
-  im_fine:        PLACEHOLDER_WORD_AUDIO,
-  happy_new_year: PLACEHOLDER_WORD_AUDIO,
+  good_afternoon: require('../../../../../assets/dialogue-audios/greetings/good_afternoon.mp3'),
+  good_night:     require('../../../../../assets/dialogue-audios/greetings/good_night.mp3'),
+  happy_birthday: require('../../../../../assets/dialogue-audios/greetings/happy_birthday.mp3'),
+  how_are_you:    require('../../../../../assets/dialogue-audios/greetings/how_are_you.mp3'),
+  im_fine:        require('../../../../../assets/dialogue-audios/greetings/im_fine.mp3'),
+  happy_new_year: require('../../../../../assets/dialogue-audios/greetings/happy_new_year.mp3'),
 };
 
-const PLACEHOLDER_V1 = require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4');
-const PLACEHOLDER_V2 = require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4');
-const PLACEHOLDER_V3 = require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4');
-
+// All 9 greetings words now have real V1/V2/V3 videos (2026-08-20) — no
+// placeholders left. Filenames are not uniform (case/hyphenation vary per
+// word, e.g. lowercase "happy-birthday", abbreviated "happy-new-yr") —
+// verified against the actual files on disk, not assumed from convention.
 const WORD_VIDEOS = {
   hello: [
     { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V1.mp4'), caption: 'Saman arrives at school.\nHe sees Anjalie and says "Hello"' },
@@ -70,33 +66,33 @@ const WORD_VIDEOS = {
   ],
   good_afternoon: [
     { source: require('../../../../../assets/dialogue-videos/words/greetings/good_afternoon/Good-afternoon_V1.mp4'), caption: 'Anjalie comes home after school.\nShe greets her mum: "Good Afternoon"' },
-    { source: PLACEHOLDER_V2, caption: 'Saman meets his teacher after lunch.\nHe says "Good Afternoon"' },
-    { source: PLACEHOLDER_V3, caption: 'Anjalie sees a neighbour in the afternoon.\nShe says "Good Afternoon"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_afternoon/Good-afternoon_V2.mp4'), caption: 'Saman meets his teacher after lunch.\nHe says "Good Afternoon"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_afternoon/Good-afternoon_V3.mp4'), caption: 'Anjalie sees a neighbour in the afternoon.\nShe says "Good Afternoon"' },
   ],
   good_night: [
-    { source: PLACEHOLDER_V1, caption: 'It is bedtime.\nSaman hugs his mum and says "Good Night"' },
-    { source: PLACEHOLDER_V2, caption: 'Anjalie turns off her lamp.\nShe says "Good Night" to her dad' },
-    { source: PLACEHOLDER_V3, caption: 'Saman calls his grandma before bed.\nHe says "Good Night"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_night/Good-night_V1.mp4'), caption: 'It is bedtime.\nSaman hugs his mum and says "Good Night"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_night/Good-night_V2.mp4'), caption: 'Anjalie turns off her lamp.\nShe says "Good Night" to her dad' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/good_night/Good-night_V3.mp4'), caption: 'Saman calls his grandma before bed.\nHe says "Good Night"' },
   ],
   happy_birthday: [
-    { source: PLACEHOLDER_V1, caption: 'It is Anjalie\'s birthday!\nSaman gives her a card and says "Happy Birthday"' },
-    { source: PLACEHOLDER_V2, caption: 'Anjalie\'s friends surprise her.\nThey all say "Happy Birthday"' },
-    { source: PLACEHOLDER_V3, caption: 'The class sings for Saman on his birthday.\nThey say "Happy Birthday"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_birthday/happy-birthday_V1.mp4'), caption: 'It is Anjalie\'s birthday!\nSaman gives her a card and says "Happy Birthday"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_birthday/happy-birthday_V2.mp4'), caption: 'Anjalie\'s friends surprise her.\nThey all say "Happy Birthday"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_birthday/happy-birthday_V3.mp4'), caption: 'The class sings for Saman on his birthday.\nThey say "Happy Birthday"' },
   ],
   how_are_you: [
-    { source: PLACEHOLDER_V1, caption: 'Saman meets Anjalie on the way to school.\nHe asks "How Are You?"' },
-    { source: PLACEHOLDER_V2, caption: 'Anjalie calls her friend on the phone.\nShe asks "How Are You?"' },
-    { source: PLACEHOLDER_V3, caption: 'The teacher greets the class.\nShe says "How Are You?"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/how_are_you/how-are-you_V1.mp4'), caption: 'Saman meets Anjalie on the way to school.\nHe asks "How Are You?"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/how_are_you/how-are-you_V2.mp4'), caption: 'Anjalie calls her friend on the phone.\nShe asks "How Are You?"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/how_are_you/how-are-you_V3.mp4'), caption: 'The teacher greets the class.\nShe says "How Are You?"' },
   ],
   im_fine: [
-    { source: PLACEHOLDER_V1, caption: 'Saman asks Anjalie "How are you?".\nShe smiles and says "I\'m Fine"' },
-    { source: PLACEHOLDER_V2, caption: 'Anjalie\'s teacher asks how she is.\nShe answers "I\'m Fine"' },
-    { source: PLACEHOLDER_V3, caption: 'Saman is asked about his day.\nHe replies "I\'m Fine"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/im_fine/im-fine_V1.mp4'), caption: 'Saman asks Anjalie "How are you?".\nShe smiles and says "I\'m Fine"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/im_fine/im-fine_V2.mp4'), caption: 'Anjalie\'s teacher asks how she is.\nShe answers "I\'m Fine"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/im_fine/im-fine_V3.mp4'), caption: 'Saman is asked about his day.\nHe replies "I\'m Fine"' },
   ],
   happy_new_year: [
-    { source: PLACEHOLDER_V1, caption: 'It is the new year!\nSaman wishes his family "Happy New Year"' },
-    { source: PLACEHOLDER_V2, caption: 'Anjalie sends cards to her friends.\nShe writes "Happy New Year"' },
-    { source: PLACEHOLDER_V3, caption: 'Fireworks light up the sky.\nEveryone shouts "Happy New Year"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_new_year/happy-new-yr_V1.mp4'), caption: 'It is the new year!\nSaman wishes his family "Happy New Year"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_new_year/happy-new-yr_V2.mp4'), caption: 'Anjalie sends cards to her friends.\nShe writes "Happy New Year"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_new_year/happy-new-yr_V3.mp4'), caption: 'Fireworks light up the sky.\nEveryone shouts "Happy New Year"' },
   ],
 };
 
@@ -188,6 +184,7 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
         student,
         wordText: WORD_LABELS[wordKey] ?? wordKey.replace(/_/g, ' '),
         wordImage: DIALOGUE_WORD_ASSETS[wordKey]?.scene,
+        boldWordImage: DIALOGUE_WORD_ASSETS[wordKey]?.boldScene,
         wordAudio: WORD_AUDIO[wordKey],
         wordId,
         trackExposure: true,
@@ -298,7 +295,7 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
             <View style={styles.btnRow}>
               {!hasFinished && (
                 <Text style={[styles.watchHint, { color: theme.headingText }]}>
-                  Watch the video to continue  ·  ඉදිරියට යාමට වීඩියෝව නරඹන්න
+                  Watch the video to continue
                 </Text>
               )}
               <TouchableOpacity

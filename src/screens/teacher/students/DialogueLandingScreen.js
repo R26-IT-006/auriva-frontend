@@ -1,9 +1,12 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
+  Animated,
   useWindowDimensions,
   BackHandler,
 } from 'react-native';
@@ -15,14 +18,57 @@ import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 
 const LEVELS = [
-  { key: 'level1', label: 'Level 1 - Dialogue word Learning' },
-  { key: 'level2', label: 'Level 2 - Sentence Construction' },
+  {
+    key: 'level1',
+    label: 'Level 1',
+    subtitle: 'Dialogue Word Learning',
+    image: require('../../../../assets/dialogue-icons/talking.png'),
+  },
+  {
+    key: 'level2',
+    label: 'Level 2',
+    subtitle: 'Sentence Construction',
+    image: require('../../../../assets/dialogue-icons/word-of-mouth.png'),
+  },
 ];
+
+// Mirrors ConceptCategoriesScreen's CategoryCard (press animation, surface/outline
+// theming, rounded card + image + label) so the two module landing screens read
+// as one visual system.
+function LevelCard({ item, cardW, cardH, theme, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={[
+          styles.card,
+          { width: cardW, height: cardH, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+        ]}
+      >
+        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
+        <Text style={styles.cardLabel} numberOfLines={1}>{item.label}</Text>
+        <Text style={styles.cardSubtitle} numberOfLines={2}>{item.subtitle}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export default function DialogueLandingScreen({ route, navigation }) {
   const student   = route.params?.student;
   const theme     = getAvatarTheme(student?.avatar_key);
   const firstName = student?.full_name?.split(' ')[0] ?? student?.full_name ?? 'Student';
+  const { width } = useWindowDimensions();
 
   // Intercept Android hardware back → same destination as the UI back arrow
   useFocusEffect(useCallback(() => {
@@ -33,14 +79,18 @@ export default function DialogueLandingScreen({ route, navigation }) {
     return () => sub.remove();
   }, [student]));
 
-  const { width } = useWindowDimensions();
-  const cardWidth = Math.min(width * 0.78, 420);
+  const H_PAD = Layout.spacing.lg;
+  const GAP   = 20;
+  const cardW = Math.min((width - H_PAD * 2 - GAP) / 2, 380);
+  const cardH = cardW * 0.95;
 
-  const cardColors = [
-    { bg: '#94E0FA', text: theme.buttonText, border: '#94E0FA' },
-    { bg: '#FFBEEB', text: theme.buttonText, border: '#FFBEEB' },
-    { bg: '#CC8DE7', text: theme.buttonText, border: '#CC8DE7' },
-  ];
+  function goToLevel(key) {
+    if (key === 'level1') {
+      navigation.navigate('DialogueCategory', { student });
+    } else if (key === 'level2') {
+      navigation.navigate('L2TopicSelection', { student });
+    }
+  }
 
   return (
     <LinearGradient
@@ -49,62 +99,44 @@ export default function DialogueLandingScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      {/* Decorative floating shapes — same treatment as ConceptCategoriesScreen */}
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
+
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
-        {/* ── Top bar ─────────────────────────────────────────── */}
+        {/* ── Header ──────────────────────────────────────────── */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={[styles.iconBtn, { borderColor: theme.cardOutline }]}
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
             onPress={() => navigation.navigate('StudentDashboard', { student })}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
+
+          <Text style={[styles.heading, { color: theme.headingText }]}>
+            Welcome back {firstName}!
+          </Text>
+          <Text style={[styles.subheading, { color: theme.headingText }]}>
+            What shall we learn today?
+          </Text>
         </View>
 
         {/* ── Body ────────────────────────────────────────────── */}
         <View style={styles.body}>
 
-          {/* Heading */}
-          <Text style={[styles.heading, { color: theme.headingText }]}>
-            Welcome back {firstName}!
-          </Text>
-
-          {/* Sub-heading */}
-          <Text style={[styles.subheading, { color: theme.headingText }]}>
-            What shall we learn today?
-          </Text>
-
-          {/* Level cards */}
-          <View style={styles.levels}>
-            {LEVELS.map((level, index) => {
-              const c = cardColors[index];
-              return (
-                <TouchableOpacity
-                  key={level.key}
-                  style={[
-                    styles.levelCard,
-                    {
-                      width: cardWidth,
-                      backgroundColor: c.bg,
-                      borderColor: c.border,
-                    },
-                  ]}
-                  activeOpacity={0.82}
-                  onPress={() => {
-                    if (level.key === 'level1') {
-                      navigation.navigate('DialogueCategory', { student });
-                    } else if (level.key === 'level2') {
-                      navigation.navigate('L2TopicSelection', { student });
-                    }
-                  }}
-                >
-                  <Text style={[styles.levelLabel, { color: c.text }]}>
-                    {level.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={[styles.levels, { gap: GAP }]}>
+            {LEVELS.map((level) => (
+              <LevelCard
+                key={level.key}
+                item={level}
+                cardW={cardW}
+                cardH={cardH}
+                theme={theme}
+                onPress={() => goToLevel(level.key)}
+              />
+            ))}
           </View>
 
         </View>
@@ -117,18 +149,41 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
+  // ── Decorative background shapes ──────────────────────────────────────────
+  blob: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.08,
+  },
+  blobTopRight: {
+    width: 220,
+    height: 220,
+    top: -60,
+    right: -60,
+  },
+  blobBottomLeft: {
+    width: 260,
+    height: 260,
+    bottom: -80,
+    left: -80,
+  },
+
   topBar: {
     paddingHorizontal: Layout.spacing.lg,
-    paddingVertical:   Layout.spacing.sm,
+    paddingTop:    Layout.spacing.sm,
+    paddingBottom: Layout.spacing.md,
   },
   iconBtn: {
     width:  40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   body: {
@@ -136,50 +191,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Layout.spacing.lg,
-    gap: Layout.spacing.md,
     paddingBottom: Layout.spacing.xl,
   },
 
   heading: {
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
     textAlign: 'center',
-    marginBottom: Layout.spacing.xs,
+    marginTop: Layout.spacing.md,
   },
 
   subheading: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: '500',
-    textAlign: 'center',
+    fontSize: 13,
+    fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
-    marginBottom: Layout.spacing.sm,
+    textAlign: 'center',
+    marginTop: 2,
   },
 
   levels: {
-    width: '100%',
-    alignItems: 'center',
-    gap: Layout.spacing.md,
-    marginTop: Layout.spacing.sm,
+    flexDirection: 'row',
   },
 
-  levelCard: {
-    borderRadius: 22,
-    borderWidth: 2,
-    paddingVertical: Layout.spacing.lg,
-    paddingHorizontal: Layout.spacing.lg,
+  card: {
+    borderRadius: 28,
+    borderWidth: 3,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.09,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
-
-  levelLabel: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: '700',
+  cardImage: {
+    width: '62%',
+    height: '50%',
+    marginBottom: 16,
+  },
+  cardLabel: {
+    fontSize: 24,
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
+    color: '#1A1A1A',
+  },
+  cardSubtitle: {
+    fontSize: 15,
+    fontFamily: 'DMSans_600SemiBold',
+    textAlign: 'center',
+    lineHeight: 19,
+    color: '#4A4A4A',
+    marginTop: 4,
   },
 });

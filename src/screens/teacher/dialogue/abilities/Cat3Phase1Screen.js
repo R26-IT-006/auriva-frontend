@@ -23,10 +23,18 @@ const PROGRESS_FRACTION = 0.10;
 // ── Static asset requires (React Native requires static paths) ─────────────
 
 const ASSETS = {
-  clap: { type: 'video',  source: require('../../../../../assets/avatar_actions-images/Saman_Clapping.mp4') },
-  run:  { type: 'run',   source: require('../../../../../assets/avatar_actions-images/Anjalie_Running.png') },
-  walk: { type: 'walk',  source: require('../../../../../assets/avatar_actions-images/Saman_Walking.png') },
-  jump: { type: 'jump',  source: require('../../../../../assets/avatar_actions-images/Anjalie_Jumping.png') },
+  clap:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4') },
+  run:   { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/run/Phase1And3.mp4') },
+  walk:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/walk/Phase1And3.mp4') },
+  jump:  { type: 'jump',  source: require('../../../../../assets/dialogue-images/words/abilities/jump/Anjalie_Jumping.png') },
+  brush: { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/brush/Phase1And3.mp4') },
+  wash:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/wash/Phase1And3.mp4') },
+  eat:   { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/eat/Phase1And3.mp4') },
+  drink: { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/drink/Phase1And3.mp4') },
+  write: { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/write/Phase1And3.mp4') },
+  play:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/play/Phase1And3.mp4') },
+  sleep: { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/sleep/Phase1And3.mp4') },
+  watch: { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/watch/Phase1And3.mp4') },
 };
 
 const WORD_LABELS = {
@@ -39,6 +47,14 @@ const WORD_LABELS = {
   talk:     'Talk',
   dance:    'Dance',
   sing:     'Sing',
+  brush:    'Brush',
+  wash:     'Wash',
+  eat:      'Eat',
+  drink:    'Drink',
+  write:    'Write',
+  play:     'Play',
+  sleep:    'Sleep',
+  watch:    'Watch',
 };
 
 // Scene images for the AnimatedWord/BoldWord familiarisation screens — same
@@ -46,15 +62,23 @@ const WORD_LABELS = {
 // data/dialogueAssets.js by design; the scene/context concept there
 // doesn't apply to this category — confirmed 2026-07-28).
 const CAT3_WORD_IMAGE = {
-  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Drag_Act.jpeg'),
-  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Drag_Act.jpeg'),
-  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Drag_Act.jpeg'),
-  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Drag_Act.jpeg'),
-  talk:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  dance:    require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
-  sing:     require('../../../../../assets/dialogue-images/words/abilities/can_you/scene.png'),
+  cat3_yes: require('../../../../../assets/dialogue-images/words/abilities/yes/Non_Verbal.jpg'),
+  cat3_no:  require('../../../../../assets/dialogue-images/words/abilities/no/Non_Verbal.jpg'),
+  clap:     require('../../../../../assets/dialogue-images/words/abilities/clap/Non_Verbal.jpg'),
+  run:      require('../../../../../assets/dialogue-images/words/abilities/run/Non_Verbal.jpg'),
+  walk:     require('../../../../../assets/dialogue-images/words/abilities/walk/Non_Verbal.jpg'),
+  jump:     require('../../../../../assets/dialogue-images/words/abilities/jump/Non_Verbal.jpg'),
+  talk:     require('../../../../../assets/dialogue-images/words/abilities/talk/Non_Verbal.jpg'),
+  dance:    require('../../../../../assets/dialogue-images/words/abilities/dance/Non_Verbal.jpg'),
+  sing:     require('../../../../../assets/dialogue-images/words/abilities/sing/Non_Verbal.jpg'),
+  brush:    require('../../../../../assets/dialogue-images/words/abilities/brush/Non_Verbal.jpg'),
+  wash:     require('../../../../../assets/dialogue-images/words/abilities/wash/Non_Verbal.jpg'),
+  eat:      require('../../../../../assets/dialogue-images/words/abilities/eat/Non_Verbal.jpg'),
+  drink:    require('../../../../../assets/dialogue-images/words/abilities/drink/Non_Verbal.jpg'),
+  write:    require('../../../../../assets/dialogue-images/words/abilities/write/Non_Verbal.jpg'),
+  play:     require('../../../../../assets/dialogue-images/words/abilities/play/Non_Verbal.jpg'),
+  sleep:    require('../../../../../assets/dialogue-images/words/abilities/sleep/Non_Verbal.jpg'),
+  watch:    require('../../../../../assets/dialogue-images/words/abilities/watch/Non_Verbal.jpg'),
 };
 
 // Word audio for the familiarisation screens — mirrors Cat3Phase2Screen.js's
@@ -103,93 +127,9 @@ function JumpAvatar({ source }) {
   );
 }
 
-// ── Run animation ─────────────────────────────────────────────────────────────
+// ── Tap-to-play video (clap / run / walk) ───────────────────────────────────
 
-function RunAvatar({ source }) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const isRunning  = useRef(false);
-
-  function doRun() {
-    if (isRunning.current) return;
-    isRunning.current = true;
-    translateX.setValue(-220);
-    translateY.setValue(0);
-
-    const bounce = Animated.loop(
-      Animated.sequence([
-        Animated.timing(translateY, { toValue: -14, duration: 120, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: 0,   duration: 120, useNativeDriver: true }),
-      ]),
-      { iterations: 20 },
-    );
-    bounce.start();
-
-    Animated.timing(translateX, { toValue: 220, duration: 1400, useNativeDriver: true }).start(() => {
-      bounce.stop();
-      setTimeout(() => {
-        translateX.setValue(0);
-        translateY.setValue(0);
-        isRunning.current = false;
-      }, 300);
-    });
-  }
-
-  return (
-    <TouchableOpacity onPress={doRun} activeOpacity={0.9} style={[styles.avatarTouchable, { overflow: 'hidden', width: '100%' }]}>
-      <Animated.Image
-        source={source}
-        style={[styles.avatarImg, { transform: [{ translateX }, { translateY }] }]}
-        resizeMode="contain"
-      />
-    </TouchableOpacity>
-  );
-}
-
-// ── Walk animation ────────────────────────────────────────────────────────────
-
-function WalkAvatar({ source }) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const isWalking  = useRef(false);
-
-  function doWalk() {
-    if (isWalking.current) return;
-    isWalking.current = true;
-    translateX.setValue(-130);
-    translateY.setValue(0);
-
-    const bob = Animated.loop(
-      Animated.sequence([
-        Animated.timing(translateY, { toValue: -10, duration: 250, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: 0,   duration: 250, useNativeDriver: true }),
-      ]),
-      { iterations: 8 },
-    );
-    bob.start();
-
-    Animated.timing(translateX, { toValue: 130, duration: 4000, useNativeDriver: true }).start(() => {
-      bob.stop();
-      translateX.setValue(0);
-      translateY.setValue(0);
-      isWalking.current = false;
-    });
-  }
-
-  return (
-    <TouchableOpacity onPress={doWalk} activeOpacity={0.9} style={[styles.avatarTouchable, { overflow: 'hidden', width: '100%' }]}>
-      <Animated.Image
-        source={source}
-        style={[styles.avatarImg, { transform: [{ translateX }, { translateY }] }]}
-        resizeMode="contain"
-      />
-    </TouchableOpacity>
-  );
-}
-
-// ── Clap video ────────────────────────────────────────────────────────────────
-
-function ClapAvatar({ source }) {
+function VideoAvatar({ source }) {
   const videoRef  = useRef(null);
   const [playing, setPlaying] = useState(false);
 
@@ -199,6 +139,12 @@ function ClapAvatar({ source }) {
     await videoRef.current.playAsync();
     setPlaying(true);
   }
+
+  // Stop on blur — otherwise a tapped video kept playing (with audio) after
+  // the student navigated away before it finished.
+  useFocusEffect(useCallback(() => () => {
+    videoRef.current?.pauseAsync().catch(() => {});
+  }, []));
 
   return (
     <TouchableOpacity onPress={doPlay} activeOpacity={1} style={styles.avatarTouchable}>
@@ -327,10 +273,8 @@ export default function Cat3Phase1Screen({ route, navigation }) {
       return <WordCard label={wordLabel} theme={theme} />;
     }
     const src = asset.source;
-    if (asset.type === 'video') return <ClapAvatar source={src} />;
-    if (asset.type === 'jump')  return <JumpAvatar source={src} />;
-    if (asset.type === 'run')   return <RunAvatar  source={src} />;
-    if (asset.type === 'walk')  return <WalkAvatar source={src} />;
+    if (asset.type === 'video') return <VideoAvatar source={src} />;
+    if (asset.type === 'jump')  return <JumpAvatar  source={src} />;
     return <WordCard label={wordLabel} theme={theme} />;
   }
 

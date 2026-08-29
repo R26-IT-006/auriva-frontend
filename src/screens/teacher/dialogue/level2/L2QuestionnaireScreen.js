@@ -20,11 +20,11 @@ const ACTIVITY_ICONS = { Singing: 'musical-notes-outline', Dancing: 'body-outlin
 const STEPS = ['badge', 'age', 'hometown', 'gender', 'activities', 'review'];
 
 const STEP_COPY = [
-  { child: "What's your name?",          teacher: "Child's First Name  ·  දරුවාගේ නම" },
-  { child: 'How old are you?',           teacher: 'Age  ·  වයස' },
-  { child: 'Where do you live?',         teacher: 'Hometown  ·  නිවසේ ප්‍රදේශය' },
-  { child: 'Boy or girl?',               teacher: 'Gender  ·  ස්ත්‍රී/පුරුෂ' },
-  { child: 'What do you like to do?',    teacher: 'Favourite Activities  ·  ප්‍රිය ක්‍රීයා  (choose up to 3)' },
+  { child: "What's your name?",          teacher: "Child's First Name" },
+  { child: 'How old are you?',           teacher: 'Age' },
+  { child: 'Where do you live?',         teacher: 'Hometown' },
+  { child: 'Boy or girl?',               teacher: 'Gender' },
+  { child: 'What do you like to do?',    teacher: 'Favourite Activities  (choose up to 3)' },
   { child: "Let's see your badge!",      teacher: 'Review together, then save.' },
 ];
 
@@ -143,7 +143,7 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
             <>
               <BadgeNameInput name={name} onChangeName={setName} theme={theme} />
               <SinhalaNameInput
-                label="Sinhala Spelling  ·  සිංහල අකුරින්"
+                label="Sinhala Spelling"
                 englishValue={name}
                 sinhalaValue={nameSinhala}
                 onSinhalaChange={setNameSinhala}

@@ -1,67 +1,38 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Animated,
-  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 
-const ANJALIE = require('../../../../../assets/avatar_actions-images/Anjalie_Running.png');
-
-// Subtle up-down oscillation while running
-function buildBounce(translateY) {
-  return Animated.loop(
-    Animated.sequence([
-      Animated.timing(translateY, { toValue: -10, duration: 120, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue:   0, duration: 120, useNativeDriver: true }),
-    ]),
-    { iterations: 20 },
-  );
-}
+const ANJALIE_VIDEO = require('../../../../../assets/dialogue-videos/words/abilities/run/Phase1And3.mp4');
 
 export default function RunActivityScreen({ route, navigation }) {
   const { student } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
-  const { width: screenWidth } = useWindowDimensions();
 
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const isRunning  = useRef(false);
+  const videoRef  = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  const startX = -(screenWidth * 0.55);
-  const endX   =  (screenWidth * 0.55);
+  async function handleAvatarPress() {
+    if (!videoRef.current || isPlaying) return;
+    await videoRef.current.setPositionAsync(0);
+    await videoRef.current.playAsync();
+    setIsPlaying(true);
+  }
 
-  function handleAvatarPress() {
-    if (isRunning.current) return;
-    isRunning.current = true;
-
-    // Reset to left side instantly, then run to the right
-    translateX.setValue(startX);
-    translateY.setValue(0);
-
-    const bounce = buildBounce(translateY);
-    bounce.start();
-
-    Animated.timing(translateX, {
-      toValue:  endX,
-      duration: 1400,
-      useNativeDriver: true,
-    }).start(() => {
-      bounce.stop();
-      // Snap back to centre after a brief pause
-      setTimeout(() => {
-        translateX.setValue(0);
-        translateY.setValue(0);
-        isRunning.current = false;
-      }, 300);
-    });
+  function onPlaybackStatusUpdate(status) {
+    if (!status.isLoaded) return;
+    if (status.didJustFinish) {
+      setIsPlaying(false);
+    }
   }
 
   return (
@@ -95,20 +66,22 @@ export default function RunActivityScreen({ route, navigation }) {
               Can you run? Tap on Anjalie to see her run!
             </Text>
 
-            {/* Avatar — tappable run trigger */}
+            {/* Avatar video — tap to play, no visible controls */}
             <View style={styles.avatarArea}>
               <TouchableOpacity
                 onPress={handleAvatarPress}
-                activeOpacity={0.9}
+                activeOpacity={1}
                 style={styles.avatarTouchable}
               >
-                <Animated.Image
-                  source={ANJALIE}
-                  style={[
-                    styles.avatar,
-                    { transform: [{ translateX }, { translateY }] },
-                  ]}
-                  resizeMode="contain"
+                <Video
+                  ref={videoRef}
+                  source={ANJALIE_VIDEO}
+                  style={[styles.avatar, { backgroundColor: theme.background }]}
+                  resizeMode={ResizeMode.CONTAIN}
+                  useNativeControls={false}
+                  shouldPlay={false}
+                  isLooping={false}
+                  onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                 />
               </TouchableOpacity>
             </View>
