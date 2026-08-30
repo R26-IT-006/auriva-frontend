@@ -11,12 +11,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
+
+// Shared drag-and-drop instruction audio — same clip across every category.
+const DRAG_DROP_AUDIO = require('../../../../../assets/dialogue-audios/DragAndDropCommon.mp3');
 
 // Scene videos for the DragToLine screen — Drag_Activity.mp4 per word folder
 const CAT3_SCENE = {
@@ -185,6 +188,7 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
   const feedbackOp    = useRef(new Animated.Value(0)).current;
   const dropGlow      = useRef(new Animated.Value(0)).current;
   const videoRef      = useRef(null);
+  const soundRef       = useRef(null);
 
   function goBackSmart() {
     if (navigation.canGoBack()) {
@@ -200,6 +204,13 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
       goBackSmart();
       return true;
     });
+    (async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(DRAG_DROP_AUDIO);
+        soundRef.current = sound;
+        await sound.playAsync();
+      } catch { /* ignore */ }
+    })();
     return () => {
       activeRef.current = false;
       sub.remove();
@@ -207,6 +218,8 @@ export default function Cat3DragToLineScreen({ route, navigation }) {
       // the background after the student navigates away (expo-av Video
       // doesn't auto-stop just because the screen loses focus).
       videoRef.current?.pauseAsync().catch(() => {});
+      soundRef.current?.stopAsync().catch(() => {});
+      soundRef.current?.unloadAsync().catch(() => {});
     };
   }, []));
 

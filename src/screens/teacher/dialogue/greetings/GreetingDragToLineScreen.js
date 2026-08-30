@@ -12,12 +12,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
+
+// Shared drag-and-drop instruction audio — same clip across every category.
+const DRAG_DROP_AUDIO = require('../../../../../assets/dialogue-audios/DragAndDropCommon.mp3');
 
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
@@ -380,6 +384,7 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
   const settingsFade = useRef(new Animated.Value(0)).current;
 
   const dropZoneRef = useRef(null);
+  const soundRef     = useRef(null);
   const [dropZoneBounds, setDropZoneBounds] = useState(null);
 
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
@@ -405,7 +410,18 @@ export default function GreetingDragToLineScreen({ route, navigation }) {
       goBackSmart();
       return true;
     });
-    return () => { sub.remove(); };
+    (async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(DRAG_DROP_AUDIO);
+        soundRef.current = sound;
+        await sound.playAsync();
+      } catch { /* ignore */ }
+    })();
+    return () => {
+      sub.remove();
+      soundRef.current?.stopAsync().catch(() => {});
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
   }, []));
 
   function measureDropZone() {

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
@@ -23,10 +23,25 @@ const PROGRESS_FRACTION = 0.10;
 // ── Static asset requires (React Native requires static paths) ─────────────
 
 const ASSETS = {
+  // yes/no get a narration audio synced to their tap-to-play video — the
+  // only two words with one, per instruction (2026-08-30).
+  cat3_yes: {
+    type: 'video',
+    source: require('../../../../../assets/dialogue-videos/words/abilities/yes/Phase1And3.mp4'),
+    narrationAudio: require('../../../../../assets/dialogue-audios/abilities/Yes_V1.mp3'),
+  },
+  cat3_no: {
+    type: 'video',
+    source: require('../../../../../assets/dialogue-videos/words/abilities/no/Phase1And3.mp4'),
+    narrationAudio: require('../../../../../assets/dialogue-audios/abilities/No_V1.mp3'),
+  },
   clap:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4') },
   run:   { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/run/Phase1And3.mp4') },
   walk:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/walk/Phase1And3.mp4') },
   jump:  { type: 'jump',  source: require('../../../../../assets/dialogue-images/words/abilities/jump/Anjalie_Jumping.png') },
+  talk:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/talk/Phase1And3.mp4') },
+  dance: { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/dance/Phase1And3.mp4') },
+  sing:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/sing/Phase1And3.mp4') },
   brush: { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/brush/Phase1And3.mp4') },
   wash:  { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/wash/Phase1And3.mp4') },
   eat:   { type: 'video', source: require('../../../../../assets/dialogue-videos/words/abilities/eat/Phase1And3.mp4') },
@@ -81,9 +96,11 @@ const CAT3_WORD_IMAGE = {
 };
 
 // Word audio for the familiarisation screens — mirrors Cat3Phase2Screen.js's
-// WORD_AUDIO. cat3_yes/cat3_no have no audio asset yet (same gap as Phase2);
-// the familiarisation screens already guard playback on wordAudio presence.
+// WORD_AUDIO. brush/cat3_yes/cat3_no added 2026-08-30 now that recordings
+// exist for them; every other word here is unchanged.
 const CAT3_WORD_AUDIO = {
+  cat3_yes: require('../../../../../assets/dialogue-audios/abilities/yes.mp3'),
+  cat3_no:  require('../../../../../assets/dialogue-audios/abilities/no.mp3'),
   clap:  require('../../../../../assets/dialogue-audios/abilities/clap.mp3'),
   run:   require('../../../../../assets/dialogue-audios/abilities/run.mp3'),
   walk:  require('../../../../../assets/dialogue-audios/abilities/walk.mp3'),
@@ -91,6 +108,7 @@ const CAT3_WORD_AUDIO = {
   dance: require('../../../../../assets/dialogue-audios/abilities/dance.mp3'),
   sing:  require('../../../../../assets/dialogue-audios/abilities/sing.mp3'),
   talk:  require('../../../../../assets/dialogue-audios/abilities/talk.mp3'),
+  brush: require('../../../../../assets/dialogue-audios/abilities/brush.mp3'),
 };
 
 // ── Jump animation ────────────────────────────────────────────────────────────
@@ -128,8 +146,9 @@ function JumpAvatar({ source }) {
 
 // ── Tap-to-play video (clap / run / walk) ───────────────────────────────────
 
-function VideoAvatar({ source }) {
+function VideoAvatar({ source, narrationAudio }) {
   const videoRef  = useRef(null);
+  const soundRef  = useRef(null);
   const [playing, setPlaying] = useState(false);
 
   async function doPlay() {
@@ -137,12 +156,27 @@ function VideoAvatar({ source }) {
     await videoRef.current.setPositionAsync(0);
     await videoRef.current.playAsync();
     setPlaying(true);
+
+    if (narrationAudio) {
+      try {
+        if (soundRef.current) {
+          await soundRef.current.stopAsync().catch(() => {});
+          await soundRef.current.unloadAsync().catch(() => {});
+          soundRef.current = null;
+        }
+        const { sound } = await Audio.Sound.createAsync(narrationAudio);
+        soundRef.current = sound;
+        await sound.playAsync();
+      } catch { /* ignore */ }
+    }
   }
 
-  // Stop on blur — otherwise a tapped video kept playing (with audio) after
-  // the student navigated away before it finished.
+  // Stop on blur — otherwise a tapped video (and its narration audio) kept
+  // playing after the student navigated away before it finished.
   useFocusEffect(useCallback(() => () => {
     videoRef.current?.pauseAsync().catch(() => {});
+    soundRef.current?.stopAsync().catch(() => {});
+    soundRef.current?.unloadAsync().catch(() => {});
   }, []));
 
   return (
@@ -272,7 +306,7 @@ export default function Cat3Phase1Screen({ route, navigation }) {
       return <WordCard label={wordLabel} theme={theme} />;
     }
     const src = asset.source;
-    if (asset.type === 'video') return <VideoAvatar source={src} />;
+    if (asset.type === 'video') return <VideoAvatar source={src} narrationAudio={asset.narrationAudio} />;
     if (asset.type === 'jump')  return <JumpAvatar  source={src} />;
     return <WordCard label={wordLabel} theme={theme} />;
   }
