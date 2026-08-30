@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
+import Svg, { Ellipse, Path } from "react-native-svg";
 import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -7,39 +8,83 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../constants/colors";
 import { Layout } from "../../../constants/layout";
 import { getAvatarTheme } from "../../../constants/avatarThemes";
+import {
+  EntranceItem,
+  SelectionCheck,
+  selectionElevation,
+  selectionSurface,
+  selectionTextColor,
+  ThemedGradientFill,
+} from "./pronunciationDesignKit.js";
 
 const MOUTH_SHAPES = [
-  { id: "k", ipa: "/k/", label: "open", icon: "ellipse-outline" },
-  { id: "ae", ipa: "/æ/", label: "open", icon: "ellipse-outline" },
-  { id: "t", ipa: "/t/", label: "teeth lip", icon: "ellipse-outline" },
+  { id: "k", ipa: "/k/", label: "open", variant: "open" },
+  { id: "ae", ipa: "/æ/", label: "open wide", variant: "wide" },
+  { id: "t", ipa: "/t/", label: "teeth lip", variant: "teeth" },
 ];
 
-function MouthShapeIcon({ index, theme }) {
-  const variant = index === 2 ? styles.mouthTeeth : styles.mouthOpen;
+// A drawn mouth shape per phoneme (open / open-wide / teeth-together) rather
+// than a generic placeholder — lip/teeth tones stay fixed regardless of
+// avatar theme, same as a real mouth never changes color with the outfit.
+function MouthShapeGlyph({ variant }) {
+  if (variant === "teeth") {
+    return (
+      <Svg width={64} height={64} viewBox="0 0 64 64">
+        <Path
+          d="M8 32c6 6 16 9 24 9s18-3 24-9c-6-3-16-5-24-5s-18 2-24 5Z"
+          fill="#D6716A"
+          stroke="#8C3E38"
+          strokeWidth={2}
+        />
+        <Path d="M14 31.5c6 2.5 12 3.5 18 3.5s12-1 18-3.5" fill="none" stroke="#FFFFFF" strokeWidth={4} strokeLinecap="round" />
+      </Svg>
+    );
+  }
+
+  const rx = variant === "wide" ? 24 : 17;
+  const ry = variant === "wide" ? 17 : 20;
   return (
-    <View style={styles.mouthIconWrap}>
-      <View style={[styles.mouthIconOuter, { borderColor: theme.cardOutline }, variant]}>
-        <View style={styles.mouthIconInner} />
-      </View>
+    <Svg width={64} height={64} viewBox="0 0 64 64">
+      <Ellipse cx={32} cy={32} rx={rx} ry={ry} fill="#5B2A24" stroke="#8C3E38" strokeWidth={2} />
+      <Ellipse cx={32} cy={32 - ry * 0.35} rx={rx * 0.82} ry={ry * 0.28} fill="#FFFFFF" opacity={0.92} />
+      <Ellipse cx={32} cy={32 + ry * 0.55} rx={rx * 0.6} ry={ry * 0.3} fill="#E7847C" opacity={0.85} />
+    </Svg>
+  );
+}
+
+function MouthShapeIcon({ variant, theme }) {
+  return (
+    <View style={[styles.mouthIconWrap, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+      <MouthShapeGlyph variant={variant} />
     </View>
   );
 }
 
-function MouthCard({ item, selected, onPress, theme }) {
+function MouthCard({ item, index, selected, onPress, theme }) {
   return (
-    <ButtonFeedback
-      activeOpacity={0.86}
-      onPress={onPress}
-      style={[
-        styles.card,
-        { backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
-        selected && styles.cardSelected,
-      ]}
-    >
-      <MouthShapeIcon index={item.id === "t" ? 2 : item.id === "ae" ? 1 : 0} theme={theme} />
-      <Text style={[styles.ipa, { color: theme.headingText }]}>{item.ipa}</Text>
-      <Text style={styles.label}>{item.label}</Text>
-    </ButtonFeedback>
+    <EntranceItem index={index} style={selectionElevation(theme, selected, 12)}>
+      <ButtonFeedback
+        activeOpacity={0.86}
+        onPress={onPress}
+        accessibilityRole="radio"
+        accessibilityState={{ selected, checked: selected }}
+        accessibilityLabel={`${item.ipa}, ${item.label}`}
+        style={[styles.card, selectionSurface(theme, selected)]}
+      >
+        <SelectionCheck selected={selected} theme={theme} size={24} />
+
+        <MouthShapeIcon variant={item.variant} theme={theme} />
+        <Text
+          style={[
+            styles.ipa,
+            { color: selectionTextColor(theme, selected, theme.headingText) },
+          ]}
+        >
+          {item.ipa}
+        </Text>
+        <Text style={styles.label}>{item.label}</Text>
+      </ButtonFeedback>
+    </EntranceItem>
   );
 }
 
@@ -85,10 +130,11 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
           </Text>
 
           <View style={styles.cardsRow}>
-            {MOUTH_SHAPES.map((item) => (
+            {MOUTH_SHAPES.map((item, index) => (
               <MouthCard
                 key={item.id}
                 item={item}
+                index={index}
                 selected={selectedId === item.id}
                 onPress={() => setSelectedId(item.id)}
                 theme={theme}
@@ -104,10 +150,12 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
           <ButtonFeedback
             activeOpacity={0.9}
             onPress={handleReady}
-            style={[styles.readyBtn, isCompact && styles.readyBtnCompact, { backgroundColor: theme.button }]}
+            style={[styles.readyBtnWrap, isCompact && styles.readyBtnCompact]}
           >
-            <Text style={styles.readyText}>I&apos;m Ready!</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            <ThemedGradientFill theme={theme} style={styles.readyBtn}>
+              <Text style={styles.readyText}>I&apos;m Ready!</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            </ThemedGradientFill>
           </ButtonFeedback>
         </View>
       </View>
@@ -163,7 +211,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 30,
     color: "#2C5878",
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     textAlign: "center",
     marginBottom: 4,
   },
@@ -175,7 +223,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     lineHeight: 30,
     color: "#2C5878",
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     textAlign: "center",
     marginBottom: 24,
     opacity: 0.82,
@@ -195,60 +243,34 @@ const styles = StyleSheet.create({
     width: 120,
     height: 160,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: "#E4EAF1",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 10,
   },
-  cardSelected: {
-    borderWidth: 2,
-  },
   mouthIconWrap: {
     width: 70,
     height: 70,
+    borderRadius: 35,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
-  },
-  mouthIconOuter: {
-    width: 44,
-    height: 28,
-    borderWidth: 2,
-    borderColor: "#7EB1E0",
-    borderRadius: 22,
-    backgroundColor: "#F5C0B6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  mouthIconInner: {
-    width: 28,
-    height: 12,
-    borderRadius: 10,
-    backgroundColor: "#373D4A",
-  },
-  mouthOpen: {
-    transform: [{ scaleX: 1.08 }],
-  },
-  mouthTeeth: {
-    width: 46,
-    height: 26,
-    borderRadius: 18,
+    ...Layout.shadow.sm,
   },
   ipa: {
     fontSize: 28,
-    fontWeight: "700",
+    fontFamily: Layout.fonts.bold,
     color: Colors.text.primary,
     marginTop: 2,
   },
   label: {
     fontSize: 10,
     color: Colors.text.muted,
+    fontFamily: Layout.fonts.semibold,
     marginTop: 4,
     textTransform: "lowercase",
   },
-  readyBtn: {
+  readyBtnWrap: {
     position: "absolute",
     right: 14,
     top: "50%",
@@ -256,14 +278,17 @@ const styles = StyleSheet.create({
     minWidth: 146,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#A8D79A",
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.9)",
+    overflow: "hidden",
+    ...Layout.shadow.md,
+  },
+  readyBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    ...Layout.shadow.md,
   },
   readyBtnCompact: {
     position: "relative",
@@ -286,6 +311,6 @@ const styles = StyleSheet.create({
   readyText: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
 });

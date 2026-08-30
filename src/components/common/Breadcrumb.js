@@ -28,14 +28,14 @@ export function Breadcrumb({ crumbs = [], title, right }) {
       <View style={styles.trailRow}>
         {/* Back chevron navigates to previous crumb */}
         {crumbs.length > 1 && crumbs[crumbs.length - 2]?.onPress && (
-          <ButtonFeedback
+          <TouchableOpacity
             onPress={crumbs[crumbs.length - 2].onPress}
             style={styles.backBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.7}
           >
             <Ionicons name="chevron-back" size={16} color={K.purple} />
-          </ButtonFeedback>
+          </TouchableOpacity>
         )}
 
         <View style={styles.trail}>

@@ -26,6 +26,7 @@ client.interceptors.request.use(
 // Normalize errors from the backend
 const MAX_RETRIES  = 3;
 const RETRY_DELAY  = 700; // ms between retries
+const RETRYABLE_METHODS = new Set(['get', 'head', 'options']);
 
 client.interceptors.response.use(
   (response) => response,
@@ -33,9 +34,19 @@ client.interceptors.response.use(
     const config   = error.config;
     const response = error.response;
 
-    // Silently retry on pure network errors (no HTTP response received).
-    // This covers transient TCP/ARP failures common on local dev networks.
-    if (!response && error.code !== 'ECONNABORTED') {
+    if (axios.isCancel(error) || error.code === 'ERR_CANCELED') {
+      const cancellationError = new Error('Request cancelled.');
+      cancellationError.code = 'REQUEST_CANCELLED';
+      return Promise.reject(cancellationError);
+    }
+
+    // Only retry read-only requests. Retrying a POST/PUT/PATCH after the
+    // response is lost can repeat a mutation that the backend already
+    // completed (pronunciation scoring persists an attempt before replying).
+    const method = String(config?.method || 'get').toLowerCase();
+    const canRetry =
+      RETRYABLE_METHODS.has(method) || config?.retryOnNetworkError === true;
+    if (!response && error.code !== 'ECONNABORTED' && config && canRetry) {
       config._retryCount = (config._retryCount || 0) + 1;
       if (config._retryCount <= MAX_RETRIES) {
         await new Promise((r) => setTimeout(r, RETRY_DELAY));
@@ -56,12 +67,17 @@ client.interceptors.response.use(
       const details  = response.data?.details || null;
       const apiError = new Error(message);
       apiError.status  = response.status;
+      apiError.code    = response.data?.code || null;
       apiError.details = details;
       return Promise.reject(apiError);
     }
 
     if (error.code === 'ECONNABORTED') {
-      return Promise.reject(new Error('Request timed out. Please try again.'));
+      const timeoutError = new Error(
+        config?.timeoutMessage || 'Request timed out. Please try again.'
+      );
+      timeoutError.code = 'REQUEST_TIMEOUT';
+      return Promise.reject(timeoutError);
     }
 
     return Promise.reject(new Error('Network error. Check your connection.'));

@@ -1,6 +1,13 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 
 import { WORD_BANK } from "./wordBank";
+import { DEFAULT_IMAGE_STYLE, IMAGE_STYLES } from "./wordImageStyles.js";
+
+// Picture style is a property of the child, not of one session, so it is
+// stored per student on the device and deliberately kept out of
+// `initialSessionState` — resetting a session must not undo it.
+const IMAGE_STYLE_STORAGE_PREFIX = "pronunciation_image_style_";
 
 export const PRONUNCIATION_STEPS = {
   SETUP: "setup",
@@ -266,6 +273,9 @@ const initialSessionState = {
   rawAudioSize: null,
   mockWordScore: null,
   mockPhonemeScores: [],
+  // DB row id the backend created when it scored (and persisted) the attempt;
+  // the result screen finishes that row instead of re-uploading everything.
+  scoredResultId: null,
   responseDuration: null,
   hesitationTime: null,
   confidenceLevel: null,
@@ -277,6 +287,12 @@ const initialSessionState = {
   listenChooseData: null,
   completedWords: [],
   difficultPhonemes: {},
+  // Whether the child pressed "Hear Sounds" (played the reference audio)
+  // during the Listen step of the attempt currently in progress. Reset at
+  // the start of every Listen-step visit (see PronunciationLearnWordScreen),
+  // so a retry that skips replay is correctly recorded as independent speech
+  // rather than inheriting a stale true from an earlier attempt.
+  heardReferenceAudio: false,
 };
 
 function getCategoryWords(categoryId) {
@@ -299,6 +315,43 @@ function findWordById({ selectedCategory, selectedMode, wordId }) {
 
 export const usePronunciationSessionStore = create((set, get) => ({
   ...initialSessionState,
+  imageStyle: DEFAULT_IMAGE_STYLE,
+
+  /** Reads this student's saved picture style; falls back to photos. */
+  async loadImageStyle(studentId) {
+    if (!studentId) {
+      set({ imageStyle: DEFAULT_IMAGE_STYLE });
+      return DEFAULT_IMAGE_STYLE;
+    }
+
+    try {
+      const stored = await AsyncStorage.getItem(
+        `${IMAGE_STYLE_STORAGE_PREFIX}${studentId}`,
+      );
+      const style = stored === IMAGE_STYLES.CARTOON ? IMAGE_STYLES.CARTOON : DEFAULT_IMAGE_STYLE;
+      set({ imageStyle: style });
+      return style;
+    } catch (error) {
+      console.log("Image style load error:", error.message);
+      set({ imageStyle: DEFAULT_IMAGE_STYLE });
+      return DEFAULT_IMAGE_STYLE;
+    }
+  },
+
+  async setImageStyle(style, studentId) {
+    const nextStyle = style === IMAGE_STYLES.CARTOON ? IMAGE_STYLES.CARTOON : DEFAULT_IMAGE_STYLE;
+    set({ imageStyle: nextStyle });
+
+    if (!studentId) return;
+
+    try {
+      await AsyncStorage.setItem(`${IMAGE_STYLE_STORAGE_PREFIX}${studentId}`, nextStyle);
+    } catch (error) {
+      // A failed write only costs the preference on next launch — the session
+      // in progress keeps the style the teacher just picked.
+      console.log("Image style save error:", error.message);
+    }
+  },
 
   resetSession() {
     set(initialSessionState);
@@ -343,6 +396,7 @@ export const usePronunciationSessionStore = create((set, get) => ({
       rawAudioSize: null,
       mockWordScore: null,
       mockPhonemeScores: [],
+      scoredResultId: null,
       responseDuration: null,
       hesitationTime: null,
       scoringMethod: null,
@@ -352,12 +406,17 @@ export const usePronunciationSessionStore = create((set, get) => ({
       needsTeacherReview: false,
       adaptiveRecommendation: null,
       listenChooseData: null,
+      heardReferenceAudio: false,
       currentActivityStep: PRONUNCIATION_STEPS.LISTEN,
     });
   },
 
   setCurrentActivityStep(step) {
     set({ currentActivityStep: step });
+  },
+
+  setHeardReferenceAudio(heardReferenceAudio) {
+    set({ heardReferenceAudio: Boolean(heardReferenceAudio) });
   },
 
   setRecordingUri(recordingUri, responseDuration = null, audioData = {}) {
@@ -386,6 +445,16 @@ export const usePronunciationSessionStore = create((set, get) => ({
       selectedMode: state.selectedMode,
       wordId: scoringResult?.next_word_id,
     });
+    const weakPhonemeScoreEntry = difficultPhoneme
+      ? (scoringResult?.phoneme_scores || []).find(
+          (entry) =>
+            entry?.text === difficultPhoneme &&
+            entry?.position === (scoringResult?.weak_position || null),
+        ) ||
+        (scoringResult?.phoneme_scores || []).find(
+          (entry) => entry?.text === difficultPhoneme,
+        )
+      : null;
     const completedWord = state.selectedWord
       ? {
           id: state.selectedWord.id,
@@ -404,6 +473,7 @@ export const usePronunciationSessionStore = create((set, get) => ({
       recordingUri: recordingUri || state.recordingUri,
       mockWordScore: score,
       mockPhonemeScores: scoringResult?.phoneme_scores || [],
+      scoredResultId: scoringResult?.result_id ?? null,
       responseDuration: scoringResult?.response_duration ?? responseDuration ?? state.responseDuration,
       hesitationTime: scoringResult?.hesitation_time ?? null,
       confidenceLevel: scoringResult?.confidence_level ?? null,
@@ -411,6 +481,10 @@ export const usePronunciationSessionStore = create((set, get) => ({
       scoringMethod: scoringResult?.scoring_method || null,
       recognizedText: scoringResult?.recognized_text || null,
       speechVerification: scoringResult?.speech_verification || null,
+      // Overwrite with the backend's echoed value (not just the pre-request
+      // client flag) so the save payload always persists exactly what the
+      // scoring pipeline actually used.
+      heardReferenceAudio: Boolean(scoringResult?.heard_reference_audio),
       adaptiveRecommendation: {
         type: scoringResult?.recommendation_type || "reinforce",
         label: scoringResult?.recommendation_type || "Recommendation",
@@ -421,6 +495,8 @@ export const usePronunciationSessionStore = create((set, get) => ({
         scoringMethod: scoringResult?.scoring_method || null,
         weakPhoneme: difficultPhoneme,
         weakPosition: scoringResult?.weak_position || null,
+        weakPhonemeCue: weakPhonemeScoreEntry?.cue || null,
+        recurringWeakPhonemeCount: scoringResult?.recurring_weak_phoneme_count ?? 0,
         details: scoringResult?.recommendation_details || null,
       },
       completedWords: completedWord

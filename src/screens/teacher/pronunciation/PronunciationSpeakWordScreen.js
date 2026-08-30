@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Image, Alert, useWindowDimensions, Animated, Easing, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Image, useWindowDimensions, Animated, Easing, ScrollView, ActivityIndicator } from "react-native";
 import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,7 +21,18 @@ import {
   PLAYBACK_AUDIO_MODE,
   readAudioClip,
 } from "./pronunciationRecording.js";
-import { buildPronunciationScoringPayload } from "./pronunciationPayloads.js";
+import {
+  buildPronunciationScoringPayload,
+  getPronunciationWordLabel,
+} from "./pronunciationPayloads.js";
+import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
+import { ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { useExitSessionGuard } from "./useExitSessionGuard.js";
+import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import {
+  PronunciationAlert,
+  usePronunciationAlert,
+} from "./PronunciationAlert.js";
 
 export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const student = route.params?.student;
@@ -35,7 +46,8 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     (state) => state.selectedWord,
   );
   const word = route.params?.word || sessionSelectedWord;
-  const wordImageSource = getWordImageSource(word);
+  const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
+  const wordImageSource = getWordImageSource(word, imageStyle);
   const { width } = useWindowDimensions();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -54,7 +66,16 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const submitScoredAttempt = usePronunciationSessionStore(
     (state) => state.submitScoredAttempt,
   );
+  const heardReferenceAudio = usePronunciationSessionStore(
+    (state) => state.heardReferenceAudio,
+  );
+  const { isExitConfirmVisible, confirmExit, cancelExit } =
+    useExitSessionGuard(navigation);
+  const { showAlert, alertProps } = usePronunciationAlert();
   const recordingRef = useRef(null);
+  const scoringAbortControllerRef = useRef(null);
+  const isScoringRef = useRef(false);
+  const lastScoringResultRef = useRef(null);
   const promptShownAtRef = useRef(Date.now());
   const preRecordDelayRef = useRef(null);
   const pulseLoopRef = useRef(null);
@@ -76,11 +97,28 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   );
 
   useEffect(() => {
-    if (word) {
+    // The word is normally already selected before this screen mounts. Do
+    // not select the same word again: setSelectedWord intentionally resets
+    // per-attempt evidence, including whether reference audio was heard.
+    if (word && sessionSelectedWord?.id !== word.id) {
       setSelectedWord(word);
     }
     setCurrentActivityStep(PRONUNCIATION_STEPS.SPEAK);
-  }, [setCurrentActivityStep, setSelectedWord, word]);
+  }, [sessionSelectedWord?.id, setCurrentActivityStep, setSelectedWord, word]);
+
+  // Spoken instruction for the recording step — a child who cannot yet read
+  // the on-screen helper text still knows what the microphone is for. Held
+  // back a beat so it does not collide with the screen transition.
+  useEffect(() => {
+    const promptTimer = setTimeout(() => {
+      playVoicePrompt("tapRecordAndSpeak");
+    }, 600);
+
+    return () => {
+      clearTimeout(promptTimer);
+      stopVoicePrompt();
+    };
+  }, [word?.id]);
 
   useEffect(() => {
     if (isRecording) {
@@ -157,16 +195,19 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       if (recordingRef.current) {
         recordingRef.current.stopAndUnloadAsync().catch(() => {});
       }
+      scoringAbortControllerRef.current?.abort();
     };
   }, []);
 
   async function startRecording() {
+    await stopVoicePrompt();
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        showAlert(
           "Microphone permission needed",
           "Please allow microphone access to record pronunciation.",
+          { tone: "warning" },
         );
         return;
       }
@@ -182,9 +223,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       setIsRecording(true);
     } catch (error) {
       Audio.setAudioModeAsync(PLAYBACK_AUDIO_MODE).catch(() => {});
-      Alert.alert(
+      showAlert(
         "Recording error",
         error.message || "Unable to start recording.",
+        { tone: "error" },
       );
     }
   }
@@ -205,9 +247,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       }
 
       if (!audioData?.rawAudioBase64) {
-        Alert.alert(
+        showAlert(
           "Audio save error",
           "The recording finished, but the audio file could not be prepared for saving. Please record again.",
+          { tone: "error", confirmLabel: "Record Again" },
         );
         setSavedRecordingUri(null);
         setSavedAudioData(null);
@@ -219,16 +262,18 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
       setSavedAudioData(audioData);
       setLastRecordingDuration(durationSeconds);
       setRecordingUri(uri, durationSeconds, audioData);
-      Alert.alert(
+      showAlert(
         "Recording saved",
         uri
           ? "Your pronunciation clip has been recorded."
           : "Recording finished.",
+        { tone: "success" },
       );
     } catch (error) {
-      Alert.alert(
+      showAlert(
         "Recording error",
         error.message || "Unable to stop recording.",
+        { tone: "error" },
       );
     } finally {
       recordingRef.current = null;
@@ -239,15 +284,22 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   }
 
   async function handleNext() {
+    if (isScoringRef.current) return;
+
     if (!studentId) {
-      Alert.alert("Student unavailable", "Unable to score without a selected student.");
+      showAlert(
+        "Student unavailable",
+        "Unable to score without a selected student.",
+        { tone: "error" },
+      );
       return;
     }
 
     if (!savedAudioData?.rawAudioBase64 || !savedRecordingUri) {
-      Alert.alert(
+      showAlert(
         "Record first",
         "Please record the pronunciation before moving to the result.",
+        { tone: "info", confirmLabel: "Got It" },
       );
       return;
     }
@@ -255,7 +307,10 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
     const responseDuration = lastRecordingDuration || recordingSeconds || 2;
 
     try {
+      isScoringRef.current = true;
       setIsScoring(true);
+      const scoringAbortController = new AbortController();
+      scoringAbortControllerRef.current = scoringAbortController;
       const scoringResult = await teacherApi.scorePronunciationAttempt(
         studentId,
         buildPronunciationScoringPayload({
@@ -267,40 +322,65 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           attemptNumber: numberOfAttempts + 1,
           audioData: savedAudioData,
           preRecordDelaySeconds: preRecordDelayRef.current,
+          heardReferenceAudio,
         }),
+        { signal: scoringAbortController.signal },
       );
 
+      lastScoringResultRef.current = scoringResult;
       submitScoredAttempt(scoringResult, {
         recordingUri: savedRecordingUri,
         responseDuration,
       });
     } catch (error) {
-      const errorCode = error.response?.data?.code;
+      if (error.code === "REQUEST_CANCELLED") return;
+
+      const errorCode = error.code;
       const isQualityError = errorCode === "AUDIO_QUALITY_FAILED";
       const isWordMismatch = errorCode === "WORD_MISMATCH";
-      Alert.alert(
+      showAlert(
         isWordMismatch
-          ? "Different word detected"
+          ? "That sounded different"
           : isQualityError
             ? "Recording quality issue"
             : "Scoring error",
-        error.response?.data?.error ||
-          error.response?.data?.message ||
-          error.message ||
+        error.message ||
           "Unable to score this pronunciation right now.",
+        {
+          tone: isWordMismatch ? "mismatch" : isQualityError ? "quality" : "error",
+          // The backend names what it heard in `details`; showing it beside
+          // the target word tells the teacher at a glance what went wrong.
+          heardWord: isWordMismatch ? error.details?.recognized_text ?? null : null,
+          targetWord: isWordMismatch ? getPronunciationWordLabel(word, null) : null,
+        },
       );
       return;
     } finally {
+      isScoringRef.current = false;
+      scoringAbortControllerRef.current = null;
       setIsScoring(false);
     }
 
     if (!isAlphabetMode) {
+      // Same sound has now been the weakest one across 2+ saved attempts:
+      // insert a listening-discrimination round on that exact sound before
+      // the next speaking attempt, instead of the normal listen-and-choose
+      // round. Reuses the backend's own repeat-failure count rather than
+      // recomputing it here, so this can never disagree with the teacher's
+      // "recurring weakness" evidence shown elsewhere.
+      const targetPhoneme =
+        lastScoringResultRef.current?.weak_phoneme &&
+        Number(lastScoringResultRef.current?.recurring_weak_phoneme_count) >= 2
+          ? lastScoringResultRef.current.weak_phoneme
+          : null;
+
       navigation.navigate("PronunciationListenChoose", {
         student,
         mode,
         categoryId,
         wordId: word?.id || "cat",
         word,
+        targetPhoneme,
       });
       return;
     }
@@ -357,7 +437,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             <View style={[styles.imageFrame, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
               {isAlphabetMode ? (
                 <View style={[styles.image, styles.letterImage, { backgroundColor: word?.color || theme.cardSurface }]}>
-                  <Text style={styles.letterImageText}>
+                  <Text style={[styles.letterImageText, { color: theme.headingText }]}>
                     {word?.letter || word?.word || "A"}
                   </Text>
                 </View>
@@ -447,7 +527,13 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           <ButtonFeedback
             activeOpacity={0.82}
             onPress={() => navigation.goBack()}
-            style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }]}
+            disabled={isScoring}
+            style={[
+              styles.backBtn,
+              isCompact && styles.backBtnCompact,
+              { borderColor: theme.cardOutline },
+              isScoring && styles.nextBtnDisabled,
+            ]}
           >
             <Ionicons name="arrow-back" size={26} color={theme.headingText} />
           </ButtonFeedback>
@@ -457,23 +543,38 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             disabled={!canContinue}
             onPress={handleNext}
             style={[
-              styles.nextBtn,
+              styles.nextBtnWrap,
               isCompact && styles.nextBtnCompact,
-              { backgroundColor: theme.button },
               !canContinue && styles.nextBtnDisabled,
             ]}
           >
-            <Text style={styles.nextText}>
-              {isScoring ? "Scoring" : "Next"}
-            </Text>
-            {isScoring ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-            )}
+            <ThemedGradientFill theme={theme} style={styles.nextBtn}>
+              <Text style={styles.nextText}>
+                {isScoring ? "Scoring" : "Next"}
+              </Text>
+              {isScoring ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+              )}
+            </ThemedGradientFill>
           </ButtonFeedback>
         </View>
       </ScrollView>
+
+      <ConfirmDialog
+        visible={isExitConfirmVisible}
+        title="Leave this activity?"
+        message="This word's progress hasn't been saved yet. Are you sure you want to go back?"
+        confirmLabel="Leave"
+        cancelLabel="Stay"
+        icon="log-out-outline"
+        danger
+        onConfirm={confirmExit}
+        onCancel={cancelExit}
+      />
+
+      <PronunciationAlert {...alertProps} theme={theme} />
     </SafeAreaView>
     </LinearGradient>
   );
@@ -499,7 +600,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#2C5878",
     marginBottom: 4,
     textAlign: "center",
@@ -512,7 +613,7 @@ const styles = StyleSheet.create({
   titleSinhala: {
     fontSize: 24,
     lineHeight: 30,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: "#2C5878",
     marginBottom: 26,
     textAlign: "center",
@@ -569,7 +670,7 @@ const styles = StyleSheet.create({
     fontSize: 112,
     lineHeight: 120,
     color: "#263752",
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
   voiceCard: {
     width: "44%",
@@ -605,7 +706,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontSize: Layout.fontSize.md,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
   },
   helperText: {
     marginTop: 18,
@@ -618,7 +719,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: Layout.fontSize.xs,
     color: Colors.text.link,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   scoringIndicator: {
     marginTop: 8,
@@ -660,7 +761,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
   },
-  nextBtn: {
+  nextBtnWrap: {
     position: "absolute",
     right: 14,
     top: "50%",
@@ -668,14 +769,17 @@ const styles = StyleSheet.create({
     minWidth: 146,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#A8D79A",
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.9)",
+    overflow: "hidden",
+    ...Layout.shadow.md,
+  },
+  nextBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    ...Layout.shadow.md,
   },
   nextBtnCompact: {
     position: "relative",
@@ -705,6 +809,6 @@ const styles = StyleSheet.create({
   nextText: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
 });

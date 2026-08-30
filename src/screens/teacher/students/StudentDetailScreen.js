@@ -441,6 +441,8 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
+  useEffect(() => { fetch(); }, [fetch]);
+
   const fetchConcepts = useCallback(async () => {
     if (!initialStudent?.sid) return;
     try {
@@ -842,6 +844,45 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                 onOpenReport={openHandwritingReport}
                 onRetry={loadWritingSummary}
               />
+            </View>
+          ) : activeModule === 'pronunciation' ? (
+            /* The pronunciation module is built and in use, so this tab links into
+               it rather than rendering the "not available yet" placeholder the
+               remaining modules still get. Two ways in, matching how the module
+               itself is entered: start a new session, or read what earlier ones
+               recorded. */
+            <View style={styles.writingPanel}>
+              <TouchableOpacity
+                style={styles.reportCard}
+                activeOpacity={0.75}
+                onPress={() => navigation.navigate('PronunciationSessionSetup', { student })}
+              >
+                <View style={styles.reportContent}>
+                  <Text style={styles.reportTitle}>Start a pronunciation session</Text>
+                  <Text style={styles.reportDesc}>
+                    Choose a word set and work through it with {firstName}.
+                  </Text>
+                </View>
+                <View style={styles.reportArrow}>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.reportCard}
+                activeOpacity={0.75}
+                onPress={() => navigation.navigate('PronunciationResultsHistory', { student })}
+              >
+                <View style={styles.reportContent}>
+                  <Text style={styles.reportTitle}>Pronunciation sessions</Text>
+                  <Text style={styles.reportDesc}>
+                    Review saved session scores and sound breakdowns.
+                  </Text>
+                </View>
+                <View style={styles.reportArrow}>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+                </View>
+              </TouchableOpacity>
             </View>
           ) : activeModule === 'dialogue' ? (
             dialogueLoading ? (

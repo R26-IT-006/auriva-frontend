@@ -12,3 +12,5 @@ android/
 # macOS finder metadata
 .DS_Store
 **/.DS_Store
+
+.claude/

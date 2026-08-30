@@ -56,6 +56,7 @@ export function ConfirmDialog({
       transparent
       animationType="fade"
       statusBarTranslucent
+      supportedOrientations={["portrait", "landscape", "landscape-left", "landscape-right"]}
       onRequestClose={onCancel}
     >
       <TouchableWithoutFeedback onPress={onCancel}>
@@ -76,13 +77,13 @@ export function ConfirmDialog({
 
               {/* Buttons — Cancel left, Confirm right */}
               <View style={styles.btnRow}>
-                <ButtonFeedback
+                <TouchableOpacity
                   style={[styles.btn, styles.btnCancel]}
                   onPress={onCancel}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.btnCancelText}>{cancelLabel}</Text>
-                </ButtonFeedback>
+                </TouchableOpacity>
 
                 <ButtonFeedback
                   style={[styles.btn, styles.btnConfirm, { backgroundColor: accentColor }]}

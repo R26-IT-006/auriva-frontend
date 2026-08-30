@@ -17,6 +17,7 @@ import { Colors } from "../../../constants/colors";
 import { Layout } from "../../../constants/layout";
 import { getAvatarTheme } from "../../../constants/avatarThemes";
 import { getWordImageSource, WORD_BANK } from "./wordBank.js";
+import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 import { WORD_AUDIO_ASSETS, WORD_AUDIO_IDS } from "./pronunciationAudioAssets.js";
 import {
   PRONUNCIATION_MODES,
@@ -29,6 +30,9 @@ import {
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
+import { EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { useExitSessionGuard } from "./useExitSessionGuard.js";
+import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 
 const MIN_FIELD_SIZE = 2;
 const MAX_FIELD_SIZE = 4;
@@ -38,6 +42,10 @@ const MAX_FIELD_SIZE = 4;
 // mastery on it, so a brand-new/struggling word never gets thrown into a
 // full 4-way guess. Unknown history (still loading, or fetch failed) also
 // defaults to the smallest field — safest fallback, never a regression risk.
+// Only plain "listen_choose" rounds count toward this streak — sound-focus
+// rounds (triggered by a repeated pronunciation mistake, not this activity)
+// target whichever word contains the failing phoneme, not necessarily the
+// word being progressed here, so they must not distort its mastery streak.
 function computeFieldSize(history, targetWordId) {
   if (!targetWordId) return MAX_FIELD_SIZE;
 
@@ -45,6 +53,7 @@ function computeFieldSize(history, targetWordId) {
   for (const result of history) {
     const attempt = result?.listen_choose_data;
     if (!attempt || attempt.target_word_id !== targetWordId) continue;
+    if (attempt.activity_type && attempt.activity_type !== "listen_choose") continue;
     if (attempt.is_correct && Number(attempt.attempts) <= 1) {
       streak += 1;
       continue;
@@ -57,8 +66,33 @@ function computeFieldSize(history, targetWordId) {
   return MIN_FIELD_SIZE;
 }
 
-function buildActivityWords(categoryId, preferredWord) {
+function wordHasPhoneme(word, phoneme) {
+  return (word?.sounds || []).some((sound) => sound.text === phoneme);
+}
+
+// Sound-focus mode: the preferred word is the one that just failed
+// pronunciation on the target phoneme, so keep it as the round's target
+// whenever it actually contains that sound; otherwise fall back to the
+// first audio-available word in the category that does.
+function buildActivityWords(categoryId, preferredWord, targetPhoneme = null) {
   const categoryWords = WORD_BANK[categoryId] || WORD_BANK.animals || [];
+
+  if (targetPhoneme) {
+    if (preferredWord?.id && WORD_AUDIO_ASSETS[preferredWord.id] && wordHasPhoneme(preferredWord, targetPhoneme)) {
+      return [preferredWord];
+    }
+
+    const phonemeMatch = WORD_AUDIO_IDS
+      .map((id) => categoryWords.find((word) => word.id === id))
+      .filter(Boolean)
+      .find((word) => wordHasPhoneme(word, targetPhoneme));
+
+    if (phonemeMatch) return [phonemeMatch];
+    // No word in this category contains the failing phoneme with audio
+    // available — fall through to the normal (non-sound-focus) selection
+    // rather than showing a discrimination round that can't target the sound.
+  }
+
   if (preferredWord?.id && WORD_AUDIO_ASSETS[preferredWord.id]) {
     return [preferredWord];
   }
@@ -126,11 +160,22 @@ function getDistractorMode(fieldSize) {
   return "mixed";
 }
 
-function buildChoices(categoryId, targetWord, fieldSize = MAX_FIELD_SIZE) {
+function buildChoices(categoryId, targetWord, fieldSize = MAX_FIELD_SIZE, targetPhoneme = null) {
   const categoryWords = WORD_BANK[categoryId] || WORD_BANK.animals || [];
-  const distractors = categoryWords.filter((word) => word.id !== targetWord?.id);
+  let distractors = categoryWords.filter((word) => word.id !== targetWord?.id);
+  let mode = getDistractorMode(fieldSize);
+
+  if (targetPhoneme) {
+    // The discrimination challenge is specifically "does this word have the
+    // failing sound or not" — distractors that share it would defeat the
+    // point, so exclude them and force "near" mode on everything else so the
+    // pictures are otherwise as confusable as possible.
+    const withoutPhoneme = distractors.filter((word) => !wordHasPhoneme(word, targetPhoneme));
+    if (withoutPhoneme.length) distractors = withoutPhoneme;
+    mode = "near";
+  }
+
   const distractorCount = Math.max(0, fieldSize - 1);
-  const mode = getDistractorMode(fieldSize);
   const picked = [
     targetWord,
     ...pickDistractors(distractors, targetWord, distractorCount, mode),
@@ -141,45 +186,48 @@ function buildChoices(categoryId, targetWord, fieldSize = MAX_FIELD_SIZE) {
   return shuffle(picked);
 }
 
-function ChoiceCard({ item, state, onPress, width, disabled }) {
+function ChoiceCard({ item, index, state, onPress, width, disabled }) {
   const isCorrect = state === "correct";
   const isWrong = state === "wrong";
-  const imageSource = getWordImageSource(item);
+  const imageStyle = usePronunciationSessionStore((store) => store.imageStyle);
+  const imageSource = getWordImageSource(item, imageStyle);
 
   return (
-    <ButtonFeedback
-      activeOpacity={0.88}
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        styles.choiceCard,
-        { width },
-        disabled && styles.choiceCardDisabled,
-        isCorrect && styles.choiceCardCorrect,
-        isWrong && styles.choiceCardWrong,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={`Choose ${item.word}`}
-    >
-      <View style={[styles.choiceImageWrap, { backgroundColor: item.color || "#E8EDF4" }]}>
-        {imageSource ? (
-          <Image source={imageSource} resizeMode="cover" style={styles.choiceImage} />
-        ) : (
-          <Ionicons name="image-outline" size={36} color="#6D7890" />
-        )}
-      </View>
-      <Text style={styles.choiceLabel}>{item.word}</Text>
-      {isCorrect ? (
-        <View style={styles.resultBadge}>
-          <Ionicons name="checkmark" size={15} color="#FFFFFF" />
+    <EntranceItem index={index}>
+      <ButtonFeedback
+        activeOpacity={0.88}
+        onPress={onPress}
+        disabled={disabled}
+        style={[
+          styles.choiceCard,
+          { width },
+          disabled && styles.choiceCardDisabled,
+          isCorrect && styles.choiceCardCorrect,
+          isWrong && styles.choiceCardWrong,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Choose ${item.word}`}
+      >
+        <View style={[styles.choiceImageWrap, { backgroundColor: item.color || "#E8EDF4" }]}>
+          {imageSource ? (
+            <Image source={imageSource} resizeMode="cover" style={styles.choiceImage} />
+          ) : (
+            <Ionicons name="image-outline" size={36} color="#6D7890" />
+          )}
         </View>
-      ) : null}
-      {isWrong ? (
-        <View style={[styles.resultBadge, styles.resultBadgeWrong]}>
-          <Ionicons name="close" size={15} color="#FFFFFF" />
-        </View>
-      ) : null}
-    </ButtonFeedback>
+        <Text style={styles.choiceLabel}>{item.word}</Text>
+        {isCorrect ? (
+          <View style={styles.resultBadge}>
+            <Ionicons name="checkmark" size={15} color="#FFFFFF" />
+          </View>
+        ) : null}
+        {isWrong ? (
+          <View style={[styles.resultBadge, styles.resultBadgeWrong]}>
+            <Ionicons name="close" size={15} color="#FFFFFF" />
+          </View>
+        ) : null}
+      </ButtonFeedback>
+    </EntranceItem>
   );
 }
 
@@ -189,7 +237,11 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
   const categoryId = route.params?.categoryId || "animals";
   const routeWord = route.params?.word;
   const assessedWordId = route.params?.wordId || routeWord?.id;
+  const targetPhoneme = route.params?.targetPhoneme || null;
   const theme = getAvatarTheme(student?.avatar_key);
+  const reduceStimulation = Boolean(student?.reduce_stimulation);
+  const { isExitConfirmVisible, confirmExit, cancelExit } =
+    useExitSessionGuard(navigation);
   const { width } = useWindowDimensions();
   const soundRef = React.useRef(null);
   const [resultsHistory, setResultsHistory] = React.useState([]);
@@ -200,8 +252,8 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     (state) => state.setListenChooseData,
   );
   const activityWords = React.useMemo(
-    () => buildActivityWords(categoryId, routeWord),
-    [categoryId, routeWord],
+    () => buildActivityWords(categoryId, routeWord, targetPhoneme),
+    [categoryId, routeWord, targetPhoneme],
   );
   const [roundIndex, setRoundIndex] = React.useState(0);
   const [selectedId, setSelectedId] = React.useState(null);
@@ -215,9 +267,14 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     () => computeFieldSize(resultsHistory, targetWord?.id),
     [resultsHistory, targetWord?.id],
   );
+  // buildActivityWords falls back to a non-phoneme word when nothing in the
+  // category contains targetPhoneme with audio available — only actually
+  // run sound-focus distractor logic (and tag the saved record as such) when
+  // the resolved target word really does contain that sound.
+  const isSoundFocusRound = Boolean(targetPhoneme) && wordHasPhoneme(targetWord, targetPhoneme);
   const choices = React.useMemo(
-    () => buildChoices(categoryId, targetWord, fieldSize),
-    [categoryId, targetWord, fieldSize],
+    () => buildChoices(categoryId, targetWord, fieldSize, isSoundFocusRound ? targetPhoneme : null),
+    [categoryId, targetWord, fieldSize, isSoundFocusRound, targetPhoneme],
   );
   const isCompact = width < 720;
   const cardWidth = React.useMemo(() => {
@@ -231,6 +288,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
 
     return () => {
+      stopVoicePrompt();
       if (soundRef.current) {
         soundRef.current.unloadAsync().catch(() => {});
         soundRef.current = null;
@@ -251,7 +309,9 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     let cancelled = false;
 
     teacherApi
-      .getPronunciationResults(studentId)
+      // Field-size progression needs the recent attempts for this target,
+      // not only the API's four-item history-screen default.
+      .getPronunciationResults(studentId, 50)
       .then((data) => {
         if (!cancelled) setResultsHistory(Array.isArray(data) ? data : []);
       })
@@ -304,6 +364,15 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     choiceAttemptsRef.current = [...choiceAttemptsRef.current, item.id];
     setSelectedId(item.id);
     setAttempts(choiceAttemptsRef.current.length);
+
+    // Spoken feedback the moment the card is tapped — praise for the right
+    // picture, an invitation to retry for the wrong one. Never the word
+    // "wrong": the child can keep choosing until the round is right.
+    if (item.id === targetWord?.id) {
+      playVoicePrompt("goodJob", { reduceStimulation });
+    } else {
+      playVoicePrompt("tryOneMoreTime");
+    }
   }
 
   function handleNext() {
@@ -312,7 +381,8 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
     const resultWordId = assessedWordId || assessedWord?.id || targetWord.id;
     const totalAttempts = Math.max(choiceAttemptsRef.current.length, selectedId ? attempts : 1);
     const nextListenChooseData = {
-      activity_type: "listen_choose",
+      activity_type: isSoundFocusRound ? "sound_focus_listen_choose" : "listen_choose",
+      ...(isSoundFocusRound ? { target_phoneme: targetPhoneme } : {}),
       target_word_id: targetWord.id,
       target_word_label: targetWord.word,
       selected_choice_id: selectedId,
@@ -367,6 +437,14 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
           </View>
 
           <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+            {isSoundFocusRound ? (
+              <View style={styles.soundFocusBanner}>
+                <Ionicons name="ear-outline" size={16} color={Colors.status.review} />
+                <Text style={styles.soundFocusBannerText}>
+                  Listening practice for the /{targetPhoneme}/ sound
+                </Text>
+              </View>
+            ) : null}
             <View style={[styles.promptRow, isCompact && styles.promptRowCompact]}>
               <View style={styles.promptCopy}>
                 <Text style={[styles.promptTitle, { color: theme.headingText }]}>Tap the picture you hear</Text>
@@ -390,7 +468,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
             </View>
 
             <View style={styles.choicesGrid}>
-              {choices.map((item) => {
+              {choices.map((item, index) => {
                 const state = selectedId === item.id
                   ? item.id === targetWord?.id
                     ? "correct"
@@ -401,6 +479,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
                   <ChoiceCard
                     key={item.id}
                     item={item}
+                    index={index}
                     state={state}
                     width={cardWidth}
                     disabled={!hasHeardTarget || isPlaying}
@@ -445,13 +524,14 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
                 disabled={!selectedId}
                 onPress={handleNext}
                 style={[
-                  styles.primaryBtn,
-                  { backgroundColor: theme.button },
+                  styles.primaryBtnWrap,
                   !selectedId && styles.primaryBtnDisabled,
                 ]}
               >
-                <Text style={styles.primaryBtnText}>Next</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                <ThemedGradientFill theme={theme} style={styles.primaryBtn}>
+                  <Text style={styles.primaryBtnText}>Next</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                </ThemedGradientFill>
               </ButtonFeedback>
 
               {activityWords.length > 1 ? (
@@ -472,6 +552,18 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <ConfirmDialog
+        visible={isExitConfirmVisible}
+        title="Leave this activity?"
+        message="This word's progress hasn't been saved yet. Are you sure you want to go back?"
+        confirmLabel="Leave"
+        cancelLabel="Stay"
+        icon="log-out-outline"
+        danger
+        onConfirm={confirmExit}
+        onCancel={cancelExit}
+      />
     </LinearGradient>
   );
 }
@@ -510,20 +602,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.xxxl,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     letterSpacing: 0,
   },
   titleSinhala: {
     marginTop: 2,
     fontSize: Layout.fontSize.xl,
     lineHeight: 28,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     letterSpacing: 0,
     opacity: 0.82,
   },
   subtitle: {
     marginTop: 2,
     fontSize: Layout.fontSize.sm,
+    fontFamily: Layout.fonts.semibold,
   },
   panel: {
     width: "100%",
@@ -533,6 +626,24 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.lg,
     borderWidth: 1,
     minHeight: 520,
+  },
+  soundFocusBanner: {
+    alignSelf: "flex-start",
+    marginBottom: Layout.spacing.md,
+    borderRadius: 12,
+    backgroundColor: Colors.status.reviewLight,
+    borderWidth: 1,
+    borderColor: Colors.status.reviewBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  soundFocusBannerText: {
+    color: Colors.status.review,
+    fontSize: Layout.fontSize.sm,
+    fontFamily: Layout.fonts.bold,
   },
   promptRow: {
     flexDirection: "row",
@@ -550,14 +661,14 @@ const styles = StyleSheet.create({
   promptTitle: {
     fontSize: 34,
     lineHeight: 40,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     letterSpacing: 0,
   },
   promptTitleSinhala: {
     marginTop: 4,
     fontSize: 24,
     lineHeight: 32,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     letterSpacing: 0,
     opacity: 0.82,
   },
@@ -586,7 +697,7 @@ const styles = StyleSheet.create({
   playBtnText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.lg,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
   choicesGrid: {
     marginTop: Layout.spacing.xl,
@@ -631,7 +742,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xl,
     lineHeight: 26,
     color: Colors.text.primary,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     textAlign: "center",
     textTransform: "lowercase",
   },
@@ -674,7 +785,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     fontSize: Layout.fontSize.md,
     lineHeight: 21,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
   actionsRow: {
     marginTop: Layout.spacing.lg,
@@ -703,18 +814,23 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
-  primaryBtn: {
+  primaryBtnWrap: {
     minHeight: 52,
     borderRadius: 26,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.85)",
+    overflow: "hidden",
+  },
+  primaryBtn: {
+    flex: 1,
+    minHeight: 48,
     paddingHorizontal: 22,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.85)",
   },
   primaryBtnDisabled: {
     backgroundColor: "#DDE5EF",
@@ -722,6 +838,6 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.md,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
   },
 });

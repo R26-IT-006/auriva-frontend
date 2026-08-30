@@ -86,11 +86,15 @@ import L2PortraitScreen        from '../screens/teacher/dialogue/level2/L2Portra
 import PronunciationSessionSetupScreen from "../screens/teacher/pronunciation/PronunciationSessionSetupScreen";
 import PronunciationWordSelectionScreen from "../screens/teacher/pronunciation/PronunciationWordSelectionScreen";
 import PronunciationLearnWordScreen from "../screens/teacher/pronunciation/PronunciationLearnWordScreen";
+import PronunciationTapSoundsScreen from "../screens/teacher/pronunciation/PronunciationTapSoundsScreen";
 import PronunciationListenChooseScreen from "../screens/teacher/pronunciation/PronunciationListenChooseScreen";
 import PronunciationMouthShapeScreen from "../screens/teacher/pronunciation/PronunciationMouthShapeScreen";
 import PronunciationSpeakWordScreen from "../screens/teacher/pronunciation/PronunciationSpeakWordScreen";
 import PronunciationResultScreen from "../screens/teacher/pronunciation/PronunciationResultScreen";
 import PronunciationResultsHistoryScreen from "../screens/teacher/pronunciation/PronunciationResultsHistoryScreen";
+// Teacher-facing active-learning queue for the layer-3 calibration model —
+// the client for GET /api/teacher/pronunciation-review-queue.
+import PronunciationReviewQueueScreen from "../screens/teacher/pronunciation/PronunciationReviewQueueScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -104,7 +108,7 @@ const stackOptions = {
   headerTintColor: Colors.primary,
   headerShadowVisible: true,
   contentStyle: { backgroundColor: Colors.background },
-  headerBackTitle: "",
+  headerBackTitle: '',
 };
 
 // The teacher workspace — reached via "Teacher Workspace". A single stack: the
@@ -117,6 +121,9 @@ function TeacherWorkspace() {
     <Stack.Navigator screenOptions={stackOptions}>
       <Stack.Screen name="TeacherHome"          component={TeacherDashboardScreen}   options={{ headerShown: false }} />
       <Stack.Screen name="TeacherStudentDetail" component={TeacherStudentDetailScreen} options={{ title: 'Student Profile' }} />
+      {/* Kept in this stack, not the root one, so it keeps Colors theming like the
+          other teacher-facing reading screens. */}
+      <Stack.Screen name="PronunciationReviewQueue" component={PronunciationReviewQueueScreen} options={{ title: 'Review Queue' }} />
       {/* These reports stay in this stack, not the root one, so they keep Colors
           theming rather than the student-workspace chrome. */}
       {/* Placeholder title only — the screen renames itself to the child once the
@@ -197,6 +204,10 @@ export default function TeacherNavigator() {
       <Stack.Screen
         name="PronunciationLearnWord"
         component={PronunciationLearnWordScreen}
+      />
+      <Stack.Screen
+        name="PronunciationTapSounds"
+        component={PronunciationTapSoundsScreen}
       />
       <Stack.Screen
         name="PronunciationListenChoose"

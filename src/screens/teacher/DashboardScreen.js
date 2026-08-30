@@ -61,6 +61,9 @@ const TINTS = {
   blue:   { bg: '#E5EEF9', fg: '#27609F' },
   amber:  { bg: '#FAF0DF', fg: '#945D08' },
   rose:   { bg: '#FAE9F0', fg: '#A5366A' },
+  // Deepened from the teal the pronunciation module already uses, so the review
+  // queue reads as part of that module rather than as a sixth unrelated colour.
+  teal:   { bg: '#DDF0F3', fg: '#1F6F7A' },
 };
 
 // Each dashboard section gets its own accent so the panels read as distinct
@@ -71,6 +74,7 @@ const SECTION = {
   calendar:     { icon: 'calendar-outline',    ...TINTS.blue },
   daySessions:  { icon: 'time-outline',        ...TINTS.green },
   digest:       { icon: 'sparkles-outline',    ...TINTS.rose },
+  reviewQueue:  { icon: 'checkmark-done-outline', ...TINTS.teal },
 };
 
 const PANEL_PAD    = 20;
@@ -660,10 +664,9 @@ export default function TeacherDashboardScreen({ navigation }) {
       // who is reading the screen.
       if (showError) toast.show(err.message, 'error');
     } finally {
-      requestInFlight.current = false;
       setRefreshing(false);
     }
-  }, [toast]);
+  }, []);
 
   // Errors are swallowed rather than toasted: unlike the notes and dashboard
   // calls, a failed summary is not something the teacher needs to know about or
@@ -971,6 +974,22 @@ export default function TeacherDashboardScreen({ navigation }) {
           {/* ── Body ── */}
           <View style={[styles.body, { gap: COL_GAP }]}>
             {topBand}
+            {/* The only entry point to the pronunciation review queue. Kept on the
+                dashboard rather than inside a student's profile because the queue is
+                class-wide: it ranks attempts across every child by how much a
+                teacher's confirmation would improve future scoring. */}
+            <Panel
+              title="Review queue"
+              subtitle="Confirm AI scores to improve future accuracy"
+              section="reviewQueue"
+              action="Open"
+              onAction={() => navigation.navigate('PronunciationReviewQueue')}
+            >
+              <Text style={styles.emptySub}>
+                Pronunciation attempts the model was least sure about, ranked so the
+                ones you check teach it the most.
+              </Text>
+            </Panel>
             <View style={[styles.pair, pairRow && styles.pairRow, { gap: COL_GAP }]}>
               {notesColumn}
               {calendarColumn}

@@ -20,6 +20,16 @@ function getExpoHostApiBaseUrl() {
   const host = hostUri?.split(":")?.[0];
 
   if (!host || host === "localhost" || host === "127.0.0.1") {
+    return DEFAULT_API_BASE_URL;
+  }
+
+  // Tunnel hosts (--tunnel) only proxy Metro, not the backend, so fall back to
+  // the explicitly configured base URL instead of pointing at :3000 there.
+  if (
+    /\.(exp\.direct|ngrok(-free)?\.app|ngrok\.io|trycloudflare\.com)$/.test(
+      host,
+    )
+  ) {
     return null;
   }
 
@@ -225,9 +235,12 @@ export const ENDPOINTS = {
   DIALOGUE_EVALUATIONS_RECORD: (sid, category) => `/teacher/dialogue/evaluations/${sid}/${category}`,
 
   // Days of the Week – specific endpoints
-  DAYS_PHASE3_QUESTION:         (sid, wid) => `/teacher/student/${sid}/level1/days/phase3-question/${wid}`,
-  DAYS_SPINNING_WHEEL:          (sid, ids) => `/teacher/student/${sid}/level1/days/spinning-wheel${ids?.length ? `?attempted_word_ids=${ids.join(',')}` : ''}`,
-  DAYS_SPINNING_WHEEL_ATTEMPT:  (sid) => `/teacher/student/${sid}/level1/days/spinning-wheel/attempt`,
+  DAYS_PHASE3_QUESTION: (sid, wid) =>
+    `/teacher/student/${sid}/level1/days/phase3-question/${wid}`,
+  DAYS_SPINNING_WHEEL: (sid, ids) =>
+    `/teacher/student/${sid}/level1/days/spinning-wheel${ids?.length ? `?attempted_word_ids=${ids.join(",")}` : ""}`,
+  DAYS_SPINNING_WHEEL_ATTEMPT: (sid) =>
+    `/teacher/student/${sid}/level1/days/spinning-wheel/attempt`,
 
   // Dialogue – Level 2
   LEVEL2_QUESTIONNAIRE:         (sid) => `/teacher/student/${sid}/level2/questionnaire`,
@@ -279,4 +292,12 @@ export const ENDPOINTS = {
     `/teacher/students/${id}/pronunciation-results`,
   TEACHER_PRONUNCIATION_RESULT_AUDIO: (id) =>
     `/teacher/pronunciation-results/${id}/audio`,
+  // Active-learning queue for the layer-3 calibration model: attempts ranked by
+  // how much a teacher confirming them would improve future scoring, not just
+  // the most recent flagged ones. Class-wide, so it takes no student id.
+  TEACHER_PRONUNCIATION_REVIEW_QUEUE: "/teacher/pronunciation-review-queue",
+  // Writes the teacher-confirmed score onto one saved result — the ground truth
+  // the calibration model is fitted against.
+  TEACHER_PRONUNCIATION_REVIEW: (resultId) =>
+    `/teacher/pronunciation-results/${resultId}/review`,
 };

@@ -1,4 +1,4 @@
-// Two test projects, because this repo has two genuinely different kinds of
+// Three test projects, because this repo has three genuinely different kinds of
 // test and each needs a different environment:
 //
 //   node       — the pure-JS units under src/utils and src/research (DTW,
@@ -7,14 +7,18 @@
 //   components — the handful of tests that actually render a component with
 //                react-test-renderer. Those need jest-expo's react-native
 //                transform and native-module mocks.
+//   testing    — the suite under testing/, which renders with
+//                @testing-library/react-native and needs its own environment
+//                shim plus setup file.
 //
-// Before this was a `projects` config the two strategies lived on separate
-// branches — a bare jest.config.js on one side, `"jest": { "preset":
-// "jest-expo" }` in package.json on the other. Running either alone silently
-// skipped the other's tests (testMatch simply never matched them), and having
-// both present at once made Jest refuse to start with "Multiple configurations
-// found". Keep the package.json `jest` key absent: this file is the only Jest
-// config.
+// Before this was a `projects` config the strategies lived on separate branches
+// — a bare jest.config.js on one side, `"jest": { "preset": "jest-expo" }` in
+// package.json on the other. Running either alone silently skipped the other's
+// tests (testMatch simply never matched them), and having both present at once
+// made Jest refuse to start with "Multiple configurations found". Keep the
+// package.json `jest` key absent: this file is the only Jest config.
+const expoPreset = require('jest-expo/jest-preset');
+
 const node = {
   displayName: 'node',
   testEnvironment: 'node',
@@ -51,4 +55,34 @@ const components = {
   testMatch: ['<rootDir>/src/components/**/*.test.js'],
 };
 
-module.exports = { projects: [node, components] };
+// Scoped to testing/ only. Left as its own project rather than folded into
+// `components` because it needs an extra environment shim before jest-expo's
+// own setup runs, and a setupFilesAfterEach the other projects must not load.
+const testing = {
+  displayName: 'testing',
+  ...expoPreset,
+  roots: ['<rootDir>/testing'],
+  testMatch: ['<rootDir>/testing/**/*.test.js'],
+  // Expo's native Jest environment aliases `window` to Node's global object.
+  // Seed the location Metro's HMR shim reads during preset initialization.
+  setupFiles: [
+    expoPreset.setupFiles[0],
+    '<rootDir>/testing/environment.js',
+    ...expoPreset.setupFiles.slice(1),
+  ],
+  setupFilesAfterEach: ['<rootDir>/testing/setup.js'],
+  clearMocks: true,
+  haste: {
+    defaultPlatform: 'ios',
+    // Limiting the crawl to the platform this test run resolves keeps Jest
+    // fast without changing React Native's Platform module semantics.
+    platforms: ['ios'],
+  },
+};
+
+module.exports = {
+  projects: [node, components, testing],
+  // Top-level, not per-project: coverage is collected across the whole run.
+  collectCoverageFrom: ['src/**/*.{js,jsx}', '!src/navigation/**', '!src/**/index.js'],
+  watchman: false,
+};

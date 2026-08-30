@@ -63,7 +63,7 @@ function WheelColumn({ items, selectedIndex, onChange, format }) {
         style={{ height: ITEM_H * VISIBLE }}
       >
         {items.map((item, i) => (
-          <ButtonFeedback
+          <TouchableOpacity
             key={i}
             style={col.item}
             activeOpacity={0.7}
@@ -75,7 +75,7 @@ function WheelColumn({ items, selectedIndex, onChange, format }) {
             <Text style={[col.itemText, i === selectedIndex && col.itemTextActive]}>
               {format ? format(item) : String(item).padStart(2, '0')}
             </Text>
-          </ButtonFeedback>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
@@ -196,7 +196,7 @@ export default function DatePickerField({
     <View style={styles.wrapper}>
       {label && <Text style={styles.label}>{label}</Text>}
 
-      <ButtonFeedback
+      <TouchableOpacity
         style={[styles.field, error && { borderColor: Colors.status.error }]}
         onPress={handleOpen}
         activeOpacity={0.8}
@@ -208,7 +208,7 @@ export default function DatePickerField({
           {formatDisplay(value) || 'Select date of birth'}
         </Text>
         <Ionicons name="chevron-down" size={16} color={Colors.icon.default} />
-      </ButtonFeedback>
+      </TouchableOpacity>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -218,7 +218,7 @@ export default function DatePickerField({
         animationType="slide"
         onRequestClose={() => setShow(false)}
       >
-        <ButtonFeedback
+        <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
           onPress={() => setShow(false)}
@@ -270,7 +270,7 @@ export default function DatePickerField({
             </ButtonFeedback>
 
           </ButtonFeedback>
-        </ButtonFeedback>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

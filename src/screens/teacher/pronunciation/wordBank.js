@@ -1,3 +1,9 @@
+import {
+  DEFAULT_IMAGE_STYLE,
+  getCartoonImageSource,
+  IMAGE_STYLES,
+} from "./wordImageStyles.js";
+
 const PHONEME_SUPPORT_CUES = {
   æ: "Open the mouth wide for the short /a/ sound.",
   ɒ: "Round the lips gently for the short /o/ sound.",
@@ -26,6 +32,46 @@ const PHONEME_SUPPORT_CUES = {
   "ʃ": "Round the lips slightly and push quiet air.",
   "tʃ": "Start with a tongue tap, then release air.",
   "dʒ": "Start with a tongue tap, then release with voice.",
+  n: "Lift the tongue tip behind the teeth and hum through the nose.",
+  j: "Lift the tongue toward the roof of the mouth for a soft /y/ glide.",
+  e: "Smile gently for the short /e/ sound.",
+  i: "Smile softly for the short /i/ sound.",
+  a: "Open the mouth for the short /a/ sound.",
+  "ə": "Relax the mouth for the soft, unstressed \"uh\" sound.",
+  "ŋ": "Lift the back of the tongue and hum through the nose.",
+  "aɪ": "Start with an open /a/ and glide up to /i/.",
+  "aʊ": "Start with an open /a/ and round toward /oo/.",
+  "eə": "Start with /e/ and relax into a soft \"uh\".",
+  "ɪə": "Start with a small /i/ and relax into a soft \"uh\".",
+  "əʊ": "Start relaxed, then round the lips toward /oh/.",
+  "ɑː": "Open the mouth wide for the long, deep \"ah\" sound.",
+  "ʊ": "Round the lips gently for the short /oo/ sound.",
+  // The remaining keys are multi-sound blends this word bank groups as one
+  // unit rather than true single IPA phonemes — the cue walks through the
+  // blend so the teacher still has something concrete to say.
+  "gwɪn": "Round the lips for /g w/, then finish with a small smile and a nose hum for /n/.",
+  sk: "Blend a hissing /s/ straight into a back-of-tongue /k/.",
+  "təʊ": "Tap the tongue for /t/, then round the lips toward /oh/.",
+  "əd": "Relax into a soft \"uh\", then tap the tongue for /d/.",
+  "ŋg": "Hum through the nose for /ng/, then lift the tongue back for /g/.",
+  "ruː": "Curl the tongue for /r/, then round the lips and hold /oo/.",
+  "ɪʃ": "Small smile for /i/, then round the lips softly for /sh/.",
+  ks: "Lift the tongue back for /k/, then send air forward for /s/.",
+  "əl": "Relax into a soft \"uh\", then lift the tongue tip for /l/.",
+  "flaɪ": "Blow air for /f/, lift the tongue for /l/, then glide from /a/ to /i/.",
+  "ləʊ": "Lift the tongue tip for /l/, then round the lips toward /oh/.",
+  "ŋgəʊ": "Hum through the nose, lift the tongue back for /g/, then round the lips toward /oh/.",
+  "ndʒ": "Hum through the nose, then tap and release with voice for /j/.",
+  "ən": "Relax into a soft \"uh\", then hum through the nose for /n/.",
+  "ənt": "Relax into a soft \"uh\", hum for /n/, then tap the tongue for /t/.",
+  gr: "Lift the tongue back for /g/, then curl the tongue for /r/.",
+  gw: "Lift the tongue back for /g/, then round the lips for /w/.",
+  mp: "Hum through closed lips for /m/, then release with a soft pop for /p/.",
+  dr: "Tap the tongue for /d/, then curl the tongue for /r/.",
+  sl: "Send air forward for /s/, then lift the tongue tip for /l/.",
+  kl: "Lift the tongue back for /k/, then lift the tongue tip for /l/.",
+  "ŋk": "Hum through the nose, then lift the tongue back for /k/.",
+  "gə": "Lift the tongue back for /g/, then relax into a soft \"uh\".",
 };
 
 const WORD_IMAGE_ASSETS = {
@@ -58,7 +104,13 @@ const WORD_IMAGE_ASSETS = {
   clap: require("../../../../assets/pronunciation-word-images/clap.jpg"),
 };
 
-export function getWordImageSource(word) {
+export function getWordImageSource(word, style = DEFAULT_IMAGE_STYLE) {
+  // Cartoon is a per-session teacher choice; a word with no cartoon drawn for
+  // it keeps its photo rather than showing an empty card.
+  if (style === IMAGE_STYLES.CARTOON) {
+    const cartoon = getCartoonImageSource(word);
+    if (cartoon) return cartoon;
+  }
   if (word?.imageAsset) return word.imageAsset;
   if (word?.imageUri) return { uri: word.imageUri };
   return null;
@@ -207,6 +259,82 @@ const WORD_SINHALA_TRANSLATIONS = {
   read: "කියවන්න",
   clap: "අත්පුඩි ගසන්න",
 };
+
+// The child-facing screens show English letters, not IPA symbols — a child
+// learning to read cannot decode /əl/, but recognises "le" from the written
+// word. Each entry splits the word's spelling into the letter group that
+// makes each sound, in order, so the groups joined together spell the word
+// exactly (apple: a + pp + le). Array length must match that word's
+// `sounds` length; `getSoundLetters` falls back to the IPA text if it
+// doesn't, so a mismatch degrades instead of misaligning the chips.
+const WORD_SOUND_LETTERS = {
+  cat: ["c", "a", "t"],
+  dog: ["d", "o", "g"],
+  fish: ["f", "i", "sh"],
+  bird: ["b", "ir", "d"],
+  worm: ["w", "or", "m"],
+  whale: ["wh", "a", "le"],
+  turtle: ["t", "ur", "t", "le"],
+  tiger: ["t", "i", "ger"],
+  snail: ["s", "n", "ai", "l"],
+  pigeon: ["p", "i", "ge", "on"],
+  penguin: ["p", "e", "n", "guin"],
+  mosquito: ["m", "o", "squ", "i", "to"],
+  leopard: ["l", "eo", "p", "ard"],
+  kangaroo: ["k", "a", "ng", "a", "roo"],
+  jellyfish: ["j", "e", "ll", "y", "f", "ish"],
+  horse: ["h", "or", "se"],
+  hippo: ["h", "i", "pp", "o"],
+  goose: ["g", "oo", "se"],
+  fox: ["f", "o", "x"],
+  elephant: ["e", "l", "e", "ph", "ant"],
+  eagle: ["ea", "g", "le"],
+  deer: ["d", "eer"],
+  crab: ["c", "r", "a", "b"],
+  cow: ["c", "ow"],
+  chick: ["ch", "i", "ck"],
+  butterfly: ["b", "u", "tt", "er", "fly"],
+  buffalo: ["b", "u", "ff", "a", "lo"],
+  ant: ["a", "n", "t"],
+  book: ["b", "oo", "k"],
+  desk: ["d", "e", "sk"],
+  bag: ["b", "a", "g"],
+  chair: ["ch", "air"],
+  door: ["d", "oor"],
+  pen: ["p", "e", "n"],
+  pencil: ["p", "e", "n", "c", "il"],
+  ruler: ["r", "u", "l", "er"],
+  apple: ["a", "pp", "le"],
+  mango: ["m", "a", "ngo"],
+  banana: ["b", "a", "n", "a", "n", "a"],
+  grape: ["gr", "a", "pe"],
+  orange: ["o", "r", "a", "nge"],
+  lemon: ["l", "e", "m", "on"],
+  papaya: ["p", "a", "p", "ay", "a"],
+  guava: ["gu", "a", "v", "a"],
+  walk: ["w", "al", "k"],
+  jump: ["j", "u", "mp"],
+  run: ["r", "u", "n"],
+  eat: ["ea", "t"],
+  drink: ["dr", "i", "nk"],
+  sleep: ["sl", "ee", "p"],
+  read: ["r", "ea", "d"],
+  clap: ["cl", "a", "p"],
+};
+
+/**
+ * English letter groups to show for a word's sounds, aligned one-to-one with
+ * `word.sounds`. Alphabet-mode entries carry a single sound and their own
+ * `letter`, so that is used directly. Anything unmapped keeps the IPA text
+ * rather than guessing a split.
+ */
+export function getSoundLetters(word) {
+  const sounds = word?.sounds || [];
+  const mapped = WORD_SOUND_LETTERS[word?.id];
+  if (mapped && mapped.length === sounds.length) return mapped;
+  if (word?.letter && sounds.length === 1) return [String(word.letter).toLowerCase()];
+  return sounds.map((sound) => sound.text);
+}
 
 function getSoundPosition(index, total) {
   if (total <= 1) return "single";
@@ -700,7 +828,10 @@ const RAW_WORD_BANK = {
       id: "pen",
       word: "pen",
       color: "#F8E0DA",
-      imageAsset: WORD_IMAGE_ASSETS.pen,
+      // pen.jpg is a photo of a hypodermic needle, not a writing pen — wrong
+      // asset, pulled until a correct photo replaces it. Falls back to the
+      // neutral placeholder icon rather than showing the wrong picture.
+      imageAsset: null,
       phonemeCount: 3,
       sounds: [
         { text: "p", type: "consonant" },
@@ -713,7 +844,10 @@ const RAW_WORD_BANK = {
       id: "pencil",
       word: "pencil",
       color: "#F4EFD8",
-      imageAsset: WORD_IMAGE_ASSETS.pencil,
+      // pencil.jpg is a photo of a garden hand-rake, not a pencil — wrong
+      // asset, pulled until a correct photo replaces it. Falls back to the
+      // neutral placeholder icon rather than showing the wrong picture.
+      imageAsset: null,
       phonemeCount: 5,
       sounds: [
         { text: "p", type: "consonant" },

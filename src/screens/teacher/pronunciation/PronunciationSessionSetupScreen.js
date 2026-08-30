@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Alert, Switch } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions, ScrollView, Switch, Image } from "react-native";
 import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,7 +15,22 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
+import { IMAGE_STYLES } from "./wordImageStyles.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
+import { beginTeachingSession } from "./pronunciationSessionLifecycle.js";
+import {
+  PronunciationAlert,
+  usePronunciationAlert,
+} from "./PronunciationAlert.js";
+import {
+  AvatarIdentityBadge,
+  EntranceItem,
+  SelectionCheck,
+  selectionElevation,
+  selectionSurface,
+  selectionTextColor,
+  ThemedGradientFill,
+} from "./pronunciationDesignKit.js";
 
 const PRONUNCIATION_MODE_OPTIONS = [
   {
@@ -28,35 +43,53 @@ const PRONUNCIATION_MODE_OPTIONS = [
   {
     id: PRONUNCIATION_MODES.ALPHABET,
     title: "Alphabet Pronunciation",
-    subtitle: "Practise letter sounds one by one",
+    subtitle: "Practise spoken letter names one by one",
     icon: "text-outline",
     panelColor: "#DFF3E2",
   },
 ];
 
-function CategoryCard({ item, selected, onPress, cardWidth, theme }) {
+function CategoryCard({ item, index, selected, onPress, cardWidth, theme }) {
   return (
-    <ButtonFeedback
-      activeOpacity={0.85}
-      onPress={onPress}
-      style={[
-        styles.categoryCard,
-        { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: selected ? theme.button : theme.cardOutline },
-        selected && styles.categoryCardSelected,
-      ]}
-    >
-      <View
-        style={[styles.categoryVisual, { backgroundColor: item.panelColor }]}
+    <EntranceItem index={index} style={selectionElevation(theme, selected, 12)}>
+      <ButtonFeedback
+        activeOpacity={0.85}
+        onPress={onPress}
+        accessibilityRole="radio"
+        accessibilityState={{ selected, checked: selected }}
+        accessibilityLabel={`${item.title}. ${item.subtitle}`}
+        style={[
+          styles.categoryCard,
+          { width: cardWidth },
+          selectionSurface(theme, selected),
+        ]}
       >
-        <Ionicons name={item.icon} size={30} color={Colors.text.primary} />
-      </View>
-      <View style={styles.categoryBody}>
-        <Text style={styles.categoryTitle}>{item.title}</Text>
-        <Text style={styles.categorySubtitle} numberOfLines={2}>
-          {item.subtitle}
-        </Text>
-      </View>
-    </ButtonFeedback>
+        <View
+          style={[styles.categoryVisual, { backgroundColor: item.panelColor }]}
+        >
+          {item.iconImage ? (
+            <Image source={item.iconImage} resizeMode="contain" style={styles.categoryIconImage} />
+          ) : (
+            <Ionicons name={item.icon} size={30} color={Colors.text.primary} />
+          )}
+        </View>
+        <View style={styles.categoryBody}>
+          <Text
+            style={[
+              styles.categoryTitle,
+              { color: selectionTextColor(theme, selected, Colors.text.primary) },
+            ]}
+          >
+            {item.title}
+          </Text>
+          <Text style={styles.categorySubtitle} numberOfLines={2}>
+            {item.subtitle}
+          </Text>
+        </View>
+
+        <SelectionCheck selected={selected} theme={theme} />
+      </ButtonFeedback>
+    </EntranceItem>
   );
 }
 
@@ -70,6 +103,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
     Boolean(student?.reduce_stimulation),
   );
   const [savingSensorySetting, setSavingSensorySetting] = useState(false);
+  const { showAlert, alertProps } = usePronunciationAlert();
   const startSession = usePronunciationSessionStore((state) => state.startSession);
   const setSelectedStudent = usePronunciationSessionStore(
     (state) => state.setSelectedStudent,
@@ -83,6 +117,9 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
   );
+  const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
+  const loadImageStyle = usePronunciationSessionStore((state) => state.loadImageStyle);
+  const setImageStyle = usePronunciationSessionStore((state) => state.setImageStyle);
   const { width } = useWindowDimensions();
   const isCompact = width < 720;
   // Downstream screens read `student` from navigation params, not the store,
@@ -99,6 +136,12 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
     setCurrentActivityStep(PRONUNCIATION_STEPS.SETUP);
   }, [activeStudent, setCurrentActivityStep, setSelectedStudent]);
 
+  // Picture style is remembered per student on this device, so the teacher
+  // sets it once and every later session for that child starts the same way.
+  useEffect(() => {
+    loadImageStyle(studentId);
+  }, [loadImageStyle, studentId]);
+
   async function handleToggleReduceStimulation(value) {
     if (!studentId || savingSensorySetting) return;
 
@@ -110,9 +153,10 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
       await teacherApi.setSensorySettings(studentId, value);
     } catch (error) {
       setReduceStimulation(previous);
-      Alert.alert(
+      showAlert(
         "Couldn't save setting",
         error.response?.data?.error || error.message || "Please try again.",
+        { tone: "error" },
       );
     } finally {
       setSavingSensorySetting(false);
@@ -129,6 +173,10 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
 
   function handleContinue() {
     if (!selectedMode) return;
+
+    // Opens the backend session row that feeds the teacher dashboard's
+    // Recent Activity list. Fire-and-forget: the flow must not wait on it.
+    beginTeachingSession(activeStudent);
 
     if (selectedMode === PRONUNCIATION_MODES.ALPHABET) {
       startSession({
@@ -184,6 +232,8 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               {student?.full_name ? ` for ${student.full_name}` : ""}
             </Text>
           </View>
+
+          <AvatarIdentityBadge avatarKey={student?.avatar_key} theme={theme} size={44} style={styles.headerAvatar} />
         </View>
 
         <PronunciationStepIndicator currentStep={2} theme={theme} />
@@ -192,10 +242,11 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
           <Text style={[styles.panelTitle, { color: theme.headingText }]}>Select Mode</Text>
 
           <View style={styles.cardsRow}>
-            {PRONUNCIATION_MODE_OPTIONS.map((item) => (
+            {PRONUNCIATION_MODE_OPTIONS.map((item, index) => (
               <CategoryCard
                 key={item.id}
                 item={item}
+                index={index}
                 selected={selectedMode === item.id}
                 onPress={() => {
                   setSelectedMode(item.id);
@@ -218,10 +269,11 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               </Text>
 
               <View style={styles.cardsRow}>
-                {SESSION_CATEGORIES.map((item) => (
+                {SESSION_CATEGORIES.map((item, index) => (
                   <CategoryCard
                     key={item.id}
                     item={item}
+                    index={index}
                     selected={selectedCategory === item.id}
                     onPress={() => {
                       setSelectedCategory(item.id);
@@ -254,6 +306,27 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
             />
           </View>
 
+          <View style={[styles.sensoryRow, styles.pictureStyleRow, { borderColor: theme.cardOutline }]}>
+            <View style={styles.sensoryIconWrap}>
+              <Ionicons name="color-palette-outline" size={20} color={theme.button} />
+            </View>
+            <View style={styles.sensoryCopy}>
+              <Text style={styles.sensoryTitle}>Cartoon pictures</Text>
+              <Text style={styles.sensorySubtitle}>
+                Swaps the photo on every word card for a simple cartoon drawing — easier to read
+                for a child who finds busy photos hard to follow. Words with no cartoon keep
+                their photo.
+              </Text>
+            </View>
+            <Switch
+              value={imageStyle === IMAGE_STYLES.CARTOON}
+              onValueChange={(value) =>
+                setImageStyle(value ? IMAGE_STYLES.CARTOON : IMAGE_STYLES.REAL, studentId)
+              }
+              trackColor={{ true: theme.button }}
+            />
+          </View>
+
           <View style={[styles.panelFooter, isCompact && styles.panelFooterCompact]}>
             <Text style={[styles.selectionText, { color: theme.headingText }]}>
               {selectedMode === PRONUNCIATION_MODES.ALPHABET
@@ -267,12 +340,8 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
             <ButtonFeedback
               activeOpacity={0.85}
               style={[
-                styles.continueBtn,
-                { backgroundColor: theme.button },
+                styles.continueBtnWrap,
                 isCompact && styles.continueBtnCompact,
-                (!selectedMode ||
-                  (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory)) &&
-                  styles.continueBtnDisabled,
               ]}
               disabled={
                 !selectedMode ||
@@ -280,12 +349,24 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
               }
               onPress={handleContinue}
             >
-              <Text style={styles.continueText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              {!selectedMode ||
+              (selectedMode === PRONUNCIATION_MODES.WORD && !selectedCategory) ? (
+                <View style={[styles.continueBtn, styles.continueBtnDisabled]}>
+                  <Text style={styles.continueText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                </View>
+              ) : (
+                <ThemedGradientFill theme={theme} style={styles.continueBtn}>
+                  <Text style={styles.continueText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                </ThemedGradientFill>
+              )}
             </ButtonFeedback>
           </View>
         </View>
       </ScrollView>
+
+      <PronunciationAlert {...alertProps} theme={theme} />
     </SafeAreaView>
     </LinearGradient>
   );
@@ -324,16 +405,20 @@ const styles = StyleSheet.create({
   headerCopy: {
     flex: 1,
   },
+  headerAvatar: {
+    marginTop: 2,
+  },
   title: {
     fontSize: Layout.fontSize.xxxl,
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     letterSpacing: -0.4,
   },
   subtitle: {
     marginTop: 2,
     fontSize: Layout.fontSize.sm,
     color: Colors.text.secondary,
+    fontFamily: Layout.fonts.semibold,
   },
   panel: {
     width: "100%",
@@ -348,7 +433,7 @@ const styles = StyleSheet.create({
   },
   panelTitle: {
     fontSize: 30,
-    fontWeight: "800",
+    fontFamily: Layout.fonts.extrabold,
     color: Colors.text.primary,
     marginBottom: Layout.spacing.md,
   },
@@ -365,18 +450,20 @@ const styles = StyleSheet.create({
   categoryCard: {
     borderRadius: 12,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E6ECF4",
-    backgroundColor: Colors.surface,
     minHeight: 172,
-  },
-  categoryCardSelected: {
-    borderWidth: 2,
+    // The row stretches its items, and the wrapper carrying the selection
+    // shadow now paints a background — so the card has to fill that wrapper
+    // or a bare strip of it shows below a short card.
+    flex: 1,
   },
   categoryVisual: {
     height: 96,
     alignItems: "center",
     justifyContent: "center",
+  },
+  categoryIconImage: {
+    width: 64,
+    height: 64,
   },
   categoryBody: {
     paddingHorizontal: 10,
@@ -385,7 +472,7 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     color: Colors.text.primary,
   },
   categorySubtitle: {
@@ -402,6 +489,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Layout.spacing.sm,
   },
+  pictureStyleRow: {
+    marginTop: Layout.spacing.sm,
+  },
   sensoryIconWrap: {
     width: 38,
     height: 38,
@@ -415,7 +505,7 @@ const styles = StyleSheet.create({
   },
   sensoryTitle: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: Layout.fonts.bold,
     color: Colors.text.primary,
   },
   sensorySubtitle: {
@@ -443,14 +533,17 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     color: Colors.text.secondary,
   },
+  continueBtnWrap: {
+    borderRadius: 10,
+    overflow: "hidden",
+  },
   continueBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 10,
   },
   continueBtnCompact: {
     justifyContent: "center",
@@ -461,6 +554,6 @@ const styles = StyleSheet.create({
   continueText: {
     color: "#FFFFFF",
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: Layout.fonts.semibold,
   },
 });

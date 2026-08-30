@@ -73,7 +73,7 @@ export function Input({
           ]}
         />
         {isPassword && (
-          <ButtonFeedback
+          <TouchableOpacity
             onPress={() => setShowPassword((p) => !p)}
             style={styles.eyeIcon}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -83,7 +83,7 @@ export function Input({
               size={20}
               color={Colors.icon.default}
             />
-          </ButtonFeedback>
+          </TouchableOpacity>
         )}
       </View>
       {error && <Text style={styles.error}>{error}</Text>}
