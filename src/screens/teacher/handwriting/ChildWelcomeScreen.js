@@ -86,6 +86,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 32,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     marginBottom: 32,
   },
 
@@ -98,6 +99,7 @@ const styles = StyleSheet.create({
   nameText: {
     fontSize: 22,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   avatarThumb: {
     width: 44,
@@ -121,5 +123,6 @@ const styles = StyleSheet.create({
   startText: {
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 });

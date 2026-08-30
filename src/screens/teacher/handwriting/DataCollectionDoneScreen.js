@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
 
 const RATING_DIMENSIONS = [
   { key: 'teacher_straight_rating', label: 'Straight lines' },
@@ -17,6 +18,12 @@ const RATING_DIMENSIONS = [
 const RATING_LABELS = { 1: 'Weak', 2: 'Moderate', 3: 'Good' };
 
 export default function DataCollectionDoneScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme, collectionSessionId = null } = route.params;
 
   const [warnings, setWarnings] = useState([]);
@@ -78,7 +85,7 @@ export default function DataCollectionDoneScreen({ route, navigation }) {
           </Text>
           <Text style={styles.subtitle}>
             All shapes and letters for{'\n'}
-            <Text style={{ fontWeight: '800' }}>{student?.full_name}</Text> have been recorded.
+            <Text style={{ fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' }}>{student?.full_name}</Text> have been recorded.
           </Text>
 
           <View style={[styles.infoBox, { borderColor: theme.button + '30', backgroundColor: theme.button + '0A' }]}>
@@ -213,6 +220,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     textAlign: 'center',
   },
 
@@ -236,6 +244,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     lineHeight: 20,
   },
 
@@ -255,6 +264,7 @@ const styles = StyleSheet.create({
   warningTitle: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#8A6100',
   },
   warningLine: {
@@ -270,6 +280,7 @@ const styles = StyleSheet.create({
   ratingTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'left',
   },
   ratingRow: {
@@ -278,6 +289,7 @@ const styles = StyleSheet.create({
   ratingLabel: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#555555',
   },
   ratingButtons: {
@@ -295,6 +307,7 @@ const styles = StyleSheet.create({
   ratingPillText: {
     fontSize: 12.5,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#555555',
   },
 
@@ -318,6 +331,7 @@ const styles = StyleSheet.create({
   submitBtnText: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
 
   submittedBox: {
@@ -328,6 +342,7 @@ const styles = StyleSheet.create({
   submittedText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#2F7D5C',
   },
 
@@ -343,5 +358,6 @@ const styles = StyleSheet.create({
   doneBtnText: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
 });

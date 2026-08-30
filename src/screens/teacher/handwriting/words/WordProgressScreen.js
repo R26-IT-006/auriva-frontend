@@ -10,18 +10,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { getSessionProgress } from '../../../../constants/sessionProgress';
-import { getAllWordProgress } from '../../../../utils/storage';
+import { fetchWordProgress } from '../../../../utils/wordApi';
 import WordImageDisplay from '../../../../components/word/WordImageDisplay';
+import { useLockLandscape } from '../../../../utils/useOrientationLock';
+import useGatedBack from '../../../../utils/useGatedBack';
+import { resolveWordImageKey, resolveWordEmoji } from '../../../../utils/wordImageResolver';
 
 const ALPHABET  = 'abcdefghijklmnopqrstuvwxyz'.split('');
-const EXERCISES = ['A', 'B', 'C', 'D'];
+const EXERCISES = ['A', 'B', 'C', 'D', 'E'];
 
 const EXERCISE_LABELS = {
   A: 'First Letter',
   B: 'Find the Picture',
   C: 'Fill the Gap',
   D: 'Spell It!',
+  E: 'Write Word',
 };
 
 const STATUS = {
@@ -49,6 +52,17 @@ function scoreColor(correct, total) {
 }
 
 export default function WordProgressScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
+
   const { student, theme } = route.params;
 
   const [progress,       setProgress]       = useState({});
@@ -58,9 +72,12 @@ export default function WordProgressScreen({ route, navigation }) {
     React.useCallback(() => {
       let active = true;
       async function load() {
-        const persistent = await getAllWordProgress(student?.sid ?? 0);
-        const session    = getSessionProgress();
-        if (active) setProgress({ ...persistent, ...session });
+        try {
+          const authoritative = await fetchWordProgress(student);
+          if (active) setProgress(authoritative ?? {});
+        } catch {
+          if (active) setProgress({});
+        }
       }
       load();
       return () => { active = false; };
@@ -100,8 +117,10 @@ export default function WordProgressScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: theme.button + '18' }]}
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="chevron-back" size={22} color={theme.headingText} />
           </TouchableOpacity>
@@ -287,9 +306,18 @@ export default function WordProgressScreen({ route, navigation }) {
         </ScrollView>
 
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }
+
+// Big enough for a parent to recognise the picture at a glance in a dense
+// table, small enough that the row stays a row. The exercise badges are 30px,
+// so this is the tallest thing in it.
+const WORD_ROW_IMAGE_SIZE = 48;
 
 function WordRow({ item }) {
   const correct = Object.values(item.status).filter(s => s === 'correct').length;
@@ -297,7 +325,16 @@ function WordRow({ item }) {
 
   return (
     <View style={wordRowStyles.row}>
-      <WordImageDisplay imageKey={item.imageKey} emoji={item.emoji} size={36} />
+      {/* Resolved FROM THE WORD, exactly as the Progress Report does it.
+          These rows are the backend's word-progress payload - { word, status }
+          and nothing else - so `item.imageKey` and `item.emoji` were always
+          undefined and every picture fell through to an empty emoji box.
+          Same canonical catalogue the child activities use; no second map. */}
+      <WordImageDisplay
+        imageKey={resolveWordImageKey(item.word)}
+        emoji={resolveWordEmoji(item.word)}
+        size={WORD_ROW_IMAGE_SIZE}
+      />
 
       <Text style={wordRowStyles.word} numberOfLines={1}>
         {item.word.charAt(0).toUpperCase() + item.word.slice(1)}
@@ -340,6 +377,7 @@ const wordRowStyles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#222222',
   },
   badge: {
@@ -395,9 +433,9 @@ const pillStyles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 3,
   },
-  value: { fontSize: 24, fontWeight: '900', lineHeight: 28 },
-  of:    { fontSize: 12, color: '#8A8A8A', fontWeight: '700', marginBottom: 3 },
-  label: { fontSize: 12, color: '#5F6368', fontWeight: '700', marginTop: 3 },
+  value: { fontSize: 24, fontWeight: '900', fontFamily: 'Nunito_900Black', lineHeight: 28 },
+  of:    { fontSize: 12, color: '#8A8A8A', fontWeight: '700', fontFamily: 'Nunito_700Bold', marginBottom: 3 },
+  label: { fontSize: 12, color: '#5F6368', fontWeight: '700', fontFamily: 'Nunito_700Bold', marginTop: 3 },
 });
 
 const styles = StyleSheet.create({
@@ -425,10 +463,12 @@ const styles = StyleSheet.create({
   topTitle: {
     fontSize: 20,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   topStudent: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     opacity: 0.65,
     marginTop: 1,
   },
@@ -463,12 +503,14 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 18,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   summarySubtitle: {
     fontSize: 12,
     lineHeight: 18,
     color: '#6E7378',
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     marginTop: 2,
   },
   accuracyBadge: {
@@ -482,12 +524,14 @@ const styles = StyleSheet.create({
   accuracyValue: {
     fontSize: 22,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     lineHeight: 26,
   },
   accuracyLabel: {
     fontSize: 11,
     color: '#6E7378',
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   summaryStatsRow: {
     flexDirection: 'row',
@@ -511,7 +555,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  legendLabel: { fontSize: 11, color: '#5F6368', fontWeight: '700' },
+  legendLabel: { fontSize: 11, color: '#5F6368', fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 
   list: {
     paddingHorizontal: 24,
@@ -546,7 +590,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  letterCircleText: { fontSize: 20, fontWeight: '900' },
+  letterCircleText: { fontSize: 20, fontWeight: '900', fontFamily: 'Nunito_900Black' },
   letterInfo:       { flex: 1 },
   letterTitleRow: {
     flexDirection: 'row',
@@ -554,7 +598,7 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
   },
-  letterDoneLabel:  { fontSize: 14, fontWeight: '700', color: '#222222' },
+  letterDoneLabel:  { fontSize: 14, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#222222' },
   statusChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -564,10 +608,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  statusChipText: { fontSize: 10, color: '#2E7D32', fontWeight: '900' },
-  letterScore:      { fontSize: 12, fontWeight: '700', marginTop: 4 },
-  letterPending:    { fontSize: 14, color: '#8F969C', fontWeight: '800' },
-  letterPendingHint:{ fontSize: 11, color: '#B4BAC0', fontWeight: '600', marginTop: 3 },
+  statusChipText: { fontSize: 10, color: '#2E7D32', fontWeight: '900', fontFamily: 'Nunito_900Black' },
+  letterScore:      { fontSize: 12, fontWeight: '700', fontFamily: 'Nunito_700Bold', marginTop: 4 },
+  letterPending:    { fontSize: 14, color: '#8F969C', fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
+  letterPendingHint:{ fontSize: 11, color: '#B4BAC0', fontWeight: '600', fontFamily: 'Nunito_600SemiBold', marginTop: 3 },
 
   scoreBarWrap: { width: 112 },
   scoreBarBg: {
@@ -597,8 +641,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
   },
-  thWord:    { fontSize: 11, fontWeight: '700', color: '#888888', textTransform: 'uppercase', letterSpacing: 0.5 },
+  thWord:    { fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#888888', textTransform: 'uppercase', letterSpacing: 0.5 },
   thEx:      { width: 30, alignItems: 'center' },
-  thExText:  { fontSize: 11, fontWeight: '900', color: '#555555' },
-  thExLabel: { fontSize: 9, color: '#AAAAAA', fontWeight: '500' },
+  thExText:  { fontSize: 11, fontWeight: '900', fontFamily: 'Nunito_900Black', color: '#555555' },
+  thExLabel: { fontSize: 9, color: '#AAAAAA', fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
 });

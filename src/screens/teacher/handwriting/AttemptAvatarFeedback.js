@@ -9,26 +9,52 @@ const AVATAR_MAP = {
   megatron: require('../../../../assets/avatar-images/Megatron.png'),
 };
 
-const PASS_MESSAGES = {
-  1: 'Great tracing!',
-  2: 'Nice guide work!',
-  3: 'You wrote it yourself!',
+// Letter/word-writing feedback follows the support presentation just shown.
+// Pre-writing has no support-level concept, so callers without supportLevel
+// use the separate short motor-warm-up messages below.
+const PASS_MESSAGES_BY_SUPPORT = {
+  high:   'Great tracing!',
+  medium: 'Nice work!',
+  low:    'Great writing!',
 };
 
-const RETRY_MESSAGES = {
-  1: 'Good start. Watch once more.',
-  2: 'Good try. Follow the guide.',
-  3: 'Keep going. Try with the guide.',
+const RETRY_MESSAGES_BY_SUPPORT = {
+  high:   'Try again!',
+  medium: 'Follow the guide!',
+  low:    'Try once more!',
 };
 
-export default function AttemptAvatarFeedback({ avatarKey, passed, attempt, theme }) {
+// Motor warm-up feedback for callers without a support level.
+const PASS_MESSAGES_BY_ATTEMPT = {
+  1: 'Great job!',
+  2: 'Great job!',
+  3: 'Great job!',
+};
+
+const RETRY_MESSAGES_BY_ATTEMPT = {
+  1: 'Try again!',
+  2: 'Try again!',
+  3: 'Try again!',
+};
+
+export default function AttemptAvatarFeedback({ avatarKey, passed, attempt, supportLevel, theme, note }) {
   const key = String(avatarKey ?? '').toLowerCase();
   const avatar = AVATAR_MAP[key] ?? AVATAR_MAP.megatron;
   const color = passed ? '#2E7D32' : '#8A5A00';
   const backgroundColor = passed ? '#E8F5E9' : '#FFF8E1';
-  const message = passed
-    ? PASS_MESSAGES[attempt] ?? 'Nice work!'
-    : RETRY_MESSAGES[attempt] ?? 'Good try. Try again.';
+  const passMessages  = supportLevel != null ? PASS_MESSAGES_BY_SUPPORT  : PASS_MESSAGES_BY_ATTEMPT;
+  const retryMessages = supportLevel != null ? RETRY_MESSAGES_BY_SUPPORT : RETRY_MESSAGES_BY_ATTEMPT;
+  const lookupKey = supportLevel != null ? supportLevel : attempt;
+  const generic = passed
+    ? passMessages[lookupKey] ?? 'Nice work!'
+    : retryMessages[lookupKey] ?? 'Try again!';
+  // `note` is the one actionable thing the layout check found — "Leave a
+  // little space", "Keep letters the same size". When there is one it REPLACES
+  // the generic encouragement rather than sitting beside it: the child used to
+  // get this in a separate pill under the canvas at the same moment as the
+  // avatar said "Good try", which is two things to read at once. One avatar,
+  // one sentence.
+  const message = note || generic;
 
   return (
     <View
@@ -103,6 +129,7 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 17,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     lineHeight: 23,
     textAlign: 'center',
   },

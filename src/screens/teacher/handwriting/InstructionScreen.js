@@ -12,34 +12,38 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
+import useGatedBack from '../../../utils/useGatedBack';
+import { ASSESSMENT_FLOW_ROUTES, returnToAssessmentFlowRoute } from '../../../utils/moduleSelectionBack';
+import ScreenBackButton from '../../../components/handwriting/ScreenBackButton';
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
 const STEPS = [
   {
     icon: 'pencil-outline',
-    title: 'Position the stylus',
-    desc: 'Ensure the child is comfortably holding the stylus or using their finger.',
+    title: 'Comfortable grip',
+    desc: 'Let the child use a stylus or finger.',
   },
   {
     icon: 'chatbubble-ellipses-outline',
-    title: 'Explain the activity',
-    desc: 'Ask the child to trace or draw the shapes shown on the screen.',
+    title: 'Trace each shape',
+    desc: 'Ask the child to follow the shape on screen.',
   },
   {
     icon: 'hand-left-outline',
-    title: 'Avoid guiding',
-    desc: "Do not hold or guide the child's hand unless needed to start.",
+    title: 'Let the child lead',
+    desc: 'Only guide their hand if they need help starting.',
   },
   {
     icon: 'time-outline',
-    title: 'Allow natural pace',
-    desc: 'Let the child draw at their own speed without rushing.',
+    title: 'Take your time',
+    desc: 'Let the child draw without rushing.',
   },
   {
     icon: 'desktop-outline',
-    title: 'Automatic recording',
-    desc: 'The system records movement, speed, pauses, and stroke stability automatically.',
+    title: 'Recording is automatic',
+    desc: 'The app records movement, speed, pauses, and stroke steadiness.',
   },
 ];
 
@@ -53,7 +57,19 @@ const AVATAR_MAP = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function InstructionScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme } = route.params;
+  const returnToPressAndDrag = () => returnToAssessmentFlowRoute(
+    navigation,
+    ASSESSMENT_FLOW_ROUTES.PRESS_AND_DRAG,
+    { student, theme },
+  );
+  const { requestBack, gateModal } = useGatedBack(returnToPressAndDrag);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
@@ -161,6 +177,14 @@ export default function InstructionScreen({ route, navigation }) {
       }]} />
 
       <SafeAreaView style={styles.safe}>
+        <ScreenBackButton
+          onPress={requestBack}
+          gated
+          tint={theme.button}
+          color={theme.button}
+          accessibilityLabel="Back"
+          style={styles.flowBackButton}
+        />
 
         <View style={[styles.root, isLandscape && styles.rootLandscape]}>
 
@@ -189,8 +213,7 @@ export default function InstructionScreen({ route, navigation }) {
                 Initial Motor Assessment
               </Text>
               <Text style={styles.intro}>
-                Set up a calm writing moment for {student?.full_name ?? 'the child'}.
-                Use these quick checks before the drawing tasks begin.
+                Help {student?.full_name ?? 'the child'} get comfortable, then follow these five steps.
               </Text>
             </Animated.View>
 
@@ -198,10 +221,7 @@ export default function InstructionScreen({ route, navigation }) {
             <View
               style={[
                 styles.stepsContainer,
-                {
-                  backgroundColor: theme.button + '0B',
-                  borderColor: theme.button + '22',
-                },
+                { backgroundColor: theme.button + '0B' },
               ]}
             >
               {STEPS.map((step, index) => (
@@ -234,17 +254,6 @@ export default function InstructionScreen({ route, navigation }) {
                 <Text style={[styles.beginBtnText, { color: theme.buttonText }]}>
                   Begin Assessment
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.skipBtn, { borderColor: theme.button + '66' }]}
-                onPress={() => navigation.navigate('LetterHome', { student, theme })}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.skipBtnText, { color: theme.button }]}>
-                  Skip Assessment
-                </Text>
-                <Ionicons name="arrow-forward-outline" size={16} color={theme.button} />
               </TouchableOpacity>
             </Animated.View>
 
@@ -288,6 +297,7 @@ export default function InstructionScreen({ route, navigation }) {
           )}
 
         </View>
+        {gateModal}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -342,6 +352,12 @@ function StepCard({ step, index, theme, progress }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
+  flowBackButton: {
+    position: 'absolute',
+    top: 16,
+    left: 22,
+    zIndex: 10,
+  },
 
   // Decorative background bubbles
   bgBubbleLarge: {
@@ -394,18 +410,21 @@ const styles = StyleSheet.create({
   teacherBadgeText: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 0.8,
   },
 
   title: {
     fontSize: 30,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     lineHeight: 36,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     marginBottom: 6,
     letterSpacing: 0.3,
   },
@@ -418,15 +437,9 @@ const styles = StyleSheet.create({
   // ── Steps ─────────────────────────────────────────────────────────────────
   stepsContainer: {
     backgroundColor: 'rgba(255,255,255,0.58)',
-    borderWidth: 1,
     borderRadius: 24,
     padding: 10,
     gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 3,
   },
 
   stepCard: {
@@ -435,16 +448,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderLeftWidth: 5,
-    borderWidth: 1,
-    borderColor: '#E8EDF7',
     paddingHorizontal: 13,
     paddingVertical: 10,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    elevation: 2,
   },
 
   stepCircle: {
@@ -458,6 +464,7 @@ const styles = StyleSheet.create({
   stepNumber: {
     fontSize: 16,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
 
   stepBody: {
@@ -472,6 +479,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 17,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     flexShrink: 1,
   },
   stepDesc: {
@@ -503,22 +511,9 @@ const styles = StyleSheet.create({
   beginBtnText: {
     fontSize: 19,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
-  skipBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 11,
-    paddingHorizontal: 24,
-    borderRadius: 50,
-    borderWidth: 1.5,
-  },
-  skipBtnText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-
   // ── Avatar — landscape (side column) ─────────────────────────────────────
   avatarCol: {
     width: '36%',
@@ -549,6 +544,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#333333',
     fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     lineHeight: 25,
     textAlign: 'center',
   },

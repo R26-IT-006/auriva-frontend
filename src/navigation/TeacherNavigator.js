@@ -131,6 +131,8 @@ function TeacherWorkspace() {
           theming rather than the student-workspace chrome. */}
       <Stack.Screen name="TrajectoryReport"     component={TrajectoryReportScreen}     options={{ title: 'Trajectory Report' }} />
       <Stack.Screen name="Level2Report"         component={Level2ReportScreen}         options={{ title: 'Level 2 Report' }} />
+      {/* Same reasoning as ConceptReport — the handwriting report is opened from
+          the Writing module on the student profile and carries its own header. */}
       <Stack.Screen
         name="StudentHandwritingReport"
         component={TeacherReportScreen}

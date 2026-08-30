@@ -26,9 +26,8 @@ import {
 import { conceptApi } from '../../../../api/concept';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { Layout } from '../../../../constants/layout';
+import ResultGifFeedback from '../../../../components/feedback/ResultGifFeedback';
 
-const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
-const WRONG_GIF   = require('../../../../../assets/feedback/wrong.gif');
 
 function LabelPill({ option, index, locked, isCorrect, isWrong, cardOutline, headingText, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -353,18 +352,13 @@ export default function Tier2ActivityScreen({ route, navigation }) {
         </View>
 
         {/* GIF feedback popup */}
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.gifPopup, { transform: [{ translateY: feedbackSlide }] }]}
-        >
-          {feedbackResult && (
-            <ExpoImage
-              source={feedbackResult === 'correct' ? CORRECT_GIF : WRONG_GIF}
-              style={styles.gifImage}
-              contentFit="contain"
-            />
-          )}
-        </Animated.View>
+        {/* Shared right/wrong feedback — components/feedback/ResultGifFeedback.
+            Five concept screens each carried their own copy of this popup,
+            with the same two requires and the same slide animation. */}
+        <ResultGifFeedback
+          visible={Boolean(feedbackResult)}
+          correct={feedbackResult === 'correct'}
+        />
 
       </SafeAreaView>
 
@@ -463,15 +457,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  gifPopup: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  gifImage: {
-    width: 200,
-    height: 200,
-  },
 });

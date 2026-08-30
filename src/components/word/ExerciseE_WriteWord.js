@@ -1,27 +1,97 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, PanResponder } from 'react-native';
-import Svg, { Line, Circle, Polyline, Path } from 'react-native-svg';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, PanResponder, Dimensions } from 'react-native';
+import Svg, { Line, Circle, Polyline, Path, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import WordImageDisplay from './WordImageDisplay';
-import { buildWordGuide, wordGuideToSvgPath, wordGuideGhostDots } from '../../data/wordPaths';
+import { buildWordGuide, wordGuideToSvgPath, wordGuideGhostDots, buildWordLetterBoxes } from '../../data/wordPaths';
+import { evaluateWordAttempt } from '../../utils/wordScoring';
+import { submitWordAttempt, newActionId } from '../../utils/wordApi';
+import { childFeedbackMessage } from '../../utils/wordFeedback';
+import { computeExerciseECanvasSize } from '../../utils/wordExerciseECanvas';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../utils/touchPointSanitize';
+// Proposal FR-13, Phase 7A — the base (non-registering) hook: the parent
+// WordActivityScreen already registers/unregisters this whole A-E flow as
+// one active learning screen; this component only needs the stroke
+// notifiers so the break prompt never interrupts a stroke drawn here.
+import { useLearningSession } from '../../context/LearningSessionContext';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+import { hasCanvasDrawing } from '../../utils/canvasDrawingState';
+import { SUPPORT_IMAGE_COMPACT, supportImageFrameStyle } from './wordActivityLayout';
+import { actionRowMinHeight } from '../../constants/writingActionRow';
+import * as Speech from 'expo-speech';
+import { SPEECH_LOCALE_EN } from '../../constants/speechLocale';
+import { spokenWord } from '../../utils/wordSpeech';
 
-// Image column shrunk / canvas widened vs. the original 230/430 split — a
-// whole word needs more horizontal room than the small illustration does.
-const CANVAS_W = 490;
-const CANVAS_H = 220;
-const LINE_1 = 22;
-const LINE_2 = 82;
+// Shared with every other screen that asks for this action, so the child
+// hears one sentence for one task — and one future recording covers it.
+const ACTIVITY_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.WRITE_WORD];
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 2;
+
+// Responsive canvas (final-completion-pass fix) — was a fixed ~490×220,
+// which could clip on a small phone or leave excessive empty width on a
+// tablet. The actual sizing math lives in wordExerciseECanvas.js (a pure,
+// unit-tested helper — see wordExerciseECanvas.test.js) so it stays covered
+// without needing a React Native rendering harness. This SAME CANVAS_W/
+// CANVAS_H feeds the guide path, the guide boxes, the PanResponder's touch
+// coordinates (locationX/Y are already canvas-relative), and the submitted
+// payload below — one transform, one coordinate system, matching
+// WordWritingScreen's own module-level sizing.
+const { width: SCREEN_W } = Dimensions.get('window');
+const { width: CANVAS_W, height: CANVAS_H } = computeExerciseECanvasSize(SCREEN_W);
+const LINE_1 = Math.round(CANVAS_H * 0.10);
+const LINE_2 = Math.round(CANVAS_H * 0.37);
 // Baseline/descender match the LETTER_PATHS fy=0.64/0.92 convention so the
 // reference-path guide sits exactly on these ruling lines (see WordWritingScreen).
 const LINE_3 = Math.round(CANVAS_H * 0.64);
 const LINE_4 = Math.round(CANVAS_H * 0.92);
 
-export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
+export default function ExerciseE_WriteWord({
+  wordEntry,
+  theme,
+  student,
+  onComplete,
+  onIncomplete,
+  canWrite = true,
+  requestTargetSpeech = (speakTarget) => speakTarget?.(),
+}) {
   const { word, emoji, imageKey } = wordEntry;
+  const { notifyStrokeStart, notifyStrokeEnd } = useLearningSession();
   const [currentPath, setCurrentPath] = useState([]);
   const [allPaths, setAllPaths] = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [done, setDone] = useState(false);
+  const [result, setResult] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const actionIdRef = useRef(null);
+  const canWriteRef = useRef(canWrite);
+  canWriteRef.current = canWrite;
+  const doneRef = useRef(done);
+  doneRef.current = done;
+  const targetSpokenRef = useRef(false);
   const startTimeRef = useRef(null);
+  // Border-touch bug fix — see touchPointSanitize.js / WordWritingScreen.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
+  }, []);
 
   const hasDrawn = allPaths.length > 0;
 
@@ -35,23 +105,69 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
     [wordGuide]
   );
 
+  // Visible letter-size/spacing guide boxes — same instructional support as
+  // WordWritingScreen's guided attempts, reinforcing size/spacing without
+  // handing the child a full traced-letter answer (see wordPaths.js).
+  const letterBoxes = useMemo(
+    () => buildWordLetterBoxes(word, CANVAS_W, CANVAS_H),
+    [word]
+  );
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !done,
-      onMoveShouldSetPanResponder: () => !done,
+      onStartShouldSetPanResponder: () => canWriteRef.current && !doneRef.current,
+      onMoveShouldSetPanResponder: () => canWriteRef.current && !doneRef.current,
       onPanResponderGrant: (evt) => {
+        if (!canWriteRef.current || doneRef.current) return;
+        notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
-        const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath([{ x: locationX, y: locationY, t: 0 }]);
+        const { x, y } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
+        setCurrentPath([{ x, y, t: 0 }]);
+        if (!targetSpokenRef.current) {
+          targetSpokenRef.current = true;
+          requestTargetSpeech(() => {
+            const spoken = spokenWord(wordEntry);
+            if (spoken) {
+              Speech.stop();
+              Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
+            }
+          });
+        }
       },
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath(prev => [
-          ...prev,
-          { x: locationX, y: locationY, t: Date.now() - startTimeRef.current },
-        ]);
+        const { x, y } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x, y }, CANVAS_W, CANVAS_H)) return prev;
+          return [...prev, { x, y, t: Date.now() - startTimeRef.current }];
+        });
       },
       onPanResponderRelease: () => {
+        notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
+        setCurrentPath(prev => {
+          if (prev.length > 2) {
+            setAllPaths(paths => [...paths, prev]);
+          }
+          return [];
+        });
+      },
+      // Gesture-cancellation audit — finalize an interrupted stroke exactly
+      // like a normal release (same "keep if usable, discard if too short"
+      // rule as onPanResponderRelease / WordWritingScreen / LetterWritingScreen)
+      // instead of leaving a dangling currentPath.
+      onPanResponderTerminate: () => {
+        notifyStrokeEnd(); // FR-13 — same as release: an OS-interrupted gesture must not leave isWriting stuck true
         setCurrentPath(prev => {
           if (prev.length > 2) {
             setAllPaths(paths => [...paths, prev]);
@@ -66,30 +182,56 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
     if (done) return;
     setCurrentPath([]);
     setAllPaths([]);
+    setResult(null);
   }
 
-  function handleDone() {
-    if (!hasDrawn || done) return;
-    setDone(true);
-    setTimeout(() => onComplete(true), 500);
+  async function handleDone() {
+    if (!hasDrawn || done || submitting) return;
+    setSubmitting(true); setSaveError(null);
+    actionIdRef.current ||= newActionId();
+    try {
+      const authoritative = await submitWordAttempt({student,actionId:actionIdRef.current,word,stage:'practice_exercise_e',strokes:allPaths,canvas_width:CANVAS_W,canvas_height:CANVAS_H});
+      // childFeedback/layoutMessage are advisory only — see wordFeedback.js
+      // and section 5 of the completion-pass task: never read anywhere that
+      // decides authoritative.passed above.
+      const nextResult={score:authoritative.score,passed:authoritative.passed,completed:authoritative.completion_passed,layoutMessage:childFeedbackMessage(authoritative.child_feedback)};setResult(nextResult);
+      if (!authoritative.passed) {
+        actionIdRef.current = null;
+        if (!nextResult.completed) await Promise.resolve(onIncomplete?.());
+        return;
+      }
+      // The layout advisory rides up with the result so the AVATAR can say
+      // it. It used to be rendered again below, beside the avatar - one
+      // attempt, two messages for the child to read.
+      setDone(true); setTimeout(() => onComplete(true, nextResult.layoutMessage), 500);
+    } catch { setSaveError('Could not save yet. Check the connection and try again.'); }
+    finally { setSubmitting(false); }
   }
 
   return (
     <View style={styles.wrap}>
       <View style={styles.leftCol}>
-        <View style={[styles.imageBg, { backgroundColor: theme.button + '10', borderColor: theme.button + '26' }]}>
-          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={130} />
+        <View style={[styles.imageBg, supportImageFrameStyle(theme, SUPPORT_IMAGE_COMPACT)]}>
+          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={SUPPORT_IMAGE_COMPACT.imageSize} />
         </View>
       </View>
 
       <View style={styles.rightCol}>
         <Text style={[styles.instruction, { color: theme.headingText }]}>
-          Write the word
+          {ACTIVITY_INSTRUCTION.en}
+        </Text>
+        <Text style={[styles.instructionSi, { color: theme.headingText }]}>
+          {ACTIVITY_INSTRUCTION.si}
         </Text>
 
         <View
           style={[styles.canvasCard, { borderColor: theme.button + '32' }]}
+          ref={canvasRef}
+          onLayout={measureCanvasOrigin}
           {...panResponder.panHandlers}
+          pointerEvents={canWrite ? 'auto' : 'none'}
+          accessible
+          accessibilityLabel="Word handwriting practice area"
         >
           <Svg width={CANVAS_W} height={CANVAS_H}>
             <Line x1="0" y1={LINE_1} x2={CANVAS_W} y2={LINE_1} stroke="#9BC4E8" strokeWidth="1.5" />
@@ -104,6 +246,22 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
               strokeDasharray="8,7"
             />
             <Line x1="0" y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#9BC4E8" strokeWidth="1.5" />
+
+            {/* Visible letter-size/spacing guide boxes — spatial guidance
+                only (no traced-letter answer). Below all ink/guide layers. */}
+            {letterBoxes.map(box => (
+              <Rect
+                key={`letter-box-${box.index}`}
+                x={box.x}
+                y={box.y}
+                width={box.width}
+                height={box.height}
+                rx={4}
+                fill="rgba(120,120,140,0.05)"
+                stroke="rgba(120,120,140,0.45)"
+                strokeWidth={1}
+              />
+            ))}
 
             {/* Reference-path guide — same LETTER_PATHS-based system as
                 letter tracing, instead of a flat ghost-text outline. */}
@@ -156,15 +314,28 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
         </View>
 
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
-            onPress={handleClear}
-            activeOpacity={0.72}
-            disabled={done}
-          >
-            <Ionicons name="refresh" size={16} color={theme.headingText} />
-            <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
-          </TouchableOpacity>
+          {result && !result.passed && result.completed && (
+            <Text accessibilityRole="alert" style={styles.retryText}>
+              Try once more
+            </Text>
+          )}
+          {/* The layout advisory is not rendered here any more. It travels
+              through onComplete to the avatar, which is the one place this
+              activity speaks to the child. */}
+          {saveError && <Text accessibilityRole="alert" style={styles.retryText}>{saveError}</Text>}
+          {canClearCanvas && (
+            <TouchableOpacity
+              style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
+              onPress={handleClear}
+              activeOpacity={0.72}
+              disabled={done}
+              accessibilityRole="button"
+              accessibilityLabel="Clear the canvas"
+            >
+              <Ionicons name="refresh" size={16} color={theme.headingText} />
+              <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[
@@ -173,10 +344,12 @@ export default function ExerciseE_WriteWord({ wordEntry, theme, onComplete }) {
             ]}
             onPress={handleDone}
             activeOpacity={0.82}
-            disabled={!hasDrawn || done}
+            disabled={!hasDrawn || done || submitting}
+            accessibilityRole="button"
+            accessibilityLabel="Submit this word attempt"
           >
             <Text style={[styles.doneText, { color: hasDrawn ? theme.buttonText : '#7B8190' }]}>
-              Done
+              {submitting ? 'Saving…' : 'Done'}
             </Text>
             {done && <Ionicons name="checkmark-circle" size={18} color={theme.buttonText} />}
           </TouchableOpacity>
@@ -195,20 +368,15 @@ const styles = StyleSheet.create({
     gap: 30,
     width: '100%',
   },
+  // MUST stay 170 — wordExerciseECanvas.IMAGE_COL_W derives CANVAS_W from it,
+  // and CANVAS_W/CANVAS_H are the coordinate space every stroke is stored in.
   leftCol: {
-    width: 170,
+    width: SUPPORT_IMAGE_COMPACT.paneWidth,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  imageBg: {
-    width: 150,
-    height: 150,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  imageBg: {},
   rightCol: {
     flex: 1,
     alignItems: 'center',
@@ -216,9 +384,18 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   instruction: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+  },
+  instructionSi: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.75,
     textAlign: 'center',
   },
   canvasCard: {
@@ -235,6 +412,14 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   actions: {
+    // Reserved BEFORE anything is in it. Clear appears on the first drawn
+    // point and Next when the finger lifts; without this the row grew twice
+    // mid-stroke and `mainRow` (flex: 1, centred) re-centred the canvas
+    // upward under the child's finger. See constants/writingActionRow.js.
+    minHeight: actionRowMinHeight({
+      // Clear is the taller child — 10px padding plus a 1.5px border.
+      maxButtonPaddingVertical: 10, maxButtonBorderWidth: 1.5,
+    }),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -252,6 +437,7 @@ const styles = StyleSheet.create({
   clearText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   doneBtn: {
     flexDirection: 'row',
@@ -264,5 +450,8 @@ const styles = StyleSheet.create({
   doneText: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
+  retryText: { color: '#B91C1C', fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', maxWidth: 210, textAlign: 'center' },
+  // Neutral (not red/error-styled) — an advisory, not a failure message.
 });

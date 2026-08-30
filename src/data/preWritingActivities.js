@@ -495,6 +495,20 @@ function selectPreWritingActivities(primitiveGroup, options = {}) {
   return candidates.slice(0, count);
 }
 
+// Feature 4 Step 5 — resolves a single activity object from the id a backend
+// recommendation returns (evaluatePreWritingRecommendation's `activityId`).
+// The backend only ever sends an id (Step 4's preWritingActivityCatalog.js
+// deliberately carries no rendering/path data) — this is the one place that
+// id is turned back into the real activity object (with target_shape,
+// prompt_text, etc.) this screen already knows how to render. Returns null,
+// never throws, for an unknown id — callers must treat that as "cannot
+// navigate" (Step 5 spec §18), never a crash and never a substituted
+// activity from a different group.
+function getPreWritingActivityById(activityId) {
+  if (typeof activityId !== 'string' || activityId.length === 0) return null;
+  return PRE_WRITING_ACTIVITIES.find(a => a.id === activityId) ?? null;
+}
+
 export {
   DEFAULT_N_POINTS,
   PRIMITIVE_GROUPS,
@@ -504,4 +518,5 @@ export {
   SKIP_RECENTLY_COMPLETED_DEFAULT,
   getLetterPrimitiveGroup,
   selectPreWritingActivities,
+  getPreWritingActivityById,
 };

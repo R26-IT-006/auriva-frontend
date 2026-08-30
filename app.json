@@ -39,11 +39,12 @@
       "expo-asset",
       "expo-font",
       "expo-secure-store",
+      "@react-native-community/datetimepicker",
       "expo-audio",
       "expo-video"
     ],
     "extra": {
-      "apiBaseUrl": "http://192.168.8.132:3000/api"
+      "apiBaseUrl": "http://10.15.2.86:3000/api"
     }
   }
 }

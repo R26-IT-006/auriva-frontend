@@ -33,6 +33,12 @@ function smoothnessLabel(s) {
 // ─── Motor Comfort Score ──────────────────────────────────────────────────────
 
 /**
+ * @deprecated Unused — superseded by computeUnifiedMotorReportScore() below,
+ * which generateReport() now calls instead. Kept temporarily (not deleted)
+ * pending verification of the new unified (invariant DTW + smoothness)
+ * scoring on a real device; remove in a follow-up once that's confirmed.
+ * Do not add new callers.
+ *
  * Computes a 0-100 motor comfort score from shape assessment smoothness data.
  * Formula:  avgStrokeScore × 0.6 + pauseBonus × 0.2 + consistencyBonus × 0.2
  * (When only smoothness data is available, strokeScore carries 100% weight.)
@@ -79,6 +85,97 @@ export function computeMotorComfortScore(assessmentData, motorProfile) {
     `The Motor Comfort Score (${avgScore}/100) is calculated from ${breakdown.length} shape exercises. ` +
     `Each shape is scored by stroke smoothness — the steadiness of the child's hand movement ` +
     `(0 = perfectly smooth, 1 = very shaky; converted to 0–100 where higher is better). ` +
+    `Best shape: ${best.shapeId} (${best.score}/100, ${best.label}). ` +
+    `Shape needing most practice: ${worst.shapeId} (${worst.score}/100, ${worst.label}). ` +
+    `${strengthHint} ` +
+    `Scores above 75 indicate good motor readiness for handwriting. ` +
+    `Below 50 suggests motor warm-up exercises before writing sessions.`;
+
+  return { score: avgScore, level, breakdown, explanation };
+}
+
+/**
+ * Computes the report's 0-100 motor score from each shape's unified
+ * motor_score (direction-/start-point-invariant DTW, 80% weight, plus
+ * stroke smoothness, 20% weight — see utils/unifiedShapeScoreMirror.js).
+ * Supersedes computeMotorComfortScore() above as the source generateReport()
+ * uses; same {score, level, breakdown, explanation} shape so
+ * computeProgressIndicators()/generateRecommendations() below need no
+ * changes.
+ *
+ * @param {Array}  assessmentData  [{ shapeId, features: { motor_score } }]
+ * @param {Object} motorProfile    { straightScore, curvedScore, primaryStrength }
+ * @returns {{ score, level, breakdown, explanation }}
+ */
+export function computeUnifiedMotorReportScore(assessmentData, motorProfile) {
+  if (!assessmentData || assessmentData.length === 0) {
+    return {
+      score: null,
+      level: 'No data',
+      breakdown: [],
+      explanation:
+        'Motor score could not be computed because no shape assessment data was found. ' +
+        'Ask the student to complete the initial shape drawing assessment first.',
+    };
+  }
+
+  const scoreLabel = (score) => {
+    if (score == null) return 'Not available';
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Moderate';
+    return 'Needs Practice';
+  };
+
+  // score stays null (never a fabricated 50) when a shape's motor_score is
+  // genuinely unavailable — the caller (backend getInitialReport, for
+  // historical assessments) fills it in with a real recomputed value from
+  // raw stroke data wherever it can; only truly unrecoverable shapes (no
+  // stroke_points AND no stored smoothness) come through as null here.
+  const breakdown = assessmentData.map(shape => {
+    const raw = shape.features?.motor_score;
+    const score = raw == null ? null : Math.round(raw);
+    // strokes carried through (already sent to the client by
+    // getInitialReport — nothing new exposed) so the teacher report can
+    // render a small preview of what the child actually drew, per shape.
+    return { shapeId: shape.shapeId ?? 'unknown', score, label: scoreLabel(score), strokes: shape.strokes ?? [] };
+  });
+
+  const realScores = breakdown.filter(b => b.score != null);
+
+  if (realScores.length === 0) {
+    return {
+      score: null,
+      level: 'No data',
+      breakdown,
+      explanation:
+        'Motor score could not be computed for any shape in this assessment — ' +
+        'the stored data for this attempt is incomplete (missing both a computed score ' +
+        'and enough raw stroke data to derive one).',
+    };
+  }
+
+  const avgScore = Math.round(realScores.reduce((s, b) => s + b.score, 0) / realScores.length);
+
+  let level;
+  if (avgScore >= 80) level = 'High Control';
+  else if (avgScore >= 60) level = 'Moderate Control';
+  else if (avgScore >= 40) level = 'Basic Control';
+  else level = 'Needs Support';
+
+  const best  = realScores.reduce((a, b) => a.score > b.score ? a : b);
+  const worst = realScores.reduce((a, b) => a.score < b.score ? a : b);
+  const missingCount = breakdown.length - realScores.length;
+
+  const strengthHint = motorProfile
+    ? `Their motor profile shows stronger ${motorProfile.primaryStrength === 'straight' ? 'straight-line' : 'curved'} strokes.`
+    : '';
+
+  const explanation =
+    `The Motor Score (${avgScore}/100) is calculated from ${realScores.length} of ${breakdown.length} shape exercises` +
+    `${missingCount > 0 ? ` (${missingCount} shape${missingCount === 1 ? '' : 's'} could not be scored and ${missingCount === 1 ? 'is' : 'are'} excluded)` : ''}, using ` +
+    `direction- and start-point-invariant DTW (how closely the traced shape matches the template's path, ` +
+    `80% weight) plus stroke smoothness (steadiness of the child's hand movement, 20% weight). ` +
     `Best shape: ${best.shapeId} (${best.score}/100, ${best.label}). ` +
     `Shape needing most practice: ${worst.shapeId} (${worst.score}/100, ${worst.label}). ` +
     `${strengthHint} ` +
@@ -159,6 +256,20 @@ export function computeLetterMetrics(letterProgressMap) {
  * @param {Object} wordProgress  { [letter]: [{ word, status }] }
  * @returns {{ byLetter, overall, explanation }}
  */
+/**
+ * The five word exercises, in order, with their teacher-facing names.
+ *
+ * Canonical: WordActivityScreen renders exactly these five (A -> Write First,
+ * B -> Circle Image, C -> Fill Blank, D -> Spell Word, E -> Write Word), and
+ * the teacher report reads the SAME map rather than keeping its own copy —
+ * which is how the report came to render only A-D and silently drop E, the
+ * exercise where the child writes the whole word.
+ */
+export const WORD_EXERCISE_KEYS = ['A', 'B', 'C', 'D', 'E'];
+export const WORD_EXERCISE_NAMES = Object.freeze({
+  A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It', E: 'Write the Word',
+});
+
 export function computeWordMastery(wordProgress) {
   const entries = Object.entries(wordProgress ?? {});
   if (entries.length === 0) {
@@ -171,12 +282,13 @@ export function computeWordMastery(wordProgress) {
     };
   }
 
-  const EXERCISE_NAMES = { A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It' };
+  const EXERCISE_NAMES = WORD_EXERCISE_NAMES;
 
   const byLetter = entries.map(([letter, words]) => {
     let correct = 0, good = 0, total = 0;
     const exBreakdown = { A: { correct: 0, good: 0, total: 0 }, B: { correct: 0, good: 0, total: 0 },
-                          C: { correct: 0, good: 0, total: 0 }, D: { correct: 0, good: 0, total: 0 } };
+                          C: { correct: 0, good: 0, total: 0 }, D: { correct: 0, good: 0, total: 0 },
+                          E: { correct: 0, good: 0, total: 0 } };
 
     words.forEach(w => {
       Object.entries(w.status).forEach(([ex, status]) => {
@@ -201,9 +313,13 @@ export function computeWordMastery(wordProgress) {
     return {
       letter, words: words.length, correct, good, total,
       accuracy, withHelp, masteryStatus, exBreakdown, bestEx, worstEx,
+      // `emoji` is NOT carried here. It never arrived: `words` is the
+      // backend's word-progress payload ({ word, status, updated_at }), so
+      // this field was always undefined and the report's picture had nothing
+      // to fall back to. The word itself is enough — utils/wordImageResolver
+      // looks up both the picture and the emoji from the canonical catalogue.
       wordList: words.map(w => ({
         word:   w.word,
-        emoji:  w.emoji,
         status: w.status,
         stars:  Object.values(w.status).filter(s => s === 'correct').length,
       })),
@@ -218,8 +334,8 @@ export function computeWordMastery(wordProgress) {
   const strongLetters= byLetter.filter(l => l.masteryStatus === 'Mastered').map(l => l.letter.toUpperCase());
 
   const explanation =
-    `Word activity accuracy is measured across 4 exercise types per word: First Letter (A), ` +
-    `Find the Picture (B), Fill the Gap (C), and Spell It (D). ` +
+    `Word activity accuracy is measured across 5 exercise types per word: First Letter (A), ` +
+    `Find the Picture (B), Fill the Gap (C), Spell It (D), and Write the Word (E). ` +
     `'Correct' = answered right on the first attempt; 'With help' = needed more tries. ` +
     `Overall accuracy: ${totalCorrect}/${totalEx} exercises correct (${overallPct}%). ` +
     `${strongLetters.length > 0 ? `Strong letters: ${strongLetters.join(', ')}. ` : ''}` +
@@ -329,8 +445,15 @@ export function generateRecommendations({ motorScore, letterMetrics, wordMastery
           `stroke smoothness by 15–30% within 2–4 sessions.`,
       });
     }
-    if (motorScore.breakdown) {
-      const worstShape = motorScore.breakdown.reduce((a, b) => a.score < b.score ? a : b);
+    // Filter to real (non-null) scores first — motorScore.breakdown can
+    // contain "Not available" entries (score: null) for shapes whose
+    // motor_score couldn't be computed even on read; without this filter,
+    // reduce's `a.score < b.score` would treat null as 0 and always pick
+    // an unavailable shape as "worst", generating a recommendation that
+    // cites "scored null/100".
+    const scoredShapes = (motorScore.breakdown ?? []).filter(b => b.score != null);
+    if (scoredShapes.length > 0) {
+      const worstShape = scoredShapes.reduce((a, b) => a.score < b.score ? a : b);
       if (worstShape.score < 65) {
         recs.push({
           priority: 'medium',
@@ -376,8 +499,8 @@ export function generateRecommendations({ motorScore, letterMetrics, wordMastery
 
   // Word activity recommendations
   if (wordMastery?.byLetter?.length > 0) {
-    const weakEx = { A: 0, B: 0, C: 0, D: 0 };
-    const exNames = { A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It' };
+    const weakEx = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    const exNames = { A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It', E: 'Write the Word' };
     wordMastery.byLetter.forEach(l => {
       Object.entries(l.exBreakdown).forEach(([ex, v]) => {
         if (v.total > 0 && (v.correct / v.total) < 0.6) weakEx[ex]++;
@@ -454,7 +577,7 @@ export function computeMotorDifficulty(assessmentData, letterMetrics, motorScore
  * Master entry point — computes the complete report.
  */
 export function generateReport({ assessmentData, motorProfile, letterProgressMap, wordProgress, completedLetters, student }) {
-  const motorScore         = computeMotorComfortScore(assessmentData, motorProfile);
+  const motorScore         = computeUnifiedMotorReportScore(assessmentData, motorProfile);
   const letterMetrics      = computeLetterMetrics(letterProgressMap);
   const wordMastery        = computeWordMastery(wordProgress);
   const progressIndicators = computeProgressIndicators({ motorScore, letterMetrics, wordMastery, completedLetters });

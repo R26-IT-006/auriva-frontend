@@ -1,48 +1,67 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import WordImageDisplay from './WordImageDisplay';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+import { ANSWER_IMAGE, BODY } from './wordActivityLayout';
+import { isHintUnlocked, unlocksHint, HINT_REVEAL_DELAY_MS, HINT_COLORS }
+  from './wordHintPolicy';
+import { ANSWER_FEEDBACK_COLORS, shuffleSameOptions } from './wordAnswerFeedback';
 
-export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onComplete }) {
+// Shared with every other screen that asks for this action, so the child
+// hears one sentence for one task — and one future recording covers it.
+const ACTIVITY_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.CHOOSE_PICTURE];
+
+export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onComplete, onWrongAnswer, onCorrectAnswer }) {
   const { word, emoji, imageKey } = wordEntry;
 
-  const options = useMemo(() => {
+  const initialOptions = useMemo(() => {
     const others = allWords
       .filter(w => w.word !== word)
       .sort(() => Math.random() - 0.5)
       .slice(0, 3);
     return [...others, wordEntry].sort(() => Math.random() - 0.5);
   }, [word]);
+  const [options, setOptions] = useState(initialOptions);
 
   const [wrongCount, setWrongCount] = useState(0);
   const [done,       setDone]       = useState(false);
+  const [inputLocked, setInputLocked] = useState(false);
+  const inputLockRef = useRef(false);
+  const [verdict, setVerdict] = useState(null);
 
-  const scaleAnims = useRef(options.map(() => new Animated.Value(1))).current;
+  // The hint waits for the second wrong answer's feedback to finish, so the
+  // child sees the verdict on their own answer before the support appears.
+  const [hintReady, setHintReady] = useState(false);
+  const hintTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(hintTimerRef.current), []);
 
-  function bounce(idx) {
-    Animated.sequence([
-      Animated.timing(scaleAnims[idx], { toValue: 1.15, duration: 120, useNativeDriver: true }),
-      Animated.timing(scaleAnims[idx], { toValue: 1,    duration: 120, useNativeDriver: true }),
-    ]).start();
-  }
+  const showHint = isHintUnlocked(wrongCount) && hintReady;
 
-  function shake(idx) {
-    Animated.sequence([
-      Animated.timing(scaleAnims[idx], { toValue: 0.88, duration: 80,  useNativeDriver: true }),
-      Animated.timing(scaleAnims[idx], { toValue: 1,    duration: 160, useNativeDriver: true }),
-    ]).start();
-  }
-
-  const showHint = wrongCount >= 2;
-
-  function handlePress(opt, idx) {
-    if (done) return;
+  async function handlePress(opt) {
+    if (done || inputLockRef.current) return;
+    inputLockRef.current = true;
     if (opt.word === word) {
       setDone(true);
-      bounce(idx);
-      setTimeout(() => onComplete(wrongCount === 0), 600);
+      setInputLocked(true);
+      setVerdict({ id: opt.word, correct: true });
+      await Promise.resolve(onCorrectAnswer?.());
+      onComplete(wrongCount === 0);
     } else {
-      shake(idx);
-      setWrongCount(w => w + 1);
+      setInputLocked(true);
+      setVerdict({ id: opt.word, correct: false });
+      const feedbackDone = onWrongAnswer?.(); // verdict on THIS answer: wrong.gif
+      setWrongCount((w) => {
+        const next = w + 1;                 // answers only
+        if (unlocksHint(next)) {
+          hintTimerRef.current = setTimeout(() => setHintReady(true), HINT_REVEAL_DELAY_MS);
+        }
+        return next;
+      });
+      await Promise.resolve(feedbackDone);
+      setVerdict(null);
+      setOptions(current => shuffleSameOptions(current));
+      inputLockRef.current = false;
+      setInputLocked(false);
     }
   }
 
@@ -61,40 +80,47 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
 
       <View style={styles.taskPane}>
         <Text style={[styles.instruction, { color: theme.headingText }]}>
-          Find the picture for this word
+          {ACTIVITY_INSTRUCTION.en}
+        </Text>
+        <Text style={[styles.instructionSi, { color: theme.headingText }]}>
+          {ACTIVITY_INSTRUCTION.si}
         </Text>
 
         <View style={styles.grid}>
-          {options.map((opt, idx) => {
+          {options.map((opt) => {
             const isCorrect = opt.word === word;
             const isHinted  = showHint && isCorrect;
-            const isDone    = done && isCorrect;
+            const isVerdict = verdict?.id === opt.word;
+            const isWrong = isVerdict && !verdict.correct;
+            const isRight = isVerdict && verdict.correct;
 
             return (
-              <Animated.View
-                key={opt.word}
-                style={{ transform: [{ scale: scaleAnims[idx] }] }}
-              >
+              <View key={opt.word}>
                 <TouchableOpacity
                   style={[
                     styles.cell,
-                    isDone   && styles.cellCorrect,
+                    isWrong  && styles.cellWrong,
+                    isRight  && styles.cellCorrect,
                     isHinted && styles.cellHint,
                   ]}
-                  onPress={() => handlePress(opt, idx)}
+                  onPress={() => handlePress(opt)}
                   activeOpacity={0.8}
-                  disabled={done}
+                  disabled={done || inputLocked}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt.word}
+                  accessibilityHint={isHinted ? 'Hint: this is the answer' : undefined}
+                  accessibilityState={{ disabled: done || inputLocked }}
                 >
-                  <WordImageDisplay imageKey={opt.imageKey} emoji={opt.emoji} size={118} />
+                  <WordImageDisplay imageKey={opt.imageKey} emoji={opt.emoji} size={ANSWER_IMAGE.imageSize} />
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
             );
           })}
         </View>
 
-        {showHint && !done && (
-          <Text style={styles.hintLabel}>Tap the glowing picture!</Text>
-        )}
+        {/* The hint used to add a SECOND instruction here saying the same
+            thing as the one above. The visual cue — the glow driven by
+            showHint — is unchanged; only the duplicate wording is gone. */}
       </View>
     </View>
   );
@@ -106,7 +132,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 34,
+    gap: BODY.columnGap,
     width: '100%',
   },
   wordPane: {
@@ -122,9 +148,18 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   instruction: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+  },
+  instructionSi: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.75,
     textAlign: 'center',
   },
   wordChip: {
@@ -144,15 +179,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 14,
-    maxWidth: 320,
+    gap: ANSWER_IMAGE.gap,
+    // Was 320 — a cap well under the room this column actually has, in the
+    // most image-dependent activity of the five. Two columns of four still
+    // fit without scrolling.
+    maxWidth: ANSWER_IMAGE.gridMaxWidth,
   },
   cell: {
-    borderRadius: 18,
-    borderWidth: 3,
-    borderColor: '#E0E0E0',
-    padding: 8,
-    backgroundColor: '#FAFAFA',
+    borderRadius: ANSWER_IMAGE.radius,
+    // Was a 3px #E0E0E0 border on a grey #FAFAFA fill — a heavy frame around
+    // every answer. A hairline on white lets the picture be the answer.
+    borderWidth: ANSWER_IMAGE.borderWidth,
+    borderColor: '#ECEFF3',
+    padding: ANSWER_IMAGE.cellPadding,
+    backgroundColor: '#FFFFFF',
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -160,16 +200,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   cellCorrect: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#E8F5E9',
+    borderColor: ANSWER_FEEDBACK_COLORS.correctBorder,
+    backgroundColor: ANSWER_FEEDBACK_COLORS.correctSurface,
+  },
+  cellWrong: {
+    borderColor: ANSWER_FEEDBACK_COLORS.wrongBorder,
+    backgroundColor: ANSWER_FEEDBACK_COLORS.wrongSurface,
   },
   cellHint: {
-    borderColor: '#FFB300',
-    backgroundColor: '#FFF9C4',
-  },
-  hintLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#E65100',
+    borderColor: HINT_COLORS.border,
+    backgroundColor: HINT_COLORS.surface,
   },
 });

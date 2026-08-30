@@ -15,16 +15,40 @@ import { useFocusEffect } from '@react-navigation/native';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
 import { LETTER_CATEGORIES } from '../../../data/letterCategories';
-import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../../data/preWritingActivities';
+import {
+  createPreWritingInteractionId, markWarmupHandled, buildPreWritingNavigationParams, PRE_WRITING_REASON,
+} from '../../../utils/preWritingSessionGuard';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
+// Demo preview switch - see constants/demoAccess.js. Does NOT change the
+// lowercaseDone rule below; it only decides whether a not-yet-earned card can
+// be opened, and makes that state visible rather than silent.
+import {
+  canOpen, isPreview, PREVIEW_BADGE, UPPERCASE_ORDER_CAPTION,
+} from '../../../constants/demoAccess';
+import ScreenBackButton from '../../../components/handwriting/ScreenBackButton';
+import useGatedBack from '../../../utils/useGatedBack';
 
 const AVATAR_MAP = {
-  boba:     require('../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../assets/avatar-images/Megatron.png'),
+  boba:     require('../../../../assets/handwriting-avatars/Boba.png'),
+  glitter:  require('../../../../assets/handwriting-avatars/Glitter.png'),
+  lily:     require('../../../../assets/handwriting-avatars/Lily.png'),
+  megatron: require('../../../../assets/handwriting-avatars/Megatron.png'),
 };
 
 export default function LetterPracticeScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => (
+    navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LetterHome', { student, theme })
+  ));
+
   const { student, theme, letterSequence = [], motorProfile = null } = route.params;
   const { width } = useWindowDimensions();
 
@@ -35,29 +59,26 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
   const closePicker = () => { setPickerCase(null); setPickerCategory(null); };
 
-  // Before entering LetterWriting/UppercaseWriting, check whether the first
-  // letter the child is about to write shares a motor primitive (curved,
-  // diagonal, vertical/horizontal) with a pre-writing warm-up group — if so,
-  // detour through a short warm-up first. Falls straight through to the
-  // letter screen unchanged when there's nothing to warm up for (mixed
-  // letters, or an unrecognised/empty sequence), so a disabled/failed
-  // pre-writing feature never blocks normal practice.
-  const goToLetterScreen = (caseType, params, seq) => {
+  // Straight into the letter screen. A warm-up marks a CHANGE of motor
+  // primitive, and the first letter of a sequence changes from nothing — so
+  // index 0 never warms up, whatever category it happens to be.
+  //
+  // This used to detour unconditionally for sequence[0], and when the
+  // sequence was missing it invented a first letter from
+  // `categoryOrder?.[0] ?? 'straight'` — which is why a straight warm-up
+  // appeared at the start regardless of the real first category. A previous
+  // group is never inferred now; see utils/preWritingTransition.js. The
+  // mid-sequence transitions the writing screens detect are unaffected.
+  const goToLetterScreen = (caseType, params) => {
     const screen = caseType === 'lowercase' ? 'LetterWriting' : 'UppercaseWriting';
 
-    const firstLetter = seq?.[0]?.letter
-      ?? LETTER_CATEGORIES[caseType]?.[params.motorProfile?.categoryOrder?.[0] ?? 'straight']?.[0]?.letter
-      ?? null;
-    const group = firstLetter ? getLetterPrimitiveGroup(firstLetter) : null;
-    const activities = group ? selectPreWritingActivities(group) : [];
-
-    if (activities.length > 0) {
-      navigation.navigate('PreWritingActivity', {
-        student, theme, activities, nextRoute: screen, nextParams: params,
-      });
-    } else {
-      navigation.navigate(screen, params);
-    }
+    // Feature 4 Step 3: a fresh interaction id per "start writing" action —
+    // never per letter, never per render.
+    const interactionId = createPreWritingInteractionId();
+    // Names this screen as where Back should return to, so a flow that
+    // detours through warm-ups still comes back HERE rather than to whatever
+    // stale frame the detours left behind. See utils/backToOrigin.js.
+    navigation.navigate(screen, { ...params, interactionId, originRoute: 'LetterPractice' });
   };
 
   const navigateToWriting = (ct, seq) => {
@@ -65,7 +86,7 @@ export default function LetterPracticeScreen({ route, navigation }) {
     const params = ct === 'lowercase'
       ? { student, theme, caseType: 'lowercase', letterSequence: seq }
       : { student, theme, letterSequence: seq };
-    goToLetterScreen(ct, params, seq);
+    goToLetterScreen(ct, params);
   };
 
   const handleCategoryPick = (category) => {
@@ -75,7 +96,7 @@ export default function LetterPracticeScreen({ route, navigation }) {
       const params = ct === 'lowercase'
         ? { student, theme, caseType: 'lowercase', letterSequence, motorProfile }
         : { student, theme, letterSequence, motorProfile };
-      goToLetterScreen(ct, params, letterSequence);
+      goToLetterScreen(ct, params);
     } else {
       setPickerCategory(category);
     }
@@ -96,8 +117,24 @@ export default function LetterPracticeScreen({ route, navigation }) {
     }, [student.sid])
   );
 
-  const lowercaseDone    = true;
+  // Uppercase progression fix — previously hardcoded `true`, meaning
+  // uppercase was never actually gated regardless of lowercase progress.
+  // lowercaseProgress is itself already the authoritative backend count
+  // (LETTER_PROGRESS's lowercase_completed = LetterProgress.count({case_type:
+  // 'lowercase'}) — see handwritingController.getProgress) — never derived
+  // from frontend AsyncStorage. Mirrors ProgressReportScreen.js's own
+  // identical `lowercase >= 26` gate, so both screens agree on what "done"
+  // means. LetterProgress's own unique(student_id, letter, case_type) index
+  // guarantees this count can never exceed 26, so >= and === are equivalent
+  // here; >= is used defensively, matching the sibling screen's convention.
+  const lowercaseDone    = lowercaseProgress >= 26;
+  // `lowercaseDone` still means EARNED, and still drives how the pill looks.
+  // These two only decide whether it opens, and whether it says so.
+  const uppercaseOpen    = canOpen(lowercaseDone);
+  const uppercasePreview = isPreview(lowercaseDone);
   const lowercasePercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
+  const uppercasePercent = Math.min(100, Math.round((uppercaseProgress / 26) * 100));
+  const avatarSource = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
   return (
     <LinearGradient
@@ -124,15 +161,17 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
+          {/* Gated: leaving is an adult decision, so the tap opens the parent
+              gate rather than navigating. See utils/useGatedBack.js. */}
           <View style={styles.nameRow}>
-            <View style={[styles.avatarRing, { borderColor: theme.button + '40' }]}>
-              <Image
-                source={AVATAR_MAP[student?.avatar_key]}
-                style={styles.avatarImg}
-                resizeMode="contain"
-              />
-            </View>
-            <View>
+            <ScreenBackButton
+              onPress={requestBack}
+              gated
+              tint={theme.button}
+              color={theme.button}
+              style={{ marginRight: 2 }}
+            />
+            <View style={styles.headerTextBlock}>
               <Text style={[styles.studentName, { color: theme.headingText }]}>
                 {student?.full_name}
               </Text>
@@ -147,13 +186,13 @@ export default function LetterPracticeScreen({ route, navigation }) {
               theme,
               lowercaseProgress,
               uppercaseProgress,
+              letterSequence,
+              originRoute: 'LetterPractice',
             })}
             activeOpacity={0.8}
           >
             <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
-            <Text style={[styles.reportBtnText, { color: theme.buttonText }]}>
-              View Progress Report
-            </Text>
+            <Text style={[styles.reportBtnText, { color: theme.buttonText }]}>View Letter Progress</Text>
           </TouchableOpacity>
         </View>
 
@@ -162,17 +201,17 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
           {/* Hero section */}
           <View style={styles.heroSection}>
-            <Image
-              source={AVATAR_MAP[student?.avatar_key]}
-              style={styles.heroAvatar}
-              resizeMode="contain"
-            />
-            <Text style={[styles.heroGreeting, { color: theme.headingText }]}>
-              Choose your practice!
-            </Text>
-            <Text style={[styles.heroSubtitle, { color: theme.button }]}>
-              What would you like to write today?
-            </Text>
+            <View style={styles.heroTextBlock}>
+              <Text style={[styles.heroGreeting, { color: theme.headingText }]}>Choose your practice!</Text>
+              <Text style={[styles.heroSubtitle, { color: theme.button }]}>What would you like to write today?</Text>
+            </View>
+            <View style={styles.heroAvatarCard}>
+              <Image
+                source={avatarSource}
+                style={styles.heroAvatar}
+                resizeMode="contain"
+              />
+            </View>
           </View>
 
           {/* ── Card ── */}
@@ -180,17 +219,40 @@ export default function LetterPracticeScreen({ route, navigation }) {
 
             {/* Progress section */}
             <View style={styles.progressSection}>
-              <View style={styles.progressHeader}>
-                <View style={styles.progressHeaderLeft}>
-                  <Ionicons name="trophy-outline" size={18} color="#F57F17" />
-                  <Text style={styles.progressHeaderText}>
-                    Lowercase: {lowercaseProgress} / 26 completed
+              <View style={styles.progressCaseBlock}>
+                <View style={styles.progressHeader}>
+                  <View style={styles.progressHeaderLeft}>
+                    <Ionicons name="trophy-outline" size={18} color="#F57F17" />
+                    <Text style={styles.progressHeaderText}>
+                      Lowercase: {lowercaseProgress} / 26 completed
+                    </Text>
+                  </View>
+                  <Text style={styles.progressPercent}>{lowercasePercent}%</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${lowercasePercent}%` }]} />
+                </View>
+              </View>
+
+              <View style={styles.progressCaseBlock}>
+                <View style={styles.progressHeader}>
+                  <View style={styles.progressHeaderLeft}>
+                    <Ionicons name="arrow-up-circle-outline" size={18} color="#9575CD" />
+                    <Text style={styles.progressHeaderText}>
+                      Uppercase: {uppercaseProgress} / 26 completed
+                    </Text>
+                  </View>
+                  <Text style={[styles.progressPercent, styles.uppercaseProgressPercent]}>
+                    {uppercasePercent}%
                   </Text>
                 </View>
-                <Text style={styles.progressPercent}>{lowercasePercent}%</Text>
-              </View>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${lowercasePercent}%` }]} />
+                <View style={styles.progressTrack}>
+                  <View style={[
+                    styles.progressFill,
+                    styles.uppercaseProgressFill,
+                    { width: `${uppercasePercent}%` },
+                  ]} />
+                </View>
               </View>
             </View>
 
@@ -214,31 +276,56 @@ export default function LetterPracticeScreen({ route, navigation }) {
                 <Text style={styles.pillSubLabel}>{lowercaseProgress} / 26 done</Text>
               </TouchableOpacity>
 
-              {/* Uppercase — locked until lowercase done */}
+              {/* Uppercase - earned once all 26 lowercase letters are done.
+                  In a demo build it can also be opened early, and then it
+                  wears its own calm "Preview" state: not dressed up as
+                  earned, not left looking dead. */}
               <TouchableOpacity
-                style={[styles.uppercasePill, !lowercaseDone && styles.uppercaseLocked]}
-                onPress={() => lowercaseDone && goToLetterScreen('uppercase',
+                style={[
+                  styles.uppercasePill,
+                  !lowercaseDone && !uppercasePreview && styles.uppercaseLocked,
+                  uppercasePreview && styles.previewPill,
+                ]}
+                onPress={() => uppercaseOpen && goToLetterScreen('uppercase',
                   { student, theme, letterSequence, motorProfile },
                   letterSequence,
                 )}
                 onLongPress={() => setPickerCase('uppercase')}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  lowercaseDone ? 'Uppercase'
+                    : `Uppercase, preview. ${UPPERCASE_ORDER_CAPTION}`
+                }
               >
                 <View style={[
                   styles.pillIconCircle,
-                  { backgroundColor: lowercaseDone ? '#CE93D8' : '#E0E0E0' },
+                  { backgroundColor: lowercaseDone ? '#CE93D8' : (uppercasePreview ? '#EDE0F3' : '#E0E0E0') },
                 ]}>
                   <Ionicons
-                    name={lowercaseDone ? 'arrow-up-circle-outline' : 'lock-closed'}
+                    name={uppercaseOpen ? 'arrow-up-circle-outline' : 'lock-closed'}
                     size={32}
-                    color={lowercaseDone ? '#4A148C' : '#9E9E9E'}
+                    color={lowercaseDone ? '#4A148C' : (uppercasePreview ? '#9575CD' : '#9E9E9E')}
                   />
                 </View>
-                <Text style={[styles.uppercaseTitle, !lowercaseDone && styles.lockedText]}>
+                <Text style={[
+                  styles.uppercaseTitle,
+                  !lowercaseDone && !uppercasePreview && styles.lockedText,
+                  uppercasePreview && styles.previewTitle,
+                ]}>
                   Uppercase
                 </Text>
                 {lowercaseDone ? (
                   <Text style={styles.pillSubLabel}>Ready to go!</Text>
+                ) : uppercasePreview ? (
+                  <>
+                    <View style={styles.previewBadge}>
+                      <Text style={styles.previewBadgeText}>{PREVIEW_BADGE}</Text>
+                    </View>
+                    {/* One short line, present tense, says what comes first
+                        rather than what is forbidden. */}
+                    <Text style={styles.previewCaption}>{UPPERCASE_ORDER_CAPTION}</Text>
+                  </>
                 ) : (
                   <Text style={[styles.pillSubLabel, styles.lockedSubLabel]}>
                     Finish all lowercase{'\n'}letters to unlock
@@ -340,6 +427,10 @@ export default function LetterPracticeScreen({ route, navigation }) {
         </Modal>
 
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }
@@ -371,30 +462,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 22,
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
-  avatarRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: 'center',
+  headerTextBlock: {
     justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
   },
   studentName: {
     fontSize: 17,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   studentSubLabel: {
     fontSize: 12,
@@ -405,70 +486,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
   },
   reportBtnText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
-
   // Main content
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
-    paddingBottom: 24,
-    gap: 20,
+    paddingBottom: 18,
+    gap: 14,
   },
 
   // Hero section
   heroSection: {
+    width: '100%',
+    maxWidth: 680,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 20,
+  },
+  heroTextBlock: {
+    flex: 1,
+    alignItems: 'flex-start',
+    paddingLeft: 28,
+  },
+  heroAvatarCard: {
+    width: 260,
+    height: 210,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroAvatar: {
-    width: 100,
-    height: 100,
-    marginBottom: 4,
+    width: '100%',
+    height: '100%',
   },
   heroGreeting: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '900',
-    textAlign: 'center',
+    fontFamily: 'Nunito_900Black',
+    textAlign: 'left',
     letterSpacing: 0.3,
   },
   heroSubtitle: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '600',
-    textAlign: 'center',
+    fontFamily: 'Nunito_600SemiBold',
+    textAlign: 'left',
     opacity: 0.85,
+    marginTop: 6,
   },
 
   // Card
   card: {
     width: '100%',
-    maxWidth: 580,
+    maxWidth: 680,
+    minHeight: 350,
     backgroundColor: '#FFFFFF',
     borderRadius: 26,
-    padding: 24,
+    padding: 30,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
-    gap: 18,
+    gap: 22,
   },
 
   // Progress section
   progressSection: {
+    gap: 14,
+  },
+  progressCaseBlock: {
     gap: 8,
   },
   progressHeader: {
@@ -484,11 +586,13 @@ const styles = StyleSheet.create({
   progressHeaderText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#444444',
   },
   progressPercent: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#4CAF50',
   },
   progressTrack: {
@@ -503,6 +607,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     borderRadius: 5,
   },
+  uppercaseProgressPercent: {
+    color: '#9575CD',
+  },
+  uppercaseProgressFill: {
+    backgroundColor: '#9575CD',
+  },
 
   // Pills row
   pillsRow: {
@@ -515,9 +625,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F1F8E9',
     borderRadius: 22,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    minHeight: 190,
+    paddingVertical: 28,
+    paddingHorizontal: 22,
+    minHeight: 220,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
@@ -540,12 +650,14 @@ const styles = StyleSheet.create({
   lowercaseTitle: {
     fontSize: 22,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#2E7D32',
   },
   pillSubLabel: {
     fontSize: 13,
     color: '#555555',
     fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -555,9 +667,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3E5F5',
     borderRadius: 22,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    minHeight: 190,
+    paddingVertical: 28,
+    paddingHorizontal: 22,
+    minHeight: 220,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
@@ -569,6 +681,31 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  // Preview state: a soft, unalarming middle ground between earned and
+  // locked. Same size and position as both, so the layout never shifts.
+  previewPill: {
+    backgroundColor: '#FAF6FD',
+    borderWidth: 1.5,
+    borderColor: '#D9C7E8',
+    borderStyle: 'dashed',
+  },
+  previewTitle:  { color: '#7E57C2' },
+  previewBadge:  {
+    marginTop: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#EDE0F3',
+  },
+  previewBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: '#7E57C2', letterSpacing: 0.3 },
+  previewCaption: {
+    fontSize: 11,
+    color: '#8A7B96',
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 6,
+  },
+
   uppercaseLocked: {
     backgroundColor: '#F8F8F8',
     borderColor: '#DDDDDD',
@@ -578,6 +715,7 @@ const styles = StyleSheet.create({
   uppercaseTitle: {
     fontSize: 22,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#4A148C',
   },
   lockedText: {
@@ -609,6 +747,7 @@ const styles = StyleSheet.create({
   pickerTitle: {
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#333333',
     textAlign: 'center',
     marginBottom: 4,
@@ -626,12 +765,14 @@ const styles = StyleSheet.create({
   pickerBtnText: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     flex: 1,
   },
   pickerCount: {
     fontSize: 12,
     color: '#888888',
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   pickerCancel: {
     alignSelf: 'center',
@@ -642,6 +783,7 @@ const styles = StyleSheet.create({
   pickerCancelText: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#999999',
   },
   letterGrid: {
@@ -664,6 +806,7 @@ const styles = StyleSheet.create({
   letterTileText: {
     fontSize: 24,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#333333',
   },
 });

@@ -3,14 +3,18 @@ const { getDefaultConfig } = require('expo/metro-config');
 const config = getDefaultConfig(__dirname);
 
 // Ensure Metro bundles video files referenced via require()
-if (!config.resolver.assetExts.includes('mp4')) {
-  config.resolver.assetExts.push('mp4');
+for (const ext of ['mp4', 'mov']) {
+  if (!config.resolver.assetExts.includes(ext)) {
+    config.resolver.assetExts.push(ext);
+  }
 }
-if (!config.resolver.assetExts.includes('mov')) {
-  config.resolver.assetExts.push('mov');
-}
+
 // Allow Metro to bundle 3D model files
-config.resolver.assetExts = [...config.resolver.assetExts, 'glb', 'gltf', 'bin'];
+for (const ext of ['glb', 'gltf', 'bin']) {
+  if (!config.resolver.assetExts.includes(ext)) {
+    config.resolver.assetExts.push(ext);
+  }
+}
 
 const escapedRoot = __dirname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

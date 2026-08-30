@@ -15,6 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { getAllWordProgress } from '../../../../utils/storage';
+import { fetchWordProgress } from '../../../../utils/wordApi';
+import { buildWordRouteParams, getSelectedWords } from '../../../../utils/wordWorkflow';
+import { filterUnfinishedWords } from '../../../../utils/wordCompletionHistory';
+import { computeWordLetterUnlocks } from '../../../../utils/wordLetterUnlockPolicy';
+import { useLockLandscape } from '../../../../utils/useOrientationLock';
+import useGatedBack from '../../../../utils/useGatedBack';
+import { useToast } from '../../../../context/ToastContext';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -30,6 +37,10 @@ const CARD_SIZE  = Math.floor(
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+// Shown when a letter has no unfinished words left. Neutral and final —
+// it is an achievement, not an error, and there is nothing to retry.
+const ALL_WORDS_COMPLETED = 'All words completed!';
 
 // ASD-friendly pastel palette — cycles per letter index
 const PALETTE = [
@@ -50,19 +61,47 @@ const AVATAR_MAP = {
   megatron: require('../../../../../assets/avatar-images/Megatron.png'),
 };
 
-// ─── Unlock logic ─────────────────────────────────────────────────────────────
+// ─── Unlock logic ────────────────────────────────────────────────────────────
 
-function computeUnlocked() {
-  const map = {};
-  LETTERS.forEach(letter => { map[letter] = true; });
-  return map;
-}
+// ─── Unlock logic ─────────────────────────────────────────────────────────────
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function WordLetterSelectScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
+
+  // The Progress Report is a teacher-facing surface, so it sits behind the
+  // same parent gate the back button uses  -  the useGatedBack(action) form
+  // TeacherReportScreen.js already uses for its own non-back actions.
+  //
+  // Both of these were REFERENCED below and declared nowhere, so evaluating
+  // the top bar threw a ReferenceError and the chooser could not render.
+  //
+  // The destination is TeacherReport - the same route LetterHomeScreen's own
+  // gated progress action uses, with the same { student, theme, originRoute }
+  // params. Only the BUTTON'S LABEL changed in this phase; the screen behind
+  // it is unchanged, and no second report screen was introduced.
+  const {
+    requestBack: requestTeacherReport,
+    gateModal: teacherReportGateModal,
+  } = useGatedBack(() => navigation.navigate('TeacherReport', {
+    student,
+    theme,
+    originRoute: 'WordLetterSelect',
+  }));
+
   const { student, theme } = route.params;
 
+  const { show } = useToast();
   const [wordProgress, setWordProgress] = useState({});
   const globalPulse = useRef(new Animated.Value(1)).current;
   const pulseLoop   = useRef(null);
@@ -79,18 +118,31 @@ export default function WordLetterSelectScreen({ route, navigation }) {
     return () => pulseLoop.current?.stop();
   }, []);
 
-  // Reload progress whenever screen comes into focus
+  // Reload progress whenever screen comes into focus — server-backed
+  // (final-completion-pass fix, section 24/37: this previously read a local
+  // AsyncStorage snapshot via getAllWordProgress(student?.sid ?? 0), which
+  // both used the `?? 0` cross-student-unsafe fallback this task explicitly
+  // flags and could drift from the real per-student progress across devices
+  // or a cleared app cache. Matches WordProgressScreen's own established
+  // fetchWordProgress + try/catch pattern.
   useFocusEffect(
     useCallback(() => {
-      getAllWordProgress(student?.sid ?? 0).then(data => {
-        setWordProgress(data ?? {});
-      });
+      let active = true;
+      (async () => {
+        try {
+          const authoritative = await fetchWordProgress(student);
+          if (active) setWordProgress(authoritative ?? {});
+        } catch {
+          if (active) setWordProgress({});
+        }
+      })();
+      return () => { active = false; };
     }, [student?.sid])
   );
 
-  const unlocked     = computeUnlocked();
+  const unlocked     = computeWordLetterUnlocks(wordProgress);
   const doneCount    = LETTERS.filter(l => !!wordProgress[l.toLowerCase()]).length;
-  const progressText = `${doneCount} / ${LETTERS.length} letters`;
+  const progressText = `${doneCount} / ${LETTERS.length} letters started`;
 
   return (
     <LinearGradient
@@ -105,7 +157,7 @@ export default function WordLetterSelectScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.28)' }]}
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityLabel="Go back"
           >
@@ -118,19 +170,19 @@ export default function WordLetterSelectScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.topOutlineBtn, { borderColor: theme.button, backgroundColor: theme.button + '14' }]}
               onPress={() => navigation.navigate('WordProgress', { student, theme })}
-              accessibilityLabel="View rewards"
+              accessibilityLabel="Word Progress"
             >
               <Ionicons name="ribbon-outline" size={14} color={theme.button} />
-              <Text style={[styles.topOutlineBtnText, { color: theme.button }]}>Rewards</Text>
+              <Text style={[styles.topOutlineBtnText, { color: theme.button }]}>Word Progress</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.topFilledBtn, { backgroundColor: theme.button }]}
-              onPress={() => navigation.navigate('TeacherReport', { student, theme })}
-              accessibilityLabel="Teacher report"
+              onPress={requestTeacherReport}
+              accessibilityLabel="Progress Report - needs a code"
             >
               <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
-              <Text style={[styles.topFilledBtnText, { color: theme.buttonText }]}>Teacher</Text>
+              <Text style={[styles.topFilledBtnText, { color: theme.buttonText }]}>Progress Report</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -180,9 +232,31 @@ export default function WordLetterSelectScreen({ route, navigation }) {
                 globalPulse={globalPulse}
                 theme={theme}
                 onPress={() => {
-                  if (isUnlocked) {
-                    navigation.navigate('WordWriting', { student, theme, letter: letter.toLowerCase() });
+                  if (!isUnlocked) return;
+                  const selectedLetter = letter.toLowerCase();
+                  // Words the child has already finished are dropped HERE,
+                  // as the sequence is built — never mid-flow, so an A-E run
+                  // already under way is untouched even if it completes the
+                  // word it is on. `wordProgress` is the authoritative
+                  // server payload this screen already loads on focus.
+                  const selectedWords = filterUnfinishedWords(
+                    getSelectedWords(selectedLetter), wordProgress, selectedLetter,
+                  );
+
+                  if (selectedWords.length === 0) {
+                    // Every word for this letter is done. Stay on the chooser
+                    // rather than opening an empty flow or repeating one.
+                    show(ALL_WORDS_COMPLETED, 'success');
+                    return;
                   }
+
+                  navigation.navigate('WordWriting', buildWordRouteParams({
+                    student,
+                    theme,
+                    selectedLetter,
+                    selectedWords,
+                    currentWordIndex: 0,
+                  }));
                 }}
               />
             );
@@ -190,6 +264,13 @@ export default function WordLetterSelectScreen({ route, navigation }) {
         </ScrollView>
 
       </SafeAreaView>
+
+      {/* Parent gates for the back button and the Teacher-report button.
+          Rendered once each, at the end of the tree, so they overlay the
+          whole screen. Only one can be visible at a time — each is opened
+          by its own button and closes itself on success or cancel. */}
+      {gateModal}
+      {teacherReportGateModal}
     </LinearGradient>
   );
 }
@@ -202,10 +283,33 @@ function LetterCard({ letter, isUnlocked, progress, palette, globalPulse, theme,
     : 0;
 
   if (!isUnlocked) {
+    // A locked letter keeps ITS OWN card  -  same pastel fill, same border,
+    // same big letter in the same colour. Locking is a small badge in the
+    // corner and a softer letter, not a grey rectangle: the alphabet should
+    // still read as the same friendly grid whether or not it is open yet.
+    //
+    // No stars, no press, and no breathing animation  -  the pulse belongs to
+    // the cards a child can actually tap.
     return (
-      <View style={[styles.card, styles.cardLocked]}>
-        <Text style={styles.letterLocked}>{letter}</Text>
-        <Ionicons name="lock-closed" size={IS_TABLET ? 14 : 12} color="#BBBBBB" style={{ marginTop: 3 }} />
+      <View
+        style={[
+          styles.card,
+          styles.cardUnlocked,
+          { backgroundColor: palette.bg, borderColor: palette.border },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Letter ${letter} locked`}
+        accessibilityState={{ disabled: true }}
+      >
+        <View style={[styles.shineCircle, { backgroundColor: palette.shine }]} />
+
+        <View style={[styles.lockBadge, { backgroundColor: palette.border }]}>
+          <Ionicons name="lock-closed" size={IS_TABLET ? 11 : 10} color={palette.text} />
+        </View>
+
+        <Text style={[styles.letter, styles.letterLocked, { color: palette.text }]}>
+          {letter}
+        </Text>
       </View>
     );
   }
@@ -286,6 +390,7 @@ const styles = StyleSheet.create({
   topOutlineBtnText: {
     fontSize:   IS_TABLET ? 13 : 11,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   topFilledBtn: {
     flexDirection:     'row',
@@ -298,6 +403,7 @@ const styles = StyleSheet.create({
   topFilledBtnText: {
     fontSize:   IS_TABLET ? 13 : 11,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   // Header
@@ -319,10 +425,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize:   IS_TABLET ? 22 : 18,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   subtitle: {
     fontSize:   IS_TABLET ? 13 : 11,
     fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
   },
   progressPill: {
     borderRadius:      20,
@@ -332,6 +440,7 @@ const styles = StyleSheet.create({
   progressPillText: {
     fontSize:   IS_TABLET ? 12 : 10,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
 
   // Motivation card
@@ -345,6 +454,7 @@ const styles = StyleSheet.create({
   motivationText: {
     fontSize:   IS_TABLET ? 14 : 12,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     textAlign:  'center',
   },
 
@@ -374,10 +484,13 @@ const styles = StyleSheet.create({
     shadowRadius:  8,
     elevation:     3,
   },
-  cardLocked: {
-    backgroundColor: 'rgba(255,255,255,0.20)',
-    borderWidth:     1.5,
-    borderColor:     'rgba(255,255,255,0.30)',
+  lockBadge: {
+    position:      'absolute',
+    top:           6,
+    left:          6,
+    borderRadius:  10,
+    paddingHorizontal: 4,
+    paddingVertical:   3,
   },
 
   // Shine accent
@@ -402,6 +515,7 @@ const styles = StyleSheet.create({
   progressBadgeText: {
     fontSize:   IS_TABLET ? 10 : 9,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
 
   // Letter text
@@ -410,10 +524,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     lineHeight: IS_TABLET ? Math.round(CARD_SIZE * 0.50) : Math.round(CARD_SIZE * 0.52),
   },
+  // Modifies styles.letter rather than replacing it: the size and weight stay
+  // exactly as an unlocked card's, only softened.
   letterLocked: {
-    fontSize:   IS_TABLET ? Math.round(CARD_SIZE * 0.40) : Math.round(CARD_SIZE * 0.42),
-    fontWeight: '900',
-    color:      '#CCCCCC',
+    opacity: 0.55,
   },
 
   // Stars
@@ -426,4 +540,3 @@ const styles = StyleSheet.create({
     fontSize: IS_TABLET ? 11 : 9,
   },
 });
-

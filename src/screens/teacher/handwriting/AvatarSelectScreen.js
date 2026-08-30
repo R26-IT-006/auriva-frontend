@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 30,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
     marginBottom: 6,
     letterSpacing: 0.3,
@@ -122,6 +123,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 20,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     textAlign: 'center',
     opacity: 0.8,
   },
@@ -161,11 +163,13 @@ const styles = StyleSheet.create({
   circleInitial: {
     fontSize: 32,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     color: '#FFFFFF',
   },
   avatarName: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
   },
 
@@ -189,6 +193,7 @@ const styles = StyleSheet.create({
   startText: {
     fontSize: 20,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 0.5,
   },
 });

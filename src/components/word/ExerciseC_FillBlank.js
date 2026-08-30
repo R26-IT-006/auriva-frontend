@@ -1,6 +1,15 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import WordImageDisplay from './WordImageDisplay';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../constants/childInstructions';
+import { SUPPORT_IMAGE, BODY, supportImageFrameStyle } from './wordActivityLayout';
+import { isHintUnlocked, unlocksHint, HINT_REVEAL_DELAY_MS, HINT_COLORS }
+  from './wordHintPolicy';
+import { ANSWER_FEEDBACK_COLORS, shuffleSameOptions } from './wordAnswerFeedback';
+
+// Shared with every other screen that asks for this action, so the child
+// hears one sentence for one task — and one future recording covers it.
+const ACTIVITY_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.CHOOSE_MISSING_LETTER];
 
 function makeChoices(correct) {
   const pool = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(c => c !== correct);
@@ -17,51 +26,71 @@ function getBlankInfo(word) {
   return { blankAt: mid, correct: word[mid].toLowerCase() };
 }
 
-export default function ExerciseC_FillBlank({ wordEntry, theme, onComplete }) {
+export default function ExerciseC_FillBlank({ wordEntry, theme, onComplete, onWrongAnswer, onCorrectAnswer }) {
   const { word, emoji, imageKey } = wordEntry;
   const { blankAt: bi, correct }  = useMemo(() => getBlankInfo(word), [word]);
 
-  const choices = useMemo(() => makeChoices(correct), [word]);
+  const initialChoices = useMemo(() => makeChoices(correct), [word]);
+  const [choices, setChoices] = useState(initialChoices);
 
   const [wrongCount, setWrongCount] = useState(0);
   const [done,       setDone]       = useState(false);
+  const [inputLocked, setInputLocked] = useState(false);
+  const inputLockRef = useRef(false);
+  const [verdict, setVerdict] = useState(null);
 
-  const flashAnims = useRef(choices.map(() => new Animated.Value(1))).current;
+  // The hint waits for the second wrong answer's feedback to finish, so the
+  // child sees the verdict on their own answer before the support appears.
+  const [hintReady, setHintReady] = useState(false);
+  const hintTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(hintTimerRef.current), []);
 
-  function flash(idx, success) {
-    Animated.sequence([
-      Animated.timing(flashAnims[idx], { toValue: success ? 0.3 : 0.15, duration: 80, useNativeDriver: true }),
-      Animated.timing(flashAnims[idx], { toValue: 1, duration: 180, useNativeDriver: true }),
-    ]).start();
-  }
-
-  function handlePress(letter, idx) {
-    if (done) return;
+  async function handlePress(letter) {
+    if (done || inputLockRef.current) return;
+    inputLockRef.current = true;
     if (letter === correct) {
       setDone(true);
-      flash(idx, true);
-      setTimeout(() => onComplete(wrongCount === 0), 500);
+      setInputLocked(true);
+      setVerdict({ id: letter, correct: true });
+      await Promise.resolve(onCorrectAnswer?.());
+      onComplete(wrongCount === 0);
     } else {
-      flash(idx, false);
-      setWrongCount(w => w + 1);
+      setInputLocked(true);
+      setVerdict({ id: letter, correct: false });
+      const feedbackDone = onWrongAnswer?.(); // verdict on THIS answer: wrong.gif
+      setWrongCount((w) => {
+        const next = w + 1;                 // answers only
+        if (unlocksHint(next)) {
+          hintTimerRef.current = setTimeout(() => setHintReady(true), HINT_REVEAL_DELAY_MS);
+        }
+        return next;
+      });
+      await Promise.resolve(feedbackDone);
+      setVerdict(null);
+      setChoices(current => shuffleSameOptions(current));
+      inputLockRef.current = false;
+      setInputLocked(false);
     }
   }
 
-  const showHint = wrongCount >= 2;
+  const showHint = isHintUnlocked(wrongCount) && hintReady;
   const before   = word.slice(0, bi).toUpperCase();
   const after    = word.slice(bi + 1).toUpperCase();
 
   return (
     <View style={styles.wrap}>
       <View style={styles.imagePane}>
-        <View style={[styles.imageFrame, { backgroundColor: theme.button + '10', borderColor: theme.button + '26' }]}>
-          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={170} />
+        <View style={[styles.imageFrame, supportImageFrameStyle(theme)]}>
+          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={SUPPORT_IMAGE.imageSize} />
         </View>
       </View>
 
       <View style={styles.taskPane}>
         <Text style={[styles.instruction, { color: theme.headingText }]}>
-          Fill in the missing letter
+          {ACTIVITY_INSTRUCTION.en}
+        </Text>
+        <Text style={[styles.instructionSi, { color: theme.headingText }]}>
+          {ACTIVITY_INSTRUCTION.si}
         </Text>
 
         <View style={styles.wordBox}>
@@ -71,35 +100,45 @@ export default function ExerciseC_FillBlank({ wordEntry, theme, onComplete }) {
         </View>
 
         <View style={styles.grid}>
-          {choices.map((letter, idx) => {
+          {choices.map((letter) => {
             const isCorrect = letter === correct;
             const isHinted  = showHint && isCorrect;
-            const bg = done && isCorrect ? '#4CAF50'
-                     : isHinted          ? '#FFF176'
+            const isVerdict = verdict?.id === letter;
+            const isWrong = isVerdict && !verdict.correct;
+            const isRight = isVerdict && verdict.correct;
+            const bg = isWrong          ? ANSWER_FEEDBACK_COLORS.wrongSurface
+                     : isRight          ? ANSWER_FEEDBACK_COLORS.correctSurface
+                     : isHinted          ? HINT_COLORS.surface
                      :                    '#F5F5F5';
 
             return (
-              <Animated.View key={letter} style={{ opacity: flashAnims[idx] }}>
+              <View key={letter}>
                 <TouchableOpacity
                   style={[styles.tile, {
                     backgroundColor: bg,
-                    borderColor: isHinted         ? '#F9A825'
-                               : done && isCorrect ? '#388E3C'
+                    borderColor: isWrong  ? ANSWER_FEEDBACK_COLORS.wrongBorder
+                               : isRight  ? ANSWER_FEEDBACK_COLORS.correctBorder
+                               : isHinted ? HINT_COLORS.border
                                :                    '#E0E0E0',
                   }]}
-                  onPress={() => handlePress(letter, idx)}
+                  onPress={() => handlePress(letter)}
                   activeOpacity={0.7}
-                  disabled={done}
+                  disabled={done || inputLocked}
+                  accessibilityRole="button"
+                  accessibilityLabel={letter.toUpperCase()}
+                  accessibilityHint={isHinted ? 'Hint: this is the answer' : undefined}
+                  accessibilityState={{ disabled: done || inputLocked }}
                 >
                   <Text style={[
                     styles.tileText,
                     isHinted          && styles.hintText,
-                    done && isCorrect && styles.correctText,
+                    isWrong && styles.wrongText,
+                    isRight && styles.correctText,
                   ]}>
                     {letter.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
             );
           })}
         </View>
@@ -114,23 +153,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 34,
+    gap: BODY.columnGap,
     width: '100%',
   },
   imagePane: {
-    width: 240,
+    width: SUPPORT_IMAGE.paneWidth,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  imageFrame: {
-    width: 212,
-    height: 212,
-    borderRadius: 24,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // Size, radius, border and tint all come from the shared spec — see
+  // supportImageFrameStyle. Left here only so the style object exists.
+  imageFrame: {},
   taskPane: {
     flex: 1,
     alignItems: 'center',
@@ -138,9 +172,18 @@ const styles = StyleSheet.create({
     gap: 22,
   },
   instruction: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+  },
+  instructionSi: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    opacity: 0.75,
     textAlign: 'center',
   },
   wordBox: {
@@ -152,12 +195,14 @@ const styles = StyleSheet.create({
   letterText: {
     fontSize: 56,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#333333',
     lineHeight: 64,
   },
   blankText: {
     fontSize: 56,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     color: '#E53935',
     lineHeight: 64,
   },
@@ -186,6 +231,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#333333',
   },
-  hintText:    { color: '#E65100' },
-  correctText: { color: '#FFFFFF' },
+  hintText:    { color: HINT_COLORS.text },
+  wrongText:   { color: ANSWER_FEEDBACK_COLORS.wrongText },
+  correctText: { color: ANSWER_FEEDBACK_COLORS.correctText },
 });

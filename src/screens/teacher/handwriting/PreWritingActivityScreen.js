@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   PanResponder,
@@ -14,14 +13,33 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Polyline, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
+import { useLearningSessionActivity } from '../../../context/LearningSessionContext';
+import BreakPromptModal from '../../../components/handwriting/BreakPromptModal';
+import { LIVE_ACTIVITY_TYPES } from '../../../constants/liveSessionPolicy';
+import { buildProgressPatch } from '../../../utils/liveSessionSnapshot';
 import { computeDTW } from '../../../utils/dtw';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../../utils/touchPointSanitize';
 import { normalizeStrokesForDTW } from '../../../utils/dtwNormalization';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../../utils/adaptiveSequencing';
 import { DEFAULT_N_POINTS, selectPreWritingActivities } from '../../../data/preWritingActivities';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../../constants/childInstructions';
 import AttemptAvatarFeedback from './AttemptAvatarFeedback';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
+import { hasCanvasDrawing } from '../../../utils/canvasDrawingState';
+import { useInstructionAudio } from '../../../utils/useInstructionAudio';
+import { actionRowMinHeight } from '../../../constants/writingActionRow';
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 2;
+
+// All 18 pre-writing activities ask for the same thing: trace the dotted path.
+// They used to carry a name AND a prompt each — 36 strings, two of them on
+// screen at once, for one action. One instruction, one future recording.
+const PRE_WRITING_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.FOLLOW_PATH];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -36,13 +54,6 @@ const POINTER_SIZE = 14;
 const POINTER_HALF = POINTER_SIZE / 2;
 
 const ATTEMPT_FEEDBACK_MS = 2200;
-
-const AVATAR_MAP = {
-  boba:     require('../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../assets/avatar-images/Megatron.png'),
-};
 
 // ─── Feature calculation (smoothness formula matches ShapeAssessmentScreen's
 //     calculateFeatures exactly, DTW path matches its zigzag/curve_wave path)
@@ -143,6 +154,12 @@ function GuideActivity({ activity, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function PreWritingActivityScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const {
     student, theme,
     activities:    activitiesParam,
@@ -158,16 +175,42 @@ export default function PreWritingActivityScreen({ route, navigation }) {
     return [];
   }, [activitiesParam, primitiveGroup, selectionOptions]);
 
+  // Proposal FR-13, Phase 7A / FR-16, Phase 7B — see LetterWritingScreen.js's
+  // identical block. No collection_mode concept on this screen.
+  const { notifyStrokeStart, notifyStrokeEnd, notifyLiveSessionUpdate } = useLearningSessionActivity({
+    studentId: student.sid,
+    activityType: LIVE_ACTIVITY_TYPES.PREWRITING,
+  });
+
   const [activityIndex, setActivityIndex] = useState(0);
   const [attempt,        setAttempt]        = useState(1);
   const [currentPath,    setCurrentPath]    = useState([]);
   const [allPaths,       setAllPaths]       = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [showDone,       setShowDone]       = useState(false);
   const [attemptFeedback, setAttemptFeedback] = useState(null); // { passed, attempt }
   const [reduceMotion,   setReduceMotion]   = useState(false);
 
   const startTimeRef      = useRef(null);
   const allPathsRef       = useRef([]);
+  // Border-touch bug fix — see touchPointSanitize.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
+  }, []);
   const strokeIdCounter   = useRef(0);
   const resultsRef        = useRef([]); // accumulated across all activities this session
   const animValue         = useRef(new Animated.Value(0)).current;
@@ -176,6 +219,23 @@ export default function PreWritingActivityScreen({ route, navigation }) {
 
   const activity     = activities[activityIndex];
   const isLastActivity = activityIndex === activities.length - 1;
+  const replayInstruction = useInstructionAudio(INSTRUCTION_KEYS.FOLLOW_PATH, {
+    autoPlay: true,
+    autoPlayToken: activity?.id ?? activityIndex,
+    delayMs: 300,
+    // A failed local-media load must not crash or hide the approved text. Only
+    // that exceptional path may reuse the former English TTS.
+    fallbackText: PRE_WRITING_INSTRUCTION.en,
+  });
+
+  // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
+  // Prewriting has no case_type/support_level concept, so only current_item
+  // (the activity's id) and attempt_number are ever sent (spec §3's "where
+  // relevant" qualifier).
+  useEffect(() => {
+    if (!activity) return;
+    notifyLiveSessionUpdate(buildProgressPatch({ currentItem: activity.id, attemptNumber: attempt }));
+  }, [activity, attempt, notifyLiveSessionUpdate]);
 
   const finish = useCallback(async () => {
     onComplete?.(resultsRef.current);
@@ -228,14 +288,23 @@ export default function PreWritingActivityScreen({ route, navigation }) {
     () => (activity ? activity.target_shape.generatePoints(CANVAS_CX, CANVAS_CY, DEFAULT_N_POINTS).flat() : []),
     [activity]
   );
-  const inputRange = pathPoints.map((_, i) => i / Math.max(1, pathPoints.length - 1));
+  // Animated.interpolate requires at least two keyframes. pathPoints is empty
+  // on any frame without an activity — including the one frame that renders
+  // before the `activities.length === 0` effect navigates away — and the
+  // outputRange fallback below only ever covered half of that: inputRange was
+  // left as [], which is what threw "inputRange must have at least 2 elements".
+  // Both ranges now fall back together to an inert 2-point identity.
+  const hasPointerPath = pathPoints.length > 1;
+  const inputRange = hasPointerPath
+    ? pathPoints.map((_, i) => i / (pathPoints.length - 1))
+    : [0, 1];
   const pointerLeft = animValue.interpolate({
     inputRange,
-    outputRange: pathPoints.length ? pathPoints.map(p => p.x - POINTER_HALF) : [0, 0],
+    outputRange: hasPointerPath ? pathPoints.map(p => p.x - POINTER_HALF) : [0, 0],
   });
   const pointerTop = animValue.interpolate({
     inputRange,
-    outputRange: pathPoints.length ? pathPoints.map(p => p.y - POINTER_HALF) : [0, 0],
+    outputRange: hasPointerPath ? pathPoints.map(p => p.y - POINTER_HALF) : [0, 0],
   });
 
   useEffect(() => {
@@ -255,13 +324,9 @@ export default function PreWritingActivityScreen({ route, navigation }) {
     pulseLoopRef.current = pulseLoop;
     pulseLoop.start();
 
-    const t = setTimeout(() => { Speech.speak(activity.prompt_text); }, 300);
-
     return () => {
       pointerLoop.stop();
       pulseLoop.stop();
-      clearTimeout(t);
-      Speech.stop();
     };
   }, [activity, animValue, pulseAnim]);
 
@@ -281,7 +346,13 @@ export default function PreWritingActivityScreen({ route, navigation }) {
       onMoveShouldSetPanResponder:  () => true,
 
       onPanResponderGrant: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         startTimeRef.current = now;
         strokeIdCounter.current += 1;
@@ -289,14 +360,25 @@ export default function PreWritingActivityScreen({ route, navigation }) {
       },
 
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
-        setCurrentPath(prev => [...prev, {
-          x: locationX, y: locationY, t: now - startTimeRef.current, tAbs: now, stroke_id: strokeIdCounter.current,
-        }]);
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x: locationX, y: locationY }, CANVAS_WIDTH, CANVAS_HEIGHT)) return prev;
+          return [...prev, {
+            x: locationX, y: locationY, t: now - startTimeRef.current, tAbs: now, stroke_id: strokeIdCounter.current,
+          }];
+        });
       },
 
       onPanResponderRelease: () => {
+        notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -414,15 +496,14 @@ export default function PreWritingActivityScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.shapeTitle, { color: theme.headingText }]}>
-              {activity.name}
-            </Text>
-
             <View style={[styles.instructionCard, { borderLeftColor: theme.button }]}>
               <View style={styles.instructionInner}>
-                <Text style={styles.instructionEn}>{activity.prompt_text}</Text>
+                <View style={styles.instructionTexts}>
+                  <Text style={styles.instructionEn}>{PRE_WRITING_INSTRUCTION.en}</Text>
+                  <Text style={styles.instructionSi}>{PRE_WRITING_INSTRUCTION.si}</Text>
+                </View>
                 <TouchableOpacity
-                  onPress={() => Speech.speak(activity.prompt_text)}
+                  onPress={replayInstruction}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   style={[styles.speakerBtn, { backgroundColor: theme.button + '18' }]}
                   activeOpacity={0.7}
@@ -438,6 +519,8 @@ export default function PreWritingActivityScreen({ route, navigation }) {
           <View style={styles.canvasArea}>
             <View
               style={[styles.canvasCard, { borderColor: theme.button + '30' }]}
+              ref={canvasRef}
+              onLayout={measureCanvasOrigin}
               {...panResponder.panHandlers}
             >
               <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
@@ -516,14 +599,16 @@ export default function PreWritingActivityScreen({ route, navigation }) {
             </View>
 
             <View style={styles.buttonsRow}>
-              <TouchableOpacity
-                style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
-                onPress={handleClear}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="refresh" size={18} color={theme.button} />
-                <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
-              </TouchableOpacity>
+              {canClearCanvas && (
+                <TouchableOpacity
+                  style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
+                  onPress={handleClear}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="refresh" size={18} color={theme.button} />
+                  <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
+                </TouchableOpacity>
+              )}
 
               {showDone && !attemptFeedback && (
                 <TouchableOpacity
@@ -545,17 +630,12 @@ export default function PreWritingActivityScreen({ route, navigation }) {
             avatarKey={student?.avatar_key}
             passed={attemptFeedback.passed}
             attempt={attemptFeedback.attempt}
+            note={attemptFeedback.passed ? 'Great job!' : 'Try again!'}
             theme={theme}
           />
         )}
 
-        {!attemptFeedback && (
-          <Image
-            source={AVATAR_MAP[student?.avatar_key]}
-            style={styles.avatarImage}
-            resizeMode="contain"
-          />
-        )}
+        <BreakPromptModal navigation={navigation} student={student} theme={theme} />
 
       </SafeAreaView>
     </LinearGradient>
@@ -598,6 +678,7 @@ const styles = StyleSheet.create({
   assessBadgeText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.3,
   },
 
@@ -613,12 +694,14 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     color: '#8A8AA0',
   },
 
   shapeTitle: {
     fontSize: 26,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -633,6 +716,7 @@ const styles = StyleSheet.create({
     maxWidth: 520,
     alignSelf: 'center',
     marginTop: 8,
+    minHeight: 108,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -643,17 +727,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    minHeight: 84,
+  },
+  instructionTexts: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 76,
+    gap: 8,
+    justifyContent: 'center',
+  },
+  instructionSi: {
+    fontSize: 20,
+    lineHeight: 32,
+    fontWeight: '600',
+    color: '#7B7B9E',
+    textAlign: 'center',
   },
   instructionEn: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#444444',
     textAlign: 'center',
   },
   speakerBtn: {
     width: 48,
     height: 48,
+    flexShrink: 0,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
@@ -710,6 +811,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   buttonsRow: {
+    minHeight: actionRowMinHeight({
+      maxButtonPaddingVertical: 13,
+      maxButtonBorderWidth: 1.5,
+    }),
     flexDirection: 'row',
     gap: 16,
     alignItems: 'center',
@@ -726,6 +831,7 @@ const styles = StyleSheet.create({
   clearText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   nextButton: {
     flexDirection: 'row',
@@ -738,14 +844,6 @@ const styles = StyleSheet.create({
   nextText: {
     fontSize: 16,
     fontWeight: '700',
-  },
-
-  avatarImage: {
-    position: 'absolute',
-    bottom: -10,
-    right: 8,
-    width: 250,
-    height: 320,
-    zIndex: 10,
+    fontFamily: 'Nunito_700Bold',
   },
 });

@@ -14,8 +14,38 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
+import useGatedBack from '../../../utils/useGatedBack';
+import { goBackToOrigin } from '../../../utils/backToOrigin';
+import { fetchMasteredLetters, filterUnmasteredSequence } from '../../../utils/masteredLetterFiltering';
+import { getAllLetters } from '../../../data/letterCategories';
 
-const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+/**
+ * The next letter to write — the first entry of the student's own sequence
+ * that is not yet mastered.
+ *
+ * This is deliberately NOT `alphabet[completedCount]`, which is what this
+ * screen and the backend's next_*_letter fields both did. That is only ever
+ * right when the child works straight down the alphabet with no gaps, and
+ * neither assumption holds: the sequence is adaptive (generateAdaptiveSequence
+ * orders by motor category, not A-Z), and a letter can be left unmastered
+ * while later ones are completed, so the count says nothing about WHICH letter
+ * comes next. A child resuming at, say, 'c' would be told to write 'e' simply
+ * because four letters happened to be done.
+ *
+ * Same two helpers, same order of operations, as LetterWritingScreen and
+ * UppercaseWritingScreen — so the letter shown here is the letter that screen
+ * will actually present.
+ */
+function deriveNextLetter(letterSequence, caseType, masteredPairs) {
+  const forCase = Array.isArray(letterSequence)
+    ? letterSequence.filter(l => l?.caseType === caseType)
+    : [];
+  // Same fallback the writing screens use when no adaptive sequence was
+  // stored (a student assessed before sequences were saved).
+  const base = forCase.length > 0 ? forCase : getAllLetters(caseType);
+  return filterUnmasteredSequence(base, masteredPairs)[0]?.letter ?? null;
+}
 
 const AVATAR_MAP = {
   boba:     require('../../../../assets/avatar-images/Boba.png'),
@@ -25,15 +55,36 @@ const AVATAR_MAP = {
 };
 
 export default function ProgressReportScreen({ route, navigation }) {
+  // This child-facing completion/progress surface remains part of the
+  // handwriting flow. Only the main teacher Progress Report is portrait.
+  useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  // Returns to the screen this report was OPENED FROM (route param
+  // `originRoute`), not to whatever sits directly below it in the stack —
+  // see utils/backToOrigin.js. Falls back to goBack() when no origin was
+  // passed, so an older navigation behaves exactly as before.
+  const { requestBack, gateModal } = useGatedBack(
+    () => goBackToOrigin(navigation, route.params?.originRoute)
+  );
+
   const {
     student,
     theme,
     lowercaseProgress: initLow = 0,
     uppercaseProgress: initUp  = 0,
+    letterSequence = [],
   } = route.params;
 
   const { width } = useWindowDimensions();
   const [report, setReport] = useState(null);
+  // Authoritative mastered (letter, caseType) pairs — the same backend read
+  // the writing screens gate on. null until it resolves; fetchMasteredLetters
+  // never throws, so a failure resolves to an empty list and the next letter
+  // falls back to the first of the sequence rather than showing nothing.
+  const [masteredPairs, setMasteredPairs] = useState(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const entrance = useRef(new Animated.Value(0)).current;
   const bubbleFloat = useRef(new Animated.Value(0)).current;
@@ -42,11 +93,18 @@ export default function ProgressReportScreen({ route, navigation }) {
     client.get(ENDPOINTS.LETTER_PROGRESS(student.sid))
       .then(res => setReport(res.data))
       .catch(() => setReport({
-        lowercase_completed:   initLow,
-        uppercase_completed:   initUp,
-        next_lowercase_letter: LETTERS[initLow] ?? null,
-        reason:                'Continue regular letter practice.',
+        lowercase_completed: initLow,
+        uppercase_completed: initUp,
+        reason:              'Continue regular letter practice.',
       }));
+  }, [student.sid]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMasteredLetters(student.sid).then(({ pairs }) => {
+      if (!cancelled) setMasteredPairs(pairs);
+    });
+    return () => { cancelled = true; };
   }, [student.sid]);
 
   useEffect(() => {
@@ -90,10 +148,20 @@ export default function ProgressReportScreen({ route, navigation }) {
     };
   }, [bubbleFloat, entrance, reduceMotion]);
 
-  const lowercase  = report?.lowercase_completed   ?? initLow;
-  const uppercase  = report?.uppercase_completed   ?? initUp;
-  const nextLetter = report?.next_lowercase_letter ?? (lowercase < 26 ? LETTERS[lowercase] : null);
-  const reason     = report?.reason                ?? 'Continue regular letter practice.';
+  const lowercase = report?.lowercase_completed ?? initLow;
+  const uppercase = report?.uppercase_completed ?? initUp;
+  const reason    = report?.reason              ?? 'Continue regular letter practice.';
+
+  // Held back until the mastered read resolves — a letter derived from an
+  // empty pair list would name the first of the sequence, which is wrong for
+  // any child mid-way through. The counts and bars render immediately as
+  // before; only this one value waits.
+  const nextLetter = masteredPairs === null
+    ? null
+    : deriveNextLetter(letterSequence, 'lowercase', masteredPairs);
+  const nextUppercaseLetter = masteredPairs === null
+    ? null
+    : deriveNextLetter(letterSequence, 'uppercase', masteredPairs);
 
   const lowercasePercent = Math.min(100, Math.round((lowercase / 26) * 100));
   const uppercasePercent = Math.min(100, Math.round((uppercase / 26) * 100));
@@ -102,9 +170,7 @@ export default function ProgressReportScreen({ route, navigation }) {
   const totalPercent = Math.min(100, Math.round((totalCompleted / 52) * 100));
   const nextDisplayLetter = nextLetter && !lowercaseDone
     ? nextLetter
-    : lowercaseDone && uppercase < 26
-      ? LETTERS[uppercase].toUpperCase()
-      : '-';
+    : (lowercaseDone && nextUppercaseLetter) || '-';
   const bubbleTranslateY = bubbleFloat.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -16],
@@ -154,13 +220,13 @@ export default function ProgressReportScreen({ route, navigation }) {
         <View style={styles.header}>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: theme.button + '18' }]}
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>
-            Progress Report
+            Letter Progress
           </Text>
           <View style={{ width: 36 }} />
         </View>
@@ -277,12 +343,30 @@ export default function ProgressReportScreen({ route, navigation }) {
                 <View style={[styles.barFill, { width: `${uppercasePercent}%`, backgroundColor: '#AB47BC' }]} />
               </View>
 
+              {/* Same badge as the lowercase section. nextUppercaseLetter is
+                  null once every uppercase letter is mastered, so this hides
+                  itself without needing a separate "done" condition. */}
+              {nextUppercaseLetter && (
+                <View style={styles.detailRow}>
+                  <View style={styles.nextLetterBadge}>
+                    <Text style={styles.nextLetterLabel}>Next Letter</Text>
+                    <Text style={[styles.nextLetterValue, { color: '#7B1FA2' }]}>
+                      {nextUppercaseLetter}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
             </View>
 
           </Animated.View>
         </View>
 
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }
@@ -326,6 +410,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
 
   // Content
@@ -377,6 +462,7 @@ const styles = StyleSheet.create({
   bannerName: {
     fontSize: 20,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
   },
   bannerSub: {
     fontSize: 13,
@@ -400,12 +486,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#7B8190',
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   summaryPillValue: {
     fontSize: 17,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     marginTop: 1,
   },
   overallBadge: {
@@ -419,11 +507,13 @@ const styles = StyleSheet.create({
   overallBadgeValue: {
     fontSize: 20,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     lineHeight: 24,
   },
   overallBadgeLabel: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.5,
   },
 
@@ -458,6 +548,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   sectionSub: {
     fontSize: 13,
@@ -467,6 +558,7 @@ const styles = StyleSheet.create({
   sectionPercent: {
     fontSize: 20,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     flexShrink: 0,
   },
 
@@ -506,10 +598,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#888888',
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   nextLetterValue: {
     fontSize: 28,
     fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     lineHeight: 34,
   },
   reasonRow: {

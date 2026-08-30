@@ -1,11 +1,11 @@
 import Constants from "expo-constants";
 
-// Physical device on same WiFi → machine's LAN IP, e.g. http://192.168.1.19:3000/api
+// Physical device on same WiFi → machine's LAN IP, e.g. http://192.168.1.180:3000/api
 // Android emulator → 10.0.2.2 maps to the host machine's localhost
 // iOS simulator → http://localhost:3000/api
 // This is only the last-resort fallback: an EXPO_PUBLIC_API_BASE_URL env var or
 // the Expo host detected below both take precedence, so it rarely applies.
-const DEFAULT_API_BASE_URL = "http://192.168.1.19:3000/api";
+const DEFAULT_API_BASE_URL = "http://10.15.2.86:3000/api";
 
 function normalizeApiBaseUrl(value) {
   if (!value) return DEFAULT_API_BASE_URL;
@@ -72,11 +72,123 @@ export const ENDPOINTS = {
     `/teacher/students/${id}/concepts/reports/${reportId}`,
 
   // Handwriting
+  // Initial Motor Assessment scoring audit — read-only Feature 1 baseline
+  // fetch, used to show the AUTHORITATIVE persisted assessment result when
+  // the in-memory assessmentData from the just-completed session is no
+  // longer available (e.g. reopening "Assessment Summary" in a later app
+  // session). Never duplicates the scoring formula — this is a straight
+  // read of what motorBaselineService.js already persisted.
+  MOTOR_BASELINE:             (studentId) => `/handwriting/motor-baseline/${studentId}`,
+  // Read-only explanation of the CURRENT progression decision per movement
+  // family — the rule, the evidence window, teacher-override protection and a
+  // rule-derived counterfactual. Explanation only: it changes no decision and
+  // writes nothing. Teacher-facing only.
+  THRESHOLD_TRACE:            (studentId) => `/handwriting/threshold-trace/${studentId}`,
+  // Legacy experimental L2 shape-motor clustering. Retained for
+  // research/reference compatibility only. It is not used by the current
+  // teacher-facing baseline summary and does not influence adaptive
+  // progression.
+  //
+  // TeacherReportScreen's former "Initial Shape Motor Profile" section is now
+  // the "Initial Motor Baseline Summary", served by MOTOR_BASELINE above.
+  // This constant is kept so the legacy endpoint stays reachable for
+  // research/legacy inspection; no active screen references it.
+  //
+  // Feature 11A pilot model — read-only INITIAL motor-cluster prediction
+  // (motor_cluster_v1), computed from the SAME baseline MOTOR_BASELINE
+  // exposes.
+  MOTOR_CLUSTER:              (studentId) => `/handwriting/motor-cluster/${studentId}`,
   HANDWRITING_ASSESSMENT:     '/handwriting/assessment',
+  PRE_WRITING_ACTIVITY:       '/handwriting/pre-writing-activity',
   HANDWRITING_FINALIZE:       (id)       => `/handwriting/assessment/${id}/finalize`,
   HANDWRITING_INITIAL_REPORT: (studentId) => `/handwriting/initial-report/${studentId}`,
   LETTER_COMPLETE:            '/handwriting/letter-complete',
   LETTER_PROGRESS:            (studentId) => `/handwriting/progress/${studentId}`,
+  LETTER_PROGRESS_REPORT:     (studentId) => `/handwriting/letter-progress-report/${studentId}`,
+  // Feature 11B Phase 5 — normal-progression fix, NOT a Feature 11B
+  // adaptation change: the authoritative (backend LetterProgress) list of
+  // every (letter, caseType) pair this student has mastered, used to skip
+  // already-mastered letters and resume at the first remaining one.
+  MASTERED_LETTERS:           (studentId) => `/handwriting/mastered-letters/${studentId}`,
+  // Proposal FR-16, Phase 7B — real-time (near-real-time, ~5s snapshot
+  // polling) teacher session monitoring. PUT from the child-side learning
+  // screens (via LearningSessionContext.js), GET from the teacher's Live
+  // Handwriting Session card. Same student-scoped path convention as every
+  // other endpoint on this list.
+  LIVE_SESSION:                (studentId) => `/handwriting/live-session/${studentId}`,
+  // Proposal FR-19/FR-20, Phase 7C/7D — periodic progress report. Explicit
+  // start_date/end_date (YYYY-MM-DD) query params — see the backend's
+  // utils/reportDateRange.js for exact UTC/inclusive semantics.
+  PERIODIC_REPORT:              (studentId, startDate, endDate) =>
+    `/handwriting/report/${studentId}?start_date=${startDate}&end_date=${endDate}`,
+  // Feature 11B Phase 5 — read-only mastery-based Letter Motor State.
+  LETTER_MOTOR_STATE_LATEST:  (studentId) => `/handwriting/letter-motor-state/latest/${studentId}`,
+  LETTER_MOTOR_STATE_HISTORY: (studentId) => `/handwriting/letter-motor-state/history/${studentId}`,
+  LETTER_MOTOR_EVIDENCE_TREND: (studentId) => `/handwriting/letter-motor-evidence-trend/${studentId}`,
+  // Feature 11B S2 — milestone evaluation log, including reference-range
+  // rejections (which persist no pattern row).
+  LETTER_MOTOR_EVALUATIONS: (studentId) => `/handwriting/letter-motor-evaluations/${studentId}`,
+  // Writing Check — the dedicated teacher-initiated route for the frozen
+  // letter motor pattern model. Descriptive assessment only.
+  WRITING_CHECK_START:    () => '/handwriting/writing-check/start',
+  WRITING_CHECK_PROGRESS: (checkId) => `/handwriting/writing-check/${checkId}/progress`,
+  WRITING_CHECK_COMPLETE: (checkId) => `/handwriting/writing-check/${checkId}/complete`,
+  WRITING_CHECK_HISTORY:  (studentId) => `/handwriting/writing-check/history/${studentId}`,
+  // Homework practice worksheets — teacher-facing throughout.
+  WORKSHEET_CANDIDATES: (studentId) => `/handwriting/worksheets/candidates/${studentId}`,
+  WORKSHEET_HISTORY:    (studentId) => `/handwriting/worksheets/${studentId}`,
+  WORKSHEET_GENERATE:   () => '/handwriting/worksheets/generate',
+  WORKSHEET_ASSIGN:     (worksheetId) => `/handwriting/worksheets/${worksheetId}/assign`,
+  WORKSHEET_SUBMIT:     (worksheetId) => `/handwriting/worksheets/${worksheetId}/submit`,
+  WORKSHEET_REVIEW:     (submissionId) => `/handwriting/worksheet-submissions/${submissionId}/review`,
+  WORD_ATTEMPT:               '/handwriting/word-attempt',
+  WORD_ACTIVITY:              '/handwriting/word-activity',
+  WORD_PROGRESS:              (studentId) => `/handwriting/word-progress/${studentId}`,
+  WORD_ATTEMPTS:              (studentId) => `/handwriting/word-attempts/${studentId}`,
+  WORD_REPORT:                (studentId) => `/handwriting/word-report/${studentId}`,
+  // Teacher Dashboard integration fix — read-only, all three current
+  // Feature 2 family thresholds together (never the legacy
+  // /teacher/students/:id personal_thresholds shape).
+  FAMILY_THRESHOLDS:          (studentId) => `/handwriting/family-thresholds/${studentId}`,
+  // Feature 3 Step 6 — read-only adaptive support recommendation, scoped to
+  // one (student, letter, caseType) since support is family-specific.
+  // One mastered letter's actual writing, for the teacher report's Letter
+  // Details panel. Same (student, letter, caseType) scope as
+  // SUPPORT_RECOMMENDATION below; deliberately NOT part of any bulk report
+  // payload - stroke_points is far too large to send 52 of.
+  LETTER_MASTERY_EVIDENCE:    (studentId, letter, caseType) => `/handwriting/letter-mastery-evidence/${studentId}/${letter}/${caseType}`,
+  SUPPORT_RECOMMENDATION:     (studentId, letter, caseType) => `/handwriting/support-recommendation/${studentId}/${letter}/${caseType}`,
+  // Feature 4 Step 5 — read-only adaptive pre-writing recommendation, same
+  // (student, letter, caseType) scope as SUPPORT_RECOMMENDATION above.
+  PRE_WRITING_RECOMMENDATION: (studentId, letter, caseType) => `/handwriting/pre-writing-recommendation/${studentId}/${letter}/${caseType}`,
+  // Feature 5 Step 3 — read-only adaptive repetition recommendation, same
+  // (student, letter, caseType) scope, plus the caller-supplied
+  // interaction-scoped adaptiveRepetitionsUsed count as a query param.
+  REPETITION_RECOMMENDATION: (studentId, letter, caseType, adaptiveRepetitionsUsed) =>
+    `/handwriting/repetition-recommendation/${studentId}/${letter}/${caseType}?adaptiveRepetitionsUsed=${adaptiveRepetitionsUsed}`,
+  // Feature 6 Step 3/4 — read-only adaptive demo-speed recommendation, same
+  // (student, letter, caseType) scope as the recommendation endpoints above.
+  DEMO_SPEED_RECOMMENDATION: (studentId, letter, caseType) => `/handwriting/demo-speed-recommendation/${studentId}/${letter}/${caseType}`,
+  // Feature 8 Step 3/4 — read-only, student-wide worksheet-recommendation
+  // list (one entry per Feature 7 persistent stream). Student-wide, unlike
+  // the narrower per-(letter, caseType) recommendation endpoints above.
+  WORKSHEET_RECOMMENDATIONS: (studentId) => `/handwriting/worksheet-recommendations/${studentId}`,
+  // Feature 9 Step 4/5 — teacher validation history (GET, POST) and current
+  // validation-state (GET) for Feature 8 recommendations. Path functions
+  // take only :studentId, matching Step 4's exact route shape — optional/
+  // required query params (?caseType=&family=&recommendationFingerprint=)
+  // are attached at the call site via axios `params`, not baked into the
+  // path string here (unlike REPETITION_RECOMMENDATION above), since GET
+  // history's filters are independently optional while GET state's three
+  // params are all required — a single manually-built query string would
+  // need two different shapes for the same constant.
+  WORKSHEET_RECOMMENDATION_VALIDATIONS: (studentId) => `/handwriting/worksheet-recommendation-validations/${studentId}`,
+  WORKSHEET_RECOMMENDATION_VALIDATION_STATE: (studentId) => `/handwriting/worksheet-recommendation-validation-state/${studentId}`,
+
+  // Data Collection Mode
+  COLLECTION_SESSION_START:    '/handwriting/collection-session/start',
+  COLLECTION_SESSION_COMPLETE: (id) => `/handwriting/collection-session/${id}/complete`,
+  TEACHER_VALIDATION:          '/handwriting/teacher-validation',
 
   // Dialogue – Level 1
   DIALOGUE_LEVEL1_OVERVIEW:        (sid) => `/teacher/student/${sid}/level1/overview`,

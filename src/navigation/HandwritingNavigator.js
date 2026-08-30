@@ -19,7 +19,18 @@ import WordWritingScreen        from '../screens/teacher/handwriting/words/WordW
 import WordProgressScreen       from '../screens/teacher/handwriting/words/WordProgressScreen';
 import WordLetterSelectScreen   from '../screens/teacher/handwriting/words/WordLetterSelectScreen';
 import TeacherReportScreen        from '../screens/teacher/handwriting/reports/TeacherReportScreen';
+import WritingCheckScreen         from '../screens/teacher/handwriting/WritingCheckScreen';
 import DataCollectionDoneScreen  from '../screens/teacher/handwriting/DataCollectionDoneScreen';
+// One-time "watch first" demonstrations. A pure detour screen: it renders an
+// animation of the SAME reference path the next activity uses, then replaces
+// itself with that activity. See screens/teacher/handwriting/HandwritingDemoScreen.js.
+import HandwritingDemoScreen     from '../screens/teacher/handwriting/HandwritingDemoScreen';
+// Proposal FR-13, Phase 7A — one central session-duration mechanism for
+// the whole handwriting flow (prewriting/lowercase/uppercase/word
+// writing-practice only — never teacher report/setup/login). Mounted once
+// here so its lifetime matches "one continuous visit to the handwriting
+// flow for one student" — see LearningSessionContext.js's own header.
+import { LearningSessionProvider } from '../context/LearningSessionContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +41,7 @@ export default function HandwritingNavigator({ route }) {
   const theme   = getAvatarTheme(student?.avatar_key);
 
   return (
+    <LearningSessionProvider>
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
         name="Welcome"
@@ -111,6 +123,18 @@ export default function HandwritingNavigator({ route }) {
         component={WordProgressScreen}
         initialParams={{ student, theme }}
       />
+      {/* Demonstration detour — child-facing, landscape, writes nothing. */}
+      <Stack.Screen
+        name="HandwritingDemo"
+        component={HandwritingDemoScreen}
+        initialParams={{ student, theme }}
+      />
+      {/* Writing Check — teacher-initiated, descriptive assessment only. */}
+      <Stack.Screen
+        name="WritingCheck"
+        component={WritingCheckScreen}
+        initialParams={{ student, theme }}
+      />
       <Stack.Screen
         name="TeacherReport"
         component={TeacherReportScreen}
@@ -122,5 +146,6 @@ export default function HandwritingNavigator({ route }) {
         initialParams={{ student, theme }}
       />
     </Stack.Navigator>
+    </LearningSessionProvider>
   );
 }

@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
@@ -13,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../components/common/Avatar';
+import { Card } from '../../../components/common/Card';
 import { MasteryRing } from '../../../components/charts/MasteryRing';
 import { GroupGrid } from '../../../components/charts/GroupGrid';
 import { ConceptThumb } from '../../../components/charts/ConceptThumb';
@@ -25,6 +27,14 @@ import { dialogueApi } from '../../../api/dialogue';
 import { level2Api } from '../../../api/level2';
 import { formatDate, ageFrom } from '../../../utils/formatters';
 import { ROUND, ACTION, sinceWords } from '../../../constants/teacherWording';
+// Proposal FR-16, Phase 7B — compact "Live Handwriting Session" card, only
+// rendered while the Writing tab is open.
+import LiveSessionCard from '../../../components/teacher/LiveSessionCard';
+import {
+  fetchWritingSummary, buildWritingSummary,
+  TOTAL_LOWERCASE as TOTAL_LOWERCASE_FORMS,
+  TOTAL_UPPERCASE as TOTAL_UPPERCASE_FORMS,
+} from '../../../utils/writingModuleSummary';
 
 // Same tinted pairs the teacher dashboard uses for its section panels, so a
 // profile opened from a dashboard card keeps the same visual language.
@@ -223,6 +233,174 @@ const MODULES = [
   { key: 'dialogue',      tab: 'Dialogue',      title: 'Dialogue Module',      icon: 'chatbubbles-outline' },
 ];
 
+/**
+ * A compact bar for one mastery row. Deliberately small: this is an
+ * at-a-glance overview, not the report's charts.
+ */
+function MiniBar({ percent }) {
+  const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+  return (
+    <View style={styles.wsBarTrack}>
+      <View style={[styles.wsBarFill, { width: `${pct}%` }]} />
+    </View>
+  );
+}
+
+function WsRow({ label, value, percent }) {
+  return (
+    <View style={styles.wsRow}>
+      <View style={styles.wsRowHead}>
+        <Text style={styles.wsRowLabel}>{label}</Text>
+        <Text style={styles.wsRowValue}>{value}</Text>
+      </View>
+      <MiniBar percent={percent} />
+    </View>
+  );
+}
+
+function WsStatus({ icon, label, value, muted }) {
+  return (
+    <View style={styles.wsStatus}>
+      <Ionicons name={icon} size={14} color={muted ? Colors.text.muted : Colors.text.link} />
+      <View style={styles.wsStatusText}>
+        <Text style={styles.wsStatusLabel}>{label}</Text>
+        <Text style={[styles.wsStatusValue, muted && styles.wsStatusValueMuted]}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * WRITING PROGRESS summary.
+ *
+ * Information priority, top to bottom: overall letters mastered, the two
+ * case breakdowns, word status, then two or three teacher-relevant statuses,
+ * then the single report action.
+ *
+ * Every value comes from utils/writingModuleSummary.js, which reads only
+ * backend-authoritative counts. Nothing here is derived from a demo/preview
+ * flag, and nothing shows raw DTW, motor features, thresholds, cycle counts
+ * or clustering terminology.
+ */
+function WritingSummaryCard({ state, onOpenReport, onRetry }) {
+  const s = state.summary;
+  // Tablet landscape: let the headline and the two case rows share the width
+  // instead of stacking into a tall column. One breakpoint, no horizontal
+  // scrolling, and the hierarchy is identical in both layouts.
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+
+  return (
+    <Card style={styles.wsCard} padding="none">
+      {state.status === 'loading' ? (
+        <View style={styles.wsLoading}>
+          <ActivityIndicator color={Colors.icon.active} />
+        </View>
+      ) : state.status === 'partial' ? (
+        // Core letter progress did not load. Secondary items degrade on their
+        // own (a missing Writing Check simply reads "Not checked yet"), but
+        // without the letter counts there is no summary to show — and a made-up
+        // 0/52 would read as real. Never a status code, never "read_failed".
+        <View style={styles.wsUnavailable}>
+          <Ionicons name="cloud-offline-outline" size={20} color={Colors.text.muted} />
+          <Text style={styles.wsUnavailableText}>
+            Writing progress isn&apos;t available right now.
+          </Text>
+          <TouchableOpacity onPress={onRetry} activeOpacity={0.7}>
+            <Text style={styles.wsRetryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* Priority 1 — the headline. 52 letter FORMS (26 lowercase +
+              26 uppercase); words are a separate module and never counted
+              into this percentage. */}
+          <View style={[styles.wsBody, wide && styles.wsBodyWide]}>
+          <View style={[styles.wsHeadline, wide && styles.wsHeadlineWide]}>
+            <View>
+              <Text style={styles.wsHeadlineLabel}>Letters Mastered</Text>
+              <Text style={styles.wsHeadlineValue}>
+                {s.totalMastered}
+                <Text style={styles.wsHeadlineTotal}> / {s.totalLetterForms}</Text>
+              </Text>
+            </View>
+            <View style={styles.wsPercentPill}>
+              <Text style={styles.wsPercentText}>{s.masteredPercent}%</Text>
+            </View>
+          </View>
+
+          {/* Priority 2 — the two cases, counted independently. */}
+          <View style={[styles.wsRows, wide && styles.wsRowsWide]}>
+            <WsRow
+              label="Lowercase Letters"
+              value={`${s.lowercaseMastered} / ${TOTAL_LOWERCASE_FORMS}`}
+              percent={s.lowercasePercent}
+            />
+            <WsRow
+              label="Uppercase Letters"
+              value={`${s.uppercaseMastered} / ${TOTAL_UPPERCASE_FORMS}`}
+              percent={s.uppercasePercent}
+            />
+          </View>
+
+          </View>
+
+          {/* Priority 3 — words. Locked until BOTH cases are complete; the
+              same rule the child-facing gate uses. */}
+          <View style={styles.wsDivider} />
+          <View style={styles.wsStatusGrid}>
+            <WsStatus
+              icon={s.wordsUnlocked ? 'text-outline' : 'lock-closed-outline'}
+              label="Word Practice"
+              value={s.wordsUnlocked ? 'Available' : 'Locked'}
+              muted={!s.wordsUnlocked}
+            />
+            {!s.wordsUnlocked ? (
+              <Text style={styles.wsLockedHint}>
+                Complete all lowercase and uppercase letters first.
+              </Text>
+            ) : null}
+
+            {/* Priority 5 — home practice, counted rather than listed. */}
+            {s.homePracticeCount != null && s.homePracticeCount > 0 ? (
+              <WsStatus
+                icon="home-outline"
+                label="Home Practice"
+                value={
+                  s.homePracticeCount === 1 && s.homePracticeLetters.length === 1
+                    ? `${s.homePracticeLetters[0]} needs additional practice`
+                    : `${s.homePracticeCount} letters recommended`
+                }
+              />
+            ) : null}
+
+            {/* Priority 6 — latest Writing Check status only. Never a
+                cluster id, never a chart, never framed as good or bad. */}
+            <WsStatus
+              icon="pulse-outline"
+              label="Writing Pattern"
+              value={s.writingPatternLabel}
+              muted={s.writingPatternLabel === 'Not checked yet'}
+            />
+          </View>
+
+          {/* The single action out to the existing report. */}
+          <TouchableOpacity
+            style={styles.wsReportBtn}
+            activeOpacity={0.75}
+            onPress={onOpenReport}
+            accessibilityRole="button"
+            accessibilityLabel="View Writing Progress Report"
+          >
+            <Text style={styles.wsReportText}>View Writing Progress Report</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.text.link} />
+          </TouchableOpacity>
+        </>
+      )}
+    </Card>
+  );
+}
+
 export default function TeacherStudentDetailScreen({ route, navigation }) {
   const initialStudent = route.params?.student;
   const [student, setStudent] = useState(initialStudent);
@@ -243,6 +421,13 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   // Null until it loads and null if it fails — the card simply shows the address
   // instead, rather than an empty quote box.
   const [latestNote, setLatestNote] = useState(null);
+
+  // Writing tab summary. Lazy — fetched only once the Writing tab is actually
+  // open. Seeded with the neutral empty summary so a brand-new child reads
+  // 0/52 and "Locked" rather than blank or an error.
+  const [writingSummary, setWritingSummary] = useState({
+    status: 'loading', summary: buildWritingSummary({}),
+  });
 
   const fetch = useCallback(async () => {
     if (!initialStudent?.sid) { setRefreshing(false); return; }
@@ -305,15 +490,15 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     }
   }, [initialStudent?.sid]);
 
-  // The handwriting report lives under the Writing module below, and is also
-  // reachable from the section header's Report action while that tab is active.
-  const openHandwritingReport = useCallback(() => {
-    if (!student) return;
-    navigation.navigate('StudentHandwritingReport', {
-      student,
-      theme: getAvatarTheme(student.avatar_key),
-    });
-  }, [navigation, student]);
+  // openHandwritingReport is declared as a plain function further down — it
+  // needs `route.name` as the report's back target, and a second copy here
+  // would be a redeclaration.
+
+  const loadWritingSummary = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    setWritingSummary((prev) => ({ ...prev, status: 'loading' }));
+    setWritingSummary(await fetchWritingSummary(initialStudent.sid));
+  }, [initialStudent?.sid]);
 
   useEffect(() => { fetch(); }, [fetch]);
   useEffect(() => { fetchNote(); }, [fetchNote]);
@@ -324,6 +509,14 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     fetchDialogue();
     fetchLevel2();
   }, [fetchConcepts, fetchDialogue, fetchLevel2]));
+
+  // Lazy-load only when the Writing tab is actually selected (mirrors
+  // getConceptReport's own "expensive, lazy-load from the report screen"
+  // convention) — fetched once per (student, module-becomes-writing), not
+  // on every render or every tab switch back to Writing.
+  useEffect(() => {
+    if (activeModule === 'writing') loadWritingSummary();
+  }, [activeModule, loadWritingSummary]);
 
   if (!student) return null;
 
@@ -382,6 +575,32 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   // still the colour the child sees in the concept activities.
   const avatarPair = getAvatarTheme(student.avatar_key).heroGradient;
   const avatarDeep = avatarPair[avatarPair.length - 1];
+
+  // The header's "Report" shortcut points at whichever module is on screen —
+  // Concept only once there is something to report on, Writing always, since
+  // the handwriting report renders its own empty state.
+  const reportAction =
+    activeModule === 'writing' ? 'Report'
+      : activeModule === 'concept' && concepts && concepts.totals.started > 0 ? 'Report'
+        : null;
+
+  function openHandwritingReport() {
+    navigation.navigate('StudentHandwritingReport', {
+      student,
+      theme: getAvatarTheme(student.avatar_key),
+      // Where the report's back button returns to. Without it the report
+      // fell through to a bare goBack(), which lands wherever the stack
+      // happens to point rather than on the profile the teacher opened it
+      // from — see utils/backToOrigin.js. `activeModule` is preserved for
+      // free: this screen is not unmounted, so Writing is still selected.
+      originRoute: route.name,
+    });
+  }
+
+  function openActiveReport() {
+    if (activeModule === 'writing') openHandwritingReport();
+    else if (activeModule === 'concept') navigation.navigate('ConceptReport', { student });
+  }
 
   return (
     // The same backdrop the report uses. The profile is the screen you pass
@@ -602,6 +821,27 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                   <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
                 </View>
               </TouchableOpacity>
+
+              {/* Proposal FR-16, Phase 7B — near-real-time (not sub-second,
+                  not biometric) live handwriting-session monitoring. Polls on
+                  its own focus-gated interval; entirely independent of the
+                  report card above and the summary below. */}
+              <LiveSessionCard studentId={initialStudent?.sid} compactWhenInactive />
+
+              {/* WRITING PROGRESS — a compact OVERVIEW only, following the
+                  Concepts pattern: a small summary here, the detail behind the
+                  report card above.
+                  Deliberately NOT here: the motor performance chart, initial
+                  shape assessment, difficulty analysis, Writing Check history,
+                  per-letter history, worksheet history and periodic charts —
+                  all of which live in the Writing Progress Report. The
+                  per-family "Writing Standard" targets belong there too: a
+                  threshold is report-level detail, not an at-a-glance status. */}
+              <WritingSummaryCard
+                state={writingSummary}
+                onOpenReport={openHandwritingReport}
+                onRetry={loadWritingSummary}
+              />
             </View>
           ) : activeModule === 'dialogue' ? (
             dialogueLoading ? (
@@ -1527,57 +1767,62 @@ const styles = StyleSheet.create({
   reportTagText: { fontSize: 10, color: '#6366F1', fontWeight: '700' },
   reportArrow: { paddingLeft: 4 },
 
-  // ── Threshold card ────────────────────────────────────────────────────────
-  thresholdHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: Layout.spacing.md, gap: Layout.spacing.sm,
+  // ── Writing Progress summary ─────────────────────────────────────────
+  // Compact by design: the whole card sits inside the Module Progress area
+  // without turning it into the full report. No fixed heights and no nested
+  // ScrollView — the Student Profile already owns scrolling.
+  wsCard: { marginBottom: 12, overflow: 'hidden' },
+  wsLoading: { paddingVertical: 28, alignItems: 'center' },
+  wsUnavailable: { paddingVertical: 24, paddingHorizontal: 18, alignItems: 'center', gap: 7 },
+  wsUnavailableText: { fontSize: 12.5, color: Colors.text.muted, textAlign: 'center' },
+  wsRetryText: { fontSize: 12.5, fontWeight: '600', color: Colors.text.link },
+  wsReportText: { fontSize: 13.5, fontWeight: '600', color: Colors.text.link },
+
+  wsHeadline: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12,
   },
-  thresholdIconWrap: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
+  wsHeadlineLabel: { fontSize: 12, color: Colors.text.muted, marginBottom: 2 },
+  wsHeadlineValue: { fontSize: 26, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
+  wsHeadlineTotal: { fontSize: 15, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.muted },
+  wsPercentPill: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+    backgroundColor: 'rgba(99,102,241,0.10)',
   },
-  thresholdIconRaised: { backgroundColor: '#D1FAE5' },
-  thresholdScore: {
-    fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
+  wsPercentText: { fontSize: 15, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#6366F1' },
+
+  wsBody: {},
+  wsBodyWide: { flexDirection: 'row', alignItems: 'center', gap: 18, paddingRight: 14 },
+  wsHeadlineWide: { paddingRight: 0, flexShrink: 0, minWidth: 190 },
+  wsRows: { paddingHorizontal: 14, gap: 10 },
+  wsRowsWide: { flex: 1, paddingLeft: 0 },
+  wsRow: { gap: 5 },
+  wsRowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  wsRowLabel: { fontSize: 12.5, color: Colors.text.secondary },
+  wsRowValue: { fontSize: 12.5, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
+  wsBarTrack: {
+    height: 6, borderRadius: 3, backgroundColor: 'rgba(99,102,241,0.12)', overflow: 'hidden',
   },
-  thresholdNote: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-  thresholdBadge: {
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 8, backgroundColor: '#EEF2FF',
+  wsBarFill: { height: '100%', borderRadius: 3, backgroundColor: '#6366F1' },
+
+  wsDivider: {
+    height: StyleSheet.hairlineWidth, backgroundColor: Colors.border ?? 'rgba(0,0,0,0.08)',
+    marginTop: 14, marginHorizontal: 14,
   },
-  thresholdBadgeGreen: { backgroundColor: '#D1FAE5' },
-  thresholdBadgeText: { fontSize: 11, fontWeight: '700', color: '#6366F1' },
-  thresholdBadgeTextGreen: { color: '#059669' },
-  thresholdLetterSection: {
-    paddingHorizontal: Layout.spacing.md,
-    paddingTop: Layout.spacing.sm,
-    paddingBottom: Layout.spacing.md,
+  wsStatusGrid: { paddingHorizontal: 14, paddingTop: 12, gap: 10 },
+  wsStatus: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  wsStatusText: { flex: 1 },
+  wsStatusLabel: { fontSize: 11.5, color: Colors.text.muted },
+  wsStatusValue: { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary, marginTop: 1 },
+  wsStatusValueMuted: { color: Colors.text.secondary, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
+  wsLockedHint: {
+    fontSize: 11.5, color: Colors.text.muted, marginTop: -4, marginLeft: 23, lineHeight: 16,
   },
-  thresholdLetterHeading: {
-    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.semibold, marginBottom: Layout.spacing.sm,
-  },
-  thresholdLetterRow: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: Layout.spacing.sm, marginBottom: Layout.spacing.xs,
-  },
-  thresholdLetterBadge: {
-    width: 26, height: 26, borderRadius: 6,
-    backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center',
-  },
-  thresholdLetterChar: { fontSize: 13, fontWeight: '800', color: '#D97706' },
-  thresholdLetterLabel: { flex: 1, fontSize: Layout.fontSize.sm, color: Colors.text.primary },
-  thresholdLetterValue: {
-    fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#D97706',
-  },
-  thresholdLetterTag: { fontSize: Layout.fontSize.xs, color: '#D97706' },
-  thresholdHint: {
-    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
-    marginTop: Layout.spacing.sm, fontStyle: 'italic',
-  },
-  thresholdAllGood: {
-    fontSize: Layout.fontSize.xs, color: Colors.text.muted,
-    padding: Layout.spacing.md, fontStyle: 'italic',
+
+  wsReportBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: 14, paddingVertical: 13,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border ?? 'rgba(0,0,0,0.08)',
   },
 });

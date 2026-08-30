@@ -2,11 +2,9 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   PanResponder,
-  Dimensions,
   Animated,
   AccessibilityInfo,
 } from 'react-native';
@@ -14,183 +12,130 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line, Circle, Polyline, Path, G, Defs, Marker } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
-import { computeDTW } from '../../../utils/dtw';
-import { normalizeStrokesForDTW, normalizePointsForDTW } from '../../../utils/dtwNormalization';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../../constants/childInstructions';
+// computeDTW / normalizeStrokesForDTW / normalizePointsForDTW previously
+// imported here directly for the zigzag/curve_wave-only DTW branch below;
+// that branch is now the shape-agnostic computeInvariantDtwDistance import
+// below, which delegates to dtw.js/dtwNormalization.js internally (see
+// unifiedShapeScoreMirror.js) — no longer imported directly in this file.
+import {
+  computeShapeTemplate, computeInvariantDtwDistance, computeUnifiedShapeScore,
+} from '../../../utils/unifiedShapeScoreMirror';
+// The shared shape-assessment presentation - this screen and the
+// demonstration render the SAME component, in different modes.
+import ShapeAssessmentStage from '../../../components/handwriting/ShapeAssessmentStage';
+import {
+  CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CX, CANVAS_CY, POINTER_SIZE, POINTER_HALF,
+  SHAPE_STARTS, SHAPE_SCREEN_WIDTH, SHAPE_SCREEN_HEIGHT,
+} from '../../../constants/shapeCanvasLayout';
+import {
+  calculatePauseMetrics,
+  calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
+} from '../../../utils/trajectoryFeatures';
 import { buildDtwDebugExport } from '../../../utils/dtwDebugExport';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../../utils/touchPointSanitize';
 import { DATA_COLLECTION_PROTOCOL } from '../../../constants/dataCollectionProtocol';
 import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../../utils/collectionSession';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
+import { useInstructionAudio } from '../../../utils/useInstructionAudio';
+import { stopInstructionAudio } from '../../../utils/handwritingInstructionAudio';
+import { hasCanvasDrawing } from '../../../utils/canvasDrawingState';
+import AttemptAvatarFeedback from './AttemptAvatarFeedback';
+import { actionRowMinHeight } from '../../../constants/writingActionRow';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 2;
 
-const CANVAS_WIDTH  = SCREEN_WIDTH  * 0.6;
-const CANVAS_HEIGHT = SCREEN_HEIGHT * 0.55;
-const CANVAS_CX     = CANVAS_WIDTH  / 2;
-const CANVAS_CY     = CANVAS_HEIGHT / 2;
+// Canvas geometry now lives in ONE place, imported above and shared with the
+// "watch first" demonstration, so a demo can never render a shape at a
+// different size. Values unchanged - see constants/shapeCanvasLayout.js.
+//
+// The screen dimensions keep their original local names because this file's
+// own decorative styles (the background bubbles) size themselves from them.
+// Aliased rather than re-measured: a second Dimensions.get('window') call
+// would be a second source of truth for the same number.
+const SCREEN_WIDTH  = SHAPE_SCREEN_WIDTH;
+const SCREEN_HEIGHT = SHAPE_SCREEN_HEIGHT;
 
-const POINTER_SIZE = 14;
-const POINTER_HALF = POINTER_SIZE / 2;
+// TEMPORARY RESEARCH/DEBUG INSTRUMENTATION — remove after canvas-dimension
+// investigation is done. No formula/layout/scoring/DB-write change.
+console.log(`WINDOW_WIDTH=${SCREEN_WIDTH}`);
+console.log(`WINDOW_HEIGHT=${SCREEN_HEIGHT}`);
+console.log(`CANVAS_WIDTH=${CANVAS_WIDTH}`);
+console.log(`CANVAS_HEIGHT=${CANVAS_HEIGHT}`);
+
 const N_POINTS     = 100;
+const ASSESSMENT_FEEDBACK_MS = 1600;
 
-const AVATAR_MAP = {
-  boba:     require('../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../assets/avatar-images/Megatron.png'),
-};
+// Shape identity, order and progress labels remain shape-specific. All six
+// steps share the canonical bilingual instruction and recording.
+const ASSESSMENT_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.FOLLOW_PATH];
 
 const SHAPES = [
   {
     id: 'horizontal_line',
     label: 'Draw a straight line',
-    instruction:   'Follow the dotted line from left to right',
-    instructionSi: 'වමේ සිට දකුණට තිත් රේඛාව අනුගමනය කරන්න',
     pageLabel: 'Assessment 1 of 6',
   },
   {
     id: 'vertical_line',
     label: 'Draw a straight line down',
-    instruction:   'Follow the dotted line from top to bottom',
-    instructionSi: 'ඉහළ සිට පහළට තිත් රේඛාව අනුගමනය කරන්න',
     pageLabel: 'Assessment 2 of 6',
   },
   {
     id: 'full_circle',
     label: 'Draw a full circle',
-    instruction:   'Trace around the full dotted circle',
-    instructionSi: 'තිත් වෘත්තය වටා ඉර අඳින්න',
     pageLabel: 'Assessment 3 of 6',
   },
   {
     id: 'half_circle',
     label: 'Draw a half circle',
-    instruction:   'Trace the curved line from left to right',
-    instructionSi: 'වමේ සිට දකුණට වක්‍ර රේඛාව අනුගමනය කරන්න',
     pageLabel: 'Assessment 4 of 6',
   },
   {
     id: 'zigzag',
     label: 'Draw the zigzag pattern',
-    instruction:   'Follow the zigzag line from left to right',
-    instructionSi: 'වමේ සිට දකුණට සිග්සැග් රේඛාව අනුගමනය කරන්න',
     pageLabel: 'Assessment 5 of 6',
   },
   {
     id: 'curve_wave',
     label: 'Draw the wave',
-    instruction:   'Follow the wavy line from left to right',
-    instructionSi: 'වමේ සිට දකුණට රැළි රේඛාව අනුගමනය කරන්න',
     pageLabel: 'Assessment 6 of 6',
   },
 ];
 
-// Starting coordinates (SVG space) for pulsing ring — matches GuideShape start dots
-const SHAPE_STARTS = {
-  horizontal_line: { x: CANVAS_CX - 200,  y: CANVAS_CY        },
-  vertical_line:   { x: CANVAS_CX,         y: CANVAS_CY - 150  },
-  full_circle:     { x: CANVAS_CX,         y: CANVAS_CY - 120  },
-  half_circle:     { x: CANVAS_CX - 150,   y: CANVAS_CY        },
-  zigzag:          { x: CANVAS_CX - 180,   y: CANVAS_CY + 40   },
-  curve_wave:      { x: CANVAS_CX - 180,   y: CANVAS_CY        },
-};
-
-const SHAPE_AUDIO = {
-  horizontal_line: require('../../../../assets/handwriting_instructions/horizontal_line.mp3'),
-  vertical_line:   require('../../../../assets/handwriting_instructions/vertical_line.mp3'),
-  full_circle:     require('../../../../assets/handwriting_instructions/circle.mp3'),
-  half_circle:     require('../../../../assets/handwriting_instructions/curved.mp3'),
-  zigzag:          require('../../../../assets/handwriting_instructions/zig_zag.mp3'),
-  curve_wave:      require('../../../../assets/handwriting_instructions/wave.mp3'),
-};
-
 // ─── Animated pointer path sampling ───────────────────────────────────────────
-
+// computePathPoints moved to utils/unifiedShapeScoreMirror.js as
+// computeShapeTemplate(shapeId, canvasWidth, canvasHeight) — same geometry,
+// now also the template the unified motor score is computed against, so the
+// pointer guide and the score can never drift apart. Local wrapper below
+// keeps every existing call site in this file unchanged.
 function computePathPoints(shapeId) {
-  const cx = CANVAS_CX;
-  const cy = CANVAS_CY;
-  const pts = [];
-
-  if (shapeId === 'horizontal_line') {
-    for (let i = 0; i <= N_POINTS; i++) {
-      const t = i / N_POINTS;
-      pts.push({ x: cx - 200 + t * 400, y: cy });
-    }
-
-  } else if (shapeId === 'vertical_line') {
-    for (let i = 0; i <= N_POINTS; i++) {
-      const t = i / N_POINTS;
-      pts.push({ x: cx, y: cy - 150 + t * 300 });
-    }
-
-  } else if (shapeId === 'full_circle') {
-    const r = 120;
-    for (let i = 0; i <= N_POINTS; i++) {
-      const angle = -Math.PI / 2 + (i / N_POINTS) * 2 * Math.PI;
-      pts.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
-    }
-
-  } else if (shapeId === 'half_circle') {
-    const r = 150;
-    for (let i = 0; i <= N_POINTS; i++) {
-      const angle = Math.PI + (i / N_POINTS) * Math.PI;
-      pts.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
-    }
-
-  } else if (shapeId === 'zigzag') {
-    const nodes = [
-      { x: cx - 180, y: cy + 40 },
-      { x: cx - 120, y: cy - 40 },
-      { x: cx - 60,  y: cy + 40 },
-      { x: cx,       y: cy - 40 },
-      { x: cx + 60,  y: cy + 40 },
-      { x: cx + 120, y: cy - 40 },
-      { x: cx + 180, y: cy + 40 },
-    ];
-    const segs   = nodes.length - 1;
-    const perSeg = Math.floor(N_POINTS / segs);
-    for (let s = 0; s < segs; s++) {
-      const from  = nodes[s];
-      const to    = nodes[s + 1];
-      const count = s === segs - 1 ? N_POINTS - s * perSeg + 1 : perSeg;
-      for (let i = 0; i < count; i++) {
-        const t = i / (count > 1 ? count - 1 : 1);
-        pts.push({ x: from.x + t * (to.x - from.x), y: from.y + t * (to.y - from.y) });
-      }
-    }
-
-  } else if (shapeId === 'curve_wave') {
-    const segs = [
-      { p0: { x: cx - 180, y: cy }, p1: { x: cx - 120, y: cy - 60 }, p2: { x: cx - 60, y: cy } },
-      { p0: { x: cx - 60,  y: cy }, p1: { x: cx,       y: cy + 60 }, p2: { x: cx + 60, y: cy } },
-      { p0: { x: cx + 60,  y: cy }, p1: { x: cx + 120, y: cy - 60 }, p2: { x: cx + 180, y: cy } },
-    ];
-    const perSeg = Math.floor(N_POINTS / 3);
-    for (let s = 0; s < 3; s++) {
-      const { p0, p1, p2 } = segs[s];
-      const count = s === 2 ? N_POINTS - s * perSeg + 1 : perSeg;
-      for (let i = 0; i < count; i++) {
-        const t = i / (count > 1 ? count - 1 : 1);
-        pts.push({
-          x: (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x,
-          y: (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y,
-        });
-      }
-    }
-  }
-
-  return pts;
+  return computeShapeTemplate(shapeId, CANVAS_WIDTH, CANVAS_HEIGHT);
 }
 
 // ─── Feature calculation ───────────────────────────────────────────────────────
 
+// Duration-correction pass: attempt_duration_ms/attempt_avg_speed/
+// attempt_pause_frequency/attempt_pause_duration_ratio below are ADDITIVE
+// new fields, derived from tAbs via utils/trajectoryFeatures.js — see that
+// module's doc comment for why the legacy duration_ms above (still
+// returned completely unchanged) can undercount a multi-stroke attempt.
+// Every field already returned above this comment is untouched.
 function calculateFeatures(paths, shapeId) {
   const allPoints = paths.flat();
   if (allPoints.length < 2) {
-    return { duration_ms: 0, total_distance: 0, avg_speed: 0, smoothness: 0, pause_count: 0, accuracy: null, dtw_distance: null };
+    return {
+      duration_ms: 0, total_distance: 0, avg_speed: 0, smoothness: 0, pause_count: 0, accuracy: null, dtw_distance: null,
+      motor_score: null, dtw_score: null, smoothness_score: null,
+      attempt_duration_ms: null, attempt_avg_speed: null, attempt_pause_frequency: null, attempt_pause_duration_ratio: null,
+    };
   }
 
   const duration_ms = allPoints[allPoints.length - 1].t;
@@ -229,8 +174,11 @@ function calculateFeatures(paths, shapeId) {
 
   const cx = CANVAS_CX;
   const cy = CANVAS_CY;
+  // accuracy: diagnostic-only from here on (see unified motor score below).
+  // Kept exactly as before, still computed only for the 4 line/circle
+  // shapes — it no longer feeds any score, but is cheap and still useful
+  // for debugging/inspection.
   let accuracy = null;
-  let dtw_distance = null;
 
   if (shapeId === 'horizontal_line') {
     accuracy = allPoints.reduce((s, p) => s + Math.abs(p.y - cy), 0) / allPoints.length;
@@ -246,104 +194,76 @@ function calculateFeatures(paths, shapeId) {
     accuracy = allPoints.reduce((s, p) => {
       return s + Math.abs(Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2) - r);
     }, 0) / allPoints.length;
-  } else if (shapeId === 'zigzag' || shapeId === 'curve_wave') {
-    // dtw_norm_v1: translate + scale both paths to their own 100-unit
-    // bounding box before DTW so device/canvas size and drawing the shape
-    // larger/smaller/shifted don't skew dtw_distance (see dtwNormalization.js).
-    // Stroke boundaries (pen-lifts within one shape attempt) are preserved
-    // through normalization even though DTW itself compares the
-    // concatenated point sequence, matching the existing single-sequence
-    // DTW call below.
-    const template = computePathPoints(shapeId);
-    const normTemplate = normalizePointsForDTW(template);
-    const normChildStrokes = normalizeStrokesForDTW(paths);
-    const childPts = normChildStrokes.flat().map(p => ({ x: p.x, y: p.y }));
-    const result = computeDTW(childPts, normTemplate);
-    dtw_distance = result.normalizedDistance;
   }
 
-  return { duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy, dtw_distance };
+  // dtw_distance: now computed for ALL SIX shapes (previously zigzag/
+  // curve_wave only), via the direction- and (full_circle only)
+  // start-point-invariant DTW in utils/unifiedShapeScoreMirror.js. This is
+  // what motor_score below is actually derived from; accuracy above no
+  // longer feeds it.
+  const dtw_distance = computeInvariantDtwDistance(allPoints, shapeId, CANVAS_WIDTH, CANVAS_HEIGHT);
+  const { motor_score, dtw_score, smoothness_score } = computeUnifiedShapeScore(dtw_distance, smoothness);
+
+  // ML-safe duration pass — reuses the canonical pause metrics purely to get
+  // total_pause_duration_ms (this shape function's own `pause_count` above,
+  // computed inline, is left completely untouched and is what's returned).
+  const attemptDurationMs = calculateAttemptDurationFromAbsoluteTime(paths);
+  const { pause_count: canonicalPauseCount, total_pause_duration_ms } = calculatePauseMetrics(paths);
+  const attemptAvgSpeed = calculateAttemptAverageSpeed(total_distance, attemptDurationMs);
+  const { attempt_pause_frequency, attempt_pause_duration_ratio } =
+    calculateAttemptPauseMetrics(canonicalPauseCount, total_pause_duration_ms, attemptDurationMs);
+
+  return {
+    duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy, dtw_distance,
+    motor_score, dtw_score, smoothness_score,
+    attempt_duration_ms: attemptDurationMs,
+    attempt_avg_speed: attemptAvgSpeed,
+    attempt_pause_frequency,
+    attempt_pause_duration_ratio,
+  };
 }
 
 // ─── Guide shape SVG ──────────────────────────────────────────────────────────
 
-function GuideShape({ shapeId, theme }) {
-  const cx = CANVAS_CX;
-  const cy = CANVAS_CY;
-  const dash = { stroke: '#B8C8E8', strokeWidth: 3, strokeDasharray: '10,6' };
-
-  if (shapeId === 'horizontal_line') return (
-    <>
-      <Line x1={cx - 200} y1={cy} x2={cx + 200} y2={cy} {...dash} />
-      <Circle cx={cx - 200} cy={cy} r={12} fill={theme.button} />
-    </>
-  );
-
-  if (shapeId === 'vertical_line') return (
-    <>
-      <Line x1={cx} y1={cy - 150} x2={cx} y2={cy + 150} {...dash} />
-      <Circle cx={cx} cy={cy - 150} r={12} fill={theme.button} />
-    </>
-  );
-
-  if (shapeId === 'full_circle') return (
-    <>
-      <Circle cx={cx} cy={cy} r={120} fill="none" {...dash} />
-      <Circle cx={cx} cy={cy - 120} r={12} fill={theme.button} />
-    </>
-  );
-
-  if (shapeId === 'half_circle') return (
-    <>
-      <Path
-        d={`M ${cx - 150} ${cy} A 150 150 0 0 1 ${cx + 150} ${cy}`}
-        fill="none" {...dash}
-      />
-      <Circle cx={cx - 150} cy={cy} r={12} fill={theme.button} />
-    </>
-  );
-
-  if (shapeId === 'zigzag') {
-    const pts = [
-      { x: cx - 180, y: cy + 40 }, { x: cx - 120, y: cy - 40 },
-      { x: cx - 60,  y: cy + 40 }, { x: cx,       y: cy - 40 },
-      { x: cx + 60,  y: cy + 40 }, { x: cx + 120, y: cy - 40 },
-      { x: cx + 180, y: cy + 40 },
-    ];
-    return (
-      <>
-        <Polyline points={pts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" {...dash} />
-        <Circle cx={cx - 180} cy={cy + 40} r={12} fill={theme.button} />
-      </>
-    );
-  }
-
-  if (shapeId === 'curve_wave') return (
-    <>
-      <Path
-        d={`M ${cx - 180} ${cy} Q ${cx - 120} ${cy - 60},${cx - 60} ${cy} Q ${cx} ${cy + 60},${cx + 60} ${cy} Q ${cx + 120} ${cy - 60},${cx + 180} ${cy}`}
-        fill="none" {...dash}
-      />
-      <Circle cx={cx - 180} cy={cy} r={12} fill={theme.button} />
-    </>
-  );
-
-  return null;
-}
-
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ShapeAssessmentScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme, collectionMode = false, collectionSessionId = null } = route.params;
 
   const [currentShapeIndex, setCurrentShapeIndex] = useState(0);
   const [completedShapes,   setCompletedShapes]   = useState([]);
   const [currentPath,       setCurrentPath]       = useState([]);
   const [allPaths,          setAllPaths]          = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [showNext,          setShowNext]          = useState(false);
+  const [assessmentFeedback, setAssessmentFeedback] = useState(false);
   const [reduceMotion,      setReduceMotion]      = useState(false);
 
   const startTime            = useRef(null);
+  // Border-touch bug fix — see touchPointSanitize.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
+  }, []);
   const sessionStartTime     = useRef(Date.now());
   const currentShapeIndexRef = useRef(0);
   const allPathsRef          = useRef([]);
@@ -352,10 +272,21 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   const pulseAnim            = useRef(new Animated.Value(0)).current;
   const bgAnim               = useRef(new Animated.Value(0)).current;
   const pulseLoopRef         = useRef(null);
-  const soundRef             = useRef(null);
   const strokeIdCounter      = useRef(0);  // ML: counts strokes within the current shape
+  const feedbackActiveRef    = useRef(false);
+  const advancingRef         = useRef(false);
 
   const currentShape = SHAPES[currentShapeIndex];
+  const displayedShape = useMemo(() => ({
+    ...currentShape,
+    instruction: ASSESSMENT_INSTRUCTION.en,
+    instructionSi: ASSESSMENT_INSTRUCTION.si,
+  }), [currentShape]);
+  const replayInstruction = useInstructionAudio(INSTRUCTION_KEYS.FOLLOW_PATH, {
+    autoPlay: true,
+    autoPlayToken: currentShapeIndex,
+    delayMs: 300,
+  });
 
   const pulseScale = useMemo(
     () => pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }),
@@ -377,18 +308,6 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     () => bgAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] }),
     [bgAnim],
   );
-
-  const playShapeAudio = useCallback(async (shapeId) => {
-    try {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-      const { sound } = await Audio.Sound.createAsync(SHAPE_AUDIO[shapeId]);
-      soundRef.current = sound;
-      await sound.playAsync();
-    } catch (_) {}
-  }, []);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
@@ -424,27 +343,41 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
   // Precompute interpolation ranges for animated pointer
   const pathPoints = computePathPoints(currentShape.id);
-  const inputRange = pathPoints.map((_, i) => i / (pathPoints.length - 1));
+  // Same two-keyframe minimum as PreWritingActivityScreen: computeShapeTemplate
+  // returns [] for a shape id it does not recognise, which would divide by -1
+  // here and hand interpolate() an empty range.
+  const hasPointerPath = pathPoints.length > 1;
+  const inputRange = hasPointerPath
+    ? pathPoints.map((_, i) => i / (pathPoints.length - 1))
+    : [0, 1];
   const pointerLeft = animValue.interpolate({
     inputRange,
-    outputRange: pathPoints.map(p => p.x - POINTER_HALF),
+    outputRange: hasPointerPath ? pathPoints.map(p => p.x - POINTER_HALF) : [0, 0],
   });
   const pointerTop = animValue.interpolate({
     inputRange,
-    outputRange: pathPoints.map(p => p.y - POINTER_HALF),
+    outputRange: hasPointerPath ? pathPoints.map(p => p.y - POINTER_HALF) : [0, 0],
   });
 
-  // Restart animations and speak on shape change
+  // Restart the visual guide on shape change. FOLLOW_PATH audio autoplay and
+  // lifecycle cleanup are handled by the shared fixed-instruction hook above.
   useEffect(() => {
     animValue.setValue(0);
     pulseAnim.setValue(0);
 
+    // Slowed down (was 2500ms) + a short rest at the finished shape before
+    // looping back to the start, so the demo reads as a calm, predictable
+    // "trace, then pause" rhythm rather than a fast, continuous loop —
+    // easier for an ASD child to visually follow and anticipate.
     const pointerLoop = Animated.loop(
-      Animated.timing(animValue, {
-        toValue: 1,
-        duration: 2500,
-        useNativeDriver: false,
-      })
+      Animated.sequence([
+        Animated.timing(animValue, {
+          toValue: 1,
+          duration: 6000,
+          useNativeDriver: false,
+        }),
+        Animated.delay(700),
+      ])
     );
     pointerLoop.start();
 
@@ -458,25 +391,26 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     pulseLoopRef.current = pulseLoop;
     pulseLoop.start();
 
-    const shape = SHAPES[currentShapeIndex];
-    const t = setTimeout(() => { playShapeAudio(shape.id); }, 300);
-
     return () => {
       pointerLoop.stop();
       pulseLoop.stop();
-      clearTimeout(t);
-      if (soundRef.current) { soundRef.current.unloadAsync(); soundRef.current = null; }
     };
   }, [currentShapeIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── PanResponder ────────────────────────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder:  () => true,
+      onStartShouldSetPanResponder: () => !feedbackActiveRef.current,
+      onMoveShouldSetPanResponder:  () => !feedbackActiveRef.current,
 
       onPanResponderGrant: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        if (feedbackActiveRef.current) return;
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         startTime.current = now;
         strokeIdCounter.current += 1;  // ML: new stroke starts
@@ -484,9 +418,19 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       },
 
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
-        setCurrentPath(prev => [...prev, { x: locationX, y: locationY, t: now - startTime.current, tAbs: now, stroke_id: strokeIdCounter.current }]);
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x: locationX, y: locationY }, CANVAS_WIDTH, CANVAS_HEIGHT)) return prev;
+          return [...prev, { x: locationX, y: locationY, t: now - startTime.current, tAbs: now, stroke_id: strokeIdCounter.current }];
+        });
       },
 
       onPanResponderRelease: () => {
@@ -540,6 +484,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   }, [student.sid, collectionMode, collectionSessionId]);
 
   const handleClear = useCallback(() => {
+    if (feedbackActiveRef.current) return;
     setAllPaths([]);
     allPathsRef.current = [];
     setCurrentPath([]);
@@ -548,13 +493,9 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   }, []);
 
   const handleNext = useCallback(async () => {
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-      } catch (_) {}
-      soundRef.current = null;
-    }
+    if (advancingRef.current) return;
+    advancingRef.current = true;
+    stopInstructionAudio();
     const idx = currentShapeIndexRef.current;
     const shapeId = SHAPES[idx].id;
     const shapeData = {
@@ -567,13 +508,27 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
     if (__DEV__ && (shapeId === 'zigzag' || shapeId === 'curve_wave')) {
       // Developer-only export — full raw/normalized paths for offline
       // inspection. Never sent to the backend, never used for scoring.
-      console.log('[DTW debug export]', buildDtwDebugExport({
+      // JSON.stringify (not the raw object) — console.log's default
+      // object-inspection depth truncates normalized_child_path (an array
+      // of strokes of points, one level deeper than
+      // normalized_template_path) to "[Object]"; stringifying bypasses
+      // that depth limit entirely.
+      console.log('[DTW debug export]', JSON.stringify(buildDtwDebugExport({
         childStrokes:   allPathsRef.current,
         templatePoints: computePathPoints(shapeId),
         dtwResult:      { normalizedDistance: shapeData.features.dtw_distance, strokeOrderMeta: null },
         qualityScore:   null,
-      }));
+      })));
     }
+
+    // Assessment feedback is neutral and presentation-only. Feature
+    // extraction above is already complete; this overlay does not read or
+    // alter any score, threshold, baseline, or captured stroke.
+    feedbackActiveRef.current = true;
+    setAssessmentFeedback(true);
+    await new Promise(resolve => setTimeout(resolve, ASSESSMENT_FEEDBACK_MS));
+    setAssessmentFeedback(false);
+    feedbackActiveRef.current = false;
 
     const updated = [...completedShapesRef.current, shapeData];
     completedShapesRef.current = updated;
@@ -587,8 +542,10 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       setCurrentPath([]);
       setShowNext(false);
       strokeIdCounter.current = 0;  // ML: reset stroke counter for the next shape
+      advancingRef.current = false;
     } else {
       const assessmentId = await submitAssessment(updated);
+      advancingRef.current = false;
       if (collectionMode) {
         navigation.navigate('LetterWriting', {
           student,
@@ -654,101 +611,26 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
         <View style={styles.container}>
 
-          {/* ── TOP: assessment badge + shape title + success badge + instruction ── */}
-          <View style={styles.topArea}>
-
-            <View style={[styles.assessBadge, { backgroundColor: theme.button + '18', borderColor: theme.button + '40' }]}>
-              <Ionicons name="pencil-outline" size={13} color={theme.button} />
-              <Text style={[styles.assessBadgeText, { color: theme.button }]}>
-                {currentShape.pageLabel}
-              </Text>
-            </View>
-
-            <Text style={[styles.shapeTitle, { color: theme.headingText }]}>
-              {currentShape.label}
-            </Text>
-
-            <View style={[styles.instructionCard, { borderLeftColor: theme.button }]}>
-              <View style={styles.instructionInner}>
-                <View style={styles.instructionTexts}>
-                  <Text style={styles.instructionEn}>{currentShape.instruction}</Text>
-                  <Text style={styles.instructionSi}>{currentShape.instructionSi}</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => playShapeAudio(currentShape.id)}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={[styles.speakerBtn, { backgroundColor: theme.button + '18' }]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="volume-high" size={24} color={theme.button} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-          </View>
-
-          {/* ── MIDDLE: drawing canvas ── */}
-          <View style={styles.canvasArea}>
-            <View
-              style={[styles.canvasCard, { borderColor: theme.button + '30' }]}
-              {...panResponder.panHandlers}
-            >
-              <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
-                <GuideShape shapeId={currentShape.id} theme={theme} />
-
-                {allPaths.map((stroke, i) => (
-                  <Polyline
-                    key={i}
-                    points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
-                    stroke={theme.button}
-                    strokeWidth={4}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                ))}
-
-                {currentPath.length > 1 && (
-                  <Polyline
-                    points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
-                    stroke={theme.button}
-                    strokeWidth={4}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                    opacity={0.7}
-                  />
-                )}
-              </Svg>
-
-              {/* Pulsing ring — guides child to start position */}
-              {!showNext && (
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.pulseDot,
-                    {
-                      left:            startDot.x - 18,
-                      top:             startDot.y - 18,
-                      borderColor:     theme.button,
-                      backgroundColor: theme.button + '20',
-                      transform:       [{ scale: pulseScale }],
-                      opacity:         pulseOpacity,
-                    },
-                  ]}
-                />
-              )}
-
-              {/* Animated guide pointer */}
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.pointer,
-                  { backgroundColor: theme.button, left: pointerLeft, top: pointerTop },
-                ]}
-              />
-            </View>
-          </View>
+          {/* Instruction + drawing canvas, rendered by the SHARED
+              ShapeAssessmentStage so the "watch first" demonstration and this
+              real assessment are the same layout from the same file. */}
+          <ShapeAssessmentStage
+            mode="practice"
+            theme={theme}
+            shape={displayedShape}
+            startDot={startDot}
+            allPaths={allPaths}
+            currentPath={currentPath}
+            showPulse={!showNext}
+            pulseScale={pulseScale}
+            pulseOpacity={pulseOpacity}
+            pointerLeft={pointerLeft}
+            pointerTop={pointerTop}
+            onSpeak={replayInstruction}
+            canvasRef={canvasRef}
+            onCanvasLayout={measureCanvasOrigin}
+            panHandlers={panResponder.panHandlers}
+          />
 
           {/* ── BOTTOM: progress dots + action buttons ── */}
           <View style={styles.bottomArea}>
@@ -771,19 +653,23 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
             </View>
 
             <View style={styles.buttonsRow}>
-              <TouchableOpacity
-                style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
-                onPress={handleClear}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="refresh" size={18} color={theme.button} />
-                <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
-              </TouchableOpacity>
+              {canClearCanvas && (
+                <TouchableOpacity
+                  style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
+                  onPress={handleClear}
+                  disabled={assessmentFeedback}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="refresh" size={18} color={theme.button} />
+                  <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
+                </TouchableOpacity>
+              )}
 
               {showNext && (
                 <TouchableOpacity
                   style={[styles.nextButton, { backgroundColor: theme.button }]}
                   onPress={handleNext}
+                  disabled={assessmentFeedback}
                   activeOpacity={0.85}
                 >
                   <Text style={[styles.nextText, { color: theme.buttonText }]}>Next</Text>
@@ -795,28 +681,14 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
 
         </View>
 
-        {/* Feedback bubble — speech bubble above avatar's head */}
-        {showNext && (
-          <>
-            <View style={[styles.avatarBubble, { borderColor: theme.button + '28' }]}>
-              <Text style={[styles.avatarBubbleText, { color: theme.button }]}>
-                Nice tracing.
-                {'\n'}
-                Tap Next when ready.
-              </Text>
-            </View>
-            {/* Tail pointing right toward avatar's head */}
-            <View style={[styles.avatarBubbleDotLarge, { borderColor: theme.button + '28' }]} />
-            <View style={[styles.avatarBubbleDotSmall, { borderColor: theme.button + '22' }]} />
-          </>
+        {assessmentFeedback && (
+          <AttemptAvatarFeedback
+            avatarKey={student?.avatar_key}
+            passed
+            note="Nice work!"
+            theme={theme}
+          />
         )}
-
-        {/* Avatar — screen-level absolute */}
-        <Image
-          source={AVATAR_MAP[student?.avatar_key]}
-          style={styles.avatarImage}
-          resizeMode="contain"
-        />
 
       </SafeAreaView>
     </LinearGradient>
@@ -859,37 +731,6 @@ const styles = StyleSheet.create({
   },
 
   // Top area
-  topArea: {
-    alignItems: 'center',
-    marginTop: 16,
-    width: '100%',
-    flexShrink: 0,
-  },
-
-  assessBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  assessBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-
-  shapeTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-
   successBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -903,89 +744,11 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     color: '#2E7D32',
   },
 
-  instructionCard: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 22,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderLeftWidth: 4,
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
-    marginTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  instructionInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  instructionTexts: {
-    flex: 1,
-    gap: 4,
-  },
-  instructionEn: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#444444',
-    textAlign: 'center',
-  },
-  instructionSi: {
-    fontSize: 15,
-    color: '#7B7B9E',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  speakerBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   // Canvas area
-  canvasArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-  },
-  canvasCard: {
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
-    backgroundColor: 'rgba(248,250,255,0.96)',
-    borderRadius: 26,
-    borderWidth: 2,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.09,
-    shadowRadius: 18,
-    elevation: 5,
-  },
-  pointer: {
-    position: 'absolute',
-    width: POINTER_SIZE,
-    height: POINTER_SIZE,
-    borderRadius: POINTER_HALF,
-    opacity: 0.8,
-  },
-  pulseDot: {
-    position: 'absolute',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-  },
-
   // Bottom area
   bottomArea: {
     alignItems: 'center',
@@ -1004,6 +767,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   buttonsRow: {
+    minHeight: actionRowMinHeight({
+      maxButtonPaddingVertical: 13,
+      maxButtonBorderWidth: 1.5,
+    }),
     flexDirection: 'row',
     gap: 16,
     alignItems: 'center',
@@ -1020,6 +787,7 @@ const styles = StyleSheet.create({
   clearText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   nextButton: {
     flexDirection: 'row',
@@ -1032,66 +800,6 @@ const styles = StyleSheet.create({
   nextText: {
     fontSize: 16,
     fontWeight: '700',
-  },
-
-  // Avatar
-  avatarImage: {
-    position: 'absolute',
-    bottom: -10,
-    right: 8,
-    width: 250,
-    height: 320,
-    zIndex: 10,
-  },
-
-  // Feedback speech bubble above avatar's head
-  avatarBubble: {
-    position: 'absolute',
-    bottom: 252,
-    right: 118,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    borderWidth: 1.5,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 182,
-    minHeight: 78,
-    maxWidth: 210,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 6,
-    elevation: 4,
-    zIndex: 11,
-  },
-  avatarBubbleText: {
-    fontSize: 16,
-    fontWeight: '800',
-    lineHeight: 22,
-    textAlign: 'center',
-  },
-  avatarBubbleDotLarge: {
-    position: 'absolute',
-    bottom: 238,
-    right: 104,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    backgroundColor: '#FFFFFF',
-    zIndex: 11,
-  },
-  avatarBubbleDotSmall: {
-    position: 'absolute',
-    bottom: 222,
-    right: 88,
-    width: 13,
-    height: 13,
-    borderRadius: 6.5,
-    borderWidth: 1.5,
-    backgroundColor: '#FFFFFF',
-    zIndex: 12,
+    fontFamily: 'Nunito_700Bold',
   },
 });

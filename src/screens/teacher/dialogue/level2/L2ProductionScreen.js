@@ -4,7 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+// expo-file-system v19 (SDK 54) moved cacheDirectory/writeAsStringAsync/
+// EncodingType behind the `/legacy` entry point; on the main entry
+// cacheDirectory is undefined. Same migration as src/utils/reportPdf.js.
+import * as FileSystem from 'expo-file-system/legacy';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';

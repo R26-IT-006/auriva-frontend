@@ -69,6 +69,20 @@ export const DTW_CORRECT_THRESHOLD = 22;
 /**
  * Converts a single shape/letter-attempt's features into a 0-100 score.
  *
+ * ⚠ NON-AUTHORITATIVE for progression (Motor Score Unification, 2026-08):
+ * this score is a local, client-side estimate only. It still drives
+ * in-session UX (live feedback, local sequencing hints, the instant number
+ * a child/teacher sees while writing) — that usage is fine and unchanged.
+ * It must NEVER be treated as deciding mastery, pass/fail, threshold
+ * updates, or Feature 2/3 evidence: those are decided solely by the
+ * backend's computeMotorScore() (auriva-backend/src/utils/motorScore.js)
+ * once an attempt reaches the server. Any `attempt_scores` this function
+ * produces and sends to the backend is read there only for a diagnostic
+ * mismatch check — see handwritingController.recordLetterCompletion() and
+ * tests/motorScoreAuthority.test.js (backend repo) for the enforcement and
+ * proof that a client-inflated/suppressed score here cannot move the
+ * authoritative outcome.
+ *
  * Three code paths:
  *  1. accuracy !== 0  → shape-assessment path (lines, circles): score = 100 - accuracy
  *  2. dtw_distance provided → letter-writing path: weighted DTW + smoothness
@@ -128,7 +142,27 @@ function buildScoreMap(assessmentData) {
 
   for (const shape of assessmentData) {
     if (shape?.shapeId && shape?.features) {
-      map[shape.shapeId] = featuresToScore(shape.features);
+      // Shape-assessment scoring path: reads the unified motor_score
+      // calculateFeatures() (ShapeAssessmentScreen.js) already computed via
+      // utils/unifiedShapeScoreMirror.js, rather than calling
+      // featuresToScore() below. featuresToScore itself is UNCHANGED and
+      // still used as-is by letters/words/uppercase/pre-writing — this is
+      // a narrower, shape-assessment-only substitution, not a retirement
+      // of featuresToScore().
+      //
+      // Unlike the display-facing ?? 50 fallbacks removed elsewhere (which
+      // could silently show a fabricated score to a teacher), this map
+      // feeds calculateMotorProfile's family-averaging arithmetic directly
+      // below — it structurally needs a number for every key, it can't
+      // leave a hole the way a "Not available" badge can. This path only
+      // ever runs on freshly-computed, same-session data (calculateFeatures
+      // always sets motor_score), so motor_score should never actually be
+      // missing here; if it is, that's a real bug, not stale historical
+      // data — so this warns loudly rather than substituting silently.
+      if (shape.features.motor_score == null) {
+        console.warn(`buildScoreMap: motor_score missing for shape "${shape.shapeId}" in a live assessment — falling back to neutral 50, but this should never happen (calculateFeatures() always sets it).`);
+      }
+      map[shape.shapeId] = shape.features.motor_score ?? 50;
     }
   }
   return map;

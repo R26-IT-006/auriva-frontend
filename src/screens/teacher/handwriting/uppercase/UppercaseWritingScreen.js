@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   PanResponder,
-  Dimensions,
   Animated,
   AccessibilityInfo,
 } from 'react-native';
@@ -15,7 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Line, Circle, Polyline, Polygon, Path, Text as SvgText } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import { storeLetterProgress } from '../../../../utils/storage';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../../../utils/touchPointSanitize';
 import { getAllLetters } from '../../../../data/letterCategories';
+import { fetchMasteredLetters, filterUnmasteredSequence } from '../../../../utils/masteredLetterFiltering';
+import { useLearningSessionActivity } from '../../../../context/LearningSessionContext';
+import BreakPromptModal from '../../../../components/handwriting/BreakPromptModal';
+import { LIVE_ACTIVITY_TYPES } from '../../../../constants/liveSessionPolicy';
+import { buildProgressPatch, buildScorePatch } from '../../../../utils/liveSessionSnapshot';
 import { DATA_COLLECTION_PROTOCOL } from '../../../../constants/dataCollectionProtocol';
 import { featuresToScore, DTW_CORRECT_THRESHOLD } from '../../../../utils/adaptiveSequencing';
 import { computeDTW, sampleSmoothPath, normalizeStrokes, computeMultiStrokeDTW } from '../../../../utils/dtw';
@@ -27,47 +32,84 @@ import AttemptAvatarFeedback from '../AttemptAvatarFeedback';
 import {
   getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
 } from '../../../../utils/collectionSession';
-import { getLetterPrimitiveGroup, selectPreWritingActivities } from '../../../../data/preWritingActivities';
+import { getLetterPrimitiveGroup, selectPreWritingActivities, getPreWritingActivityById } from '../../../../data/preWritingActivities';
+import { primitiveGroupOnEntering } from '../../../../utils/preWritingTransition';
+import { buildLetterRemediationActivities } from '../../../../utils/letterRemediationPlan';
+import {
+  createPreWritingInteractionId,
+  markWarmupHandled,
+  buildPreWritingNavigationParams,
+  PRE_WRITING_REASON,
+  hasWarmupHandled,
+  resolveAdaptivePreWritingDetour,
+  hasRemediationHandled,
+  markRemediationHandled,
+} from '../../../../utils/preWritingSessionGuard';
+// One-time category demonstration — see utils/demoPolicy.js. Decides only;
+// writes nothing until the child presses "I'm Ready" on the demo screen.
+import { useDemoDetour } from '../../../../utils/demoDetour';
+import { makeLetterCategoryDemoKey } from '../../../../utils/demoPolicy';
+import { SUPPORT_LEVELS, getSupportPresentation, resolveSessionSupportLevel } from '../../../../constants/handwritingSupportLevels';
+import { buildSessionAttemptRecord } from '../../../../utils/handwritingAttemptPayload';
+import { fetchRecommendedStartSupport, shouldApplyRecommendation, resolveRecommendedStartSupport } from '../../../../utils/supportRecommendation';
+import { fetchPreWritingRecommendation } from '../../../../utils/preWritingRecommendation';
+import { fetchRepetitionRecommendation } from '../../../../utils/repetitionRecommendation';
+import { DEMO_SPEED_LEVELS, getStrokeDurationForLevel } from '../../../../constants/demoSpeedLevels';
+import {
+  fetchDemoSpeedRecommendation, shouldApplyDemoSpeedRecommendation, resolveRecommendedDemoSpeedLevel,
+} from '../../../../utils/demoSpeedRecommendation';
+import { resolveActualDemoSpeedLevel } from '../../../../utils/demoSpeedPersistence';
+import { getAdaptiveRepetitionsUsed, incrementAdaptiveRepetitionsUsed } from '../../../../utils/repetitionSessionGuard';
+import { insertSpacedRepetition } from '../../../../utils/controlledRepetition';
+// The two-cycle-per-practice-date ceiling. Before this, a failed cycle
+// reset the child to attempt 1 on the SAME letter with nothing bounding it.
+import {
+  recordCycleCompleted, getCyclesUsed, MAX_CYCLES_PER_LETTER_PER_DATE, MASTERY_ATTEMPT_NUMBER, MASTERY_ATTEMPT_INDEX,
+} from '../../../../utils/letterCycleGuard';
+import {
+  calculateTotalDistance, calculateAverageSpeed, calculateSpeedStats, calculatePauseMetrics,
+  calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
+} from '../../../../utils/trajectoryFeatures';
+import { useLockLandscape } from '../../../../utils/useOrientationLock';
+import useGatedBack from '../../../../utils/useGatedBack';
+import { goBackToOrigin } from '../../../../utils/backToOrigin';
+// The shared letter-writing presentation - this screen and the demonstration
+// render the SAME component, in different modes.
+import LetterWritingStage from '../../../../components/handwriting/LetterWritingStage';
+import {
+  SUPPORT_BADGE,
+} from '../../../../components/handwriting/LetterWritingStage';
+import { instructionForSupport, SUPPORT_INSTRUCTION_KEY } from '../../../../constants/childInstructions';
+import { useInstructionAudioState } from '../../../../utils/useInstructionAudio';
+import { ukLetterSpeechOptions } from '../../../../constants/speechLocale';
+import { hasCanvasDrawing } from '../../../../utils/canvasDrawingState';
+import { actionRowMinHeight } from '../../../../constants/writingActionRow';
+import { startGuideReplayCycle } from '../../../../utils/guideReplayCycle';
+import {
+  PAD, COL_L, LETTER_CARD_SIZE, CANVAS_W, CANVAS_H, ASPECT, aspectX,
+  LINE_1, LINE_2, LINE_3, LINE_4,
+} from '../../../../constants/letterCanvasLayout';
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 1.5;
 
 // Shapes occupy 0-5, lowercase letters occupy 6-15 — uppercase continues from 16.
 const UPPERCASE_TASK_ORDER_OFFSET = 16;
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const PAD = 16;
-
-const COL_L            = Math.round(SCREEN_W * 0.43);
-const LETTER_CARD_SIZE = COL_L - 8;
-const CANVAS_W         = SCREEN_W - COL_L - PAD * 2;
-const CANVAS_H         = Math.round(SCREEN_H * 0.50);
-
-const ASPECT  = CANVAS_W / CANVAS_H;
-const aspectX = (fx) => 0.5 + (fx - 0.5) / ASPECT;
-
-// 4-line handwriting ruling — evenly spaced (0.28 gap), 0.08 margins
-const LINE_1 = Math.round(CANVAS_H * 0.08);
-const LINE_2 = Math.round(CANVAS_H * 0.36);
-const LINE_3 = Math.round(CANVAS_H * 0.64);
-const LINE_4 = Math.round(CANVAS_H * 0.92);
+// Canvas geometry (CANVAS_W/CANVAS_H, the 4-line ruling, the aspect
+// correction, the column split) now lives in ONE place, imported above and
+// shared with the "watch first" demonstration, so a demo can never render
+// this letter at a different size. Every value is unchanged - the module is
+// a move of this screen's own declarations, not a redesign.
 
 
 
-const ATTEMPT_BADGE = {
-  1: { bg: '#FFCBA8', border: '#FF8C42', text: '#7A2D00' },
-  2: { bg: '#FFE97A', border: '#F0C000', text: '#5A4000' },
-  3: { bg: '#A8E6A8', border: '#4CAF50', text: '#1B5E20' },
-};
-
-const ATTEMPT_TITLES = {
-  1: 'Attempt 1 · Watch & Trace',
-  2: 'Attempt 2 · Follow the Guide',
-  3: 'Attempt 3 · Write Freely',
-};
-
-const ATTEMPT_HINTS = {
-  1: 'Watch the dot — then draw it yourself!',
-  2: 'Start at the number, then follow the arrow.',
-  3: 'Write from memory — no guide this time!',
-};
+// Feature 3 Step 2: keyed by SUPPORT_LEVELS (high/medium/low) instead of raw
+// attempt number — see LetterWritingScreen.js's identical migration for the
+// full rationale. Values are byte-identical to the pre-refactor
+// ATTEMPT_BADGE and the attempt wording; only the lookup key changed.
 
 const START_POS = {
   I: { fx: 0.50, fy: 0.12 }, L: { fx: 0.37, fy: 0.12 }, T: { fx: 0.50, fy: 0.12 },
@@ -83,13 +125,6 @@ const START_POS = {
 
 const DEFAULT_START = { fx: 0.36, fy: 0.12 };
 
-const PHONETICS = {
-  a:'[eɪ]', b:'[biː]', c:'[siː]', d:'[diː]', e:'[iː]',
-  f:'[ɛf]',  g:'[dʒiː]', h:'[eɪtʃ]', i:'[aɪ]', j:'[dʒeɪ]',
-  k:'[keɪ]', l:'[ɛl]', m:'[ɛm]', n:'[ɛn]', o:'[oʊ]',
-  p:'[piː]', q:'[kjuː]', r:'[ɑːr]', s:'[ɛs]', t:'[tiː]',
-  u:'[juː]', v:'[viː]', w:'[dʌbljуː]', x:'[ɛks]', y:'[waɪ]', z:'[zɛd]',
-};
 
 const LETTER_PATHS = {
   A:[[{fx:0.28,fy:0.64},{fx:0.50,fy:0.08}],[{fx:0.50,fy:0.08},{fx:0.72,fy:0.64}],[{fx:0.40,fy:0.36},{fx:0.60,fy:0.36}]],
@@ -174,42 +209,6 @@ const ANGULAR_LETTERS = new Set([
   'V','W','Z','X','Y','K','L','A','E','M','N','T','I','H','F',
 ]);
 
-function toSmoothPath(rawPath) {
-  const strokes = normalizeStrokes(rawPath);
-  let d = '';
-  for (const waypoints of strokes) {
-    if (!waypoints || waypoints.length < 2) continue;
-    const pts = waypoints.map(p => [aspectX(p.fx) * CANVAS_W, p.fy * CANVAS_H]);
-    d += ` M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[Math.max(0, i - 1)];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const p3 = pts[Math.min(pts.length - 1, i + 2)];
-      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
-      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
-      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
-      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
-      d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
-    }
-  }
-  return d.trim();
-}
-
-function toStraightPath(rawPath) {
-  const strokes = normalizeStrokes(rawPath);
-  let d = '';
-  for (const waypoints of strokes) {
-    if (!waypoints || waypoints.length < 2) continue;
-    const pts = waypoints.map(p => [aspectX(p.fx) * CANVAS_W, p.fy * CANVAS_H]);
-    d += ` M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-    for (let i = 1; i < pts.length; i++) {
-      d += ` L ${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}`;
-    }
-  }
-  return d.trim();
-}
-
 function sampleStraightStroke(waypoints, numSamples, canvasW, canvasH) {
   if (!waypoints || waypoints.length < 2) return { points: [], totalLength: 0 };
   const aspect = canvasW / canvasH;
@@ -242,17 +241,6 @@ function sampleStraightStroke(waypoints, numSamples, canvasW, canvasH) {
     });
   }
   return { points, totalLength };
-}
-
-function getGhostDots(rawPath) {
-  const strokes = normalizeStrokes(rawPath);
-  const dots = [];
-  for (const s of strokes) {
-    if (s && s.length === 1) {
-      dots.push({ cx: aspectX(s[0].fx) * CANVAS_W, cy: s[0].fy * CANVAS_H });
-    }
-  }
-  return dots;
 }
 
 function getStrokeDirectionHint(stroke, showEverySegment = false) {
@@ -306,7 +294,14 @@ function getStrokeDirectionHint(stroke, showEverySegment = false) {
   };
 }
 
-const TRACER_PX_PER_MS = 0.28;
+// Feature 6 Step 4 — TRACER_PX_PER_MS removed: its one and only usage (the
+// tracer-stroke duration formula below) now goes through
+// getStrokeDurationForLevel()/constants/demoSpeedLevels.js instead, which is
+// byte-identical to the old `Math.max(600, Math.round(len / 0.28))` formula
+// at 'standard' speed (spec §26). Unlike LetterWritingScreen.js, this file
+// has no other (dead-code or otherwise) reference to the constant, so
+// removing it is directly redundant because of this step's own activation,
+// not unrelated cleanup (spec §23).
 const ATTEMPT_FEEDBACK_MS = 2200;
 
 // Returns total drawn length + bounding-box dimensions in one pass.
@@ -339,10 +334,34 @@ function didPassAttempt(features, paths) {
     && features.dtw_distance < DTW_CORRECT_THRESHOLD;
 }
 
+// ML: total_distance/avg_speed/speed_std/speed_cv/pause-extras below are
+// ADDITIVE new fields computed via the shared, stroke-aware
+// utils/trajectoryFeatures.js (see Part 1-3 of the collection-mode
+// ML-readiness pass). Every field already returned above this comment
+// (smoothness, pauseCount, completionTime, strokeCount) is completely
+// unchanged — same formulas, same variable names, same early-return shape
+// — nothing below alters existing child-facing scoring/pass-fail logic.
 function calculateDrawingFeatures(paths) {
   const allPoints = paths.flat();
+  const totalDistance = calculateTotalDistance(paths);
+  const pauseMetrics = calculatePauseMetrics(paths);
+  // ML-safe duration pass: derived from tAbs (absolute, never resets between
+  // strokes) rather than the legacy stroke-local `t` clock — see
+  // utils/trajectoryFeatures.js's module doc comment. Every field above and
+  // below this block is completely untouched; attempt_* are new, additive
+  // fields only, never used for existing scoring/pass-fail.
+  const attemptDurationMs = calculateAttemptDurationFromAbsoluteTime(paths);
+  const mlFeatures = {
+    total_distance: totalDistance,
+    avg_speed:      calculateAverageSpeed(paths),
+    ...calculateSpeedStats(paths),
+    ...pauseMetrics,
+    attempt_duration_ms: attemptDurationMs,
+    attempt_avg_speed:   calculateAttemptAverageSpeed(totalDistance, attemptDurationMs),
+    ...calculateAttemptPauseMetrics(pauseMetrics.pause_count, pauseMetrics.total_pause_duration_ms, attemptDurationMs),
+  };
   if (allPoints.length < 2) {
-    return { smoothness: 0, pauseCount: 0, completionTime: 0, strokeCount: paths.length };
+    return { smoothness: 0, pauseCount: 0, completionTime: 0, strokeCount: paths.length, ...mlFeatures };
   }
   const completionTime = allPoints[allPoints.length - 1].t;
   let pauseCount = 0;
@@ -362,7 +381,7 @@ function calculateDrawingFeatures(paths) {
     }
     if (changes.length > 0) smoothness = changes.reduce((a, b) => a + b, 0) / changes.length;
   }
-  return { smoothness, pauseCount, completionTime, strokeCount: paths.length };
+  return { smoothness, pauseCount, completionTime, strokeCount: paths.length, ...mlFeatures };
 }
 
 function getAttemptBadge(smoothness) {
@@ -404,49 +423,224 @@ const NEXT_CATEGORY_LABEL = {
 };
 
 export default function UppercaseWritingScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
+  // Leaving a learning activity is an adult decision — the back button
+  // opens the parent gate first, exactly as LetterHomeScreen and the
+  // Concept screens do. Cancelling navigates nowhere.
+  // Back returns to the interface this flow STARTED from, not one frame down.
+  //
+  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity'
+  // | 'HandwritingDemo') — a PUSH — and left with navigation.replace(nextRoute).
+  // replace() swaps the top frame, so each detour permanently leaves the frame
+  // it was pushed over behind it. After one category transition the stack reads
+  // [LetterPractice, UppercaseWriting, UppercaseWriting], and goBack() landed on that stale
+  // copy — a previous letter, mid-cycle, from before the detour. A second
+  // detour left two.
+  //
+  // goBackToOrigin pops to the named route instead, so the depth of the stack
+  // stops mattering. It falls back to goBack() when the origin is not below
+  // this screen (an assessment or Writing-Check entry), which is the previous
+  // behaviour and safe. Navigation only: nothing here writes an attempt,
+  // consumes a cycle, or replays a warm-up.
+  const backOrigin = route.params?.originRoute ?? 'LetterPractice';
+  const { requestBack, gateModal } = useGatedBack(
+    () => goBackToOrigin(navigation, backOrigin)
+  );
+
   const {
     student,
     theme,
     letterSequence  = [],
     collectionMode  = false,
     collectionSessionId = null,
+    interactionId: interactionIdParam = null,
+    // Present only when this run is a Writing Check batch. Its ONLY effect is
+    // where the flow goes when the batch finishes.
+    writingCheckId = null,
   } = route.params;
 
   const caseType = 'uppercase';
 
-  const sequence = useMemo(() => {
+  // Feature 4 Step 3 — see LetterWritingScreen.js's identical comment: falls
+  // back to a fresh id (stable for this mount's lifetime) for entry points
+  // that bypass LetterPracticeScreen.
+  const [interactionId] = useState(() => interactionIdParam ?? createPreWritingInteractionId());
+
+  const baseSequence = useMemo(() => {
     const filtered = letterSequence.filter(l => l.caseType === caseType);
     return filtered.length > 0 ? filtered : getAllLetters(caseType);
   }, [letterSequence]);
+
+  const { show } = useToast();
+
+  // Proposal FR-13, Phase 7A / FR-16, Phase 7B — see LetterWritingScreen.js's
+  // identical block. collection_mode is a fixed, teacher-supervised
+  // research-capture protocol, not open-ended self-paced practice — both
+  // features are excluded from it entirely (spec item 13 / Phase 7B §19).
+  const { notifyStrokeStart, notifyStrokeEnd, notifyLiveSessionUpdate } = useLearningSessionActivity({
+    suspend: collectionMode,
+    studentId: student.sid,
+    activityType: LIVE_ACTIVITY_TYPES.UPPERCASE_LETTER,
+  });
+
+  // Feature 11B Phase 5 §2-§5 — see LetterWritingScreen.js's identical
+  // block for the full rationale: normal-progression fix (NOT a Feature
+  // 11B adaptation change), skips already-mastered letters using the
+  // backend's authoritative LetterProgress state, never frontend
+  // AsyncStorage. Collection mode always presents its exact predetermined
+  // sequence unfiltered.
+  const [effectiveSequence, setEffectiveSequence] = useState(null);
+  const [masteredSequenceReady, setMasteredSequenceReady] = useState(collectionMode);
+
+  useEffect(() => {
+    if (collectionMode) {
+      setEffectiveSequence(baseSequence);
+      setMasteredSequenceReady(true);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchMasteredLetters(student.sid).then(({ pairs }) => {
+      if (cancelled) return;
+      const filtered = filterUnmasteredSequence(baseSequence, pairs);
+      if (filtered.length === 0 && baseSequence.length > 0) {
+        show('All letters here are already mastered!', 'success');
+        navigation.goBack();
+        return;
+      }
+      setEffectiveSequence(filtered);
+      setMasteredSequenceReady(true);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.sid, baseSequence, collectionMode]);
+
+  // Feature 5 Step 3 — see LetterWritingScreen.js's identical block for the
+  // full rationale: `sequence` is the mastery-filtered base sequence
+  // (Feature 11B Phase 5 above) unless/until a spaced adaptive repetition
+  // has been inserted this mount.
+  const [runtimeSequence, setRuntimeSequence] = useState(null);
+  const sequence = runtimeSequence ?? effectiveSequence ?? baseSequence;
 
   const [letterIdx,    setLetterIdx]    = useState(0);
   const [attempt,      setAttempt]      = useState(1);
   const [currentPath,  setCurrentPath]  = useState([]);
   const [allPaths,     setAllPaths]     = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
   const [hasDrawn,     setHasDrawn]     = useState(false);
   const [attemptFeedback, setAttemptFeedback] = useState(null);
   const [celebration,  setCelebration]  = useState(null);
   const [reduceMotion,  setReduceMotion] = useState(false);
 
+  // Feature 3 Step 6 — see LetterWritingScreen.js's identical block for the
+  // full rationale.
+  const [recommendation, setRecommendation] = useState({ letter: null, startSupport: null });
+
+  // Feature 6 Step 4 — see LetterWritingScreen.js's identical block for the
+  // full rationale (double-layer staleness guarantee, default 'standard').
+  const [demoSpeedRecommendation, setDemoSpeedRecommendation] = useState({
+    letter: null, caseType: null, speedLevel: DEMO_SPEED_LEVELS.STANDARD,
+  });
+
   const startTimeRef       = useRef(null);
   const allPathsRef        = useRef([]);
+  // Border-touch bug fix — see touchPointSanitize.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
+  }, []);
   const attemptScoresRef   = useRef([]);   // accumulates featuresToScore result for each attempt
+  // Server-issued retry key for a capture-fault cycle; null at all other times.
+  const retrySessionKeyRef = useRef(null);
   const sessionAttemptsRef = useRef([]);   // ML: accumulates {attempt_number, features, strokes} per letter
   const strokeIdCounter    = useRef(0);    // ML: counts strokes within the current attempt
+  const attemptRef  = useRef(1);
+  const hasDrawnRef = useRef(false);
+  // Feature 5 Step 3 — see LetterWritingScreen.js's identical block for the
+  // full rationale (staleness + concurrent-request protection for the
+  // repetition-recommendation fetch).
+  const cycleTokenRef = useRef(0);
+  attemptRef.current  = attempt;
+  hasDrawnRef.current = hasDrawn;
 
   const tracerProgress    = useRef(new Animated.Value(0)).current;
+  // The guide stops at the child's FIRST TOUCH, not when the stroke ends.
+  // `hasDrawn` only flips on release, so it is too late to be the stop signal
+  // here; this ref lets the grant handler cancel the cycle immediately
+  // without changing what `hasDrawn` means to support, audio or scoring.
+  const stopGuideRef = useRef(null);
   const [tracerVisible,   setTracerVisible]   = useState(false);
   const [tracerKeyframes, setTracerKeyframes] = useState(null);
 
   const celebScale   = useRef(new Animated.Value(0.5)).current;
   const celebOpacity = useRef(new Animated.Value(0)).current;
 
-  const { show } = useToast();
-
   const letterObj     = sequence[letterIdx];
   const letter        = letterObj?.letter ?? 'A';
   const isLastLetter  = letterIdx >= sequence.length - 1;
   const isLastAttempt = attempt === 3;
+
+  // Feature 3 Step 2 — formal support-level model. See
+  // LetterWritingScreen.js's identical block for the full rationale:
+  // `attempt` remains session-position source of truth; `supportLevel`/
+  // `supportPresentation` are pure, derived-every-render values that now
+  // own every "how much guidance is shown" decision.
+  //
+  // Feature 3 Step 6 — see LetterWritingScreen.js's identical block for the
+  // full rationale: normal mode derives supportLevel from the adaptive
+  // sequence; collection mode is completely untouched (spec §17).
+  const recommendedStartSupport = resolveRecommendedStartSupport({ recommendation, currentLetter: letter });
+  const supportLevel = resolveSessionSupportLevel({ attempt, collectionMode, recommendedStartSupport });
+  const instructionKey = masteredSequenceReady && letterObj
+    ? SUPPORT_INSTRUCTION_KEY[supportLevel]
+    : null;
+  const {
+    replay: replayInstruction,
+    instructionPlaying,
+    canWrite,
+    requestTargetSpeech,
+  } = useInstructionAudioState(instructionKey, {
+    autoPlay: Boolean(instructionKey),
+    autoPlayToken: `${letter}:${attempt}:${supportLevel}`,
+    fallbackText: instructionForSupport(supportLevel).en,
+  });
+  const canWriteRef = useRef(false);
+  canWriteRef.current = canWrite;
+  const targetSpokenAttemptRef = useRef(false);
+  useEffect(() => { targetSpokenAttemptRef.current = false; }, [letter, attempt]);
+  const supportPresentation = getSupportPresentation({ supportLevel, attempt, collectionMode });
+
+  // Feature 6 Step 4 — see LetterWritingScreen.js's identical block for the
+  // full rationale (recommended vs. actual-rendered vs. effective speed).
+  const recommendedDemoSpeedLevel = resolveRecommendedDemoSpeedLevel({
+    recommendation: demoSpeedRecommendation, currentLetter: letter, currentCaseType: caseType,
+  });
+  const actualDemoSpeedLevel = resolveActualDemoSpeedLevel({
+    recommendedSpeedLevel: recommendedDemoSpeedLevel,
+    supportLevel,
+    showAnimatedTracer: supportPresentation?.showAnimatedTracer ?? false,
+    reduceMotion,
+    collectionMode,
+  });
+  const effectiveDemoSpeedLevel = actualDemoSpeedLevel ?? DEMO_SPEED_LEVELS.STANDARD;
+
   const templateStrokes = useMemo(
     () => normalizeStrokes(LETTER_PATHS[letter] ?? []),
     [letter]
@@ -459,9 +653,19 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     templateStrokes[activeGuideStroke],
     ANGULAR_LETTERS.has(letter)
   );
-  const guideOpacity  = (attempt === 3 && !collectionMode) ? 0 : attempt === 1 ? 0.14 : 0.26;
-  const phonetic      = PHONETICS[letter.toLowerCase()] ?? '';
-  const badge         = ATTEMPT_BADGE[attempt];
+
+  // Same values as the pre-refactor inline ternary (attempt 1→0.14,
+  // attempt 2→0.26, normal-mode attempt 3→0, collection-mode attempt 3→0.26).
+  const guideOpacity  = supportPresentation?.guideOpacity ?? 0;
+  const badge         = SUPPORT_BADGE[supportLevel];
+
+  // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
+  useEffect(() => {
+    if (collectionMode) return;
+    notifyLiveSessionUpdate(buildProgressPatch({
+      currentItem: letter, caseType, attemptNumber: attempt, supportLevel,
+    }));
+  }, [letter, caseType, attempt, supportLevel, collectionMode, notifyLiveSessionUpdate]);
 
   const tracerXInterp = useMemo(() => {
     if (!tracerKeyframes) return null;
@@ -487,22 +691,205 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     return () => subscription.remove();
   }, []);
 
+  // Always the CURRENT letter — the same value the visible target renders
+  // from. The optional argument exists for callers that already hold it; it
+  // is never a cached or route-supplied character.
   const playLetterSound = useCallback((l = letter) => {
+    const spoken = String(l ?? letter ?? '');
+    if (!spoken) return;
     Speech.stop();
-    Speech.speak(l.toUpperCase(), { rate: 0.8, pitch: 1.0, language: 'en-US' });
+    Speech.speak(spoken.toUpperCase(), ukLetterSpeechOptions());
   }, [letter]);
 
   const playLetterSoundRef = useRef(playLetterSound);
   playLetterSoundRef.current = playLetterSound;
+  const replaySupportInstruction = useCallback(() => {
+    Speech.stop();
+    return replayInstruction();
+  }, [replayInstruction]);
 
+  // Announce the letter the child can actually SEE.
+  //
+  // `sequence` is `runtimeSequence ?? effectiveSequence ?? baseSequence`, and
+  // effectiveSequence is null until the mastered-letter filter resolves — so
+  // on mount `letter` is the first UNFILTERED letter, not the one that will
+  // be presented. The render is already gated on masteredSequenceReady, but
+  // an effect is not: this spoke the pre-filter letter ("L") and only then
+  // the real one ("O"). Gating the announcement on the same flag the render
+  // uses means the audio can never name a letter that was never shown.
+  // Feature 3 Step 6 — adaptive support recommendation fetch. See
+  // LetterWritingScreen.js's identical block for the full rationale: once
+  // per letter, skipped entirely in collection mode, never blocks
+  // interaction, never retroactively changes support mid-attempt.
   useEffect(() => {
-    Speech.speak(letter.toUpperCase(), { rate: 0.8, pitch: 1.0, language: 'en-US' });
-    return () => Speech.stop();
-  }, [letter]);
+    if (collectionMode) return;
+    let cancelled = false;
 
+    fetchRecommendedStartSupport({ studentId: student.sid, letter, caseType }).then((startSupport) => {
+      if (cancelled) return;
+      if (shouldApplyRecommendation({ currentAttempt: attemptRef.current, hasDrawnCurrentAttempt: hasDrawnRef.current })) {
+        setRecommendation({ letter, startSupport });
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [letter, caseType, collectionMode, student.sid]);
+
+  // Feature 6 Step 4 — adaptive demo-speed recommendation fetch. See
+  // LetterWritingScreen.js's identical block for the full rationale: once
+  // per letter, completely independent of the Feature 3 fetch effect just
+  // above, skipped entirely in collection mode (spec §13, HARD REQUIREMENT).
+  useEffect(() => {
+    if (collectionMode) return;
+    let cancelled = false;
+
+    fetchDemoSpeedRecommendation({ studentId: student.sid, letter, caseType }).then((response) => {
+      if (shouldApplyDemoSpeedRecommendation({
+        responseLetter: response.letter, responseCaseType: response.caseType,
+        currentLetter: letter, currentCaseType: caseType,
+        currentAttempt: attemptRef.current, hasDrawn: hasDrawnRef.current,
+        collectionMode, cancelled,
+      })) {
+        setDemoSpeedRecommendation({ letter: response.letter, caseType: response.caseType, speedLevel: response.recommendedSpeedLevel });
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [letter, caseType, collectionMode, student.sid]);
+
+  // Feature 4 Step 5 — adaptive pre-writing recommendation fetch + detour.
+  // See LetterWritingScreen.js's identical block for the full rationale:
+  // once per letter, completely independent of the Feature 3 fetch effect
+  // just above (spec §26), skipped entirely in collection mode (spec §9/§25),
+  // never stored in React state (only ever drives a one-time navigation
+  // side effect, never a render decision).
+  useEffect(() => {
+    if (collectionMode) return;
+    let cancelled = false;
+
+    fetchPreWritingRecommendation({ studentId: student.sid, letter, caseType }).then((recommendation) => {
+      if (cancelled) return;
+
+      const activity = recommendation.activityId
+        ? getPreWritingActivityById(recommendation.activityId)
+        : null;
+
+      const alreadyHandled = hasWarmupHandled({
+        studentId: student.sid, caseType, letter, interactionId, collectionMode,
+      });
+
+      const decision = resolveAdaptivePreWritingDetour({
+        recommendation: { ...recommendation, interactionId },
+        activity,
+        alreadyHandled,
+        collectionMode,
+        currentLetter: letter,
+        currentCaseType: caseType,
+        currentInteractionId: interactionId,
+        currentAttempt: attemptRef.current,
+        hasDrawn: hasDrawnRef.current,
+        // The first letter of this sequence starts by writing. Every OTHER
+        // route to index 0 (a category transition's slice(idx + 1), a
+        // remediation or adaptive detour's slice(idx)) has already marked
+        // that letter handled, so those were standing down here regardless —
+        // an unmarked index 0 is a fresh session entry and nothing else.
+        isSessionEntryLetter: letterIdx === 0,
+      });
+
+      if (!decision.shouldNavigate) return;
+
+      markWarmupHandled({
+        studentId: student.sid, caseType, letter, interactionId,
+        reason: PRE_WRITING_REASON.ADAPTIVE_DIFFICULTY,
+      });
+
+      navigation.navigate('PreWritingActivity', buildPreWritingNavigationParams({
+        student, theme, activities: [activity], // exactly one activity (spec §17)
+        targetLetter: letter, targetCaseType: caseType, interactionId,
+        reason: PRE_WRITING_REASON.ADAPTIVE_DIFFICULTY,
+        nextRoute: 'UppercaseWriting',
+        // sequence.slice(letterIdx) — NOT letterIdx + 1 — so the SAME target
+        // letter is still active[0] on return (spec §13/§14). No `caseType`
+        // key here, matching this screen's own category-boundary nextParams
+        // convention just below (caseType is hardcoded to 'uppercase' by
+        // this component, never read from route params).
+        nextParams: { student, theme, letterSequence: sequence.slice(letterIdx) },
+      }));
+    });
+
+    return () => { cancelled = true; };
+  }, [letter, caseType, collectionMode, student.sid, interactionId, letterIdx, sequence, navigation, student, theme]);
+
+
+  // ── One-time category demonstration (utils/demoPolicy.js) ────────────────
+  // The FIRST time this child meets a motor category — uppercase straight,
+  // uppercase curved, uppercase mixed — they are taken to a full-screen
+  // "watch first" demonstration of the real target letter before Attempt 1.
+  //
+  // This is NOT Attempt 1, and it does not replace it. Attempt 1 keeps its
+  // HIGH support and its own on-canvas tracer exactly as before; the demo
+  // adds the one thing that tracer cannot, a moment where the child is
+  // asked to watch and there is nothing to draw on. Attempts 1/2/3 and
+  // everything downstream of them are untouched.
+  //
+  // Once per category, ever — not per letter and not per session. Lowercase
+  // and uppercase categories are independent keys, so a child who has done
+  // lowercase curved still gets the uppercase curved demonstration.
+  const categoryDemoKey = makeLetterCategoryDemoKey({
+    caseType, category: letterObj?.category,
+  });
+
+  useDemoDetour({
+    studentId: student?.sid,
+    demoKey: categoryDemoKey,
+    // Before the child has done anything: attempt 1, nothing drawn. A demo
+    // must never interrupt work in progress.
+    enabled: attempt === 1 && !hasDrawn,
+    collectionMode,
+    navigate: () => {
+      navigation.navigate('HandwritingDemo', {
+        student, theme,
+        demoKey: categoryDemoKey,
+        // THIS letter, from the same reference waypoints Attempt 1 traces —
+        // never a stand-in letter.
+        letter, caseType,
+        nextRoute: 'UppercaseWriting',
+        // slice(letterIdx), not letterIdx + 1: the same target letter must
+        // still be active[0] on return, exactly as the adaptive pre-writing
+        // detour above does it.
+        nextParams: {
+          student, theme, caseType,
+          letterSequence: sequence.slice(letterIdx),
+          collectionMode, collectionSessionId, interactionId,
+        },
+      });
+    },
+  });
+
+
+  // ── DEV-ONLY practice-cycle diagnostics ──────────────────────────────────
+  // Development builds only (`__DEV__`), console only, never rendered. Added
+  // because a physical test could not tell WHY a letter advanced: the answer
+  // needs the mode flags, the server's own verdict and the cycle count in one
+  // place. Reads state, changes none.
+  useEffect(() => {
+    if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+    if (attempt !== 1 || hasDrawn) return;
+    const used = getCyclesUsed({ studentId: student?.sid, letter, caseType, interactionId });
+    console.log('[PRACTICE_CYCLE_STATUS]', JSON.stringify({
+      letter, case_type: caseType, category: letterObj?.category ?? null,
+      cycles_used_today: used,
+      cycles_remaining_today: Math.max(0, MAX_CYCLES_PER_LETTER_PER_DATE - used),
+      mode: collectionMode ? (writingCheckId ? 'writing_check' : 'research_collection') : 'normal',
+      collectionMode, writingCheckId, collectionSessionId,
+      interactionId, letterIdx, sequence_length: sequence.length,
+    }));
+  }, [letter, caseType, attempt, hasDrawn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tracer dot animation for HIGH support (originally "Attempt 1").
   useEffect(() => {
     const rawPath = LETTER_PATHS[letter];
-    if (reduceMotion || attempt !== 1 || hasDrawn || !rawPath || rawPath.length < 1) {
+    if (reduceMotion || !supportPresentation?.showAnimatedTracer || hasDrawn || !rawPath || rawPath.length < 1) {
       setTracerVisible(false);
       return;
     }
@@ -545,52 +932,87 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     tracerProgress.setValue(0);
     setTracerVisible(true);
 
-    const strokeAnimations = [];
-    for (let index = 0; index < strokeBounds.length; index++) {
-      if (index > 0) {
-        strokeAnimations.push(Animated.delay(400));
+    // Rebuilt fresh for every pass, so no animation object carries state
+    // between passes. Stroke order is the canonical order, played forward,
+    // every time: nothing here reverses waypoints, the path, or the bounds.
+    const buildForwardSequence = () => {
+      const strokeAnimations = [];
+      for (let index = 0; index < strokeBounds.length; index++) {
+        if (index > 0) {
+          strokeAnimations.push(Animated.delay(400));
+          strokeAnimations.push(Animated.timing(tracerProgress, {
+            toValue: strokeBounds[index].start,
+            duration: 1,
+            useNativeDriver: true,
+          }));
+        }
+        // Feature 6 Step 4 — was `Math.max(600, Math.round(len / TRACER_PX_PER_MS))`.
+        // See LetterWritingScreen.js's identical block for the full rationale.
         strokeAnimations.push(Animated.timing(tracerProgress, {
-          toValue: strokeBounds[index].start,
-          duration: 1,
+          toValue: strokeBounds[index].end,
+          duration: getStrokeDurationForLevel(sampledStrokes[index].totalLength, effectiveDemoSpeedLevel),
           useNativeDriver: true,
         }));
       }
-      strokeAnimations.push(Animated.timing(tracerProgress, {
-        toValue: strokeBounds[index].end,
-        duration: Math.max(600, Math.round(sampledStrokes[index].totalLength / TRACER_PX_PER_MS)),
-        useNativeDriver: true,
-      }));
-    }
+      return Animated.sequence([Animated.delay(350), ...strokeAnimations]);
+    };
 
-    const anim = Animated.loop(
-      Animated.sequence([Animated.delay(350), ...strokeAnimations, Animated.delay(700)]),
-      { resetBeforeIteration: true }
-    );
-    anim.start();
+    // Forward-only: setValue(0) -> 0..1 -> idle pause -> setValue(0) -> 0..1.
+    // The trailing Animated.delay(700) that used to pad the loop is now the
+    // controller's idle gap. See guideReplayCycle.js for why Animated.loop's
+    // resetBeforeIteration never reached tracerProgress and played it backward.
+    const cycle = startGuideReplayCycle({
+      progress: tracerProgress,
+      buildForwardSequence,
+    });
+    stopGuideRef.current = () => cycle.stop();
 
-    return () => { setTracerVisible(false); anim.stop(); };
-  }, [attempt, hasDrawn, letter, reduceMotion, tracerProgress]);
+    return () => { setTracerVisible(false); cycle.stop(); stopGuideRef.current = null; };
+    // supportPresentation.showAnimatedTracer is derived purely from
+    // attempt + collectionMode (+ recommendedStartSupport in normal mode,
+    // Feature 3 Step 6) — depending on those primitives instead of the
+    // whole (non-memoized) supportPresentation object keeps this effect's
+    // re-run triggers correct without an infinite loop.
+    // effectiveDemoSpeedLevel (Feature 6 Step 4) — see LetterWritingScreen.js's
+    // identical block for the full rationale.
+  }, [attempt, collectionMode, effectiveDemoSpeedLevel, hasDrawn, letter, reduceMotion, recommendedStartSupport, tracerProgress]);
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder:  () => true,
+      onStartShouldSetPanResponder: () => canWriteRef.current,
+      onMoveShouldSetPanResponder:  () => canWriteRef.current,
       onPanResponderGrant: (evt) => {
+        if (!canWriteRef.current) return;
+        stopGuideRef.current?.();  // first touch cancels the idle replay
+        notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         setAttemptFeedback(null);
-        const { locationX, locationY } = evt.nativeEvent;
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         startTimeRef.current = now;
         strokeIdCounter.current += 1;  // ML: new stroke begins
         setCurrentPath([{ x: locationX, y: locationY, t: 0, tAbs: now, stroke_id: strokeIdCounter.current }]);
-        if (allPathsRef.current.length === 0) {
-          playLetterSoundRef.current?.();
+        if (!targetSpokenAttemptRef.current) {
+          targetSpokenAttemptRef.current = true;
+          requestTargetSpeech(() => playLetterSoundRef.current?.());
         }
       },
       onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_W, height: CANVAS_H },
+          inset: CANVAS_BORDER_WIDTH,
+        });
         const now = Date.now();
         setCurrentPath(prev => {
           const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x: locationX, y: locationY }, CANVAS_W, CANVAS_H)) return prev;
           if (last && Math.hypot(locationX - last.x, locationY - last.y) < 1.5) return prev;
           return [...prev, {
             x: locationX, y: locationY, t: now - startTimeRef.current, tAbs: now, stroke_id: strokeIdCounter.current,
@@ -598,6 +1020,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         });
       },
       onPanResponderRelease: () => {
+        notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -609,6 +1032,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         });
       },
       onPanResponderTerminate: () => {
+        notifyStrokeEnd(); // FR-13 — same as release: an OS-interrupted gesture must not leave isWriting stuck true
         setCurrentPath(prev => {
           if (prev.length > 2) {
             const updated = [...allPathsRef.current, prev];
@@ -654,6 +1078,234 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   }, [celebOpacity, celebScale, reduceMotion]);
 
   const handleNext = useCallback(async () => {
+    // Feature 5 Step 3 — see LetterWritingScreen.js's identical block for
+    // the full rationale.
+    cycleTokenRef.current += 1;
+    const myCycleToken = cycleTokenRef.current;
+
+    // ── Advance past this letter ───────────────────────────────────────────
+    // Extracted verbatim from this function's own tail so BOTH the "letter
+    // mastered" path and the new "two cycles used" path move on the same way:
+    // same category celebrations, same end-of-run celebration, same index
+    // step. A letter set aside after two failed cycles is NOT mastered - only
+    // the unchanged pass logic sets mastered_at - it simply stops being
+    // presented for the rest of this practice date.
+    const advancePastLetter = () => {
+      if (isLastLetter) {
+        showCelebrationFor(ALL_DONE_CELEBRATION, null, true);
+        resetCanvas();
+        return;
+      }
+
+      const currentCat = sequence[letterIdx]?.category;
+      const nextCat    = sequence[letterIdx + 1]?.category;
+
+      if (currentCat !== nextCat) {
+        showCelebrationFor(
+          CATEGORY_CELEBRATION[currentCat] ?? CATEGORY_CELEBRATION.mixed,
+          nextCat,
+          false
+        );
+        resetCanvas();
+      } else {
+        setLetterIdx(i => i + 1);
+        setAttempt(1);
+        resetCanvas();
+      }
+    };
+
+    /**
+     * One 3-attempt cycle just failed. Decides between the immediate retry
+     * (cycle 2) and moving on (the ceiling).
+     *
+     * `serverCyclesToday` is the backend's own count for this practice date,
+     * returned on the blocked response. It is what stops a restarted app from
+     * buying a third cycle: the guard seeds from it, and the two combine by
+     * maximum, never by trusting either alone.
+     */
+      /** What handleFailedCycle is about to decide - for the log only. */
+      const recordedCyclesWillReachCap = (serverCyclesToday) => {
+        const local = getCyclesUsed({ studentId: student?.sid, letter, caseType, interactionId }) + 1;
+        const known = Number.isInteger(serverCyclesToday) && serverCyclesToday > local
+          ? serverCyclesToday : local;
+        return known >= MAX_CYCLES_PER_LETTER_PER_DATE;
+      };
+
+      // DEV-ONLY: the single line that explains WHY this cycle ended the way
+      // it did. Never rendered, never shipped to a child.
+      const logCycleOutcome = (branch, res) => {
+        if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+        console.log('[NORMAL_LETTER_CYCLE]', JSON.stringify({
+          student_id: student?.sid, letter, case_type: caseType,
+          category: letterObj?.category ?? null,
+          mode: collectionMode ? (writingCheckId ? 'writing_check' : 'research_collection') : 'normal',
+          collectionMode, writingCheckId, collectionSessionId,
+          interactionId,
+          client_attempt_scores: attemptScoresRef.current,
+          attempts_in_payload: sessionAttemptsRef.current.length,
+          attempt_numbers: sessionAttemptsRef.current.map(a => a.attempt_number),
+          support_levels: sessionAttemptsRef.current.map(a => a.support_level),
+          // The server's own verdict. bestScore is computed BACKEND-side from
+          // the captured strokes; client scores above are diagnostic only.
+          server_completed: res?.completed ?? null,
+          server_bestScore: res?.bestScore ?? null,
+          server_threshold: res?.threshold ?? null,
+          server_thresholdSource: res?.thresholdSource ?? null,
+          // bestScore null means EVERY attempt failed the coverage/geometry
+          // check - not that the writing scored low.
+          coverage_rejected_all: res?.completed === false && res?.bestScore == null,
+          cycle_usage: res?.cycle_usage ?? null,
+          branch,
+          letterIdx, next_letterIdx: branch === 'FAILED_START_CYCLE_2' ? letterIdx : letterIdx + 1,
+        }));
+      };
+
+    /**
+     * A TECHNICAL capture fault on attempt 3 — the device recorded no strokes
+     * (or no features), so the server had nothing to judge and explicitly
+     * told us `cycle_consumed: false`.
+     *
+     * This is NOT a handwriting outcome, so none of the failed-cycle
+     * machinery runs: no cycle is spent, no spaced repetition is scheduled,
+     * no homework is created, the child does not advance, and they are not
+     * told they need more practice. They simply retry ATTEMPT 3 of the SAME
+     * cycle — attempts 1 and 2 stay exactly as captured, because a device
+     * fault must never cost a child their valid guided practice.
+     *
+     * Only the failed attempt-3 record is dropped from the payload, so the
+     * retry resends [attempt1, attempt2, newAttempt3].
+     */
+    const handleCaptureIncomplete = (retrySessionKey) => {
+      // The server-issued key for THIS partial cycle. Sending it back on the
+      // retry makes the backend complete the same session instead of opening
+      // a second one — which is what stopped attempts 1 and 2 being stored
+      // twice in the research data. Purely a courier: the server re-validates
+      // it (student, letter, case, practice date, still unfinished) before
+      // honouring it, and ignores it if anything fails.
+      retrySessionKeyRef.current = retrySessionKey ?? null;
+
+      // Drop ONLY the attempt-3 record this cycle just appended. The two
+      // guided attempts are kept verbatim.
+      sessionAttemptsRef.current = sessionAttemptsRef.current.slice(0, MASTERY_ATTEMPT_INDEX);
+      attemptScoresRef.current   = attemptScoresRef.current.slice(0, MASTERY_ATTEMPT_INDEX);
+
+      if (__DEV__) {
+        console.log('[NORMAL_LETTER_CYCLE] capture incomplete — retrying attempt 3 only', {
+          letter, caseType,
+          attempts_kept: sessionAttemptsRef.current.length,
+          case_label: 'uppercase',
+        });
+      }
+
+      // Neutral, child-friendly, and deliberately says nothing about how
+      // they wrote — because nothing about their writing was measured.
+      show('We couldn’t record that attempt. Please try once more.', 'info');
+
+      // Stay on THIS cycle, at attempt 3. Never setAttempt(1).
+      setAttempt(MASTERY_ATTEMPT_NUMBER);
+      resetCanvas();
+    };
+
+    const handleFailedCycle = (serverCyclesToday) => {
+      attemptScoresRef.current   = [];
+      sessionAttemptsRef.current = [];
+      // This cycle is over (evaluated). The retry key belonged to it and must
+      // never leak into the next one.
+      retrySessionKeyRef.current = null;
+
+      const used = recordCycleCompleted({
+        studentId: student.sid, letter, caseType, interactionId, serverCyclesToday,
+      });
+
+      if (used >= MAX_CYCLES_PER_LETTER_PER_DATE) {
+        // The ceiling. No cycle 3 today, by immediate retry or any other
+        // route - Feature 5's spaced repetition is blocked by the same rule
+        // on the server side, so it cannot reinsert this letter either.
+        if (__DEV__) {
+          console.log('[cycle cap] letter set aside for this practice date', { letter, caseType, used });
+        }
+        advancePastLetter();
+        return;
+      }
+
+      // Two consumed failed cycles on this exact letter — a short motor
+      // warm-up built from the letter's OWN strokeTypes, then cycle 3.
+      //
+      // This is NOT a cycle and NOT an attempt. Nothing below it touches the
+      // cycle counter (already incremented by recordCycleCompleted above),
+      // writes a LetterAttempt, or reaches mastery, Motor Score or the
+      // threshold. Cycle 3 begins at attempt 1 exactly as cycle 2 did.
+      //
+      // Reached only from the evaluated-failure path: a capture fault returns
+      // via handleCaptureIncomplete long before this, so a device fault can
+      // never trigger it.
+      if (used === MAX_CYCLES_PER_LETTER_PER_DATE - 1 && !collectionMode) {
+        const remediationActivities = buildLetterRemediationActivities(letter);
+        const alreadyRemediated = hasRemediationHandled({
+          studentId: student.sid, caseType, letter, interactionId,
+          cycleNumber: used + 1, collectionMode,
+        });
+
+        if (remediationActivities.length > 0 && !alreadyRemediated) {
+          // Mark on OPEN, so a navigation replace or a re-render cannot
+          // replay it — same discipline the other two triggers use.
+          markRemediationHandled({
+            studentId: student.sid, caseType, letter, interactionId,
+            cycleNumber: used + 1,
+          });
+          navigation.navigate('PreWritingActivity', buildPreWritingNavigationParams({
+            student, theme, activities: remediationActivities,
+            targetLetter: letter, targetCaseType: caseType, interactionId,
+            reason: PRE_WRITING_REASON.CYCLE_3_REMEDIATION,
+            nextRoute: 'UppercaseWriting',
+            // slice(letterIdx) — NOT letterIdx + 1 — so the SAME letter is
+            // still active[0] and cycle 3 is for the letter that failed.
+            nextParams: { student, theme, caseType, letterSequence: sequence.slice(letterIdx), interactionId },
+          }));
+          return;
+        }
+      }
+
+      // Cycle 2, immediately, on the same letter - attempt numbering restarts
+      // at 1, exactly as cycle 1 did.
+      setAttempt(1);
+      resetCanvas();
+    };
+
+
+    const scheduleAdaptiveRepetitionIfEligible = () => {
+      if (collectionMode) return;
+
+      const failedLetter    = letter;
+      const failedCaseType  = caseType;
+      const failedLetterObj = letterObj;
+      const failedLetterIdx = letterIdx;
+      const failedSequence  = sequence;
+
+      const alreadyUsed = getAdaptiveRepetitionsUsed({
+        studentId: student.sid, caseType: failedCaseType, letter: failedLetter, interactionId,
+      });
+
+      fetchRepetitionRecommendation({
+        studentId: student.sid, letter: failedLetter, caseType: failedCaseType,
+        adaptiveRepetitionsUsed: alreadyUsed,
+      }).then((recommendation) => {
+        if (myCycleToken !== cycleTokenRef.current) return;
+        if (recommendation.letter !== failedLetter || recommendation.caseType !== failedCaseType) return;
+        if (!recommendation.shouldRepeat) return;
+
+        const { sequence: nextSequence, inserted } = insertSpacedRepetition({
+          sequence: failedSequence, currentIndex: failedLetterIdx, targetLetterEntry: failedLetterObj, interactionId,
+        });
+        if (!inserted) return;
+
+        setRuntimeSequence(nextSequence);
+        incrementAdaptiveRepetitionsUsed({
+          studentId: student.sid, caseType: failedCaseType, letter: failedLetter, interactionId,
+        });
+      });
+    };
+
     const features = calculateDrawingFeatures(allPathsRef.current);
 
     // DTW trajectory accuracy — same bezier template as the tracer animation.
@@ -667,33 +1319,40 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     features.stroke_order_meta = dtwResult.strokeOrderMeta;
 
     // ML: snapshot before resetCanvas() wipes allPathsRef
+    // ML: snapshot before resetCanvas() wipes allPathsRef.
+    // Feature 3 Step 3: support_level is the exact value this render used
+    // for THIS attempt (supportLevel, derived above via
+    // resolveSessionSupportLevel — never recomputed differently here).
+    // Feature 6 Step 5: demo_speed_level is `actualDemoSpeedLevel` — see
+    // LetterWritingScreen.js's identical block for the full rationale.
     sessionAttemptsRef.current = [
       ...sessionAttemptsRef.current,
-      {
-        attempt_number: attempt,
-        features: {
-          smoothness:       features.smoothness,
-          pauseCount:       features.pauseCount,
-          completionTime:   features.completionTime,
-          strokeCount:      features.strokeCount,
-          dtw_distance:     features.dtw_distance,
-          stroke_order_meta: features.stroke_order_meta,
-        },
+      buildSessionAttemptRecord({
+        attemptNumber: attempt,
+        supportLevel,
+        demoSpeedLevel: actualDemoSpeedLevel,
+        features,
         strokes: allPathsRef.current.map((pts, i) => ({
           stroke_id: i + 1,
           points:    pts,   // each point: {x, y, t, tAbs, stroke_id}
         })),
-      },
+      }),
     ];
 
     const attemptScore = Math.round(featuresToScore({ smoothness: features.smoothness, dtw_distance: features.dtw_distance }));
     attemptScoresRef.current = [...attemptScoresRef.current, attemptScore];
     const attemptPassed = didPassAttempt(features, allPathsRef.current);
-    setAttemptFeedback({ passed: attemptPassed, attempt });
+    setAttemptFeedback({ passed: attemptPassed, attempt, supportLevel });
 
     try {
       await Promise.all([
-        storeLetterProgress(student.sid, letter, {
+        // Data-collection isolation (final integration audit) — this local
+        // AsyncStorage record is what TeacherReportScreen's normal progress
+        // section (completedLetters / letterProgressMap) later reads back.
+        // A collection-mode attempt must never contribute to it — matches
+        // every other Feature 3/4/5/6 fetch in this same screen, which
+        // already skips entirely under collectionMode.
+        collectionMode ? Promise.resolve() : storeLetterProgress(student.sid, letter, {
           attempt,
           deviation:      0,
           pauseCount:     features.pauseCount,
@@ -724,12 +1383,17 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         });
         // Developer-only export — full raw/normalized paths for offline
         // inspection. Never sent to the backend, never used for scoring.
-        console.log('[DTW debug export]', buildDtwDebugExport({
+        // JSON.stringify (not the raw object) — console.log's default
+        // object-inspection depth truncates normalized_child_path (an
+        // array of strokes of points, one level deeper than
+        // normalized_template_path) to "[Object]"; stringifying bypasses
+        // that depth limit entirely.
+        console.log('[DTW debug export]', JSON.stringify(buildDtwDebugExport({
           childStrokes:   allPathsRef.current,
           templatePoints: templatePath ? sampleSmoothPath(templatePath, 60, CANVAS_W, CANVAS_H).points : [],
           dtwResult:      dtwResult,
           qualityScore:   attemptScore,
-        }));
+        })));
       }
 
       try {
@@ -749,25 +1413,51 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           template_version:      TEMPLATE_VERSION,
           normalization_version: NORMALIZATION_VERSION,
           task_order:            UPPERCASE_TASK_ORDER_OFFSET + letterIdx,
+          // Null except immediately after a capture fault — see
+          // handleCaptureIncomplete.
+          retry_session_key:     retrySessionKeyRef.current,
           ...getDeviceMetadata(),
         });
-        if (!collectionMode && (!wroteCorrectly || response.data.completed === false)) {
-          if (response.data.completed === false) {
-            show('Keep practising — try again!', 'info');
+
+        // Proposal FR-16, Phase 7B — see LetterWritingScreen.js's identical block.
+        if (!collectionMode && attemptScoresRef.current.length > 0) {
+          notifyLiveSessionUpdate(buildScorePatch(Math.max(...attemptScoresRef.current)));
+        }
+        // Coverage-fix audit: see LetterWritingScreen.js's identical change
+        // — the server's `completed` result is now the sole signal;
+        // wroteCorrectly still drives the cosmetic per-attempt badge but no
+        // longer forces a retry the database already recorded as complete.
+        if (!collectionMode && response.data.completed === false) {
+          // P1 — a technical capture fault is not a failed cycle. The server
+          // states this explicitly rather than us inferring it from the cycle
+          // count, because "I did not count this" and "my count read failed"
+          // must never be confused.
+          if (response.data.cycle_consumed === false) {
+            handleCaptureIncomplete(response.data.retry_session_key);
+            return;
           }
-          attemptScoresRef.current   = [];
-          sessionAttemptsRef.current = [];
-          setAttempt(1);
-          resetCanvas();
+          // Feature 5 Step 3 — see LetterWritingScreen.js's identical block.
+          scheduleAdaptiveRepetitionIfEligible();
+          logCycleOutcome(
+            recordedCyclesWillReachCap(response.data?.cycle_usage?.cycles_today ?? null)
+              ? 'FAILED_ADVANCE_AFTER_CYCLE_2' : 'FAILED_START_CYCLE_2',
+            response.data,
+          );
+          handleFailedCycle(response.data?.cycle_usage?.cycles_today ?? null);
           return;
         }
       } catch {
         // network failure — gate only in normal mode
         if (!collectionMode && !wroteCorrectly) {
-          attemptScoresRef.current   = [];
-          sessionAttemptsRef.current = [];
-          setAttempt(1);
-          resetCanvas();
+          // Feature 5 Step 3 — see LetterWritingScreen.js's identical block.
+          scheduleAdaptiveRepetitionIfEligible();
+          // No server opinion on a network failure - the in-interaction guard
+          // is the whole limit here, which is the safe direction.
+          logCycleOutcome(
+            recordedCyclesWillReachCap(null) ? 'FAILED_ADVANCE_AFTER_CYCLE_2' : 'FAILED_START_CYCLE_2',
+            null,
+          );
+          handleFailedCycle(null);
           return;
         }
       }
@@ -802,14 +1492,25 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       setAttempt(1);
       resetCanvas();
     }
-  }, [attempt, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
-      resetCanvas, sequence, show, showCelebrationFor, student.sid]);
+    // supportLevel is a pure derivation of attempt + collectionMode (already
+    // both listed below) — included explicitly since handleNext's body now
+    // references it directly (Feature 3 Step 3). letterObj/interactionId
+    // added for scheduleAdaptiveRepetitionIfEligible() (Feature 5 Step 3).
+    // actualDemoSpeedLevel added for the same reason (Feature 6 Step 5) —
+    // handleNext's body now reads it directly to build the attempt record.
+  }, [attempt, actualDemoSpeedLevel, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
+      letterObj, interactionId, resetCanvas, sequence, show, showCelebrationFor, student.sid, supportLevel]);
 
   const handleDismissCelebration = useCallback(() => {
     const isAllDone = celebration?.isAllDone;
     setCelebration(null);
     if (isAllDone) {
-      if (collectionMode) {
+      if (writingCheckId) {
+        // A Writing Check batch is finished - back to the check, which
+        // re-reads progress and completes. Never the research
+        // data-collection end screen.
+        navigation.navigate('WritingCheck', { student, theme });
+      } else if (collectionMode) {
         navigation.navigate('DataCollectionDone', { student, theme, collectionSessionId });
       } else {
         navigation.goBack();
@@ -822,22 +1523,40 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     } else {
       // Category boundary mid-session — warm up the new primitive before
       // continuing, same gating LetterPracticeScreen does at session start.
+      // A warm-up marks a CHANGE of motor primitive, never simply "a next
+      // letter exists". This used to compute the next letter's group alone
+      // and warm up before every letter whose group had activities, so a run
+      // like l → i → t warmed up three times instead of none.
       const nextLetterObj = sequence[letterIdx + 1];
-      const group      = nextLetterObj ? getLetterPrimitiveGroup(nextLetterObj.letter) : null;
+      const group      = primitiveGroupOnEntering(sequence, letterIdx + 1);
       const activities = group ? selectPreWritingActivities(group) : [];
 
       if (activities.length > 0) {
-        navigation.navigate('PreWritingActivity', {
+        // Feature 4 Step 3 — see LetterWritingScreen.js's identical block.
+        markWarmupHandled({
+          studentId: student?.sid, caseType, letter: nextLetterObj.letter, interactionId,
+          reason: PRE_WRITING_REASON.CATEGORY_TRANSITION,
+        });
+        navigation.navigate('PreWritingActivity', buildPreWritingNavigationParams({
           student, theme, activities,
+          targetLetter: nextLetterObj.letter, targetCaseType: caseType, interactionId,
+          reason: PRE_WRITING_REASON.CATEGORY_TRANSITION,
           nextRoute:  'UppercaseWriting',
           nextParams: { student, theme, letterSequence: sequence.slice(letterIdx + 1) },
-        });
+        }));
       } else {
         setLetterIdx(i => i + 1);
         setAttempt(1);
       }
     }
-  }, [celebration, collectionMode, collectionSessionId, navigation, student, theme, sequence, letterIdx]);
+  }, [celebration, collectionMode, collectionSessionId, navigation, student, theme, sequence, letterIdx, interactionId, caseType]);
+
+  // Feature 11B Phase 5 — blank gate until the mastery-filtered sequence
+  // is known — see LetterWritingScreen.js's identical gate for the
+  // rationale.
+  if (!masteredSequenceReady) {
+    return <SafeAreaView style={styles.safe} />;
+  }
 
   return (
     <LinearGradient
@@ -851,7 +1570,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         {/* Header */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
             style={styles.backBtn}
           >
@@ -877,211 +1596,51 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Main area: letter card LEFT · content RIGHT */}
-        <View style={styles.mainRow}>
-
-          {/* Left column — large letter card */}
-          <View style={styles.letterCol}>
-            <View style={[styles.letterCard, { backgroundColor: theme.button }]}>
-              <Text style={[styles.letterCardText, { color: theme.buttonText }]}>
-                {letter}
-              </Text>
-            </View>
-          </View>
-
-          {/* Right column — title + phonetic + badge + canvas */}
-          <View style={styles.contentCol}>
-
-            {/* Title card */}
-            <View style={[styles.titleCard, {
-              backgroundColor: theme.button + '14',
-              borderColor:     theme.button + '35',
-            }]}>
-              <Text style={[styles.writeLabel, { color: theme.headingText }]}>
-                Write '{letter.toUpperCase()}'
-              </Text>
-              <TouchableOpacity
-                style={[styles.soundBtn, { backgroundColor: theme.button }]}
-                onPress={() => playLetterSound()}
-                activeOpacity={0.75}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <Ionicons name="volume-high" size={18} color={theme.buttonText} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Phonetic */}
-            <Text style={[styles.phoneticText, { color: theme.headingText }]}>
-              {phonetic}
-            </Text>
-
-            {/* Attempt badge */}
-            <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-              <Text style={[styles.attemptTitle, { color: badge.text }]}>
-                {ATTEMPT_TITLES[attempt]}
-              </Text>
-              <Text style={[styles.attemptHint, { color: badge.text }]}>
-                {ATTEMPT_HINTS[attempt]}
-              </Text>
-            </View>
-
-            {/* Writing canvas */}
-            <View style={styles.canvasOuter}>
-              <View
-                style={[styles.canvasCard, { borderColor: theme.cardOutline ?? '#D0D0D0' }]}
-                pointerEvents={attemptFeedback ? 'none' : 'auto'}
-                {...panResponder.panHandlers}
-              >
-                <Svg width={CANVAS_W} height={CANVAS_H}>
-
-                  <Line x1={0} y1={LINE_1} x2={CANVAS_W} y2={LINE_1} stroke="#90CAF9" strokeWidth={1.5} />
-                  <Line x1={0} y1={LINE_2} x2={CANVAS_W} y2={LINE_2} stroke="#90CAF9" strokeWidth={1} />
-                  <Line x1={0} y1={LINE_3} x2={CANVAS_W} y2={LINE_3} stroke="#EF9A9A" strokeWidth={1.5} strokeDasharray="10,6" />
-                  <Line x1={0} y1={LINE_4} x2={CANVAS_W} y2={LINE_4} stroke="#90CAF9" strokeWidth={1.5} />
-
-                  {guideOpacity > 0 && LETTER_PATHS[letter] && (
-                    <>
-                      <Path
-                        d={ANGULAR_LETTERS.has(letter) ? toStraightPath(LETTER_PATHS[letter]) : toSmoothPath(LETTER_PATHS[letter])}
-                        stroke={`rgba(80,80,80,${guideOpacity})`}
-                        strokeWidth={7}
-                        strokeLinecap="round"
-                        strokeLinejoin={ANGULAR_LETTERS.has(letter) ? 'miter' : 'round'}
-                        fill="none"
-                      />
-                      {getGhostDots(LETTER_PATHS[letter]).map((dot, idx) => (
-                        <Circle
-                          key={`ghost-dot-${idx}`}
-                          cx={dot.cx}
-                          cy={dot.cy}
-                          r={5}
-                          fill={`rgba(80,80,80,${guideOpacity})`}
-                        />
-                      ))}
-                    </>
-                  )}
-
-                  {attempt === 2
-                    && activeGuideStart
-                    && (
-                    <>
-                      <Circle
-                        cx={aspectX(activeGuideStart.fx) * CANVAS_W}
-                        cy={activeGuideStart.fy * CANVAS_H}
-                        r={12}
-                        fill="none"
-                        stroke={theme.button}
-                        strokeWidth={2}
-                        opacity={0.72}
-                      />
-                      <Circle
-                        cx={aspectX(activeGuideStart.fx) * CANVAS_W}
-                        cy={activeGuideStart.fy * CANVAS_H}
-                        r={9} fill={theme.button} opacity={0.80}
-                      />
-                      <SvgText
-                        x={aspectX(activeGuideStart.fx) * CANVAS_W}
-                        y={activeGuideStart.fy * CANVAS_H + 5}
-                        fontSize={12}
-                        fill={theme.buttonText ?? '#FFFFFF'}
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {activeGuideStroke + 1}
-                      </SvgText>
-                      {activeDirectionHint && (
-                        <>
-                          {activeDirectionHint.endGuides.map((guide, index) => (
-                            <Circle
-                              key={`stroke-end-${index}`}
-                              cx={guide.x}
-                              cy={guide.y}
-                              r={index === activeDirectionHint.endGuides.length - 1 ? 7 : 5}
-                              fill="none"
-                              stroke={theme.button}
-                              strokeWidth={2.5}
-                              opacity={0.72}
-                            />
-                          ))}
-                          {activeDirectionHint.arrows.map((arrow, index) => (
-                            <React.Fragment key={`stroke-arrow-${index}`}>
-                              <Line
-                                x1={arrow.shaftStart.x}
-                                y1={arrow.shaftStart.y}
-                                x2={arrow.tip.x}
-                                y2={arrow.tip.y}
-                                stroke={theme.button}
-                                strokeWidth={4}
-                                strokeLinecap="round"
-                              />
-                              <Polygon points={arrow.arrowHead} fill={theme.button} />
-                            </React.Fragment>
-                          ))}
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {allPaths.map((stroke, i) => (
-                    <Polyline
-                      key={i}
-                      points={stroke.map(p => `${p.x},${p.y}`).join(' ')}
-                      stroke={theme.button}
-                      strokeWidth={5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
-                    />
-                  ))}
-
-                  {currentPath.length > 1 && (
-                    <Polyline
-                      points={currentPath.map(p => `${p.x},${p.y}`).join(' ')}
-                      stroke={theme.button}
-                      strokeWidth={5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
-                      opacity={0.75}
-                    />
-                  )}
-
-                </Svg>
-              </View>
-
-              {attempt === 1 && !hasDrawn && tracerVisible && tracerXInterp && (
-                <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                  <Animated.View
-                    style={[
-                      styles.tracerDot,
-                      {
-                        backgroundColor: theme.button,
-                        transform: [
-                          { translateX: tracerXInterp },
-                          { translateY: tracerYInterp },
-                        ],
-                      },
-                    ]}
-                  />
-                </View>
-              )}
-            </View>
-
-          </View>
-        </View>
+        {/* Main area: letter card LEFT | content RIGHT.
+            Rendered by the SHARED LetterWritingStage so the "watch first"
+            demonstration and this practice screen are the same layout from
+            the same file, never two copies that can drift apart. */}
+        <LetterWritingStage
+          mode="practice"
+          letter={letter}
+          theme={theme}
+          rawPath={LETTER_PATHS[letter]}
+          isAngular={ANGULAR_LETTERS.has(letter)}
+          guideOpacity={guideOpacity}
+          supportPresentation={supportPresentation}
+          activeGuideStart={activeGuideStart}
+          activeGuideStroke={activeGuideStroke}
+          activeDirectionHint={activeDirectionHint}
+          allPaths={allPaths}
+          currentPath={currentPath}
+          hasDrawn={hasDrawn}
+          tracerVisible={tracerVisible}
+          tracerXInterp={tracerXInterp}
+          tracerYInterp={tracerYInterp}
+          badge={badge}
+          instruction={instructionForSupport(supportLevel)}
+          onPlayInstruction={replaySupportInstruction}
+          onPlaySound={instructionPlaying ? undefined : () => playLetterSound()}
+          canvasRef={canvasRef}
+          onCanvasLayout={measureCanvasOrigin}
+          panHandlers={panResponder.panHandlers}
+          canvasPointerEvents={attemptFeedback || !canWrite ? 'none' : 'auto'}
+        />
 
         {/* Feedback pill */}
         {/* Action buttons */}
         <View style={styles.buttonsRow}>
-          <TouchableOpacity
-            style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
-            onPress={handleClear}
-            disabled={Boolean(attemptFeedback)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="refresh-outline" size={16} color={theme.headingText} />
-            <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
-          </TouchableOpacity>
+          {canClearCanvas && (
+            <TouchableOpacity
+              style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
+              onPress={handleClear}
+              disabled={Boolean(attemptFeedback)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="refresh-outline" size={16} color={theme.headingText} />
+              <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
+            </TouchableOpacity>
+          )}
 
           {hasDrawn && (
             <TouchableOpacity
@@ -1123,6 +1682,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
             avatarKey={student?.avatar_key}
             passed={attemptFeedback.passed}
             attempt={attemptFeedback.attempt}
+            supportLevel={attemptFeedback.supportLevel}
             theme={theme}
           />
         )}
@@ -1184,7 +1744,15 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           </View>
         )}
 
+        {!collectionMode && (
+          <BreakPromptModal navigation={navigation} student={student} theme={theme} />
+        )}
+
       </SafeAreaView>
+
+      {/* Parent gate for the back button above. Rendered once, at the
+          end of the tree, so it overlays the whole screen. */}
+      {gateModal}
     </LinearGradient>
   );
 }
@@ -1206,7 +1774,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  counterText: { fontSize: 13, fontWeight: '700' },
+  counterText: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   attemptDots: {
     flexDirection: 'row',
     gap: 6,
@@ -1219,117 +1787,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
 
-  mainRow: {
-    flexDirection: 'row',
-    flex: 1,
-    paddingHorizontal: PAD,
-    paddingBottom: 4,
-  },
-  letterCol: {
-    width: COL_L,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingRight: 8,
-  },
-  letterCard: {
-    width: LETTER_CARD_SIZE,
-    height: LETTER_CARD_SIZE,
-    borderRadius: Math.round(LETTER_CARD_SIZE * 0.22),
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  letterCardText: {
-    fontSize: Math.round(LETTER_CARD_SIZE * 0.60),
-    fontWeight: '900',
-    lineHeight: Math.round(LETTER_CARD_SIZE * 0.75),
-  },
-  contentCol: {
-    flex: 1,
-    gap: 8,
-    justifyContent: 'center',
-  },
-
-  titleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  writeLabel: {
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-    flexShrink: 1,
-  },
-  soundBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    marginLeft: 8,
-  },
-  phoneticText: {
-    fontSize: 13,
-    fontStyle: 'italic',
-    fontWeight: '600',
-    opacity: 0.65,
-    paddingLeft: 2,
-  },
-
-  attemptBadge: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    alignItems: 'center',
-  },
-  attemptTitle: { fontSize: 12, fontWeight: '800' },
-  attemptHint:  { fontSize: 10, marginTop: 2, textAlign: 'center', opacity: 0.85 },
-
-  canvasOuter: {
-    width:  CANVAS_W,
-    height: CANVAS_H,
-  },
-  canvasCard: {
-    width: CANVAS_W,
-    height: CANVAS_H,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  tracerDot: {
-    position: 'absolute',
-    left: -15,
-    top: -15,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.30,
-    shadowRadius: 4,
-  },
-
   feedbackBadge: {
     alignSelf: 'center',
     paddingHorizontal: 18,
@@ -1337,7 +1794,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 4,
   },
-  feedbackText: { fontSize: 13, fontWeight: '700' },
+  feedbackText: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 
   bottomDots: {
     flexDirection: 'row',
@@ -1347,6 +1804,15 @@ const styles = StyleSheet.create({
   },
 
   buttonsRow: {
+    // Reserved BEFORE anything is in it. Clear appears on the first drawn
+    // point and Next when the finger lifts; without this the row grew twice
+    // mid-stroke and `mainRow` (flex: 1, centred) re-centred the canvas
+    // upward under the child's finger. See constants/writingActionRow.js.
+    minHeight: actionRowMinHeight({
+      // Clear is the taller child: its 1.5px border outweighs Next's
+      // extra 1px of padding.
+      maxButtonPaddingVertical: 12, maxButtonBorderWidth: 1.5, rowPaddingVertical: 6,
+    }),
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1363,7 +1829,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 50,
   },
-  clearText: { fontSize: 14, fontWeight: '600' },
+  clearText: { fontSize: 14, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   nextBtn: {
     paddingHorizontal: 28,
     paddingVertical: 13,
@@ -1374,7 +1840,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  nextText: { fontSize: 14, fontWeight: '800' },
+  nextText: { fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 
   celebOverlay: {
     position: 'absolute',
@@ -1408,7 +1874,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  celebTitle:     { fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
+  celebTitle:     { fontSize: 26, fontWeight: '900', fontFamily: 'Nunito_900Black', textAlign: 'center', marginBottom: 12 },
   celebMessage:   { fontSize: 15, color: '#555555', textAlign: 'center', lineHeight: 24, marginBottom: 20 },
   celebNextBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -1416,11 +1882,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20,
   },
   celebNextLabel: { fontSize: 13, color: '#777777' },
-  celebNextValue: { fontSize: 13, fontWeight: '800' },
+  celebNextValue: { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
   celebStars:     { flexDirection: 'row', gap: 8, marginBottom: 24 },
   celebBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingHorizontal: 40, paddingVertical: 14, borderRadius: 50, width: '100%',
   },
-  celebBtnText: { fontSize: 17, fontWeight: '800' },
+  celebBtnText: { fontSize: 17, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 });

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   useWindowDimensions,
   Animated,
@@ -17,6 +16,10 @@ import { ENDPOINTS } from '../../../constants/api';
 import {
   generateCollectionSessionId, getDeviceMetadata, PROTOCOL_VERSION,
 } from '../../../utils/collectionSession';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
+import useGatedBack from '../../../utils/useGatedBack';
+import { ASSESSMENT_FLOW_ROUTES, returnToAssessmentFlowRoute } from '../../../utils/moduleSelectionBack';
+import ScreenBackButton from '../../../components/handwriting/ScreenBackButton';
 
 const AVATAR_MAP = {
   boba:     require('../../../../assets/avatar-images/Boba.png'),
@@ -26,6 +29,12 @@ const AVATAR_MAP = {
 };
 
 export default function WelcomeScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
   const { student, theme } = route.params;
   const { width, height } = useWindowDimensions();
   const mascot = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.megatron;
@@ -39,11 +48,39 @@ export default function WelcomeScreen({ route, navigation }) {
   const smallBubbleSize = panelW * 0.22;
 
   const [reduceMotion, setReduceMotion] = useState(false);
+  // Initial-assessment gate — the 6-shape assessment is core to adaptivity/
+  // personalization (Feature 1 baseline, Feature 2 thresholds) and must only
+  // ever be OFFERED on a student's first visit; a returning student (one who
+  // already has a stored assessment) skips straight to LetterHome instead of
+  // seeing this screen again. Read-only check against the SAME authoritative
+  // endpoint TeacherReportScreen/AssessmentCompleteScreen already use for
+  // "the" initial assessment (earliest non-collection HandwritingAssessment
+  // row) — no new backend logic, no change to how that assessment is scored,
+  // stored, or ever protected from being overwritten (that already happens
+  // server-side in motorBaselineService.js/dynamicThresholdService.js and is
+  // untouched here). A network failure fails OPEN (shows the assessment
+  // flow as before) rather than risking blocking a student from starting.
+  const [checkingReturningStudent, setCheckingReturningStudent] = useState(true);
+  const returnToModuleSelection = () => returnToAssessmentFlowRoute(
+    navigation,
+    ASSESSMENT_FLOW_ROUTES.MODULE_SELECTION,
+    { student, theme },
+  );
+  const { requestBack, gateModal } = useGatedBack(returnToModuleSelection);
   const floatLarge = useRef(new Animated.Value(0)).current;
   const floatMedium = useRef(new Animated.Value(0)).current;
   const floatSmall = useRef(new Animated.Value(0)).current;
   const buttonEntrance = useRef(new Animated.Value(-36)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
+
+  // ── Mascot animation (right panel) ─────────────────────────────────────
+  const mascotEntranceY = useRef(new Animated.Value(28)).current;
+  const mascotEntranceOpacity = useRef(new Animated.Value(0)).current;
+  const mascotFloat = useRef(new Animated.Value(0)).current;
+  const mascotTilt = useRef(new Animated.Value(0)).current;
+  const mascotScale = useRef(new Animated.Value(1)).current;
+  const bubbleScale = useRef(new Animated.Value(0.7)).current;
+  const bubbleOpacity = useRef(new Animated.Value(0)).current;
   const sliderX = useRef(new Animated.Value(0)).current;
   const sliderPosition = useRef(0);
   const knobScale = useRef(new Animated.Value(1)).current;
@@ -58,6 +95,59 @@ export default function WelcomeScreen({ route, navigation }) {
     return () => subscription.remove();
   }, []);
 
+  // See checkingReturningStudent above — one read-only request, resolved
+  // before this screen's own entrance animations start.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await client.get(ENDPOINTS.HANDWRITING_INITIAL_REPORT(student?.sid));
+        if (!active) return;
+
+        // Routes on assessmentStatus, NOT on hasData.
+        //
+        // hasData means "there is an assessment row" — which is the right
+        // question for the teacher report and the shape-preview loader, but
+        // not for this gate. A row whose motor_profile never arrived is not a
+        // completed assessment, and treating it as one locked such a learner
+        // out of ever taking the assessment through the real UI again
+        // (student 41 was exactly this: a row, six shapes, no motor profile,
+        // no baseline — and no route back).
+        //
+        //   'complete'    -> proceed to normal practice
+        //   'incomplete'  -> STAY here and offer the assessment again. The old
+        //                    unusable row is never deleted; a new valid
+        //                    assessment simply coexists with it, and the
+        //                    earliest-fully-eligible baseline selector picks
+        //                    the usable one. No loop: once the new assessment
+        //                    succeeds, the status becomes 'complete'.
+        //   'not_started' -> offer the assessment
+        //
+        // Falls back to hasData when the field is absent, so an older backend
+        // behaves exactly as it did before.
+        const status = res.data?.assessmentStatus;
+        const isComplete = status != null ? status === 'complete' : Boolean(res.data?.hasData);
+
+        if (isComplete) {
+          navigation.replace('LetterHome', { student, theme });
+          return;
+        }
+        if (__DEV__ && status != null && status !== 'not_started') {
+          console.log('[INITIAL_ASSESSMENT_GATE]', {
+            student_id: student?.sid,
+            assessmentStatus: status,
+            reason: res.data?.assessmentStatusReason ?? null,
+            action: 'showing initial assessment',
+          });
+        }
+      } catch (netErr) {
+        console.warn('Could not check initial-assessment status (defaulting to showing the assessment):', netErr?.message);
+      }
+      if (active) setCheckingReturningStudent(false);
+    })();
+    return () => { active = false; };
+  }, [student?.sid, navigation, student, theme]);
+
   useEffect(() => {
     if (reduceMotion) {
       floatLarge.setValue(0);
@@ -68,6 +158,13 @@ export default function WelcomeScreen({ route, navigation }) {
       knobPulse.setValue(0);
       chevronPulse.setValue(0);
       shine.setValue(0);
+      mascotEntranceY.setValue(0);
+      mascotEntranceOpacity.setValue(1);
+      mascotFloat.setValue(0);
+      mascotTilt.setValue(0);
+      mascotScale.setValue(1);
+      bubbleScale.setValue(1);
+      bubbleOpacity.setValue(1);
       return undefined;
     }
 
@@ -118,17 +215,72 @@ export default function WelcomeScreen({ route, navigation }) {
       Animated.timing(chevronPulse, { toValue: 0, duration: 850, useNativeDriver: true }),
     ]));
 
+    // Mascot entrance — springs/fades in once on mount, then hands off to
+    // the continuous idle loops below.
+    const mascotEntrance = Animated.parallel([
+      Animated.spring(mascotEntranceY, {
+        toValue: 0,
+        speed: 10,
+        bounciness: 9,
+        useNativeDriver: true,
+      }),
+      Animated.timing(mascotEntranceOpacity, {
+        toValue: 1,
+        duration: 550,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    // Mascot idle animation — gentle continuous float (bob), a slow
+    // side-to-side tilt (with idle pauses so it doesn't read as a
+    // metronome), and a subtle breathing scale, all looped indefinitely.
+    const mascotFloatLoop = Animated.loop(Animated.sequence([
+      Animated.timing(mascotFloat, { toValue: -14, duration: 2600, useNativeDriver: true }),
+      Animated.timing(mascotFloat, { toValue: 0, duration: 2600, useNativeDriver: true }),
+    ]));
+
+    const mascotTiltLoop = Animated.loop(Animated.sequence([
+      Animated.timing(mascotTilt, { toValue: 1, duration: 1700, useNativeDriver: true }),
+      Animated.timing(mascotTilt, { toValue: -1, duration: 1700, useNativeDriver: true }),
+      Animated.timing(mascotTilt, { toValue: 0, duration: 1100, useNativeDriver: true }),
+      Animated.delay(1400),
+    ]));
+
+    const mascotBreatheLoop = Animated.loop(Animated.sequence([
+      Animated.timing(mascotScale, { toValue: 1.035, duration: 2100, useNativeDriver: true }),
+      Animated.timing(mascotScale, { toValue: 1, duration: 2100, useNativeDriver: true }),
+    ]));
+
+    // Speech bubble pops in shortly after the mascot lands.
+    const bubbleEntrance = Animated.sequence([
+      Animated.delay(400),
+      Animated.parallel([
+        Animated.spring(bubbleScale, { toValue: 1, speed: 14, bounciness: 10, useNativeDriver: true }),
+        Animated.timing(bubbleOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+    ]);
+
     floating.start();
     entrance.start();
     shineLoop.start();
     knobPulseLoop.start();
     chevronPulseLoop.start();
+    mascotEntrance.start();
+    mascotFloatLoop.start();
+    mascotTiltLoop.start();
+    mascotBreatheLoop.start();
+    bubbleEntrance.start();
     return () => {
       floating.stop();
       entrance.stop();
       shineLoop.stop();
       knobPulseLoop.stop();
       chevronPulseLoop.stop();
+      mascotEntrance.stop();
+      mascotFloatLoop.stop();
+      mascotTiltLoop.stop();
+      mascotBreatheLoop.stop();
+      bubbleEntrance.stop();
     };
   }, [
     buttonEntrance,
@@ -140,11 +292,23 @@ export default function WelcomeScreen({ route, navigation }) {
     knobPulse,
     reduceMotion,
     shine,
+    mascotEntranceY,
+    mascotEntranceOpacity,
+    mascotFloat,
+    mascotTilt,
+    mascotScale,
+    bubbleScale,
+    bubbleOpacity,
   ]);
 
   const shineX = shine.interpolate({
     inputRange: [0, 1],
     outputRange: [-90, 360],
+  });
+
+  const mascotTiltDeg = mascotTilt.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-3deg', '3deg'],
   });
 
   const maxSlide = Math.max(0, trackWidth - 66);
@@ -240,9 +404,24 @@ export default function WelcomeScreen({ route, navigation }) {
     theme,
   ]);
 
+  // Blank themed background only, no animated content — avoids a flash of
+  // the full "slide to begin" UI for a returning student who's about to be
+  // redirected straight to LetterHome (see the effect above).
+  if (checkingReturningStudent) {
+    return <SafeAreaView style={styles.safe} />;
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
+        <ScreenBackButton
+          onPress={requestBack}
+          gated
+          tint={themeColor}
+          color={themeColor}
+          accessibilityLabel="Back"
+          style={styles.flowBackButton}
+        />
 
         {/* ── Left panel ─────────────────────────────────────────────────── */}
         <View style={styles.left}>
@@ -270,10 +449,9 @@ export default function WelcomeScreen({ route, navigation }) {
             transform: [{ translateY: floatSmall }],
           }]} />
 
-          {/* Brand block — no logo, large name fills the space */}
+          {/* Brand block — no logo, no wordmark; headline fills the space */}
           <View style={styles.brandBlock}>
             <Text style={[styles.eyebrow, { color: themeColor }]}>LETTER WRITING</Text>
-            <Text style={[styles.appName, { color: themeColor }]}>Auriva</Text>
             <Text style={[styles.headline, { color: theme?.headingText ?? '#202124' }]}>
               Let&apos;s write together
             </Text>
@@ -396,22 +574,43 @@ export default function WelcomeScreen({ route, navigation }) {
 
         </View>
 
-        {/* ── Right panel — unchanged ─────────────────────────────────────── */}
+        {/* ── Right panel — animated mascot ───────────────────────────────── */}
         <View style={styles.right}>
 
-          <Image
+          <Animated.Image
             source={mascot}
-            style={[styles.mascot, { height: height * 0.72 }]}
+            style={[
+              styles.mascot,
+              {
+                height: height * 0.72,
+                opacity: mascotEntranceOpacity,
+                transform: [
+                  { translateY: mascotEntranceY },
+                  { translateY: mascotFloat },
+                  { rotate: mascotTiltDeg },
+                  { scale: mascotScale },
+                ],
+              },
+            ]}
             resizeMode="contain"
           />
 
-          <View style={styles.bubble}>
+          <Animated.View
+            style={[
+              styles.bubble,
+              {
+                opacity: bubbleOpacity,
+                transform: [{ scale: bubbleScale }],
+              },
+            ]}
+          >
             <Text style={styles.bubbleText}>Ready to write?</Text>
-          </View>
+          </Animated.View>
 
         </View>
 
       </View>
+      {gateModal}
     </SafeAreaView>
   );
 }
@@ -419,6 +618,12 @@ export default function WelcomeScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#E8EEF8' },
   root: { flex: 1, flexDirection: 'row' },
+  flowBackButton: {
+    position: 'absolute',
+    top: 16,
+    left: 22,
+    zIndex: 10,
+  },
 
   // ── Left panel ──────────────────────────────────────────────────────────────
   left: {
@@ -454,16 +659,13 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 2.4,
-  },
-  appName: {
-    fontSize: 60,
-    fontWeight: '900',
-    letterSpacing: 0.5,
   },
   headline: {
     fontSize: 25,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
   },
 
@@ -473,6 +675,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 25,
     fontWeight: '500',
+    fontFamily: 'Nunito_600SemiBold',
   },
 
   sliderWrap: {
@@ -513,6 +716,7 @@ const styles = StyleSheet.create({
   sliderText: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
     letterSpacing: 0.2,
   },
@@ -582,6 +786,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1A1A1A',
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     lineHeight: 22,
     textAlign: 'center',
   },
@@ -598,6 +803,7 @@ const styles = StyleSheet.create({
   dataCollectionText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.2,
   },
 });
