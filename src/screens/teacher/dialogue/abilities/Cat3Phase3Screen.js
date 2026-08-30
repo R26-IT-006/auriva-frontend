@@ -17,6 +17,23 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 
+// The avatar is on screen for the whole scenario, matching Phase 2 and the
+// greetings/magic-words Phase 3 screens. Neutral while the child is choosing,
+// celebrating once they have answered.
+const AVATAR_IDLE = {
+  lily:     require('../../../../../assets/avatar-images/Lily.png'),
+  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
+  boba:     require('../../../../../assets/avatar-images/Boba.png'),
+  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
+};
+
+const AVATAR_CELEBRATE = {
+  lily:     require('../../../../../assets/avatar-images/LilyCongratulations.png'),
+  megatron: require('../../../../../assets/avatar-images/MegatronCongratulations.png'),
+  boba:     require('../../../../../assets/avatar-images/BobaCongratulations.png'),
+  glitter:  require('../../../../../assets/avatar-images/GlitterCongratulations.png'),
+};
+
 // Scene videos for Phase 3 — same Phase1And3.mp4 as Phase 1, per word folder
 const CAT3_CONTEXT_CORRECT = {
   cat3_yes: require('../../../../../assets/dialogue-videos/words/abilities/yes/Phase1And3.mp4'),
@@ -38,7 +55,8 @@ const CAT3_CONTEXT_CORRECT = {
   watch:    require('../../../../../assets/dialogue-videos/words/abilities/watch/Phase1And3.mp4'),
 };
 
-const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abilities/Phase3_prompt_generic.mp3');
+// Shared Phase 3 prompt audio for every abilities word — 2026-08-30.
+const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abilities/ContextAwarenessAbilities.mp3');
 
 const PROGRESS_FRACTION = 0.90;
 
@@ -84,6 +102,9 @@ function pickDistractors(correctLabel, count = 2) {
 export default function Cat3Phase3Screen({ route, navigation }) {
   const { student, wordId, wordKey, wordLabel: labelParam, sessionId } = route.params ?? {};
   const theme     = getAvatarTheme(student?.avatar_key);
+  const avatarKey          = student?.avatar_key ?? 'lily';
+  const avatarIdleImg      = AVATAR_IDLE[avatarKey] ?? AVATAR_IDLE.lily;
+  const avatarCelebrateImg = AVATAR_CELEBRATE[avatarKey] ?? AVATAR_CELEBRATE.lily;
   const wordLabel = labelParam ?? WORD_LABELS[wordKey] ?? wordKey;
   const sceneVideo = getSceneVideo(wordKey);
 
@@ -113,6 +134,7 @@ export default function Cat3Phase3Screen({ route, navigation }) {
   const submittedRef  = useRef(false);
   const settingsFade  = useRef(new Animated.Value(0)).current;
   const feedbackOp    = useRef(new Animated.Value(0)).current;
+  const avatarPop     = useRef(new Animated.Value(0)).current;
   const correctIdxRef = useRef(null);
 
   // ── NEW — audio playback (this screen had none before) ─────────────
@@ -175,6 +197,20 @@ export default function Cat3Phase3Screen({ route, navigation }) {
       videoRef.current?.pauseAsync().catch(() => {});
     };
   }, []));
+
+  // Same spring the greetings and magic-words Phase 3 screens use, so the
+  // celebration lands identically across all three categories. `settled` only
+  // ever goes false → true here (one check per word), so this fires once.
+  useEffect(() => {
+    if (!settled) { avatarPop.setValue(0); return; }
+    avatarPop.setValue(0);
+    Animated.spring(avatarPop, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 10,
+    }).start();
+  }, [settled, avatarPop]);
 
   function showToast(msg, color) {
     setFeedbackMsg(msg);
@@ -392,6 +428,26 @@ export default function Cat3Phase3Screen({ route, navigation }) {
               )}
             </View>
 
+            {/* The avatar is on screen for the whole scenario, matching Phase 2
+                and the other two categories' Phase 3. Neutral pose while the
+                child is choosing, celebrating once they have answered. */}
+            <View style={styles.avatarRow}>
+              <Animated.Image
+                source={settled ? avatarCelebrateImg : avatarIdleImg}
+                resizeMode="contain"
+                style={[
+                  styles.avatarImg,
+                  settled
+                    ? {
+                      transform: [
+                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1] }) },
+                      ],
+                    }
+                    : null,
+                ]}
+              />
+            </View>
+
           </View>
         </SafeAreaView>
       </View>
@@ -482,6 +538,13 @@ const styles = StyleSheet.create({
   tileCorrect: { borderColor: '#22C55E', borderWidth: 2.5 },
   tileWrong:   { borderColor: '#FF4D6D', opacity: 0.7 },
   tileText:    { fontSize: Layout.fontSize.lg, fontWeight: '800' },
+
+  avatarRow: { alignItems: 'flex-end', marginTop: Layout.spacing.md },
+  // Square on purpose. The idle art is 500x500 and the celebration art is
+  // ~1024x1024 (Lily's is 975x1104), so a non-square box would make `contain`
+  // render the two poses at different sizes and the avatar would appear to
+  // grow on feedback. Matches the 150x150 used by the other Phase 3 screens.
+  avatarImg: { width: 150, height: 150 },
 
   feedbackBanner: { position: 'absolute', bottom: 60, left: 0, right: 0, alignItems: 'center', zIndex: 60 },
   feedbackText: {

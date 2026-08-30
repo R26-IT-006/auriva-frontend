@@ -1,6 +1,19 @@
 import client from './client';
 import { ENDPOINTS } from '../constants/api';
 
+// The client's 15s default suits ordinary CRUD calls. These two run a SHAP
+// explanation on the microservice — the batch one does it per word,
+// sequentially — so they routinely exceed it.
+//
+// Overrunning that default did not even surface as a timeout: client.js's
+// response interceptor retries any error carrying no HTTP response up to 3
+// times, so a slow report was re-issued three more times and finally reported
+// as "Network error. Check your connection." — which points at the network
+// rather than at the real cause. These are per-request overrides, so no other
+// endpoint's timeout changes.
+export const SHAP_WORD_TIMEOUT_MS   = 45000;
+export const SHAP_REPORT_TIMEOUT_MS = 180000;
+
 export const dialogueApi = {
   async getLevel1Overview(studentId) {
     const { data } = await client.get(ENDPOINTS.DIALOGUE_LEVEL1_OVERVIEW(studentId));
@@ -106,7 +119,8 @@ export const dialogueApi = {
   // Returns { trajectory, tier, confidence, explanation, caveat }.
   async getTrajectoryExplanation(studentId, wordId) {
     const { data } = await client.get(
-      ENDPOINTS.DIALOGUE_TRAJECTORY_EXPLAIN(studentId, wordId)
+      ENDPOINTS.DIALOGUE_TRAJECTORY_EXPLAIN(studentId, wordId),
+      { timeout: SHAP_WORD_TIMEOUT_MS }
     );
     return data;
   },
@@ -115,7 +129,10 @@ export const dialogueApi = {
   // Returns { totals, words: [...] }. SHAP is slow enough that one round trip
   // per word would be visibly bad, hence the batch shape.
   async getTrajectoryReport(studentId) {
-    const { data } = await client.get(ENDPOINTS.DIALOGUE_TRAJECTORY_REPORT(studentId));
+    const { data } = await client.get(
+      ENDPOINTS.DIALOGUE_TRAJECTORY_REPORT(studentId),
+      { timeout: SHAP_REPORT_TIMEOUT_MS }
+    );
     return data;
   },
 

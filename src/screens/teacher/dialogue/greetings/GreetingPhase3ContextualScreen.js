@@ -22,8 +22,10 @@ import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SIT
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
 const PHASE3_PROMPT_AUDIO = {
-  hello:          require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Hello.mp3'),
-  goodbye:        require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodbye.mp3'),
+  // hello/goodbye use the new ContextAwareness recordings (one audio for
+  // every scene of that word) — 2026-08-30. Every other word is unchanged.
+  hello:          require('../../../../../assets/dialogue-audios/greetings/ContextAwarenessHello.mp3'),
+  goodbye:        require('../../../../../assets/dialogue-audios/greetings/ContextAwarenessGoodbye.mp3'),
   good_morning:   require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodmorning.mp3'),
   good_afternoon: require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodafternoon.mp3'),
   good_night:     require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodnight.mp3'),
@@ -43,6 +45,17 @@ const WORD_DISPLAY = {
   how_are_you:    'How Are You?',
   im_fine:        "I'm Fine",
   happy_new_year: 'Happy New Year',
+};
+
+// The avatar is on screen for the whole scenario, matching Phase 2 where it is
+// always present. It sits in the neutral pose while the child is choosing and
+// switches to the celebrating pose only with the feedback message, so the
+// celebration stays a response to answering rather than the default state.
+const AVATAR_IDLE = {
+  lily:     require('../../../../../assets/avatar-images/Lily.png'),
+  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
+  boba:     require('../../../../../assets/avatar-images/Boba.png'),
+  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
 };
 
 const AVATAR_IMAGES = {
@@ -409,7 +422,8 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
   const theme     = getAvatarTheme(student?.avatar_key);
   const wordLabel = WORD_DISPLAY[wordKey] ?? wordKey.replace(/_/g, ' ');
   const avatarKey = student?.avatar_key ?? 'lily';
-  const avatarImg = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
+  const avatarImg     = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
+  const avatarIdleImg = AVATAR_IDLE[avatarKey] ?? AVATAR_IDLE.lily;
 
   const { width: screenWidth } = useWindowDimensions();
   // The source photos are wide (landscape), so cards are sized for 2 per row
@@ -776,22 +790,23 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
                   <View style={[styles.bubbleTail, { borderTopColor: '#FFFFFF' }]} />
                 </View>
               ) : null}
-              {cloudText ? (
-                <Animated.Image
-                  source={avatarImg}
-                  resizeMode="contain"
-                  style={[
-                    styles.avatarImg,
-                    {
-                      opacity: avatarPop,
+              {/* Always on screen, like Phase 2. Only the pose changes, and the
+                  pop is a gentle scale rather than a fade-in from nothing —
+                  fading from 0 would make the avatar vanish between scenarios. */}
+              <Animated.Image
+                source={cloudText ? avatarImg : avatarIdleImg}
+                resizeMode="contain"
+                style={[
+                  styles.avatarImg,
+                  cloudText
+                    ? {
                       transform: [
-                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) },
-                        { translateY: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1] }) },
                       ],
-                    },
-                  ]}
-                />
-              ) : null}
+                    }
+                    : null,
+                ]}
+              />
             </View>
 
           </View>
@@ -930,7 +945,11 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   },
-  avatarImg: { width: 145, height: 170 },
+  // Square on purpose. The idle art is 500x500 and the celebration art is
+  // ~1024x1024 (Lily's is 975x1104), so a 145x170 box made `contain` render the
+  // square poses at 145x145 but Lily's celebration at 145x164 — the avatar
+  // visibly grew on feedback. A square box renders every pose at one size.
+  avatarImg: { width: 150, height: 150 },
 
   settingsOverlay: {
     ...StyleSheet.absoluteFillObject,

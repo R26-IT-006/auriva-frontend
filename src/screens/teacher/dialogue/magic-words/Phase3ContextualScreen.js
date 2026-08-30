@@ -23,9 +23,12 @@ import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SIT
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
 const PHASE3_PROMPT_AUDIO = {
-  thank_you:     require('../../../../../assets/dialogue-audios/magic_words/Phase3_prompt_Thankyou.mp3'),
+  // thank_you/youre_welcome use the new ContextAwareness recordings (one
+  // audio for every scene of that word) — 2026-08-30. im_sorry/excuse_me
+  // are unchanged.
+  thank_you:     require('../../../../../assets/dialogue-audios/magic_words/ContextAwarenessThankYou.mp3'),
   im_sorry:      require('../../../../../assets/dialogue-audios/magic_words/Phase3_prompt_Imsorry.mp3'),
-  youre_welcome: require('../../../../../assets/dialogue-audios/magic_words/Phase3_prompt_Yourewelcome.mp3'),
+  youre_welcome: require('../../../../../assets/dialogue-audios/magic_words/ContextAwarenessYouWelcome.mp3'),
   excuse_me:     require('../../../../../assets/dialogue-audios/magic_words/Phase3_prompt_Excuseme.mp3'),
 };
 
@@ -34,6 +37,17 @@ const WORD_DISPLAY = {
   im_sorry:         "I'm Sorry",
   youre_welcome:    "You're Welcome",
   excuse_me: 'Excuse Me',
+};
+
+// The avatar is on screen for the whole scenario, matching Phase 2 where it is
+// always present. It sits in the neutral pose while the child is choosing and
+// switches to the celebrating pose only with the feedback message, so the
+// celebration stays a response to answering rather than the default state.
+const AVATAR_IDLE = {
+  lily:     require('../../../../../assets/avatar-images/Lily.png'),
+  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
+  boba:     require('../../../../../assets/avatar-images/Boba.png'),
+  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
 };
 
 const AVATAR_IMAGES = {
@@ -222,7 +236,8 @@ export default function Phase3ContextualScreen({ route, navigation }) {
   const theme     = getAvatarTheme(student?.avatar_key);
   const wordLabel = WORD_DISPLAY[wordKey] ?? wordKey.replace(/_/g, ' ');
   const avatarKey = student?.avatar_key ?? 'lily';
-  const avatarImg = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
+  const avatarImg     = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
+  const avatarIdleImg = AVATAR_IDLE[avatarKey] ?? AVATAR_IDLE.lily;
 
   const { width: screenWidth } = useWindowDimensions();
   const isVerticalLayout = wordKey === 'youre_welcome';
@@ -651,22 +666,23 @@ export default function Phase3ContextualScreen({ route, navigation }) {
                   <View style={[styles.bubbleTail, { borderTopColor: '#FFFFFF' }]} />
                 </View>
               ) : null}
-              {cloudText ? (
-                <Animated.Image
-                  source={avatarImg}
-                  resizeMode="contain"
-                  style={[
-                    styles.avatarImg,
-                    {
-                      opacity: avatarPop,
+              {/* Always on screen, like Phase 2. Only the pose changes, and the
+                  pop is a gentle scale rather than a fade-in from nothing —
+                  fading from 0 would make the avatar vanish between scenarios. */}
+              <Animated.Image
+                source={cloudText ? avatarImg : avatarIdleImg}
+                resizeMode="contain"
+                style={[
+                  styles.avatarImg,
+                  cloudText
+                    ? {
                       transform: [
-                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) },
-                        { translateY: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+                        { scale: avatarPop.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1] }) },
                       ],
-                    },
-                  ]}
-                />
-              ) : null}
+                    }
+                    : null,
+                ]}
+              />
             </View>
 
           </View>
@@ -875,9 +891,13 @@ const styles = StyleSheet.create({
     borderLeftColor:  'transparent',
     borderRightColor: 'transparent',
   },
+  // Square on purpose. The idle art is 500x500 and the celebration art is
+  // ~1024x1024 (Lily's is 975x1104), so a 145x170 box made `contain` render the
+  // square poses at 145x145 but Lily's celebration at 145x164 — the avatar
+  // visibly grew on feedback. A square box renders every pose at one size.
   avatarImg: {
-    width:  145,
-    height: 170,
+    width:  150,
+    height: 150,
   },
 
   /* Settings */

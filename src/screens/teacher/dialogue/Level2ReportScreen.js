@@ -13,6 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
 import { TrendSparkline } from '../../../components/charts/TrendSparkline';
+import {
+  StatTile,
+  TrendChart,
+  ProgressRow,
+} from '../../../components/dialogue/ReportVisuals';
 import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { level2Api } from '../../../api/level2';
@@ -71,6 +76,12 @@ const ELEMENT_LABEL = {
 };
 
 const TOPIC_ORDER = ['self_introduction', 'describe_friend', 'describe_pet'];
+
+const TOPIC_ICON = {
+  self_introduction: 'person-outline',
+  describe_friend:   'people-outline',
+  describe_pet:      'paw-outline',
+};
 
 /** "a", "a and b", "a, b, and c" — so the sentences below read as English. */
 function formatList(items) {
@@ -333,6 +344,7 @@ export function buildLevel2PrintModel(report, studentName) {
 export default function Level2ReportScreen({ route, navigation }) {
   const student = route.params?.student;
   const { width } = useWindowDimensions();
+  const firstName = student?.full_name?.trim().split(/\s+/)[0] ?? 'This student';
 
   const [report, setReport]         = useState(null);
   const [timeline, setTimeline]     = useState([]);
@@ -433,6 +445,31 @@ export default function Level2ReportScreen({ route, navigation }) {
     .map((key) => topics.find((t) => t.topic === key))
     .filter(Boolean);
 
+  // The trend stated in words above the chart; the chart is the evidence.
+  const scored = timeline.filter((p) => typeof p.accuracy === 'number');
+  const trendRange = scored.length > 0
+    ? (scored.length === 1
+      ? formatDate(scored[0].date)
+      : `${formatDate(scored[0].date)} — ${formatDate(scored[scored.length - 1].date)}`)
+    : null;
+  const trendLead = (() => {
+    if (scored.length === 0) return 'No completed Level 2 session has been recorded in this window yet.';
+    const latest = scored[scored.length - 1];
+    const outOfFive = Math.round(latest.accuracy * 5 * 10) / 10;
+    if (scored.length === 1) {
+      return `${firstName} scored ${outOfFive} out of 5 on the one session recorded.`;
+    }
+    const delta = latest.accuracy - scored[0].accuracy;
+    const shape = delta > 0.08 ? 'improving' : delta < -0.08 ? 'slipping' : 'steady';
+    const sessions = scored.reduce((n, p) => n + (p.attempts || 0), 0);
+    if (shape === 'steady') {
+      return `${firstName} is holding steady around ${outOfFive} out of 5, across ${sessions} sessions on ${scored.length} days.`;
+    }
+    return shape === 'improving'
+      ? `${firstName} is improving — ${outOfFive} out of 5 most recently, up from ${Math.round(scored[0].accuracy * 5 * 10) / 10}, across ${sessions} sessions.`
+      : `${firstName} has slipped to ${outOfFive} out of 5, down from ${Math.round(scored[0].accuracy * 5 * 10) / 10}, across ${sessions} sessions.`;
+  })();
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView
@@ -440,24 +477,25 @@ export default function Level2ReportScreen({ route, navigation }) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
       >
-        {/* Overview */}
-        <Card style={styles.card}>
-          <View style={styles.overview}>
-            <View style={styles.overviewStats}>
-              <StatCell label="Mastered" value={String(totals.mastered)} tint="#22A05F" />
-              <StatCell label="In progress" value={String(totals.in_progress)} />
-              <StatCell
-                label="Needs support"
-                value={String(totals.struggling)}
-                tint={totals.struggling > 0 ? Colors.status.error : undefined}
-              />
-              <StatCell label="Not started" value={String(totals.not_started)} />
-            </View>
-            <Text style={styles.overviewMeta}>
-              {totals.topics_started} of {totals.topics_total} topics started
-            </Text>
-          </View>
-        </Card>
+        <View style={styles.tileRow}>
+          <StatTile
+            icon="ribbon-outline"
+            label="Mastered"
+            value={`${totals.mastered} / ${totals.topics_total}`}
+            sub={`${totals.topics_started} started`}
+            tone="plain"
+          />
+          <StatTile icon="hourglass-outline" label="In progress" value={String(totals.in_progress)} tone="neutral" />
+        </View>
+        <View style={styles.tileRow}>
+          <StatTile
+            icon="alert-circle-outline"
+            label="Needs support"
+            value={String(totals.struggling)}
+            tone={totals.struggling > 0 ? 'warn' : 'idle'}
+          />
+          <StatTile icon="ellipse-outline" label="Not started" value={String(totals.not_started)} tone="idle" />
+        </View>
 
         {/* TASK-48 — a print failure is reported here and nowhere else; the
             report below stays exactly as it was. */}
@@ -468,14 +506,40 @@ export default function Level2ReportScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        {/* TASK-47 — practice over time across all three topics. Sits with the
-            at-a-glance summary, above the per-topic detail. */}
-        <Section title="Practice trend" subtitle="Session score per day · dashed line is the pass mark">
+        {/* TASK-47 — practice over time across all three topics. */}
+        <Section
+          title="Practice trend"
+          subtitle="Session score per day, out of five"
+          right={trendRange ? <View style={styles.rangeChip}><Text style={styles.rangeChipText}>{trendRange}</Text></View> : null}
+        >
           <View style={styles.trendWrap}>
-            <TrendSparkline
+            <Text style={styles.trendLead}>{trendLead}</Text>
+            <TrendChart
               points={timeline}
               width={width - Layout.spacing.lg * 2 - Layout.spacing.md * 2}
+              accentLabel="Session score"
             />
+          </View>
+        </Section>
+
+        {/* Topic progress at a glance, before the per-topic detail. */}
+        <Section title="Topics" subtitle="How far each one has come">
+          <View style={styles.categoryBlock}>
+            {byTopic.map((topic) => {
+              const meta = STATUS_META[topic.status] || STATUS_META.not_started;
+              return (
+                <ProgressRow
+                  key={topic.topic}
+                  icon={TOPIC_ICON[topic.topic]}
+                  iconBg={meta.bg}
+                  label={TOPIC_LABEL[topic.topic] || topic.topic}
+                  done={topic.sentence_by_sentence_score ?? 0}
+                  total={5}
+                  right={meta.label}
+                  color={meta.fg}
+                />
+              );
+            })}
           </View>
         </Section>
 
@@ -527,6 +591,23 @@ const styles = StyleSheet.create({
   overview:      { padding: Layout.spacing.md, gap: Layout.spacing.sm },
   overviewStats: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Layout.spacing.md },
   overviewMeta:  { fontSize: Layout.fontSize.xs, color: Colors.text.muted },
+
+  // Redesign — headline tiles + trend card.
+  tileRow: { flexDirection: 'row', gap: Layout.spacing.md, marginBottom: Layout.spacing.md },
+  rangeChip: {
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: Layout.radius.full,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  rangeChipText: { fontSize: 10, color: Colors.text.secondary, fontFamily: 'Nunito_600SemiBold' },
+  trendLead: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.text.primary,
+    lineHeight: 20,
+    marginBottom: Layout.spacing.md,
+  },
+  categoryBlock: { padding: Layout.spacing.md, gap: Layout.spacing.lg },
 
   statCell:      { minWidth: 76, flexGrow: 1 },
   statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'Nunito_800ExtraBold', color: Colors.text.primary },
