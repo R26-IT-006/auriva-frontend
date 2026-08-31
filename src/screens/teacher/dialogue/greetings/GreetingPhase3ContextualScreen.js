@@ -22,8 +22,8 @@ import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SIT
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
 const PHASE3_PROMPT_AUDIO = {
-  hello:          require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Hello.mp3'),
-  goodbye:        require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodbye.mp3'),
+  hello:          require('../../../../../assets/dialogue-audios/greetings/ContextAwarenessHello.mp3'),
+  goodbye:        require('../../../../../assets/dialogue-audios/greetings/ContextAwarenessGoodbye.mp3'),
   good_morning:   require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodmorning.mp3'),
   good_afternoon: require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodafternoon.mp3'),
   good_night:     require('../../../../../assets/dialogue-audios/greetings/Phase3_prompt_Goodnight.mp3'),

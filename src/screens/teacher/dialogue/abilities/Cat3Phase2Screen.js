@@ -46,10 +46,13 @@ const WORD_AUDIO = {
 };
 
 const CAN_YOU_SAY_AUDIO = {
+  cat3_yes: require('../../../../../assets/dialogue-audios/abilities/can_you_say_yes.mp3'),
+  cat3_no:  require('../../../../../assets/dialogue-audios/abilities/can_you_say_no.mp3'),
   clap: require('../../../../../assets/dialogue-audios/abilities/can_you_say_clap.mp3'),
   jump: require('../../../../../assets/dialogue-audios/abilities/can_you_say_jump.mp3'),
   run:  require('../../../../../assets/dialogue-audios/abilities/can_you_say_run.mp3'),
   walk: require('../../../../../assets/dialogue-audios/abilities/can_you_say_walk.mp3'),
+  brush: require('../../../../../assets/dialogue-audios/abilities/can_you_say_brush.mp3'),
 };
 
 const P = {

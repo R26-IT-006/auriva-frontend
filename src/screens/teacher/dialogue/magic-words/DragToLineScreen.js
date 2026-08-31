@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
@@ -26,6 +27,9 @@ const AVATAR_IMAGES = {
   boba:     require('../../../../../assets/avatar-images/Boba.png'),
   glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
 };
+
+// Shared drag-and-drop instruction audio — same clip across every category.
+const DRAG_DROP_AUDIO = require('../../../../../assets/dialogue-audios/DragAndDropCommon.mp3');
 
 const ACTIVITIES = {
   thank_you: [
@@ -261,10 +265,22 @@ export default function DragToLineScreen({ route, navigation }) {
       goBackSmart();
       return true;
     });
-    return () => sub.remove();
+    (async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(DRAG_DROP_AUDIO);
+        soundRef.current = sound;
+        await sound.playAsync();
+      } catch { /* ignore */ }
+    })();
+    return () => {
+      sub.remove();
+      soundRef.current?.stopAsync().catch(() => {});
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
   }, []));
 
   const dropZoneRef = useRef(null);
+  const soundRef = useRef(null);
   const [dropZoneBounds, setDropZoneBounds] = useState(null);
 
   const feedbackOpacity = useRef(new Animated.Value(0)).current;

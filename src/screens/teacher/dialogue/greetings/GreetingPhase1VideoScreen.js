@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
@@ -48,16 +48,22 @@ const WORD_AUDIO = {
 // placeholders left. Filenames are not uniform (case/hyphenation vary per
 // word, e.g. lowercase "happy-birthday", abbreviated "happy-new-yr") —
 // verified against the actual files on disk, not assumed from convention.
+// Narration audio (Sinhala+English combined recordings) — hello and
+// goodbye each share one audio across all 3 of their videos; every other
+// word is untouched (no audio field = no narration, per instruction).
+const HELLO_AUDIO   = require('../../../../../assets/dialogue-audios/greetings/Hello_V1.mp3');
+const GOODBYE_AUDIO = require('../../../../../assets/dialogue-audios/greetings/Goodbye_V1.mp3');
+
 const WORD_VIDEOS = {
   hello: [
-    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V1.mp4'), caption: 'Saman arrives at school.\nHe sees Anjalie and says "Hello"' },
-    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V2.mp4'), caption: 'Anjalie meets her neighbour.\nShe says "Hello"' },
-    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V3.mp4'), caption: 'Saman waves at a friend across the road.\nHe says "Hello"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V1.mp4'), caption: 'Saman arrives at school.\nHe sees Anjalie and says "Hello"', audio: HELLO_AUDIO },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V2.mp4'), caption: 'Anjalie meets her neighbour.\nShe says "Hello"', audio: HELLO_AUDIO },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/hello/Hello_V3.mp4'), caption: 'Saman waves at a friend across the road.\nHe says "Hello"', audio: HELLO_AUDIO },
   ],
   goodbye: [
-    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V1.mp4'), caption: 'School is over.\nAnjalie waves at her teacher and says "Goodbye"' },
-    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V2.mp4'), caption: 'Saman leaves his friend\'s house.\nHe says "Goodbye"' },
-    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V3.mp4'), caption: 'Anjalie\'s mum is going to work.\nShe says "Goodbye"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V1.mp4'), caption: 'School is over.\nAnjalie waves at her teacher and says "Goodbye"', audio: GOODBYE_AUDIO },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V2.mp4'), caption: 'Saman leaves his friend\'s house.\nHe says "Goodbye"', audio: GOODBYE_AUDIO },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/goodbye/Goodbye_V3.mp4'), caption: 'Anjalie\'s mum is going to work.\nShe says "Goodbye"', audio: GOODBYE_AUDIO },
   ],
   good_morning: [
     { source: require('../../../../../assets/dialogue-videos/words/greetings/good_morning/Good-morning_V1.mp4'), caption: 'Saman arrives at school.\nHe greets his teacher: "Good Morning"' },
@@ -120,7 +126,25 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
   const [gatePurpose,  setGatePurpose]  = useState('settings');
   const settingsFade = useRef(new Animated.Value(0)).current;
   const videoRef     = useRef(null);
+  const soundRef  = useRef(null);
   const current      = videos[videoIndex];
+
+  // Narration audio (only some videos have one — see the per-word constants
+  // above) — kept in sync with the video: (re)starts whenever the video
+  // (re)starts, pauses when the video is paused.
+  async function playCurrentAudio(source) {
+    if (soundRef.current) {
+      await soundRef.current.stopAsync().catch(() => {});
+      await soundRef.current.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    }
+    if (!source) return;
+    try {
+      const { sound } = await Audio.Sound.createAsync(source);
+      soundRef.current = sound;
+      await sound.playAsync();
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     setHasFinished(false);
@@ -129,7 +153,13 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
     if (wordId && student?.sid) {
       dialogueApi.recordPhase1Exposure(student.sid, wordId).catch(() => {});
     }
-  }, [videoIndex]);
+    playCurrentAudio(current?.audio);
+    return () => {
+      soundRef.current?.stopAsync().catch(() => {});
+      soundRef.current?.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    };
+  }, [videoIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -155,8 +185,10 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
       await videoRef.current.replayAsync();
       setShowReplay(false);
       setIsPlaying(true);
+      playCurrentAudio(current?.audio);
     } else {
       await videoRef.current.pauseAsync();
+      soundRef.current?.pauseAsync().catch(() => {});
     }
   }
 

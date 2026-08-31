@@ -38,7 +38,8 @@ const CAT3_CONTEXT_CORRECT = {
   watch:    require('../../../../../assets/dialogue-videos/words/abilities/watch/Phase1And3.mp4'),
 };
 
-const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abilities/Phase3_prompt_generic.mp3');
+// Shared Phase 3 prompt audio for every abilities word.
+const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abilities/ContextAwarenessAbilities.mp3');
 
 const PROGRESS_FRACTION = 0.90;
 

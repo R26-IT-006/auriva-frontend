@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
@@ -34,18 +34,24 @@ const WORD_AUDIO = {
   excuse_me:     require('../../../../../assets/dialogue-audios/magic_words/Excuse_me.mp3'),
 };
 
+const THANK_YOU_AUDIO_1 = require('../../../../../assets/dialogue-audios/magic_words/ThankYou_V1.mp3');
+const THANK_YOU_AUDIO_2 = require('../../../../../assets/dialogue-audios/magic_words/ThankYou_V2.mp3');
+
 const THANK_YOU_VIDEOS = [
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V1.mp4'),
     caption: 'Saman receives a present from Anjali.\nHe says "Thank you"',
+    audio:   THANK_YOU_AUDIO_1,
   },
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V2.mp4'),
     caption: 'Anjalie receives an apple from Saman.\nShe says "Thank you"',
+    audio:   THANK_YOU_AUDIO_1,
   },
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/thank_you/Thankyou_V3.mp4'),
     caption: 'Anjalie asks to borrow a pencil from Saman.\nHe gives her a pencil. She says "Thank you"',
+    audio:   THANK_YOU_AUDIO_2,
   },
 ];
 
@@ -65,18 +71,23 @@ const IM_SORRY_VIDEOS = [
   },
 ];
 
+const YOURE_WELCOME_AUDIO = require('../../../../../assets/dialogue-audios/magic_words/YouWelcome_V1.mp3');
+
 const YOURE_WELCOME_VIDEOS = [
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/youre_welcome/You_re_welcome_V1.mp4'),
     caption: 'Anjalie says "Thank you" to Saman.\nHe says "You\'re welcome"',
+    audio:   YOURE_WELCOME_AUDIO,
   },
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/youre_welcome/You_re_welcome_V2.mp4'),
     caption: 'Saman helps Anjalie carry her bag.\nShe says "Thank you". He says "You\'re welcome"',
+    audio:   YOURE_WELCOME_AUDIO,
   },
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/youre_welcome/You_re_welcome_V3.mp4'),
     caption: 'Anjalie gives Saman a pencil.\nHe says "Thank you". She says "You\'re welcome"',
+    audio:   YOURE_WELCOME_AUDIO,
   },
 ];
 
@@ -123,7 +134,25 @@ export default function Phase1VideoScreen({ route, navigation }) {
   const settingsFade = useRef(new Animated.Value(0)).current;
 
   const videoRef = useRef(null);
+  const soundRef  = useRef(null);
   const current  = videos[videoIndex];
+
+  // Narration audio (only some videos have one — see the per-word constants
+  // above) — kept in sync with the video: (re)starts whenever the video
+  // (re)starts, pauses when the video is paused.
+  async function playCurrentAudio(source) {
+    if (soundRef.current) {
+      await soundRef.current.stopAsync().catch(() => {});
+      await soundRef.current.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    }
+    if (!source) return;
+    try {
+      const { sound } = await Audio.Sound.createAsync(source);
+      soundRef.current = sound;
+      await sound.playAsync();
+    } catch { /* ignore */ }
+  }
 
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -141,7 +170,13 @@ export default function Phase1VideoScreen({ route, navigation }) {
     if (wordId && student?.sid) {
       dialogueApi.recordPhase1Exposure(student.sid, wordId).catch(() => {});
     }
-  }, [videoIndex]);
+    playCurrentAudio(current?.audio);
+    return () => {
+      soundRef.current?.stopAsync().catch(() => {});
+      soundRef.current?.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    };
+  }, [videoIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onPlaybackStatusUpdate(status) {
     if (!status.isLoaded) return;
@@ -159,8 +194,10 @@ export default function Phase1VideoScreen({ route, navigation }) {
       await videoRef.current.replayAsync();
       setShowReplay(false);
       setIsPlaying(true);
+      playCurrentAudio(current?.audio);
     } else {
       await videoRef.current.pauseAsync();
+      soundRef.current?.pauseAsync().catch(() => {});
     }
   }
 
