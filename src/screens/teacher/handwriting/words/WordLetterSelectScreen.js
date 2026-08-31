@@ -18,7 +18,6 @@ import { getAllWordProgress } from '../../../../utils/storage';
 import { fetchWordProgress } from '../../../../utils/wordApi';
 import { buildWordRouteParams, getSelectedWords } from '../../../../utils/wordWorkflow';
 import { filterUnfinishedWords } from '../../../../utils/wordCompletionHistory';
-import { computeWordLetterUnlocks } from '../../../../utils/wordLetterUnlockPolicy';
 import { useLockLandscape } from '../../../../utils/useOrientationLock';
 import useGatedBack from '../../../../utils/useGatedBack';
 import { useToast } from '../../../../context/ToastContext';
@@ -60,10 +59,6 @@ const AVATAR_MAP = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
   megatron: require('../../../../../assets/avatar-images/Megatron.png'),
 };
-
-// ─── Unlock logic ────────────────────────────────────────────────────────────
-
-// ─── Unlock logic ─────────────────────────────────────────────────────────────
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -140,7 +135,6 @@ export default function WordLetterSelectScreen({ route, navigation }) {
     }, [student?.sid])
   );
 
-  const unlocked     = computeWordLetterUnlocks(wordProgress);
   const doneCount    = LETTERS.filter(l => !!wordProgress[l.toLowerCase()]).length;
   const progressText = `${doneCount} / ${LETTERS.length} letters started`;
 
@@ -218,7 +212,6 @@ export default function WordLetterSelectScreen({ route, navigation }) {
           showsVerticalScrollIndicator={false}
         >
           {LETTERS.map((letter, i) => {
-            const isUnlocked  = unlocked[letter];
             const progress    = wordProgress[letter.toLowerCase()];
             const pal         = PALETTE[i % PALETTE.length];
 
@@ -226,13 +219,11 @@ export default function WordLetterSelectScreen({ route, navigation }) {
               <LetterCard
                 key={letter}
                 letter={letter}
-                isUnlocked={isUnlocked}
                 progress={progress}
                 palette={pal}
                 globalPulse={globalPulse}
                 theme={theme}
                 onPress={() => {
-                  if (!isUnlocked) return;
                   const selectedLetter = letter.toLowerCase();
                   // Words the child has already finished are dropped HERE,
                   // as the sequence is built — never mid-flow, so an A-E run
@@ -277,42 +268,12 @@ export default function WordLetterSelectScreen({ route, navigation }) {
 
 // ─── Letter card ──────────────────────────────────────────────────────────────
 
-function LetterCard({ letter, isUnlocked, progress, palette, globalPulse, theme, onPress }) {
+// Every letter is open — the grid has no locked state, so there is one card
+// treatment and every card is tappable.
+function LetterCard({ letter, progress, palette, globalPulse, theme, onPress }) {
   const stars = progress
     ? Math.min(3, Math.round((progress.length / 5) * 3))
     : 0;
-
-  if (!isUnlocked) {
-    // A locked letter keeps ITS OWN card  -  same pastel fill, same border,
-    // same big letter in the same colour. Locking is a small badge in the
-    // corner and a softer letter, not a grey rectangle: the alphabet should
-    // still read as the same friendly grid whether or not it is open yet.
-    //
-    // No stars, no press, and no breathing animation  -  the pulse belongs to
-    // the cards a child can actually tap.
-    return (
-      <View
-        style={[
-          styles.card,
-          styles.cardUnlocked,
-          { backgroundColor: palette.bg, borderColor: palette.border },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={`Letter ${letter} locked`}
-        accessibilityState={{ disabled: true }}
-      >
-        <View style={[styles.shineCircle, { backgroundColor: palette.shine }]} />
-
-        <View style={[styles.lockBadge, { backgroundColor: palette.border }]}>
-          <Ionicons name="lock-closed" size={IS_TABLET ? 11 : 10} color={palette.text} />
-        </View>
-
-        <Text style={[styles.letter, styles.letterLocked, { color: palette.text }]}>
-          {letter}
-        </Text>
-      </View>
-    );
-  }
 
   return (
     <Animated.View style={{ opacity: globalPulse }}>
@@ -484,15 +445,6 @@ const styles = StyleSheet.create({
     shadowRadius:  8,
     elevation:     3,
   },
-  lockBadge: {
-    position:      'absolute',
-    top:           6,
-    left:          6,
-    borderRadius:  10,
-    paddingHorizontal: 4,
-    paddingVertical:   3,
-  },
-
   // Shine accent
   shineCircle: {
     position:     'absolute',
@@ -523,11 +475,6 @@ const styles = StyleSheet.create({
     fontSize:   IS_TABLET ? Math.round(CARD_SIZE * 0.42) : Math.round(CARD_SIZE * 0.44),
     fontWeight: '900',
     lineHeight: IS_TABLET ? Math.round(CARD_SIZE * 0.50) : Math.round(CARD_SIZE * 0.52),
-  },
-  // Modifies styles.letter rather than replacing it: the size and weight stay
-  // exactly as an unlocked card's, only softened.
-  letterLocked: {
-    opacity: 0.55,
   },
 
   // Stars

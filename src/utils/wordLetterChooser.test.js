@@ -211,21 +211,17 @@ describe('§2 — Word Progress and Progress Report', () => {
   });
 });
 
-// ─── §6 / §7 / §8 the locked card ───────────────────────────────────────
+// ─── the grid has no locked state ───────────────────────────────────────
 
-describe('§6-§8 — a locked card is still its own card', () => {
+describe('every letter card is open', () => {
   const code = readCode(CHOOSER);
 
-  it('it keeps its palette, not a grey rectangle', () => {
-    const at = code.indexOf('if (!isUnlocked) {');
-    const locked = code.slice(at, code.indexOf('return (\n    <Animated.View', at));
-    expect(locked).toMatch(/backgroundColor: palette\.bg, borderColor: palette\.border/);
-    expect(locked).toMatch(/styles\.shineCircle, \{ backgroundColor: palette\.shine \}/);
-    expect(locked).toMatch(/color: palette\.text/);
-    // The old grey treatment is gone entirely.
-    expect(code).not.toMatch(/cardLocked/);
-    expect(code).not.toMatch(/#CCCCCC/);
-    expect(code).not.toMatch(/color="#BBBBBB"/);
+  it('nothing in the chooser locks a card', () => {
+    expect(code).not.toMatch(/isUnlocked/);
+    expect(code).not.toMatch(/computeWordLetterUnlocks/);
+    expect(code).not.toMatch(/lockBadge|letterLocked|cardLocked/);
+    expect(code).not.toMatch(/name="lock-closed"/);
+    expect(code).not.toMatch(/locked`/);
   });
 
   it('the six card colours themselves are untouched', () => {
@@ -235,45 +231,20 @@ describe('§6-§8 — a locked card is still its own card', () => {
     }
   });
 
-  it('the letter stays big — only softened', () => {
-    expect(code).toMatch(/styles\.letter, styles\.letterLocked/);
-    expect(readCode(CHOOSER)).toMatch(/letterLocked: \{\s*opacity: 0\.55,\s*\}/);
+  it('there is ONE card treatment, and it is pressable', () => {
+    // A single return in LetterCard — no branch that renders a second,
+    // untappable variant.
+    const at = code.indexOf('function LetterCard(');
+    const card = code.slice(at);
+    expect((card.match(/return \(/g) || [])).toHaveLength(1);
+    expect(card).toMatch(/<TouchableOpacity/);
+    expect(card).toMatch(/onPress=\{onPress\}/);
+    expect(card).toMatch(/accessibilityLabel=\{`Letter \$\{letter\}`\}/);
   });
 
-  it('a lock badge sits in the corner, and no stars', () => {
-    const at = code.indexOf('if (!isUnlocked) {');
-    const locked = code.slice(at, code.indexOf('return (\n    <Animated.View', at));
-    expect(locked).toMatch(/styles\.lockBadge/);
-    expect(locked).toMatch(/name="lock-closed"/);
-    expect(locked).not.toMatch(/starsRow|⭐/);
-    expect(locked).not.toMatch(/progressBadge/);
-  });
-
-  it('§8 it cannot be pressed, and shows no popup', () => {
-    const at = code.indexOf('if (!isUnlocked) {');
-    const locked = code.slice(at, code.indexOf('return (\n    <Animated.View', at));
-    expect(locked).not.toMatch(/TouchableOpacity|onPress/);
-    expect(locked).not.toMatch(/show\(|Alert/);
-    // And the press handler itself still refuses a locked letter.
-    expect(code).toMatch(/if \(!isUnlocked\) return;/);
-  });
-
-  it('§7 it announces itself as a disabled button, with no prose on the card', () => {
-    const at = code.indexOf('if (!isUnlocked) {');
-    const locked = code.slice(at, code.indexOf('return (\n    <Animated.View', at));
-    expect(locked).toMatch(/accessibilityRole="button"/);
-    expect(locked).toMatch(/accessibilityLabel=\{`Letter \$\{letter\} locked`\}/);
-    expect(locked).toMatch(/accessibilityState=\{\{ disabled: true \}\}/);
-    // No prerequisite sentence rendered inside the card: exactly one <Text>,
-    // and it holds the letter.
-    expect((locked.match(/<Text/g) || [])).toHaveLength(1);
-    expect(locked).toMatch(/>\s*\{letter\}\s*</);
-  });
-
-  it('the pulse belongs to cards a child can tap', () => {
-    const at = code.indexOf('if (!isUnlocked) {');
-    const locked = code.slice(at, code.indexOf('return (\n    <Animated.View', at));
-    expect(locked).not.toMatch(/globalPulse/);
+  it('every card breathes — the pulse is no longer reserved for open ones', () => {
+    const at = code.indexOf('function LetterCard(');
+    expect(code.slice(at)).toMatch(/globalPulse/);
   });
 });
 

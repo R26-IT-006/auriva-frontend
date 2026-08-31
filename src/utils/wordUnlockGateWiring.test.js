@@ -2,14 +2,19 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * Pre-device P0 fix, Blocker 1 — screen-level wiring proof.
+ * Screen-level wiring proof for the Words card.
+ *
+ * The progress gate that used to stand in front of Words has been removed
+ * from the UI: the card is open from the start, like Letters. What this
+ * file proves is that the removal is complete — no half-gate left behind,
+ * no second entry point — and that the things which were NOT part of the
+ * gate (the backend letter counts the progress ring reads, the uppercase
+ * rule) are untouched.
+ *
  * LetterHomeScreen.js imports 'react-native' and can't be mounted under
  * this repo's plain-node jest config; verified by source-text assertion,
  * the same established technique this project already uses for screen
  * files (teacherReportLoadGuard.test.js, uppercaseProgressionFix.test.js).
- * The actual unlock RULE has real logic coverage in
- * wordUnlockGate.test.js — this file only proves the screen is wired to
- * it correctly.
  */
 
 const letterHome = fs.readFileSync(
@@ -19,17 +24,21 @@ const letterPractice = fs.readFileSync(
   path.resolve(__dirname, '../screens/teacher/handwriting/LetterPracticeScreen.js'), 'utf8'
 );
 
-describe('LetterHomeScreen — hardcoded bypass removed', () => {
-  it('no longer contains `const wordsUnlocked = true`', () => {
-    expect(letterHome).not.toMatch(/const wordsUnlocked\s*=\s*true\s*;/);
+describe('LetterHomeScreen — the Words card carries no gate', () => {
+  it('the screen asks no unlock rule about Words', () => {
+    expect(letterHome).not.toMatch(/isWordsUnlocked/);
+    expect(letterHome).not.toMatch(/wordUnlockGate/);
+    expect(letterHome).not.toMatch(/wordsUnlocked|wordsOpen|wordsPreview/);
   });
 
-  it('wordsUnlocked is derived from isWordsUnlocked(lowercaseProgress, uppercaseProgress)', () => {
-    expect(letterHome).toContain("import { isWordsUnlocked } from './wordUnlockGate';");
-    expect(letterHome).toMatch(/const wordsUnlocked\s*=\s*isWordsUnlocked\(lowercaseProgress,\s*uppercaseProgress\)\s*;/);
+  it('no locked or preview presentation survives on the card', () => {
+    expect(letterHome).not.toMatch(/lock-closed/);
+    expect(letterHome).not.toMatch(/previewCard|previewBtn|previewCaption|PREVIEW_BADGE/);
+    expect(letterHome).not.toMatch(/Complete all 52 letters to unlock words/);
+    expect(letterHome).not.toMatch(/>Locked</);
   });
 
-  it('both lowercase_completed and uppercase_completed are read from the backend LETTER_PROGRESS response (never AsyncStorage/local flags)', () => {
+  it('both lowercase_completed and uppercase_completed are still read from the backend LETTER_PROGRESS response — the progress ring needs them (never AsyncStorage/local flags)', () => {
     const effectBlock = letterHome.slice(
       letterHome.indexOf('client.get(ENDPOINTS.LETTER_PROGRESS(student.sid))'),
       letterHome.indexOf('getLetterSequence(student.sid)')
@@ -40,30 +49,22 @@ describe('LetterHomeScreen — hardcoded bypass removed', () => {
   });
 });
 
-describe('LetterHomeScreen — the Words card press is actually gated, not just visually dimmed', () => {
-  it('onPress is gated - a tap only navigates when the card is open', () => {
-    // The tap site now reads `wordsOpen`, which is `wordsUnlocked` OR the
-    // explicit demo-preview switch, and NOTHING else.
+describe('LetterHomeScreen — the Words card opens on every tap', () => {
+  it('onPress navigates unconditionally', () => {
     expect(letterHome).toContain(
-      "onPress={() => wordsOpen && navigation.navigate('WordLetterSelect', { student, theme })}"
+      "onPress={() => navigation.navigate('WordLetterSelect', { student, theme })}"
     );
-    expect(letterHome).toMatch(/const wordsOpen\s+= canOpen\(wordsUnlocked\);/);
-    expect(letterHome).toMatch(/from '\.\.\/\.\.\/constants\/demoAccess'/);
   });
 
-  it('an unlocked tap still navigates normally (the gate does not remove the working path)', () => {
-    expect(letterHome).toMatch(/wordsOpen && navigation\.navigate\('WordLetterSelect'/);
+  it('the card has one appearance, not an earned/locked pair', () => {
+    // A single treatment: no ternary chooses its icon, gradient or caption.
+    expect(letterHome).toContain('<CardLandscape variant="words" />');
+    expect(letterHome).toContain("<Ionicons name=\"book-outline\" size={38} color=\"#7B1FA2\" />");
+    expect(letterHome).toContain('Ready to practise words');
+    expect(letterHome).toContain('<Text style={styles.startBtnText}>Start Practice</Text>');
   });
 
-  it('the EARNED rule is untouched - the card still asks isWordsUnlocked how it looks', () => {
-    expect(letterHome).toMatch(/const wordsUnlocked\s+= isWordsUnlocked\(lowercaseProgress, uppercaseProgress\);/);
-    // Every visual "you have earned this" cue is still keyed off the real
-    // gate, never off the demo switch.
-    expect(letterHome).toMatch(/<CardLandscape variant="words" locked=\{!wordsUnlocked\} \/>/);
-    expect(letterHome).toMatch(/wordsUnlocked \? 'Ready to practise words'/);
-  });
-
-  it('with the demo switch OFF the gate is strict again - one boolean, nothing else', () => {
+  it('the demo preview switch itself is unchanged and still fails closed — Uppercase continues to rely on it', () => {
     const { canOpen, isPreview } = require('../constants/demoAccess');
     // Whatever the switch is set to right now, the composition is the same.
     expect(canOpen(true)).toBe(true);

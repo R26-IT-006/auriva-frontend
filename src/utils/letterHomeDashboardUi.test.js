@@ -25,18 +25,19 @@ describe('LetterHome dashboard presentation', () => {
 
   test('uses the same card frame and edge-to-edge landscape band for Letters and Words', () => {
     expect(source).toContain('style={[styles.learningModeCard, styles.lettersCard]}');
-    expect(source).toContain('style={[styles.learningModeCard, styles.wordsCard, wordsPreview && styles.previewCard]}');
+    expect(source).toContain('style={[styles.learningModeCard, styles.wordsCard]}');
     const band = source.slice(source.indexOf('  cardLandscapeBand: {'), source.indexOf('  modeIconCircle: {'));
     expect(band).toMatch(/left:\s*0/);
     expect(band).toMatch(/right:\s*0/);
     expect(band).toMatch(/bottom:\s*0/);
   });
 
-  test('keeps Words visibly locked until the existing real gate is earned', () => {
-    expect(source).toContain('Complete all 52 letters to unlock words');
-    expect(source).toContain("name={wordsUnlocked ? 'book-outline' : 'lock-closed'}");
-    expect(source).toContain('<CardLandscape variant="words" locked={!wordsUnlocked} />');
-    expect(source).toContain('const wordsUnlocked   = isWordsUnlocked(lowercaseProgress, uppercaseProgress);');
+  test('presents Words as open — no padlock, no unlock caption', () => {
+    expect(source).not.toContain('Complete all 52 letters to unlock words');
+    expect(source).not.toContain('lock-closed');
+    expect(source).toContain('<CardLandscape variant="words" />');
+    expect(source).toContain('Ready to practise words');
+    expect(source).toContain('Words are unlocked');
   });
 
   test('top controls retain their remaining gated actions without Writing Check', () => {

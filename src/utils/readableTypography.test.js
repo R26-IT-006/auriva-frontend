@@ -162,7 +162,7 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
     ['components/word/ExerciseB_CircleImage.js',     ['wordText']],
     ['components/word/ExerciseC_FillBlank.js',       ['tileText']],
     ['screens/handwriting/words/WordActivityScreen.js',    ['wordDisplay']],
-    ['screens/handwriting/words/WordLetterSelectScreen.js', ['letter', 'letterLocked']],
+    ['screens/handwriting/words/WordLetterSelectScreen.js', ['letter']],
   ];
 
   it.each(GLYPH_STYLES)('%s glyph styles carry no injected face', (rel, names) => {
@@ -233,7 +233,7 @@ describe('every declared weight now resolves to its Nunito face', () => {
     'ExerciseB_CircleImage.js': ['wordText'],
     'ExerciseC_FillBlank.js': ['tileText'],
     'WordActivityScreen.js': ['wordDisplay'],
-    'WordLetterSelectScreen.js': ['letter', 'letterLocked'],
+    'WordLetterSelectScreen.js': ['letter'],
   };
 
   it('no readable style declares a weight without a matching face', () => {

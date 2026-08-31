@@ -46,13 +46,6 @@ import { useGatedHardwareBack } from '../../../utils/useGatedBack';
 // earlier motorBaseline.js-based fallback, which required a finalized
 // Feature 1 baseline that many real assessments never reach).
 import { fetchInitialAssessmentShapes } from '../../../utils/initialAssessmentShapes';
-import { isWordsUnlocked } from '../../../utils/wordUnlockGate';
-// Demo preview switch - see constants/demoAccess.js. Does NOT change
-// isWordsUnlocked(); it only decides whether a not-yet-earned card can be
-// opened, and makes that state visible rather than silent.
-import {
-  canOpen, isPreview, PREVIEW_BADGE,
-} from '../../../constants/demoAccess';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import ScreenBackButton from '../../../components/handwriting/ScreenBackButton';
 import { returnToStudentModuleSelection } from '../../../utils/postAssessmentNavigation';
@@ -248,11 +241,11 @@ function progressEncouragement(percent) {
 // SVG shapes rather than an image asset. 'letters' keeps green tones and
 // the small flower accent; 'words' reuses this app's existing purple Words
 // theming instead of introducing a new color identity for just this card.
-function CardLandscape({ variant, locked = false }) {
+function CardLandscape({ variant }) {
   const isLetters = variant === 'letters';
-  const hillBack  = isLetters ? '#BFE3B8' : (locked ? '#DDD7E2' : '#DCC7EF');
-  const hillFront = isLetters ? '#9ED895' : (locked ? '#C9C1CE' : '#C7A3E0');
-  const bush      = isLetters ? '#5CA85A' : (locked ? '#A59DAA' : '#9B62C4');
+  const hillBack  = isLetters ? '#BFE3B8' : '#DCC7EF';
+  const hillFront = isLetters ? '#9ED895' : '#C7A3E0';
+  const bush      = isLetters ? '#5CA85A' : '#9B62C4';
 
   return (
     // Anchored to just the bottom band of the card (not the full height) —
@@ -393,16 +386,6 @@ export default function LetterHomeScreen({ route, navigation }) {
   );
   const progressPercent = Math.min(100, Math.round((completedLetterCount / 52) * 100));
   const avatarSource = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
-  // Pre-device P0 fix — previously hardcoded `true`, meaning Words was
-  // never actually gated regardless of letter progress. See
-  // utils/wordUnlockGate.js for the full audit of which unlock rule
-  // applies and why (lowercase AND uppercase, both authoritatively
-  // mastered — never AsyncStorage, never a local/client-only flag).
-  const wordsUnlocked   = isWordsUnlocked(lowercaseProgress, uppercaseProgress);
-  // `wordsUnlocked` still means EARNED, and still drives how the card looks.
-  // These two only decide whether it opens, and whether it says so.
-  const wordsOpen       = canOpen(wordsUnlocked);
-  const wordsPreview    = isPreview(wordsUnlocked);
 
   // Assessment Summary modal's shape data — the just-completed session's
   // in-memory assessmentData when available, otherwise the same per-shape
@@ -671,75 +654,39 @@ export default function LetterHomeScreen({ route, navigation }) {
                 </View>
               </TouchableOpacity>
 
-              {/* Words card — locked until all 26 lowercase AND all 26
-                  uppercase letters are authoritatively mastered (backend
-                  LetterProgress-derived counts — see wordsUnlocked above).
-                  Pre-device P0 fix: onPress itself is now gated, not just
-                  the visual dimming — previously the card was cosmetically
-                  "locked" but still navigated on every tap regardless of
-                  wordsUnlocked. */}
+              {/* Words card — open from the start, exactly like Letters.
+                  There is no progress gate in front of it, so it has one
+                  appearance and one behaviour rather than an earned/locked
+                  pair. */}
               <TouchableOpacity
-                style={[styles.learningModeCard, styles.wordsCard, wordsPreview && styles.previewCard]}
-                activeOpacity={wordsOpen ? 0.9 : 0.5}
-                onPress={() => wordsOpen && navigation.navigate('WordLetterSelect', { student, theme })}
+                style={[styles.learningModeCard, styles.wordsCard]}
+                activeOpacity={0.9}
+                onPress={() => navigation.navigate('WordLetterSelect', { student, theme })}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  wordsUnlocked ? 'Words, unlocked'
-                    : `Words, locked. Complete all 52 letters to unlock words.${wordsPreview ? ' Preview available.' : ''}`
-                }
+                accessibilityLabel="Words"
               >
                 <LinearGradient
-                  colors={wordsUnlocked
-                    ? ['#F6EEFC', '#E8D6F5']
-                    : (wordsPreview ? ['#FBF8FD', '#F2EAF8'] : ['#F2F2F2', '#E6E6E6'])}
+                  colors={['#F6EEFC', '#E8D6F5']}
                   style={StyleSheet.absoluteFillObject}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                 />
-                <CardLandscape variant="words" locked={!wordsUnlocked} />
-                <View style={[styles.modeIconCircle, {
-                  backgroundColor: wordsUnlocked ? '#EDE7F6' : (wordsPreview ? '#F0E7F6' : '#EEEEEE'),
-                }]}>
-                  <Ionicons
-                    name={wordsUnlocked ? 'book-outline' : 'lock-closed'}
-                    size={38}
-                    color={wordsUnlocked ? '#7B1FA2' : (wordsPreview ? '#9575CD' : '#AAAAAA')}
-                  />
+                <CardLandscape variant="words" />
+                <View style={[styles.modeIconCircle, { backgroundColor: '#EDE7F6' }]}>
+                  <Ionicons name="book-outline" size={38} color="#7B1FA2" />
                 </View>
-                <Text style={[
-                  styles.wordsTitle,
-                  !wordsUnlocked && !wordsPreview && { color: '#AAAAAA' },
-                  wordsPreview && { color: '#7E57C2' },
-                ]}>
+                <Text style={styles.wordsTitle}>
                   Words
                 </Text>
-                {/* One short line, present tense, says what comes first
-                    rather than what is forbidden. */}
-                <Text style={[
-                  styles.modeSubLabel,
-                  !wordsUnlocked && !wordsPreview && { color: '#AAAAAA' },
-                  wordsPreview && styles.previewCaption,
-                ]}>
-                  {wordsUnlocked ? 'Ready to practise words' : 'Complete all 52 letters to unlock words'}
+                <Text style={styles.modeSubLabel}>
+                  Ready to practise words
                 </Text>
-                {wordsUnlocked ? (
-                  <View style={[styles.startBtn, { backgroundColor: '#7B1FA2' }]}>
-                    <Text style={styles.startBtnText}>Start Practice</Text>
-                    <View style={styles.startBtnChevronWrap}>
-                      <Ionicons name="chevron-forward" size={13} color="#FFFFFF" />
-                    </View>
+                <View style={[styles.startBtn, { backgroundColor: '#7B1FA2' }]}>
+                  <Text style={styles.startBtnText}>Start Practice</Text>
+                  <View style={styles.startBtnChevronWrap}>
+                    <Ionicons name="chevron-forward" size={13} color="#FFFFFF" />
                   </View>
-                ) : wordsPreview ? (
-                  <View style={[styles.startBtn, styles.previewBtn]}>
-                    <Ionicons name="eye-outline" size={13} color="#7E57C2" />
-                    <Text style={[styles.startBtnText, { color: '#7E57C2' }]}>{PREVIEW_BADGE}</Text>
-                  </View>
-                ) : (
-                  <View style={[styles.startBtn, { backgroundColor: '#BBBBBB' }]}>
-                    <Ionicons name="lock-closed" size={13} color="#FFFFFF" />
-                    <Text style={styles.startBtnText}>Locked</Text>
-                  </View>
-                )}
+                </View>
               </TouchableOpacity>
 
             </View>
@@ -780,13 +727,9 @@ export default function LetterHomeScreen({ route, navigation }) {
                 <Text style={styles.progressPanelStatText}>{completedLetterCount} of 52 letters done</Text>
               </View>
               <View style={[styles.progressPanelStat, styles.wordsProgressStat]}>
-                <Ionicons
-                  name={wordsUnlocked ? 'book-outline' : 'lock-closed-outline'}
-                  size={14}
-                  color={wordsUnlocked ? '#7B1FA2' : '#7A7280'}
-                />
+                <Ionicons name="book-outline" size={14} color="#7B1FA2" />
                 <Text style={styles.progressPanelStatText}>
-                  {wordsUnlocked ? 'Words are unlocked' : (wordsPreview ? 'Words locked · Preview available' : 'Words unlock after 52 letters')}
+                  Words are unlocked
                 </Text>
               </View>
             </View>
@@ -1299,20 +1242,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Preview state: a soft, unalarming middle ground between unlocked and
-  // locked. Same size and position as both, so the layout never shifts.
-  previewCard: {
-    borderWidth: 1.5,
-    borderColor: '#DFCDEC',
-    borderStyle: 'dashed',
-  },
-  previewBtn: {
-    backgroundColor: '#F0E7F6',
-    borderWidth: 1,
-    borderColor: '#DFCDEC',
-  },
-  previewCaption: { color: '#8A7B96', textAlign: 'center' },
 
   wordsCard: {
     flex: 1,

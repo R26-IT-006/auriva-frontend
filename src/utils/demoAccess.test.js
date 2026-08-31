@@ -170,10 +170,12 @@ describe('the real unlock rules still decide what is EARNED', () => {
     expect(REQUIRED_UPPERCASE_COUNT).toBe(26);
   });
 
-  it('LetterHome still derives the earned state from the backend counts', () => {
-    expect(letterHome).toMatch(/const wordsUnlocked\s+= isWordsUnlocked\(lowercaseProgress, uppercaseProgress\);/);
-    expect(letterHome).toMatch(/const wordsOpen\s+= canOpen\(wordsUnlocked\);/);
-    expect(letterHome).toMatch(/const wordsPreview\s+= isPreview\(wordsUnlocked\);/);
+  // Words is no longer gated in the UI at all, so LetterHome asks neither the
+  // real rule nor the demo switch about it. isWordsUnlocked itself is kept and
+  // still covered above — Uppercase is now the only card the switch reaches.
+  it('LetterHome asks neither the rule nor the switch about Words', () => {
+    expect(letterHome).not.toMatch(/isWordsUnlocked|canOpen|isPreview/);
+    expect(letterHome).not.toMatch(/demoAccess/);
   });
 
   it('LetterPractice still derives the earned state from lowercaseProgress >= 26', () => {
@@ -205,49 +207,47 @@ describe('a preview card is neither dressed up as earned nor left looking dead',
   });
 
   it('the earned cues stay keyed to the REAL gate, never to the switch', () => {
-    expect(letterHome).toMatch(/wordsUnlocked \? 'Ready to practise words'/);
-    expect(letterHome).toMatch(/<CardLandscape variant="words" locked=\{!wordsUnlocked\} \/>/);
     expect(letterPractice).toMatch(/<Text style=\{styles\.pillSubLabel\}>Ready to go!/);
   });
 
   it('a preview card keeps the locked guidance and shows the Preview badge', () => {
-    expect(letterHome).toContain('Complete all 52 letters to unlock words');
-    expect(letterHome).toMatch(/\{PREVIEW_BADGE\}/);
     expect(letterPractice).toMatch(/\{UPPERCASE_ORDER_CAPTION\}/);
     expect(letterPractice).toMatch(/\{PREVIEW_BADGE\}/);
   });
 
-  it('a not-yet-earned Words card keeps a visible padlock even when preview is available', () => {
-    expect(letterHome).toMatch(/name=\{wordsUnlocked \? 'book-outline' : 'lock-closed'\}/);
+  it('a not-yet-earned Uppercase card keeps a visible padlock even when preview is available', () => {
     expect(letterPractice).toMatch(/name=\{uppercaseOpen \? 'arrow-up-circle-outline' : 'lock-closed'\}/);
     // The grey "locked" styling is still there — for the switch-off build.
-    expect(letterHome).toMatch(/'#F2F2F2', '#E6E6E6'/);
     expect(letterPractice).toMatch(/styles\.uppercaseLocked/);
   });
 
   it('the preview styling keeps the card the same size, so nothing reflows', () => {
     // A layout that jumps between states is exactly what an ASD-friendly
     // screen must not do: preview adds a border and colours, never a size.
-    const previewCard = letterHome.slice(letterHome.indexOf('  previewCard: {'),
-      letterHome.indexOf('  wordsCard: {'));
-    expect(previewCard).not.toMatch(/width|height|padding|margin|flex/);
     const previewPill = letterPractice.slice(letterPractice.indexOf('  previewPill: {'),
       letterPractice.indexOf('  previewTitle:'));
     expect(previewPill).not.toMatch(/width|height|padding|margin|flex/);
   });
 
   it('a screen reader hears the same thing the caption says', () => {
-    expect(letterHome).toContain("Words, locked. Complete all 52 letters to unlock words.${wordsPreview ? ' Preview available.' : ''}");
     expect(letterPractice).toMatch(/Uppercase, preview\. \$\{UPPERCASE_ORDER_CAPTION\}/);
+  });
+
+  it('Words carries no preview state at all — it is simply open', () => {
+    expect(letterHome).not.toMatch(/PREVIEW_BADGE|previewCard|previewBtn|previewCaption/);
+    expect(letterHome).not.toMatch(/lock-closed/);
+    expect(letterHome).toContain('accessibilityLabel="Words"');
   });
 });
 
 // ─── One flag, and no way around it ────────────────────────────────────
 
 describe('there is exactly one switch, and no alternate bypass', () => {
-  it('both preview entry points read the SAME central flag', () => {
+  // Uppercase is the only preview entry point left; Words is ungated, so it
+  // needs no switch to open it.
+  it('the one preview entry point reads the central flag', () => {
+    expect(letterPractice).toMatch(/from '(?:\.\.\/)+constants\/demoAccess'/);
     for (const src of [letterHome, letterPractice]) {
-      expect(src).toMatch(/from '\.\.\/\.\.\/constants\/demoAccess'/);
       // Neither screen defines a preview flag of its own...
       expect(src).not.toMatch(/const \w*(PREVIEW|Preview|preview)\w*\s*=\s*(true|false)/);
       // ...nor reads the environment directly.
@@ -271,13 +271,11 @@ describe('there is exactly one switch, and no alternate bypass', () => {
     expect(owners.map((f) => path.basename(f))).toEqual(['demoAccess.js']);
   });
 
-  it('the tap sites are the ONLY thing the flag reaches', () => {
-    for (const [src, open] of [[letterHome, 'wordsOpen'], [letterPractice, 'uppercaseOpen']]) {
-      // Used to permit the tap...
-      expect(src).toMatch(new RegExp(`${open} &&`));
-      // ...and nowhere else that could change state.
-      expect(src).not.toMatch(new RegExp(`set\\w+\\(${open}`));
-    }
+  it('the tap site is the ONLY thing the flag reaches', () => {
+    // Used to permit the tap...
+    expect(letterPractice).toMatch(/uppercaseOpen &&/);
+    // ...and nowhere else that could change state.
+    expect(letterPractice).not.toMatch(/set\w+\(uppercaseOpen/);
   });
 
   it('turning the flag off restores strict gating at both entry points', () => {
@@ -303,8 +301,8 @@ describe('the full demo flow is reachable', () => {
       /uppercaseOpen && goToLetterScreen\('uppercase',\s*\n\s*\{ student, theme, letterSequence, motorProfile \},/);
   });
 
-  it('Words opens from LetterHome to the same screen an earned tap opens', () => {
-    expect(letterHome).toMatch(/wordsOpen && navigation\.navigate\('WordLetterSelect', \{ student, theme \}\)/);
+  it('Words opens from LetterHome on any tap — no switch involved', () => {
+    expect(letterHome).toMatch(/onPress=\{\(\) => navigation\.navigate\('WordLetterSelect', \{ student, theme \}\)\}/);
   });
 
   it('no second entry point was added — the cards are still the only way in', () => {
