@@ -259,7 +259,7 @@ describe('§10 / §11 / §25 — one component, and it cannot move the page', ()
     expect(code).toMatch(/popup: \{\s*position: 'absolute',/);
     expect(code).toMatch(/pointerEvents="none"/);
     // Slides on transform, on the native driver — never height/margin/top.
-    expect(code).toMatch(/transform: \[\{ translateX: slide \}\]/);
+    expect(code).toMatch(/transform: \[\{ translateY: slide \}\]/);
     expect(code).toMatch(/useNativeDriver: true/);
     expect(code).not.toMatch(/height:\s*'|marginTop|paddingTop|LayoutAnimation/);
     expect(RESULT_GIF_OFFSCREEN).toBeGreaterThan(0);

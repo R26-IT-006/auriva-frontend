@@ -12,10 +12,9 @@ import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
-import { getConceptItem, getConceptQuestion } from '../../../../data/conceptData';
+import { getConceptItem } from '../../../../data/conceptData';
 import { conceptApi } from '../../../../api/concept';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { Layout } from '../../../../constants/layout';
@@ -104,22 +103,11 @@ export default function ConceptActivityScreen({ route, navigation }) {
     if (!round) return;
     const { concept, question_type } = round;
 
+    // A recording is the only voice on this screen — the name_choice and drag
+    // rounds have none, so they run without a spoken prompt rather than
+    // synthesising one.
     if (question_type === 'image_choice' && concept.t1Audio) {
       playConceptAudio(concept.t1Audio);
-      return;
-    }
-
-    const en =
-      question_type === 'image_choice' ? getConceptQuestion(concept)
-      : question_type === 'name_choice' ? 'What is this called?'
-      : `Drag the ${concept.label} into the box`;
-
-    Speech.stop();
-    Speech.speak(en, { language: 'en-US', rate: 0.8 });
-    if (concept.labelSi) {
-      setTimeout(() => {
-        Speech.speak(concept.labelSi, { language: 'si-LK', rate: 0.7 });
-      }, 1500);
     }
   }, [round]);
 
@@ -130,7 +118,7 @@ export default function ConceptActivityScreen({ route, navigation }) {
     return () => clearTimeout(t);
   }, [started, currentRound, round]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => { Speech.stop(); stopConceptAudio(); }, []);
+  useEffect(() => () => stopConceptAudio(), []);
 
   // ── Feedback animation ─────────────────────────────────────────────────────
   function showFeedback() {
@@ -144,7 +132,6 @@ export default function ConceptActivityScreen({ route, navigation }) {
   const handleAnswer = useCallback((selectedKey) => {
     if (locked || !round) return;
     setLocked(true);
-    Speech.stop();
     stopConceptAudio();
 
     const wasCorrect  = selectedKey === round.concept_key;
@@ -209,7 +196,6 @@ export default function ConceptActivityScreen({ route, navigation }) {
       });
     } catch { /* progress is recorded server-side on the next attempt */ }
 
-    Speech.stop();
     stopConceptAudio();
 
     navigation.replace('ConceptCongrats', {

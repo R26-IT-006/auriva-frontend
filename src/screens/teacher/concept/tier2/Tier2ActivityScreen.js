@@ -14,8 +14,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
-import { stopConceptAudio } from '../../../../utils/audioUtils';
+import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import {
   getConceptItem,
@@ -27,6 +26,11 @@ import { conceptApi } from '../../../../api/concept';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { Layout } from '../../../../constants/layout';
 import ResultGifFeedback from '../../../../components/feedback/ResultGifFeedback';
+
+// The spoken form of the naming question above the options. One recording for
+// the activity, not per concept — the question never names the fruit, so the
+// same clip serves every concept and needs no TTS fallback.
+const TIER2_ACTIVITY_AUDIO = require('../../../../../assets/concepts/audio/Tier2Activity.m4a');
 
 
 function LabelPill({ option, index, locked, isCorrect, isWrong, cardOutline, headingText, onPress }) {
@@ -119,15 +123,8 @@ export default function Tier2ActivityScreen({ route, navigation }) {
   }
 
   const speakQuestion = useCallback(() => {
-    Speech.stop();
-    Speech.speak(NAMING_QUESTION_EN, { language: 'en-US', rate: 0.8 });
-    // Follow with Sinhala, same delay/rate pattern as Tier2ImageScreen's playAudio.
-    if (concept?.labelSi) {
-      setTimeout(() => {
-        Speech.speak(NAMING_QUESTION_SI, { language: 'si-LK', rate: 0.7 });
-      }, 1400);
-    }
-  }, [concept]);
+    playConceptAudio(TIER2_ACTIVITY_AUDIO);
+  }, []);
 
   // Load adaptive distractors from GKB; fall back to sequential neighbours
   useEffect(() => {
@@ -162,13 +159,15 @@ export default function Tier2ActivityScreen({ route, navigation }) {
   useEffect(() => {
     if (!displayLabels) return;
     const t = setTimeout(speakQuestion, 400);
-    return () => clearTimeout(t);
+    // Also stops the clip on the way out, so it does not keep asking after the
+    // child leaves the screen.
+    return () => { clearTimeout(t); stopConceptAudio(); };
   }, [currentAttempt, displayLabels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLabelTap(option) {
     if (locked) return;
     setLocked(true);
-    Speech.stop();
+    stopConceptAudio();
 
     const wasCorrect  = option.key === conceptKey;
     const timeTakenMs = Date.now() - attemptStart.current;
@@ -242,7 +241,6 @@ export default function Tier2ActivityScreen({ route, navigation }) {
             });
           } catch { /* continue */ }
 
-          Speech.stop();
           stopConceptAudio();
 
           if (passed) {

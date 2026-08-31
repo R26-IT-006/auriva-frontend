@@ -11,7 +11,6 @@ import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem } from '../../../../data/conceptData';
 import { conceptApi } from '../../../../api/concept';
@@ -38,8 +37,6 @@ export default function Tier3VideoScreen({ route, navigation }) {
     conceptApi.startTier3({ studentId: student.sid, categoryKey: category.key, conceptKey }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => Speech.stop(), []);
-
   const revealContinue = useCallback(() => {
     setVideoEnded(true);
     Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, bounciness: 14, speed: 6 }).start();
@@ -51,15 +48,6 @@ export default function Tier3VideoScreen({ route, navigation }) {
     if (!hasVideo) { setLoading(false); revealContinue(); }
   }, [hasVideo, revealContinue]);
 
-  const speakName = useCallback(() => {
-    if (!concept) return;
-    Speech.stop();
-    Speech.speak(concept.label, { language: 'en-US', rate: 0.8 });
-    if (concept.labelSi) {
-      setTimeout(() => Speech.speak(concept.labelSi, { language: 'si-LK', rate: 0.7 }), 1100);
-    }
-  }, [concept]);
-
   function onPlaybackStatusUpdate(status) {
     if (!status.isLoaded) {
       // A load error would otherwise leave Continue hidden forever.
@@ -69,16 +57,14 @@ export default function Tier3VideoScreen({ route, navigation }) {
 
     if (loading) setLoading(false);
 
+    // The video's own soundtrack is the only audio on this screen, so finishing
+    // just reveals Continue — nothing is spoken over the silence that follows.
     if (status.didJustFinish && !videoEnded) {
       revealContinue();
-      setTimeout(() => {
-        Speech.speak('Great job! You watched the video!', { language: 'en-US', rate: 0.8 });
-      }, 300);
     }
   }
 
   async function handleContinue() {
-    Speech.stop();
     const timeSpentMs = Date.now() - sessionStart.current;
     try {
       await conceptApi.completeTier3({
@@ -96,7 +82,6 @@ export default function Tier3VideoScreen({ route, navigation }) {
   }
 
   async function handleReplay() {
-    Speech.stop();
     if (videoRef.current) {
       await videoRef.current.setPositionAsync(0);
       await videoRef.current.playAsync();
@@ -125,16 +110,6 @@ export default function Tier3VideoScreen({ route, navigation }) {
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
-          </TouchableOpacity>
-
-          <View style={{ flex: 1 }} />
-
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={speakName}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="volume-high-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
 

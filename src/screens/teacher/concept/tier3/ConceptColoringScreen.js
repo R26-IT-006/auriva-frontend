@@ -15,11 +15,16 @@ import { captureRef } from 'react-native-view-shot';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
+import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem } from '../../../../data/conceptData';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
+
+// One recording for every colouring page, not a per-concept line: the prompt
+// names the activity rather than the fruit, so it needs no TTS fallback the way
+// the per-concept intros do.
+const COLORING_AUDIO = require('../../../../../assets/concepts/audio/ColoringActivity.m4a');
 
 const COLORS = [
   { key: 'red',    hex: '#E53935' },
@@ -60,10 +65,10 @@ export default function ConceptColoringScreen({ route, navigation }) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      Speech.speak(`Let's colour the ${concept?.label?.toLowerCase()}!`, { language: 'en-US', rate: 0.8 });
+      playConceptAudio(COLORING_AUDIO);
     }, 400);
     // Without this the prompt keeps talking after the child leaves the screen.
-    return () => { clearTimeout(timer); Speech.stop(); };
+    return () => { clearTimeout(timer); stopConceptAudio(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function selectColor(hex, index) {
@@ -116,7 +121,7 @@ export default function ConceptColoringScreen({ route, navigation }) {
 
   async function handleContinue() {
     if (saving) return;
-    Speech.stop();
+    stopConceptAudio();
 
     const timeSpentMs = Date.now() - sessionStart.current;
 

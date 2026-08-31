@@ -14,7 +14,6 @@ import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem, getConceptItemsForCategory, getConceptQuestion, getConceptQuestionSi } from '../../../../data/conceptData';
@@ -122,14 +121,10 @@ export default function ConceptMatchScreen({ route, navigation }) {
 
   const speakPrompt = useCallback(() => {
     if (!concept) return;
-    if (concept.t1Audio) {
-      playConceptAudio(concept.t1Audio);
-    } else {
-      Speech.stop();
-      Speech.speak(getConceptQuestion(concept), { language: 'en-US', rate: 0.8 });
-      setTimeout(() => {
-        Speech.speak(concept.labelSi || concept.label, { language: 'si-LK', rate: 0.7 });
-      }, 1500);
+    // The recording is the only voice on this screen — a concept without one
+    // stays silent rather than falling back to synthesised speech.
+    if (concept.t1ActivityAudio) {
+      playConceptAudio(concept.t1ActivityAudio);
     }
   }, [concept]);
 
@@ -172,7 +167,6 @@ export default function ConceptMatchScreen({ route, navigation }) {
   async function handleOptionTap(option) {
     if (locked) return;
     setLocked(true);
-    Speech.stop();
     stopConceptAudio();
 
     const wasCorrect  = option.key === conceptKey;
@@ -246,7 +240,6 @@ export default function ConceptMatchScreen({ route, navigation }) {
           });
         } catch { /* progress saved locally */ }
 
-        Speech.stop();
         stopConceptAudio();
 
         if (passed) {

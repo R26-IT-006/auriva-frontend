@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
+import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import PairMatchBoard from '../../../../components/concept/PairMatchBoard';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { buildPairMatchGame, MAX_PAIRS, MIN_PAIRS, getPairableItems } from '../../../../data/conceptPairMatch';
@@ -18,6 +18,11 @@ import { Layout } from '../../../../constants/layout';
 
 const PROMPT_EN = 'Match each photo to its picture!';
 const PROMPT_SI = 'ඡායාරූපයට ගැළපෙන චිත්‍රය සොයමු!';
+
+// The spoken form of the pill above the board. One recording for the activity,
+// not per concept, so it needs no TTS fallback — the per-pair replies below are
+// still spoken, since they name whichever concept was just matched.
+const MATCHING_AUDIO = require('../../../../../assets/concepts/audio/MatchingActivity.m4a');
 
 const FINISH_DELAY_MS    = 1600;
 
@@ -91,22 +96,19 @@ export default function ConceptPairMatchScreen({ route, navigation }) {
   }
 
   const speakPrompt = useCallback(() => {
-    Speech.stop();
-    Speech.speak(PROMPT_EN, { language: 'en-US', rate: 0.8 });
-    setTimeout(() => Speech.speak(PROMPT_SI, { language: 'si-LK', rate: 0.7 }), 1800);
+    playConceptAudio(MATCHING_AUDIO);
   }, []);
 
   useEffect(() => {
     const t = setTimeout(speakPrompt, 500);
     // Without this the prompt keeps talking after the child leaves the screen.
-    return () => { clearTimeout(t); Speech.stop(); };
+    return () => { clearTimeout(t); stopConceptAudio(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function finish(finalMatched) {
     setLocked(true);
 
-    Speech.stop();
-    Speech.speak('You matched them all! Well done!', { language: 'en-US', rate: 0.8 });
+    stopConceptAudio();
 
     // The activity row replaces the old ad-hoc completion log — it carries the
     // score, the concepts covered and the confusion edges in one place.
@@ -164,19 +166,14 @@ export default function ConceptPairMatchScreen({ route, navigation }) {
       noteConfusion(drawingKey, photoKey);
       wrongCount.current += 1;
       setWrongToken({ photoKey, drawingKey, n: wrongCount.current });
-      Speech.stop();
-      Speech.speak('Not quite. Try again.', { language: 'en-US', rate: 0.8 });
+      stopConceptAudio();
       return;
     }
 
     const next = [...matched, item.key];
     setMatched(next);
 
-    Speech.stop();
-    Speech.speak(`Yes! That is the ${item.label.toLowerCase()}.`, { language: 'en-US', rate: 0.8 });
-    if (item.labelSi) {
-      setTimeout(() => Speech.speak(item.labelSi, { language: 'si-LK', rate: 0.7 }), 1200);
-    }
+    stopConceptAudio();
 
     if (next.length === game.total) finish(next);
   }

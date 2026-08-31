@@ -18,7 +18,7 @@
  * so word practice gains it without a sixth copy.
  *
  * ── Why it cannot move the page ──────────────────────────────────────────
- * `position: absolute` with `pointerEvents="none"`, sliding on translateX with
+ * `position: absolute` with `pointerEvents="none"`, sliding on translateY with
  * the native driver. It takes no layout space and receives no touches, so it
  * cannot reflow the activity or intercept a tap — which matters directly:
  * Phase 1 removed a screen jump caused by a conditional child changing a row's
@@ -67,7 +67,7 @@ export default function ResultGifFeedback({ visible, correct }) {
       accessible={visible}
       accessibilityLiveRegion="polite"
       accessibilityLabel={correct ? 'Correct' : 'Try again'}
-      style={[styles.popup, { transform: [{ translateX: slide }] }]}
+      style={[styles.popup, { transform: [{ translateY: slide }] }]}
     >
       {visible && (
         <ExpoImage
@@ -81,12 +81,14 @@ export default function ResultGifFeedback({ visible, correct }) {
 }
 
 const styles = StyleSheet.create({
+  // Spans the width so the gif centres on the screen's axis, and is pinned to
+  // the bottom edge — the slide travels straight up from below it.
   popup: {
     position: 'absolute',
-    right: 24,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
+    left: 0,
+    right: 0,
+    bottom: 24,
+    alignItems: 'center',
   },
   image: {
     width: 200,

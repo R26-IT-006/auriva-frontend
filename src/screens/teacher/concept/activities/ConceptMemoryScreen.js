@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
+import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import MemoryFlipBoard from '../../../../components/concept/MemoryFlipBoard';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { buildMemoryGame, MEMORY_PAIRS } from '../../../../data/conceptMemoryGame';
@@ -20,6 +20,11 @@ import { Layout } from '../../../../constants/layout';
 
 const PROMPT_EN = 'Find the matching pairs!';
 const PROMPT_SI = 'ගැළපෙන යුගල් සොයමු!';
+
+// The spoken form of the pill above the board. One recording for the activity,
+// not per concept, so it needs no TTS fallback — the per-pair praise below is
+// still spoken, since it names whichever concept was just found.
+const MEMORY_AUDIO = require('../../../../../assets/concepts/audio/MemoryActivity.m4a');
 
 const FINISH_DELAY_MS    = 1600;
 
@@ -110,9 +115,7 @@ export default function ConceptMemoryScreen({ route, navigation }) {
   );
 
   const speakPrompt = useCallback(() => {
-    Speech.stop();
-    Speech.speak(PROMPT_EN, { language: 'en-US', rate: 0.8 });
-    setTimeout(() => Speech.speak(PROMPT_SI, { language: 'si-LK', rate: 0.7 }), 1600);
+    playConceptAudio(MEMORY_AUDIO);
   }, []);
 
   useEffect(() => {
@@ -122,15 +125,14 @@ export default function ConceptMemoryScreen({ route, navigation }) {
     return () => {
       clearTimeout(t);
       if (peekTimer.current) clearTimeout(peekTimer.current);
-      Speech.stop();
+      stopConceptAudio();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function finish(finalMatched) {
     setLocked(true);
 
-    Speech.stop();
-    Speech.speak('You found them all! Well done!', { language: 'en-US', rate: 0.8 });
+    stopConceptAudio();
 
     // The activity row replaces the old ad-hoc completion log — it carries the
     // score, the concepts covered and the confusion edges in one place.
@@ -185,11 +187,7 @@ export default function ConceptMemoryScreen({ route, navigation }) {
       setMatched(next);
       setFaceUp([]);
 
-      Speech.stop();
-      Speech.speak(`Yes! Two ${card.label.toLowerCase()}.`, { language: 'en-US', rate: 0.8 });
-      if (card.labelSi) {
-        setTimeout(() => Speech.speak(card.labelSi, { language: 'si-LK', rate: 0.7 }), 1100);
-      }
+      stopConceptAudio();
 
       if (next.length === game.pairs) finish(next);
       return;

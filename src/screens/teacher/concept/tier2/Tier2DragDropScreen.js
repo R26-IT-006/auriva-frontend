@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   Image,
-  TouchableOpacity,
   StyleSheet,
   Animated,
   PanResponder,
@@ -13,7 +12,6 @@ import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { stopConceptAudio } from '../../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem, getConceptItemsForCategory } from '../../../../data/conceptData';
@@ -110,15 +108,8 @@ export default function Tier2DragDropScreen({ route, navigation }) {
     return () => hintLoop.current?.stop();
   }, [hintKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const speakInstruction = useCallback(() => {
-    Speech.stop();
-    Speech.speak(`Drag the ${concept?.label || ''}!`, { language: 'en-US', rate: 0.8 });
-  }, [concept]);
-
   useEffect(() => {
     conceptApi.startTier2({ studentId: student.sid, categoryKey: category.key, conceptKey }).catch(() => {});
-    const t = setTimeout(speakInstruction, 500);
-    return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ask the distractor policy for the options, as the tier 1 match and tier 2
@@ -272,7 +263,6 @@ export default function Tier2DragDropScreen({ route, navigation }) {
             });
           } catch { /* continue */ }
 
-          Speech.stop();
           stopConceptAudio();
 
           if (passed) {
@@ -313,13 +303,9 @@ export default function Tier2DragDropScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <View style={{ width: 40 }} />
           <View style={{ flex: 1 }} />
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={speakInstruction}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="volume-high-outline" size={20} color={theme.headingText} />
-          </TouchableOpacity>
+          {/* Keeps the bar's height so the board below does not shift up —
+              there is no audio here to give the old speaker button a job. */}
+          <View style={styles.iconBtn} />
         </View>
 
         {/* Attempt dots */}

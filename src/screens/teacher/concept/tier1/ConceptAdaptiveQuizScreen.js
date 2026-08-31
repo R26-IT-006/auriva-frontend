@@ -12,7 +12,6 @@ import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem, getConceptQuestion, getConceptQuestionSi } from '../../../../data/conceptData';
@@ -69,14 +68,9 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
 
   const speakPrompt = useCallback(() => {
     if (!concept) return;
+    // A recording is the only voice on this screen — nothing is synthesised.
     if (concept.t1Audio) {
       playConceptAudio(concept.t1Audio);
-    } else {
-      Speech.stop();
-      Speech.speak(getConceptQuestion(concept), { language: 'en-US', rate: 0.8 });
-      setTimeout(() => {
-        Speech.speak(concept.labelSi || concept.label, { language: 'si-LK', rate: 0.7 });
-      }, 1500);
     }
   }, [concept]);
 
@@ -89,7 +83,6 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
   function handleTap(option) {
     if (locked) return;
     setLocked(true);
-    Speech.stop();
     stopConceptAudio();
 
     const wasCorrect          = option.key === conceptKey;
@@ -129,7 +122,6 @@ export default function ConceptAdaptiveQuizScreen({ route, navigation }) {
         const isLastRound = currentRound === rounds.length - 1;
 
         if (isLastRound) {
-          Speech.stop();
           stopConceptAudio();
           const passed = allCorrectRef.current;
 

@@ -44,7 +44,7 @@
       "expo-video"
     ],
     "extra": {
-      "apiBaseUrl": "http://10.15.2.86:3000/api"
+      "apiBaseUrl": "http://192.168.1.180:3000/api"
     }
   }
 }

@@ -5,7 +5,9 @@ import Constants from "expo-constants";
 // iOS simulator → http://localhost:3000/api
 // This is only the last-resort fallback: an EXPO_PUBLIC_API_BASE_URL env var or
 // the Expo host detected below both take precedence, so it rarely applies.
-const DEFAULT_API_BASE_URL = "http://10.15.2.86:3000/api";
+// It is a DHCP address and goes stale whenever the dev machine changes network —
+// set EXPO_PUBLIC_API_BASE_URL rather than editing this if yours differs.
+const DEFAULT_API_BASE_URL = "http://192.168.1.180:3000/api";
 
 function normalizeApiBaseUrl(value) {
   if (!value) return DEFAULT_API_BASE_URL;

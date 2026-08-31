@@ -10,7 +10,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem } from '../../../../data/conceptData';
@@ -56,14 +55,10 @@ export default function Tier2ImageScreen({ route, navigation }) {
   const tapHintLoop   = useRef(null);
 
   const playAudio = useCallback(() => {
-    if (concept?.introAudio) {
-      playConceptAudio(concept.introAudio);
-    } else {
-      Speech.stop();
-      Speech.speak(concept?.label || '', { language: 'en-US', rate: 0.75, pitch: 1.0 });
-      setTimeout(() => {
-        if (concept?.labelSi) Speech.speak(concept.labelSi, { language: 'si-LK', rate: 0.7 });
-      }, 1200);
+    // The recording is the only voice on this screen — a concept without one
+    // stays silent rather than falling back to synthesised speech.
+    if (concept?.t2ImageAudio) {
+      playConceptAudio(concept.t2ImageAudio);
     }
   }, [concept]);
 
@@ -138,7 +133,6 @@ export default function Tier2ImageScreen({ route, navigation }) {
       eventType:   'screen_exit',
       eventData:   { total_time_ms: Date.now() - sessionStart.current },
     }).catch(() => {});
-    Speech.stop();
     stopConceptAudio();
     // Demo first, mirroring tier 1's ConceptImage → ConceptDemo → ConceptMatch flow.
     navigation.navigate('Tier2Demo', { student, category, conceptKey, sessionId: sessionId || null });

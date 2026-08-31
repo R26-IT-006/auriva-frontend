@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItem, categoryHasVideo } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
@@ -144,18 +143,6 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
       }, 450 + i * 200);
     });
 
-    setTimeout(() => {
-      Speech.speak(
-        // A conclusion is the end of a whole category, so it gets a line about
-        // finishing rather than a score read-out — the number here counts
-        // first-try placements, which isn't what the child was playing for.
-        mode === 'conclusion'
-          ? `You finished all the ${category.label.toLowerCase()}! Amazing work!`
-          : `Well done! You got ${correctCount} out of ${totalCount}!`,
-        { language: 'en-US', rate: 0.8 },
-      );
-    }, 600);
-
     Animated.timing(autoProgress, {
       toValue: 1,
       duration: AUTO_ADVANCE_MS,
@@ -167,7 +154,6 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleContinue() {
-    Speech.stop();
     // Activities and conclusions are no-fail and don't feed the tier ladder —
     // always back to the grid.
     if (mode === 'activity' || mode === 'conclusion') {

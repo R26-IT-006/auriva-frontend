@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import BasketSortBoard from '../../../../components/concept/BasketSortBoard';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
-import { getConceptItem } from '../../../../data/conceptData';
 import { buildBasketSortGame, getConclusionForCategory } from '../../../../data/conceptConclusions';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
@@ -52,33 +50,11 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
   const missed        = useRef(new Set());   // concepts that took more than one try
   const attempts      = useRef(0);
 
-  const speakPrompt = useCallback(() => {
-    Speech.stop();
-    Speech.speak(conclusion?.subtitle ?? 'Sort them by their colour!', {
-      language: 'en-US',
-      rate: 0.8,
-    });
-    if (conclusion?.subtitleSi) {
-      setTimeout(() => {
-        Speech.speak(conclusion.subtitleSi, { language: 'si-LK', rate: 0.7 });
-      }, 1500);
-    }
-  }, [conclusion]);
-
-  useEffect(() => {
-    const t = setTimeout(speakPrompt, 500);
-    // Without this the prompt keeps talking after the child leaves the screen.
-    return () => { clearTimeout(t); Speech.stop(); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   function finish(finalPlaced) {
     setLocked(true);
 
     const total          = game.items.length;
     const correctFirstTry = total - missed.current.size;
-
-    Speech.stop();
-    Speech.speak('You sorted them all! Well done!', { language: 'en-US', rate: 0.8 });
 
     conceptApi.logInteraction({
       studentId: student.sid,
@@ -104,7 +80,6 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
     }).catch(() => {});
 
     setTimeout(() => {
-      Speech.stop();
       navigation.replace('ConceptCongrats', {
         student,
         category,
@@ -138,23 +113,7 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
 
     if (!correct) {
       missed.current.add(item.key);
-      Speech.stop();
-      Speech.speak('Try another basket.', { language: 'en-US', rate: 0.8 });
       return false;
-    }
-
-    const colorConcept = getConceptItem('colors', colorKey);
-    Speech.stop();
-    Speech.speak(
-      `Yes! ${item.plural ? `${item.label} are` : `The ${item.label.toLowerCase()} is`} ${(colorConcept?.label ?? colorKey).toLowerCase()}.`,
-      { language: 'en-US', rate: 0.8 },
-    );
-    // Just the colour word in Sinhala, not a built sentence — reinforces the
-    // vocabulary without this screen inventing Sinhala grammar it cannot check.
-    if (colorConcept?.labelSi) {
-      setTimeout(() => {
-        Speech.speak(colorConcept.labelSi, { language: 'si-LK', rate: 0.7 });
-      }, 1200);
     }
 
     const nextPlaced = { ...placed, [colorKey]: [...(placed[colorKey] ?? []), item] };
@@ -201,7 +160,7 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={() => { Speech.stop(); navigation.goBack(); }}
+            onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
@@ -218,13 +177,9 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
             )}
           </View>
 
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
-            onPress={speakPrompt}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="volume-high" size={20} color={theme.headingText} />
-          </TouchableOpacity>
+          {/* Balances the back button so the prompt stays on the centre line —
+              there is no audio here to give the old speaker button a job. */}
+          <View style={styles.iconBtn} />
         </View>
 
         {/* Progress */}

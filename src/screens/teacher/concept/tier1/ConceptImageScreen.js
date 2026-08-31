@@ -10,10 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { playConceptAudio, stopConceptAudio } from '../../../../utils/audioUtils';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
-import { getConceptItem, getConceptPhrase } from '../../../../data/conceptData';
+import { getConceptItem } from '../../../../data/conceptData';
 import { conceptApi } from '../../../../api/concept';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { Layout } from '../../../../constants/layout';
@@ -39,11 +38,10 @@ export default function ConceptImageScreen({ route, navigation }) {
   const tapHintLoop  = useRef(null);
 
   const playIntro = useCallback(() => {
-    if (concept?.introAudio) {
-      playConceptAudio(concept.introAudio);
-    } else {
-      Speech.stop();
-      Speech.speak(getConceptPhrase(concept), { language: 'en-US', rate: 0.75, pitch: 1.0 });
+    // The recording is the only voice on this screen — a concept without one
+    // stays silent rather than falling back to synthesised speech.
+    if (concept?.t1ImageAudio) {
+      playConceptAudio(concept.t1ImageAudio);
     }
   }, [concept]);
 
@@ -143,7 +141,6 @@ export default function ConceptImageScreen({ route, navigation }) {
       eventType:   'screen_exit',
       eventData:   { total_time_ms: Date.now() - sessionStart.current },
     }).catch(() => {});
-    Speech.stop();
     stopConceptAudio();
     if (isRelearn) {
       if (confusedKeys?.length > 0) {

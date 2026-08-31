@@ -17,5 +17,5 @@
  */
 export const RESULT_GIF_MS = 1200;
 
-/** Distance the popup travels in from the right edge, in px. */
+/** Distance the popup travels up from below the bottom edge, in px. */
 export const RESULT_GIF_OFFSCREEN = 280;
