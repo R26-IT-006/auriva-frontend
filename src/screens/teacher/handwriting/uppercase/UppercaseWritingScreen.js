@@ -613,16 +613,12 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     : null;
   const {
     replay: replayInstruction,
-    instructionPlaying,
-    canWrite,
     requestTargetSpeech,
   } = useInstructionAudioState(instructionKey, {
     autoPlay: Boolean(instructionKey),
     autoPlayToken: `${letter}:${attempt}:${supportLevel}`,
     fallbackText: instructionForSupport(supportLevel).en,
   });
-  const canWriteRef = useRef(false);
-  canWriteRef.current = canWrite;
   const targetSpokenAttemptRef = useRef(false);
   useEffect(() => { targetSpokenAttemptRef.current = false; }, [letter, attempt]);
   const supportPresentation = getSupportPresentation({ supportLevel, attempt, collectionMode });
@@ -979,10 +975,9 @@ export default function UppercaseWritingScreen({ route, navigation }) {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => canWriteRef.current,
-      onMoveShouldSetPanResponder:  () => canWriteRef.current,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
-        if (!canWriteRef.current) return;
         stopGuideRef.current?.();  // first touch cancels the idle replay
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         setAttemptFeedback(null);
@@ -1620,11 +1615,11 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           badge={badge}
           instruction={instructionForSupport(supportLevel)}
           onPlayInstruction={replaySupportInstruction}
-          onPlaySound={instructionPlaying ? undefined : () => playLetterSound()}
+          onPlaySound={() => playLetterSound()}
           canvasRef={canvasRef}
           onCanvasLayout={measureCanvasOrigin}
           panHandlers={panResponder.panHandlers}
-          canvasPointerEvents={attemptFeedback || !canWrite ? 'none' : 'auto'}
+          canvasPointerEvents={attemptFeedback ? 'none' : 'auto'}
         />
 
         {/* Feedback pill */}

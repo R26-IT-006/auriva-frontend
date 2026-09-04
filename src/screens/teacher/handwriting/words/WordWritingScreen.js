@@ -200,8 +200,6 @@ export default function WordWritingScreen({ route, navigation }) {
   const supportLevel = ATTEMPT_SUPPORT_LEVEL[attempt];
   const {
     replay: replayInstruction,
-    instructionPlaying,
-    canWrite,
     requestTargetSpeech,
   } = useInstructionAudioState(
     SUPPORT_INSTRUCTION_KEY[supportLevel],
@@ -211,8 +209,6 @@ export default function WordWritingScreen({ route, navigation }) {
       fallbackText: instructionForSupport(supportLevel).en,
     },
   );
-  const canWriteRef = useRef(false);
-  canWriteRef.current = canWrite;
   const targetSpokenAttemptRef = useRef(false);
   useEffect(() => { targetSpokenAttemptRef.current = false; }, [wordEntry?.word, attempt]);
   const [currentPath,   setCurrentPath]   = useState([]);
@@ -524,10 +520,9 @@ export default function WordWritingScreen({ route, navigation }) {
   // â”€â”€ PanResponder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => canWriteRef.current,
-      onMoveShouldSetPanResponder:  () => canWriteRef.current,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: (evt) => {
-        if (!canWriteRef.current) return;
         stopGuideRef.current?.();  // first touch cancels the idle replay
         notifyStrokeStart(); // FR-13 — a stroke is now in progress; the break prompt must not appear
         startTimeRef.current = Date.now();
@@ -735,8 +730,8 @@ export default function WordWritingScreen({ route, navigation }) {
           tracerVisible={tracerVisible}
           tracerXInterp={tracerXInterp}
           tracerYInterp={tracerYInterp}
-          onSpeakWord={instructionPlaying ? undefined : () => spellWordRef.current?.()}
-          canvasPointerEvents={canWrite ? 'auto' : 'none'}
+          onSpeakWord={() => spellWordRef.current?.()}
+          canvasPointerEvents="auto"
           canvasRef={canvasRef}
           onCanvasLayout={measureCanvasOrigin}
           panHandlers={panResponder.panHandlers}
