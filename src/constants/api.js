@@ -38,11 +38,34 @@ function getExpoHostApiBaseUrl() {
   return `http://${host}:3000/api`;
 }
 
+// Deployed backend (Azure VM behind nginx). Release builds (APK/AAB) have no
+// Expo dev server to derive a host from, so they use this unless
+// EXPO_PUBLIC_API_BASE_URL overrides it at build time.
+const PRODUCTION_API_BASE_URL =
+  "https://auriva-api.centralindia.cloudapp.azure.com/api";
+
+function getReleaseApiBaseUrl() {
+  // Android release builds refuse cleartext HTTP, so an http:// override can
+  // never work there — typically a developer's LAN .env that got bundled into
+  // a local release build. Ignore it rather than ship an app that cannot
+  // reach any server.
+  const override = process.env.EXPO_PUBLIC_API_BASE_URL;
+  return override && /^https:\/\//i.test(override)
+    ? override
+    : PRODUCTION_API_BASE_URL;
+}
+
+// Metro always defines __DEV__; plain-Node test environments may not, and keep
+// the development resolution there.
+const IS_DEV = typeof __DEV__ === "undefined" ? true : __DEV__;
+
 export const API_BASE_URL = normalizeApiBaseUrl(
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-    getExpoHostApiBaseUrl() ||
-    Constants.expoConfig?.extra?.apiBaseUrl ||
-    DEFAULT_API_BASE_URL,
+  IS_DEV
+    ? process.env.EXPO_PUBLIC_API_BASE_URL ||
+        getExpoHostApiBaseUrl() ||
+        Constants.expoConfig?.extra?.apiBaseUrl ||
+        DEFAULT_API_BASE_URL
+    : getReleaseApiBaseUrl(),
 );
 
 export const ENDPOINTS = {
