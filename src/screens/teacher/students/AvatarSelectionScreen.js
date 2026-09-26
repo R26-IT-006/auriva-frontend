@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { teacherApi } from '../../../api/teacher';
@@ -46,7 +47,7 @@ function AvatarIcon({ avatar, selected, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   function onPressIn() {
-    Animated.spring(scale, { toValue: 1.1, useNativeDriver: true, speed: 40, bounciness: 8 }).start();
+    Animated.spring(scale, { toValue: 1.08, useNativeDriver: true, speed: 40, bounciness: 8 }).start();
   }
   function onPressOut() {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
@@ -59,12 +60,21 @@ function AvatarIcon({ avatar, selected, onPress }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
-        style={[styles.avatarIcon, selected && styles.avatarIconSelected]}
+        accessibilityRole="button"
+        accessibilityLabel={avatar.name}
+        accessibilityState={{ selected }}
+        style={[styles.avatarCard, selected && styles.avatarCardSelected]}
       >
-        <Image source={avatar.image} style={styles.avatarIconImage} resizeMode="contain" />
-        <Text style={[styles.avatarIconName, selected && styles.avatarIconNameSelected]}>
-          {avatar.name}
-        </Text>
+        <Image
+          source={avatar.image}
+          style={[styles.avatarCardImage, !selected && styles.avatarCardImageIdle]}
+          resizeMode="contain"
+        />
+        {selected && (
+          <View style={styles.checkBadge}>
+            <Ionicons name="checkmark" size={13} color="#FFF" />
+          </View>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -74,27 +84,25 @@ export default function AvatarSelectionScreen({ navigation, route }) {
   const { student } = route.params;
   const [selected, setSelected] = useState(null);
   const [saving,   setSaving]   = useState(false);
-  const nameOpacity             = useRef(new Animated.Value(0)).current;
 
-  const handleSelect = useCallback((avatar) => {
-    setSelected(avatar);
-    nameOpacity.setValue(0);
-    Animated.timing(nameOpacity, {
-      toValue: 1,
-      duration: 350,
-      useNativeDriver: true,
-    }).start();
-  }, [nameOpacity]);
+  // Show the first avatar's video on entry so the screen never opens on a blank panel
+  const preview = selected ?? AVATARS[0];
+
+  const handleSelect = useCallback((avatar) => setSelected(avatar), []);
 
   async function handleConfirm() {
     if (!selected) return;
     setSaving(true);
+
+    const nextStudent = { ...student, avatar_key: selected.key };
+
     try {
-      await teacherApi.setAvatar(student.sid, selected.key);
-      // Cache locally so StudentPickerScreen can check without an extra request
       await AsyncStorage.setItem(`student_avatar_${student.sid}`, selected.key);
-      navigation.replace('StudentDashboard', { student: { ...student, avatar_key: selected.key } });
-    } catch {
+      navigation.replace('StudentDashboard', { student: nextStudent });
+
+      // Backend support for avatar persistence may be unavailable in local dev.
+      teacherApi.setAvatar(student.sid, selected.key).catch(() => {});
+    } catch (error) {
       setSaving(false);
     }
   }
@@ -102,30 +110,26 @@ export default function AvatarSelectionScreen({ navigation, route }) {
   return (
     <View style={styles.root}>
 
-      {/* ── Full-screen video / plain background ─────────────── */}
-      {selected ? (
-        <Video
-          source={selected.video}
-          style={StyleSheet.absoluteFill}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay
-          isLooping
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, styles.noSelectionBg]} />
-      )}
+      {/* ── Full-screen video (defaults to Boba until a tap) ──── */}
+      <Video
+        source={preview.video}
+        style={StyleSheet.absoluteFill}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping
+      />
 
       {/* ── Overlay ──────────────────────────────────────────── */}
       <SafeAreaView style={styles.overlay} edges={['top', 'bottom', 'left', 'right']}>
 
-        {/* ── Top-left: back + student label + avatar name ───── */}
-        <View style={styles.topLeft}>
+        {/* ── Top bar: back + student label ────────────────────── */}
+        <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color="#333" />
+            <Ionicons name="arrow-back" size={20} color="#FFF" />
           </TouchableOpacity>
 
           <View style={styles.studentLabelPill}>
@@ -134,24 +138,23 @@ export default function AvatarSelectionScreen({ navigation, route }) {
               <Text style={styles.studentName}>{student.full_name}</Text>
             </Text>
           </View>
-
-          {selected ? (
-            <Animated.Text style={[styles.avatarName, { opacity: nameOpacity }]}>
-              {selected.name}
-            </Animated.Text>
-          ) : (
-            <Text style={styles.placeholderText}>Tap an avatar to preview</Text>
-          )}
         </View>
 
-        {/* ── Body: spacer (character) + right rail ────────────── */}
-        <View style={styles.body}>
-          <View style={{ flex: 1 }} />
+        {/* ── Main content: left preview + right rail ───────────── */}
+        <View style={styles.content}>
 
-          {/* Vertical rail: icons in white pill, button below */}
-          <View style={styles.sideRail}>
-            {/* White pill — icons only */}
-            <View style={styles.iconsPill}>
+          {/* Left pane: hint only, so the video stays unobstructed */}
+          <View style={styles.leftPane}>
+            {!selected && (
+              <View style={styles.hintPill}>
+                <Text style={styles.hintText}>Tap an avatar to preview</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Right rail: avatar dock + confirm button */}
+          <View style={styles.rightRail}>
+            <View style={styles.dock}>
               {AVATARS.map((av) => (
                 <AvatarIcon
                   key={av.key}
@@ -162,156 +165,195 @@ export default function AvatarSelectionScreen({ navigation, route }) {
               ))}
             </View>
 
-            {/* Confirm button — no white bg, sits below the pill */}
             <TouchableOpacity
-              style={[styles.confirmBtn, !selected && styles.confirmBtnDisabled]}
+              style={styles.confirmWrap}
               onPress={handleConfirm}
               disabled={!selected || saving}
               activeOpacity={0.85}
             >
-              {saving
-                ? <ActivityIndicator color="#FFF" size="small" />
-                : <Text style={styles.confirmText}>
-                    {selected ? `Choose\n${selected.name}` : 'Pick one'}
-                  </Text>
-              }
+              {selected ? (
+                <LinearGradient
+                  colors={TEAL_GRAD}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.confirmBtn}
+                >
+                  {saving
+                    ? <ActivityIndicator color="#FFF" size="small" />
+                    : <Text style={styles.confirmText}>Choose</Text>
+                  }
+                </LinearGradient>
+              ) : (
+                <View style={[styles.confirmBtn, styles.confirmBtnDisabled]}>
+                  <Text style={styles.confirmTextDisabled}>Pick one</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
-        </View>
 
+        </View>
       </SafeAreaView>
     </View>
   );
 }
+
+const CARD_SIZE = 88;
+const TEAL_GRAD = ['#4AABB8', '#52C07C'];
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#ECECEC',
   },
-  noSelectionBg: {
-    backgroundColor: '#ECECEC',
-  },
   overlay: {
     flex: 1,
   },
 
-  // ── Top-left block ─────────────────────────────────────────
-  topLeft: {
-    position: 'absolute',
-    top: Layout.spacing.lg,
-    left: Layout.spacing.lg,
+  // ── Top bar ────────────────────────────────────────────────
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: Layout.spacing.sm,
-    zIndex: 10,
-    maxWidth: '55%',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: Layout.spacing.md,
+    paddingBottom: Layout.spacing.sm,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: 'rgba(18,34,30,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.30)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   studentLabelPill: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: 'rgba(18,34,30,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.30)',
     borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
   studentLabel: {
     fontSize: Layout.fontSize.sm,
-    color: '#666',
+    color: 'rgba(255,255,255,0.80)',
   },
   studentName: {
-    fontWeight: '700',
-    color: '#333',
-  },
-  avatarName: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#1A2E26',
-    letterSpacing: -1,
-    fontFamily: 'sans-serif-rounded',
-    textShadowColor: 'rgba(255,255,255,0.9)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 10,
-  },
-  placeholderText: {
-    fontSize: Layout.fontSize.sm,
-    color: 'rgba(0,0,0,0.28)',
+    fontFamily: 'DMSans_700Bold',
+    color: '#FFFFFF',
   },
 
-  // ── Body row ───────────────────────────────────────────────
-  body: {
+  // ── Content row ────────────────────────────────────────────
+  content: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'stretch',
-    paddingRight: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingBottom: Layout.spacing.lg,
+    gap: Layout.spacing.lg,
+  },
+
+  // ── Left pane ──────────────────────────────────────────────
+  leftPane: {
+    flex: 1,
+    justifyContent: 'flex-end',
     paddingBottom: Layout.spacing.md,
-    paddingTop: Layout.spacing.md,
+  },
+  hintPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(18,34,30,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.30)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  hintText: {
+    fontSize: Layout.fontSize.sm,
+    fontFamily: 'DMSans_600SemiBold',
+    color: 'rgba(255,255,255,0.88)',
   },
 
-  // ── Side rail ──────────────────────────────────────────────
-  sideRail: {
+  // ── Right rail ─────────────────────────────────────────────
+  rightRail: {
+    width: CARD_SIZE + 32,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Layout.spacing.md,
+    gap: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.sm,
   },
-  iconsPill: {
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 28,
-    paddingVertical: Layout.spacing.md,
-    paddingHorizontal: Layout.spacing.sm,
+  dock: {
     alignItems: 'center',
-    gap: Layout.spacing.sm,
+    gap: 10,
+    padding: 10,
+    borderRadius: 34,
+    backgroundColor: 'rgba(18,34,30,0.32)',
   },
 
-  avatarIcon: {
+  // ── Avatar card ────────────────────────────────────────────
+  avatarCard: {
+    width: CARD_SIZE,
+    height: CARD_SIZE,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.86)',
+    backgroundColor: 'rgba(255,255,255,0.86)',
     alignItems: 'center',
-    gap: 4,
-    padding: 8,
-    borderRadius: 18,
+    justifyContent: 'center',
+  },
+  avatarCardSelected: {
     borderWidth: 2.5,
-    borderColor: 'transparent',
-    backgroundColor: 'rgba(0,0,0,0.04)',
-  },
-  avatarIconSelected: {
     borderColor: '#4AABB8',
-    backgroundColor: '#EBF7F9',
+    backgroundColor: '#FFFFFF',
   },
-  avatarIconImage: {
-    width: 58,
-    height: 58,
+  avatarCardImage: {
+    width: CARD_SIZE * 0.82,
+    height: CARD_SIZE * 0.82,
   },
-  avatarIconName: {
-    fontSize: Layout.fontSize.xs,
-    fontWeight: '600',
-    color: '#888',
+  avatarCardImageIdle: {
+    opacity: 0.82,
   },
-  avatarIconNameSelected: {
-    color: '#4AABB8',
+  checkBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#4AABB8',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  // ── Confirm button (inside rail, at bottom) ────────────────
+  // ── Confirm button ─────────────────────────────────────────
+  confirmWrap: {
+    alignSelf: 'stretch',
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
   confirmBtn: {
-    marginTop: Layout.spacing.md,
-    width: '100%',
-    borderRadius: 16,
-    backgroundColor: '#4AABB8',
-    paddingVertical: 10,
+    paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
   confirmBtnDisabled: {
-    backgroundColor: '#C8DCDF',
+    backgroundColor: 'rgba(18,34,30,0.32)',
   },
   confirmText: {
     color: '#FFF',
-    fontSize: Layout.fontSize.xs,
-    fontWeight: '700',
+    fontSize: 19,
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    lineHeight: 17,
+    letterSpacing: 0.2,
+  },
+  confirmTextDisabled: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_700Bold',
+    textAlign: 'center',
   },
 });

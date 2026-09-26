@@ -1,0 +1,1053 @@
+// Static concept catalogue — mirrors backend CATEGORY_SEQUENCES order.
+//
+// This is the single source of truth for the category grid: ConceptCategoriesScreen
+// renders whatever is listed here, so a category can never appear on screen without
+// data behind it. `order` drives display position (easiest concepts first) and is
+// kept explicit rather than relying on the order keys happen to be written in.
+// `comingSoon: true` marks a category whose artwork exists but whose concepts have
+// not been authored yet — those render as disabled cards.
+export const CONCEPT_CATEGORIES = {
+  fruits: {
+    key:   'fruits',
+    label: 'Fruits',
+    order: 11,
+    image: require('../../assets/concepts/category-images/Fruits.png'),
+    items: [
+      {
+        key:         'apple',
+        label:       'Apple',
+        labelSi:     'ඇපල්',
+        sortColor:   'red',
+        icon:        require('../../assets/concepts/categories/Fruits/Fruits_Icons/apple.png'),
+        real:        require('../../assets/concepts/categories/Fruits/Apple/Apple_Real.png'),
+        io:          require('../../assets/concepts/categories/Fruits/Apple/Apple_IO.png'),
+        animated:    require('../../assets/concepts/categories/Fruits/Apple/Apple_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Apple/AppleTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Apple/AppleTier2Image.m4a'),
+        t1ActivityAudio: require('../../assets/concepts/audio/Fruits/Apple/AppleTier1Activity.m4a'),
+        tier3Video:  require('../../assets/concepts/Tier3_videos/Fruits/Apple.mp4'),
+        coloring:    require('../../assets/concepts/categories/Fruits/Apple/Apple_Coloring.png'),
+      },
+      {
+        key:        'banana',
+        label:      'Bananas',
+        labelSi:    'කෙසෙල්',
+        sortColor:  'yellow',
+        plural:     true,
+        icon:       require('../../assets/concepts/categories/Fruits/Fruits_Icons/banana.png'),
+        real:       require('../../assets/concepts/categories/Fruits/Banana/Banana_Real.png'),
+        io:         require('../../assets/concepts/categories/Fruits/Banana/Banana_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Banana/Banana_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Banana/BananaTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Banana/BananaTier2Image.m4a'),
+        // "Actvity" is the filename as recorded, not a typo here.
+        t1ActivityAudio: require('../../assets/concepts/audio/Fruits/Banana/BananaTier1Actvity.m4a'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Banana.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Banana/Banana_Coloring.png'),
+      },
+      {
+        key:      'cherry',
+        label:    'Cherries',
+        labelSi:  'චෙරි',
+        sortColor: 'red',
+        plural:   true,
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/cherries.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Cherry/Cherry_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Cherry/Cherry_IO.jpg'),
+        animated:   require('../../assets/concepts/categories/Fruits/Cherry/Cherry_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Cherry/CherryTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Cherry/CherryTier2Image.m4a'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Cherry.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Cherry/Cherries_Coloring.png'),
+      },
+      {
+        key:      'grapes',
+        label:    'Grapes',
+        labelSi:  'මිදි',
+        // Red grapes in Grapes_Real, not purple ones.
+        sortColor: 'red',
+        plural:   true,
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/grape.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Grapes/Grapes_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Grapes.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Grapes/Grapes_Coloring.png'),
+      },
+      {
+        key:      'guava',
+        label:    'Guava',
+        labelSi:  'පේර',
+        sortColor: 'green',
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/guava.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Guava/Guava_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Guava/Guava_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Guava/Guava_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Guava/GuavaTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Guava/GuavaTier2Image.m4a'),
+        t1ActivityAudio: require('../../assets/concepts/audio/Fruits/Guava/GuavaTier1Activity.m4a'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Guava.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Guava/Guava_Coloring.png'),
+      },
+      {
+        key:      'mango',
+        label:    'Mango',
+        labelSi:  'අඹ',
+        // No sortColor: Mango_Real is a red-to-yellow gradient with neither
+        // colour dominant, so there is no answer a child could reliably give.
+        // Omitting the field keeps it out of the basket-sort pool.
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/mango.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Mango/Mango_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Mango/Mango_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Mango/Mango_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Mango/MangoTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Mango/MangoTier2Image.m4a'),
+        t1ActivityAudio: require('../../assets/concepts/audio/Fruits/Mango/MangoTier1Activity.m4a'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Mango.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Mango/Mango_Coloring.png'),
+      },
+      {
+        key:      'orange',
+        label:    'Orange',
+        labelSi:  'දොඩම්',
+        sortColor: 'orange',
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/orange.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Orange/Orange_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Orange/Orange_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Orange/Orange_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Orange/OrangeTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Orange/OrangeTier2Image.m4a'),
+        t1ActivityAudio: require('../../assets/concepts/audio/Fruits/Orange/OrangeTier1Activity.m4a'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Orange.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Orange/Orange_Coloring.png'),
+      },
+      {
+        key:      'papaya',
+        label:    'Papaya',
+        labelSi:  'පැපොල්',
+        // No sortColor: Papaya_Real ripens orange at one end and stays green at
+        // the other. See the mango note above.
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/papaya.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Papaya/Papaya_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Papaya/Papaya_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Papaya/Papaya_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Papaya/PapayaTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Papaya/PapayaTier2Image.m4a'),
+        t1ActivityAudio: require('../../assets/concepts/audio/Fruits/Papaya/PapayaTier1Activity.m4a'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Papaya.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Papaya/Papaya_Coloring.png'),
+      },
+      {
+        key:      'passion',
+        label:    'Passion Fruit',
+        labelSi:  'පැෂන් ෆ්‍රූට්',
+        // The yellow passion fruit variety, which is what Passion_Real shows.
+        sortColor: 'yellow',
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/passion.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Passion/Passion_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Passion/Passion_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Passion/Passion_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Passion.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Passion/Passion_Coloring.png'),
+      },
+      {
+        key:      'pineapple',
+        label:    'Pineapple',
+        labelSi:  'අන්නාස්',
+        sortColor: 'yellow',
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/pineapple.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Pineapple/PineappleTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Pineapple/PineappleTier2Image.m4a'),
+        t1ActivityAudio: require('../../assets/concepts/audio/Fruits/Pineapple/PineappleTier1Activity.m4a'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Pineapple.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Coloring.png'),
+      },
+      {
+        key:      'watermelon',
+        label:    'Watermelon',
+        labelSi:  'කොමඩු',
+        sortColor: 'green',
+        icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/watermelon.png'),
+        real:     require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_Real.png'),
+        io:       require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_IO.png'),
+        animated:   require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_Animated.png'),
+        t1ImageAudio: require('../../assets/concepts/audio/Fruits/Watermelon/WatermelonTier1Image.m4a'),
+        t2ImageAudio: require('../../assets/concepts/audio/Fruits/Watermelon/WatermelonTier2Image.m4a'),
+        t1ActivityAudio: require('../../assets/concepts/audio/Fruits/Watermelon/WatermelonTier1Activity.m4a'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Fruits/Watermelon.mp4'),
+        coloring:   require('../../assets/concepts/categories/Fruits/Watermelon/Watermelon_Coloring.png'),
+      },
+    ],
+  },
+  professionals: {
+    key:   'professionals',
+    label: 'Professionals',
+    order: 9,
+    image: require('../../assets/concepts/category-images/Professionals.png'),
+    items: [
+      {
+        key:      'baker',
+        label:    'Baker',
+        labelSi:  'බේකර්',
+        icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/baker.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/baker.png'),
+        coloring: require('../../assets/concepts/categories/Professionals/Baker/Baker_Coloring.png'),
+      },
+      {
+        key:      'carpenter',
+        label:    'Carpenter',
+        labelSi:  'වඩුවා',
+        icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/carpenter.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/carpenter.png'),
+        coloring: require('../../assets/concepts/categories/Professionals/Carpenter/Carpenter_Coloring.png'),
+      },
+      {
+        key:      'cashier',
+        label:    'Cashier',
+        labelSi:  'මුදල් භාරකරු',
+        icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/cashier.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/cashier.png'),
+        coloring: require('../../assets/concepts/categories/Professionals/Cashier/Cashier_Coloring.png'),
+      },
+      {
+        key:      'doctor',
+        label:    'Doctor',
+        labelSi:  'වෛද්‍යවරයා',
+        icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/doctor.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/doctor.png'),
+        coloring: require('../../assets/concepts/categories/Professionals/Doctor/Doctor_Coloring.png'),
+      },
+      {
+        key:      'farmer',
+        label:    'Farmer',
+        labelSi:  'ගොවියා',
+        icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/farmer.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/farmer.png'),
+        coloring: require('../../assets/concepts/categories/Professionals/Farmer/Farmer_Coloring.png'),
+      },
+      {
+        key:      'nurse',
+        label:    'Nurse',
+        labelSi:  'හෙදිය',
+        icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/nurse.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/nurse.png'),
+        coloring: require('../../assets/concepts/categories/Professionals/Nurse/Nurse_Coloring.png'),
+      },
+      {
+        key:      'principal',
+        label:    'Principal',
+        labelSi:  'විදුහල්පති',
+        icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/principal.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/principal.png'),
+        coloring: require('../../assets/concepts/categories/Professionals/Principal/Principal_Coloring.png'),
+      },
+      {
+        key:      'teacher',
+        label:    'Teacher',
+        labelSi:  'ගුරුවරයා',
+        icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/teacher.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/teacher.png'),
+        coloring: require('../../assets/concepts/categories/Professionals/Teacher/Teacher_Coloring.png'),
+      },
+    ],
+  },
+  animals: {
+    key:   'animals',
+    label: 'Animals',
+    order: 10,
+    image: require('../../assets/concepts/category-images/Animals.png'),
+    items: [
+      {
+        key:        'ant',
+        label:      'Ant',
+        labelSi:    'කූඹියා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/ant.png'),
+        real:       require('../../assets/concepts/categories/Animals/Ant/Ant_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Ant.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Ant/Ant_Coloring.png'),
+      },
+      {
+        key:        'bull',
+        label:      'Bull',
+        labelSi:    'ගොනා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/bull.png'),
+        real:       require('../../assets/concepts/categories/Animals/Bull/Bull_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Bull.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Bull/Bull_Coloring.png'),
+      },
+      {
+        key:        'butterfly',
+        label:      'Butterfly',
+        labelSi:    'සමනලයා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/butterfly.png'),
+        real:       require('../../assets/concepts/categories/Animals/Butterfly/Butterfly_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Butterfly.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Butterfly/Butterfly_Coloring.png'),
+      },
+      {
+        key:        'cat',
+        label:      'Cat',
+        labelSi:    'බළලා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/cat.png'),
+        real:       require('../../assets/concepts/categories/Animals/Cat/Cat_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Cat.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Cat/Cat_Coloring.png'),
+      },
+      {
+        key:     'caterpillar',
+        label:   'Caterpillar',
+        labelSi: 'දලඹුවා',
+        icon: require('../../assets/concepts/categories/Animals/Animals_Icons/caterpillar.png'),
+        real: require('../../assets/concepts/categories/Animals/Animals_Icons/caterpillar.png'),
+      },
+      {
+        key:        'cock',
+        label:      'Cock',
+        labelSi:    'කුකුළා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/Cock.png'),
+        real:       require('../../assets/concepts/categories/Animals/Cock/Cock_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Cock.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Cock/Cock_Coloring.png'),
+      },
+      {
+        key:        'cow',
+        label:      'Cow',
+        labelSi:    'ගවයා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/cow.png'),
+        real:       require('../../assets/concepts/categories/Animals/Cow/Cow_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Cow.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Cow/Cow_Coloring.png'),
+      },
+      {
+        key:        'crow',
+        label:      'Crow',
+        labelSi:    'කපුටා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/crow.png'),
+        real:       require('../../assets/concepts/categories/Animals/Crow/Crow_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Crow.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Crow/Crow_Coloring.png'),
+      },
+      {
+        key:        'dog',
+        label:      'Dog',
+        labelSi:    'බල්ලා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/dog.png'),
+        real:       require('../../assets/concepts/categories/Animals/Dog/Dog_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Dog.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Dog/Dog_Coloring.png'),
+      },
+      {
+        key:        'elephant',
+        label:      'Elephant',
+        labelSi:    'අලියා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/elephant.png'),
+        real:       require('../../assets/concepts/categories/Animals/Elephant/Elephant_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Elephant.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Elephant/Elephant_Coloring.png'),
+      },
+      {
+        key:        'goat',
+        label:      'Goat',
+        labelSi:    'එළුවා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/goat.png'),
+        real:       require('../../assets/concepts/categories/Animals/Goat/Goat_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Goat.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Goat/Goat_Coloring.png'),
+      },
+      {
+        key:        'hen',
+        label:      'Hen',
+        labelSi:    'කිකිළිය',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/hen.png'),
+        real:       require('../../assets/concepts/categories/Animals/Hen/Hen_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Hen.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Hen/Hen_Coloring.png'),
+      },
+      {
+        key:        'horse',
+        label:      'Horse',
+        labelSi:    'අශ්වයා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/horse.png'),
+        real:       require('../../assets/concepts/categories/Animals/Horse/Horse_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Horse.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Horse/Horse_Coloring.png'),
+      },
+      {
+        key:        'lion',
+        label:      'Lion',
+        labelSi:    'සිංහයා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/lion.png'),
+        real:       require('../../assets/concepts/categories/Animals/Lion/Lion_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Lion.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Lion/Lion_Coloring.png'),
+      },
+      {
+        key:        'owl',
+        label:      'Owl',
+        labelSi:    'බකමූනා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/owl.png'),
+        real:       require('../../assets/concepts/categories/Animals/Owl/Owl_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Owl.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Owl/Owl_Coloring.png'),
+      },
+      {
+        key:        'parrot',
+        label:      'Parrot',
+        labelSi:    'ගිරවා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/parrot.png'),
+        real:       require('../../assets/concepts/categories/Animals/Parrot/Parrot_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Parrot.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Parrot/Parrot_Coloring.png'),
+      },
+      {
+        key:        'peacock',
+        label:      'Peacock',
+        labelSi:    'මොණරා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/peacock.png'),
+        real:       require('../../assets/concepts/categories/Animals/Peacock/Peacock_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Peacock.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Peacock/Peacock_Coloring.png'),
+      },
+      {
+        key:        'rabbit',
+        label:      'Rabbit',
+        labelSi:    'හාවා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/rabbit.png'),
+        real:       require('../../assets/concepts/categories/Animals/Rabbit/Rabbit_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Rabbit.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Rabbit/Rabbit_Coloring.png'),
+      },
+      {
+        key:        'snake',
+        label:      'Snake',
+        labelSi:    'සර්පයා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/snake.png'),
+        real:       require('../../assets/concepts/categories/Animals/Snake/Snake_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Snake.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Snake/Snake_Coloring.png'),
+      },
+      {
+        key:        'sparrow',
+        label:      'Sparrow',
+        labelSi:    'ඇහැළිය',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/sparrow.png'),
+        real:       require('../../assets/concepts/categories/Animals/Sparrow/Sparrow_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Sparrow.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Sparrow/Sparrow_Coloring.png'),
+      },
+      {
+        key:        'tiger',
+        label:      'Tiger',
+        labelSi:    'කොටියා',
+        icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/tiger.png'),
+        real:       require('../../assets/concepts/categories/Animals/Tiger/Toger_Real.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Tiger.mp4'),
+        coloring:   require('../../assets/concepts/categories/Animals/Tiger/Toger_Coloring.png'),
+      },
+    ],
+  },
+  house: {
+    key:   'house',
+    label: 'House Parts',
+    order: 6,
+    image: require('../../assets/concepts/category-images/House.png'),
+    items: [
+      {
+        key:     'door',
+        label:   'Door',
+        labelSi: 'දොර',
+        icon: require('../../assets/concepts/categories/House Parts/House_Icons/door.png'),
+        real: require('../../assets/concepts/categories/House Parts/House_Icons/door.png'),
+      },
+      {
+        key:     'roof',
+        label:   'Roof',
+        labelSi: 'වහලය',
+        icon: require('../../assets/concepts/categories/House Parts/House_Icons/roof.png'),
+        real: require('../../assets/concepts/categories/House Parts/House_Icons/roof.png'),
+      },
+      {
+        key:     'wall',
+        label:   'Wall',
+        labelSi: 'බිත්තිය',
+        icon: require('../../assets/concepts/categories/House Parts/House_Icons/wall.png'),
+        real: require('../../assets/concepts/categories/House Parts/House_Icons/wall.png'),
+      },
+      {
+        key:     'windows',
+        label:   'Windows',
+        labelSi: 'කවුළුව',
+        plural:  true,
+        icon: require('../../assets/concepts/categories/House Parts/House_Icons/windows.png'),
+        real: require('../../assets/concepts/categories/House Parts/House_Icons/windows.png'),
+      },
+    ],
+  },
+  numbers: {
+    key:   'numbers',
+    label: 'Numbers',
+    order: 3,
+    image: require('../../assets/concepts/category-images/Numbers.png'),
+    // A number is not a thing you can photograph, so the photo-to-drawing match
+    // is two pictures of the same numeral, and there is no clip that shows one
+    // the way a clip can show an apple. Both stages are off here. See
+    // categoryHasVideo / categoryHasPairMatch below.
+    hasVideo:     false,
+    hasPairMatch: false,
+    items: [
+      {
+        key:     'one',
+        label:   'One',
+        labelSi: 'එක',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/one.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/one.png'),
+      },
+      {
+        key:     'two',
+        label:   'Two',
+        labelSi: 'දෙක',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/two.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/two.png'),
+      },
+      {
+        key:     'three',
+        label:   'Three',
+        labelSi: 'තුන',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/three.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/three.png'),
+      },
+      {
+        key:     'four',
+        label:   'Four',
+        labelSi: 'හතර',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/four.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/four.png'),
+      },
+      {
+        key:     'five',
+        label:   'Five',
+        labelSi: 'පහ',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/five.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/five.png'),
+      },
+      {
+        key:     'six',
+        label:   'Six',
+        labelSi: 'හය',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/six.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/six.png'),
+      },
+      {
+        key:     'seven',
+        label:   'Seven',
+        labelSi: 'හත',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/seven.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/seven.png'),
+      },
+      {
+        key:     'eight',
+        label:   'Eight',
+        labelSi: 'අට',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/eight.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/eight.png'),
+      },
+      {
+        key:     'nine',
+        label:   'Nine',
+        labelSi: 'නවය',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/nine.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/nine.png'),
+      },
+      {
+        key:     'ten',
+        label:   'Ten',
+        labelSi: 'දහය',
+        icon: require('../../assets/concepts/categories/Numbers/Numbers_Icons/ten.png'),
+        real: require('../../assets/concepts/categories/Numbers/Numbers_Icons/ten.png'),
+      },
+    ],
+  },
+  shapes: {
+    key:   'shapes',
+    label: 'Shapes',
+    order: 2,
+    image: require('../../assets/concepts/category-images/Shapes.png'),
+    // Abstract, like numbers — the "photo" of a circle is just another drawing of
+    // a circle, and there is nothing to film. Both stages off.
+    hasVideo:     false,
+    hasPairMatch: false,
+    items: [
+      {
+        key:     'circle',
+        label:   'Circle',
+        labelSi: 'කවය',
+        icon: require('../../assets/concepts/categories/Shapes/Shapes_Icons/circle.png'),
+        real: require('../../assets/concepts/categories/Shapes/Shapes_Icons/circle.png'),
+      },
+      {
+        key:     'square',
+        label:   'Square',
+        labelSi: 'චතුරශ්‍රය',
+        icon: require('../../assets/concepts/categories/Shapes/Shapes_Icons/square.png'),
+        real: require('../../assets/concepts/categories/Shapes/Shapes_Icons/square.png'),
+      },
+      {
+        key:     'rectangle',
+        label:   'Rectangle',
+        labelSi: 'සෘජුකෝණාස්‍රය',
+        icon: require('../../assets/concepts/categories/Shapes/Shapes_Icons/rectangle.png'),
+        real: require('../../assets/concepts/categories/Shapes/Shapes_Icons/rectangle.png'),
+      },
+      {
+        key:     'triangle',
+        label:   'Triangle',
+        labelSi: 'ත්‍රිකෝණය',
+        icon: require('../../assets/concepts/categories/Shapes/Shapes_Icons/triangle.png'),
+        real: require('../../assets/concepts/categories/Shapes/Shapes_Icons/triangle.png'),
+      },
+    ],
+  },
+  colors: {
+    key:   'colors',
+    label: 'Colours',
+    order: 1,
+    image: require('../../assets/concepts/category-images/Colors.png'),
+    // A colour is a property, not an object: matching a red photo to a red
+    // drawing tests nothing, and a clip of "red" has no subject. Both stages off.
+    hasVideo:     false,
+    hasPairMatch: false,
+    items: [
+      {
+        key:   'red',
+        label: 'Red',
+        labelSi: 'රතු',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/red.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/red.png'),
+      },
+      {
+        key:   'blue',
+        label: 'Blue',
+        labelSi: 'නිල්',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/blue.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/blue.png'),
+      },
+      {
+        key:   'green',
+        label: 'Green',
+        labelSi: 'කොළ',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/green.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/green.png'),
+      },
+      {
+        key:   'yellow',
+        label: 'Yellow',
+        labelSi: 'කහ',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/yellow.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/yellow.png'),
+      },
+      {
+        key:   'orange',
+        label: 'Orange',
+        labelSi: 'තැඹිලි',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/orange.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/orange.png'),
+      },
+      {
+        key:   'pink',
+        label: 'Pink',
+        labelSi: 'රෝස',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/pink.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/pink.png'),
+      },
+      {
+        key:   'purple',
+        label: 'Purple',
+        labelSi: 'දම්',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/purple.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/purple.png'),
+      },
+      {
+        key:   'brown',
+        label: 'Brown',
+        labelSi: 'දුඹුරු',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/brown.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/brown.png'),
+      },
+      {
+        key:   'black',
+        label: 'Black',
+        labelSi: 'කළු',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/black.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/black.png'),
+      },
+      {
+        key:   'white',
+        label: 'White',
+        labelSi: 'සුදු',
+        icon: require('../../assets/concepts/categories/Colors/Colors_Icons/white.png'),
+        real: require('../../assets/concepts/categories/Colors/Colors_Icons/white.png'),
+      },
+    ],
+  },
+  household: {
+    key:   'household',
+    label: 'Household Items',
+    order: 5,
+    image: require('../../assets/concepts/category-images/Household Items.png'),
+    items: [
+      {
+        key:        'bed',
+        label:      'Bed',
+        labelSi:    'ඇඳ',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/bed.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Bed/Bed_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Bed/Bed_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Bed.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Bed/Bed_Coloring.png'),
+      },
+      {
+        key:        'brush',
+        label:      'Brush',
+        labelSi:    'බුරුසුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/brush.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Brush/Brush_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Brush/Brush_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Brush.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Brush/Brush_Coloring.png'),
+      },
+      {
+        key:        'comb',
+        label:      'Comb',
+        labelSi:    'පනාව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/comb.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Comb/Comb_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Comb/Comb_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Comb.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Comb/Comb_Coloring.png'),
+      },
+      {
+        key:        'cup',
+        label:      'Cup',
+        labelSi:    'කෝප්පය',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/cup.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Cup/Cup_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Cup/Cup_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Cup.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Cup/Cup_Coloring.png'),
+      },
+      {
+        key:        'fork',
+        label:      'Fork',
+        labelSi:    'ගෑරප්පුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/fork.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Fork/Fork_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Fork/Fork_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Fork.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Fork/Fork_Coloring.png'),
+      },
+      {
+        key:        'glass',
+        label:      'Glass',
+        labelSi:    'වීදුරුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/glass.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Glass/Glass_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Glass/Glass_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Glass.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Glass/Glass_Coloring.png'),
+      },
+      {
+        key:        'knife',
+        label:      'Knife',
+        labelSi:    'පිහිය',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/knife.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Knife/Knife_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Knife/Knife_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Knife.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Knife/Knife_Coloring.png'),
+      },
+      {
+        key:        'mug',
+        label:      'Mug',
+        labelSi:    'ජෝගුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/mug.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Mug/Mug_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Mug/Mug_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Mug.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Mug/Mug_Coloring.png'),
+      },
+      {
+        key:        'pillows',
+        label:      'Pillows',
+        labelSi:    'කොට්ටය',
+        plural:     true,
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/pillows.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Pillow/Pillows_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Pillow/Pillows_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Pillows.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Pillow/Pillows_Coloring.png'),
+      },
+      {
+        key:        'plate',
+        label:      'Plate',
+        labelSi:    'පිඟාන',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/plate.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Plate/Plate_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Plate/Plate_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Plate.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Plate/Plate_Coloring.png'),
+      },
+      {
+        key:        'soap',
+        label:      'Soap',
+        labelSi:    'සබන්',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/soap.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Soap/Soap_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Soap/Soap_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Soap.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Soap/Soap_Coloring.png'),
+      },
+      {
+        key:        'spoon',
+        label:      'Spoon',
+        labelSi:    'හැන්ද',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/spoon.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Spoon/Spoon_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Spoon/Spoon_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Spoon.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Spoon/Spoon_Coloring.png'),
+      },
+      {
+        key:        'toothbrush',
+        label:      'Toothbrush',
+        labelSi:    'දත් බුරුසුව',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/toothbrush.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Toothbrush/Toothbrush_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Toothbrush/Toothbrush_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Toothbrush.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Toothbrush/Toothbrush_Coloring.png'),
+      },
+      {
+        key:        'toothpaste',
+        label:      'Toothpaste',
+        labelSi:    'දන්තාලේප',
+        icon:       require('../../assets/concepts/categories/Household Items/Household_Icons/toothpaste.png'),
+        real:       require('../../assets/concepts/categories/Household Items/Toothpaste/Toothpaste_Real.png'),
+        animated:   require('../../assets/concepts/categories/Household Items/Toothpaste/Toothpaste_Animated.png'),
+        tier3Video: require('../../assets/concepts/Tier3_videos/Household Items/Toothpaste.mp4'),
+        coloring:   require('../../assets/concepts/categories/Household Items/Toothpaste/Toothpaste_Coloring.png'),
+      },
+    ],
+  },
+  classroom: {
+    key:   'classroom',
+    label: 'Classroom Objects',
+    order: 4,
+    image: require('../../assets/concepts/category-images/Classroom Objects.png'),
+    items: [
+      {
+        key:      'bag',
+        label:    'Bag',
+        labelSi:  'බෑගය',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/bag.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Bag/Bag_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Bag/Bag_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Bag/Bag_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Bag/Bag_Coloring.png'),
+      },
+      {
+        key:      'blackboard',
+        label:    'Blackboard',
+        labelSi:  'කළු ලෑල්ල',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/blackboard.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Blackboard/Blackboard_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Blackboard/Blackboard_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Blackboard/Blackboard_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Blackboard/Blackboard_Coloring.png'),
+      },
+      {
+        key:      'book',
+        label:    'Book',
+        labelSi:  'පොත',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/book.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Book/Book_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Book/Book_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Book/Book_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Book/Book_Coloring.png'),
+      },
+      {
+        key:      'bottle',
+        label:    'Bottle',
+        labelSi:  'බෝතලය',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/bottle.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Bottle/Bottle_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Bottle/Bottle_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Bottle/Bottle_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Bottle/Bottle_Coloring.png'),
+      },
+      {
+        key:      'chair',
+        label:    'Chair',
+        labelSi:  'පුටුව',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/chair.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Chair/Chair_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Chair/Chair__Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Chair/Chair_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Chair/Chair__Coloring.png'),
+      },
+      {
+        key:      'desk',
+        label:    'Desk',
+        labelSi:  'මේසය',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/desk.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Desk/Desk_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Desk/Desk_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Desk/Desk_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Desk/Desk_Coloring.png'),
+      },
+      {
+        key:      'dustbin',
+        label:    'Dustbin',
+        labelSi:  'කුණු බඳුන',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/dustbin.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Dustbin/Dustbin_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Dustbin/Dustbin_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Dustbin/Dustbin_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Dustbin/Dustbin_Coloring.png'),
+      },
+      {
+        key:      'eraser',
+        label:    'Eraser',
+        labelSi:  'මකනය',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/eraser.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Eraser/Eraser_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Eraser/Eraser_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Eraser/Eraser_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Eraser/Eraser_Coloring.png'),
+      },
+      {
+        key:      'pencil',
+        label:    'Pencil',
+        labelSi:  'පැන්සල',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/pencil.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Pencil/Pencil_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Pencil/Pencil_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Pencil/Pencil_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Pencil/Pencil_Coloring.png'),
+      },
+      {
+        key:      'ruler',
+        label:    'Ruler',
+        labelSi:  'රූලරය',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/ruler.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Ruler/Ruler_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Ruler/Ruler_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Ruler/Ruler_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Ruler/Ruler_Coloring.png'),
+      },
+      {
+        key:      'table',
+        label:    'Table',
+        labelSi:  'මේසය',
+        icon:     require('../../assets/concepts/categories/Classroom Objects/Classroom_Icons/table.png'),
+        real:     require('../../assets/concepts/categories/Classroom Objects/Table/Table_Real.png'),
+        io:       require('../../assets/concepts/categories/Classroom Objects/Table/Table_Coloring.png'),
+        animated: require('../../assets/concepts/categories/Classroom Objects/Table/Table_Animated.png'),
+        coloring: require('../../assets/concepts/categories/Classroom Objects/Table/Table_Coloring.png'),
+      },
+    ],
+  },
+
+  // ── Not yet authored ───────────────────────────────────────────────────────
+  // Tile artwork exists, but there are no per-concept assets under
+  // assets/concepts/categories/ and no sequence in the backend catalogue yet.
+  // They open like any other category — the concept list is simply empty until
+  // the items below are filled in.
+  nature: {
+    key:   'nature',
+    label: 'Natural Environment',
+    order: 7,
+    image: require('../../assets/concepts/category-images/Nature.png'),
+    items: [],
+  },
+  family: {
+    key:   'family',
+    label: 'Family Members',
+    order: 8,
+    image: require('../../assets/concepts/category-images/Family.png'),
+    items: [],
+  },
+};
+
+/**
+ * Categories in display order (easiest first), for the category grid.
+ * Deriving this from the catalogue is what stops the grid drifting out of sync
+ * with the data behind it.
+ */
+export function getOrderedCategories() {
+  return Object.values(CONCEPT_CATEGORIES).sort((a, b) => a.order - b.order);
+}
+
+const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
+
+export function getConceptPhrase(concept) {
+  if (!concept) return '';
+  const name = concept.label.toLowerCase();
+  if (concept.plural) return `These are ${name}`;
+  const article = VOWELS.has(name[0]) ? 'an' : 'a';
+  return `This is ${article} ${name}`;
+}
+
+export function getConceptQuestion(concept) {
+  if (!concept) return '';
+  const name = concept.label.toLowerCase();
+  if (concept.plural) return `Can you find ${name} here?`;
+  const article = VOWELS.has(name[0]) ? 'an' : 'a';
+  return `Can you find ${article} ${name} here?`;
+}
+
+// Sinhala has no articles — structure is the same for singular and plural
+export function getConceptQuestionSi(concept) {
+  if (!concept?.labelSi) return '';
+  return `ඔයාට ${concept.labelSi} හොයාගන්න පුළුවන්ද?`;
+}
+
+// Tier 2 asks the child to name the item rather than find it, so getConceptQuestionSi
+// ("can you find …") doesn't fit. Concept-independent, hence a plain constant.
+export const NAMING_QUESTION_EN = 'What is this called?';
+export const NAMING_QUESTION_SI = 'මේකට කියන්නේ මොකක්ද?';
+
+/**
+ * Whether a category runs the tier 3 video stage.
+ *
+ * Opt-out rather than opt-in: an unset category keeps every stage, so adding one
+ * needs no change here, and only a category that deliberately drops a stage says
+ * so. A category with this false ends its ladder at tier 2 — callers must not
+ * wait on tier3_status for it, because nothing will ever set it.
+ */
+export function categoryHasVideo(categoryKey) {
+  return CONCEPT_CATEGORIES[categoryKey]?.hasVideo !== false;
+}
+
+/**
+ * Whether the Photo & Picture Match activity is offered for a category.
+ *
+ * Separate from the memory game, which pairs the same two images: that one is a
+ * recall exercise where the pictures are tokens, so it still works where the
+ * photo/drawing distinction carries no meaning.
+ */
+export function categoryHasPairMatch(categoryKey) {
+  return CONCEPT_CATEGORIES[categoryKey]?.hasPairMatch !== false;
+}
+
+export function getConceptItem(categoryKey, conceptKey) {
+  const cat = CONCEPT_CATEGORIES[categoryKey];
+  if (!cat) return null;
+  return cat.items.find((it) => it.key === conceptKey) || null;
+}
+
+export function getConceptItemsForCategory(categoryKey) {
+  return CONCEPT_CATEGORIES[categoryKey]?.items ?? [];
+}

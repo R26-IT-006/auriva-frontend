@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   TextInput,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ButtonFeedback } from './ButtonFeedback';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.secondary,
     marginBottom: Layout.spacing.xs,
     letterSpacing: 0.2,

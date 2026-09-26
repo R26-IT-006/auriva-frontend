@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   Modal,
   View,
@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ButtonFeedback } from './ButtonFeedback';
 import { Layout } from '../../constants/layout';
 
 const K = {
@@ -55,6 +56,7 @@ export function ConfirmDialog({
       transparent
       animationType="fade"
       statusBarTranslucent
+      supportedOrientations={["portrait", "landscape", "landscape-left", "landscape-right"]}
       onRequestClose={onCancel}
     >
       <TouchableWithoutFeedback onPress={onCancel}>
@@ -83,13 +85,13 @@ export function ConfirmDialog({
                   <Text style={styles.btnCancelText}>{cancelLabel}</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
+                <ButtonFeedback
                   style={[styles.btn, styles.btnConfirm, { backgroundColor: accentColor }]}
                   onPress={onConfirm}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.btnConfirmText}>{confirmLabel}</Text>
-                </TouchableOpacity>
+                </ButtonFeedback>
               </View>
 
             </View>
@@ -135,7 +137,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'DMSans_800ExtraBold',
     color: K.text,
     textAlign: 'center',
   },
@@ -166,7 +168,7 @@ const styles = StyleSheet.create({
   btnConfirmText: {
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.3,
   },
   btnCancel: {
@@ -175,7 +177,7 @@ const styles = StyleSheet.create({
   btnCancelText: {
     color: K.text,
     fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'DMSans_600SemiBold',
     letterSpacing: 0.3,
   },
 });

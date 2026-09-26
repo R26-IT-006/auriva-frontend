@@ -1,0 +1,29 @@
+Starting project at C:\Users\rlilu\Desktop\auriva\auriva-frontend
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Android .\index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android .\index.js ░░░░░░░░░░░░░░░░  1.0% (1/1)
+Android .\index.js ░░░░░░░░░░░░░░░░  5.0% ( 11/133)
+Android .\index.js ▓▓░░░░░░░░░░░░░░ 14.1% ( 93/248)
+Android .\index.js ▓▓▓▓░░░░░░░░░░░░ 28.3% (216/406)
+Android .\index.js ▓▓▓▓▓░░░░░░░░░░░ 34.6% (314/541)
+Android .\index.js ▓▓▓▓▓▓░░░░░░░░░░ 38.7% (393/636)
+Android .\index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 60.8% (566/753)
+Android .\index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 60.8% (612/870)
+Android .\index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 61.5% (756/977)
+Android .\index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 61.5% ( 832/1367)
+Android .\index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 61.5% ( 994/1513)
+Android .\index.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 75.7% (1423/1730)
+Android .\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 84.6% (1762/1933)
+Android .\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.3% (1937/2044)
+Android .\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 93.8% (2055/2123)
+Android .\index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 97.4% (2158/2187)
+Android Bundled 73995ms index.js (2231 modules)
+ WARN  [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+ WARN  Require cycle: src/store/authStore.js -> src/api/auth.js -> src/api/client.js -> src/store/authStore.js
+
+Require cycles are allowed, but can result in uninitialized values. Consider refactoring to remove the need for a cycle.
+ LOG  [LetterWriting] CANVAS_W = 718.6470588235295  CANVAS_H = 388  ASPECT = 1.852  COL_L = 567
+ LOG  ⚠️ [33m[expo-av]: Video component from `expo-av` is deprecated in favor of `expo-video`. See the documentation at https://docs.expo.dev/versions/latest/sdk/video/ for the new API reference.

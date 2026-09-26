@@ -1,0 +1,9 @@
+{
+  "ignore_dirs": [
+    "android",
+    "ios",
+    ".git",
+    ".expo",
+    "node_modules/.cache"
+  ]
+}

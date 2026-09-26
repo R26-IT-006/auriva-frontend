@@ -1,5 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { ButtonFeedback } from './ButtonFeedback';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -58,11 +59,11 @@ export function Breadcrumb({ crumbs = [], title, right }) {
                     {crumb.label}
                   </Text>
                 ) : (
-                  <TouchableOpacity onPress={crumb.onPress} activeOpacity={0.7}>
+                  <ButtonFeedback onPress={crumb.onPress} activeOpacity={0.7}>
                     <Text style={[styles.crumbText, styles.crumbTextLink]} numberOfLines={1}>
                       {crumb.label}
                     </Text>
-                  </TouchableOpacity>
+                  </ButtonFeedback>
                 )}
               </View>
             );
@@ -119,16 +120,16 @@ const styles = StyleSheet.create({
   crumbText: {
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
-    fontWeight: Layout.fontWeight.medium,
+    fontFamily: 'DMSans_600SemiBold',
     flexShrink: 1,
   },
   crumbTextLink: {
     color: K.purple,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'DMSans_600SemiBold',
   },
   crumbTextActive: {
     color: Colors.text.primary,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'DMSans_700Bold',
   },
   right: {
     marginLeft: Layout.spacing.sm,
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: Layout.fontWeight.extrabold,
+    fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
     marginTop: 4,
   },

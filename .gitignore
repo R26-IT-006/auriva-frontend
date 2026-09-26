@@ -2,9 +2,15 @@ node_modules/
 .expo/
 dist/
 web-build/
+android/
 .env
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+# macOS finder metadata
+.DS_Store
+**/.DS_Store
+
+.claude/

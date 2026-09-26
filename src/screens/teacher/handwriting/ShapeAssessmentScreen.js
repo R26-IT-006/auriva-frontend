@@ -1,0 +1,805 @@
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  PanResponder,
+  Animated,
+  AccessibilityInfo,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Line, Circle, Polyline, Path, G, Defs, Marker } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
+import client from '../../../api/client';
+import { ENDPOINTS } from '../../../constants/api';
+import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../../constants/childInstructions';
+// computeDTW / normalizeStrokesForDTW / normalizePointsForDTW previously
+// imported here directly for the zigzag/curve_wave-only DTW branch below;
+// that branch is now the shape-agnostic computeInvariantDtwDistance import
+// below, which delegates to dtw.js/dtwNormalization.js internally (see
+// unifiedShapeScoreMirror.js) — no longer imported directly in this file.
+import {
+  computeShapeTemplate, computeInvariantDtwDistance, computeUnifiedShapeScore,
+} from '../../../utils/unifiedShapeScoreMirror';
+// The shared shape-assessment presentation - this screen and the
+// demonstration render the SAME component, in different modes.
+import ShapeAssessmentStage from '../../../components/handwriting/ShapeAssessmentStage';
+import {
+  CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CX, CANVAS_CY, POINTER_SIZE, POINTER_HALF,
+  SHAPE_STARTS, SHAPE_SCREEN_WIDTH, SHAPE_SCREEN_HEIGHT,
+} from '../../../constants/shapeCanvasLayout';
+import {
+  calculatePauseMetrics,
+  calculateAttemptDurationFromAbsoluteTime, calculateAttemptAverageSpeed, calculateAttemptPauseMetrics,
+} from '../../../utils/trajectoryFeatures';
+import { buildDtwDebugExport } from '../../../utils/dtwDebugExport';
+import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../../utils/touchPointSanitize';
+import { DATA_COLLECTION_PROTOCOL } from '../../../constants/dataCollectionProtocol';
+import {
+  getDeviceMetadata, PROTOCOL_VERSION, FEATURE_VERSION, TEMPLATE_VERSION, NORMALIZATION_VERSION,
+} from '../../../utils/collectionSession';
+import { useLockLandscape } from '../../../utils/useOrientationLock';
+import { useInstructionAudio } from '../../../utils/useInstructionAudio';
+import { stopInstructionAudio } from '../../../utils/handwritingInstructionAudio';
+import { hasCanvasDrawing } from '../../../utils/canvasDrawingState';
+import AttemptAvatarFeedback from './AttemptAvatarFeedback';
+import { actionRowMinHeight } from '../../../constants/writingActionRow';
+
+// The canvas view's own borderWidth. measure() reports the BORDER box while
+// the Svg starts inside the border, so this removes that systematic offset.
+// Kept next to the import so one file has one value.
+const CANVAS_BORDER_WIDTH = 2;
+
+// Canvas geometry now lives in ONE place, imported above and shared with the
+// "watch first" demonstration, so a demo can never render a shape at a
+// different size. Values unchanged - see constants/shapeCanvasLayout.js.
+//
+// The screen dimensions keep their original local names because this file's
+// own decorative styles (the background bubbles) size themselves from them.
+// Aliased rather than re-measured: a second Dimensions.get('window') call
+// would be a second source of truth for the same number.
+const SCREEN_WIDTH  = SHAPE_SCREEN_WIDTH;
+const SCREEN_HEIGHT = SHAPE_SCREEN_HEIGHT;
+
+// TEMPORARY RESEARCH/DEBUG INSTRUMENTATION — remove after canvas-dimension
+// investigation is done. No formula/layout/scoring/DB-write change.
+console.log(`WINDOW_WIDTH=${SCREEN_WIDTH}`);
+console.log(`WINDOW_HEIGHT=${SCREEN_HEIGHT}`);
+console.log(`CANVAS_WIDTH=${CANVAS_WIDTH}`);
+console.log(`CANVAS_HEIGHT=${CANVAS_HEIGHT}`);
+
+const N_POINTS     = 100;
+const ASSESSMENT_FEEDBACK_MS = 1600;
+
+// Shape identity, order and progress labels remain shape-specific. All six
+// steps share the canonical bilingual instruction and recording.
+const ASSESSMENT_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.FOLLOW_PATH];
+
+const SHAPES = [
+  {
+    id: 'horizontal_line',
+    label: 'Draw a straight line',
+    pageLabel: 'Assessment 1 of 6',
+  },
+  {
+    id: 'vertical_line',
+    label: 'Draw a straight line down',
+    pageLabel: 'Assessment 2 of 6',
+  },
+  {
+    id: 'full_circle',
+    label: 'Draw a full circle',
+    pageLabel: 'Assessment 3 of 6',
+  },
+  {
+    id: 'half_circle',
+    label: 'Draw a half circle',
+    pageLabel: 'Assessment 4 of 6',
+  },
+  {
+    id: 'zigzag',
+    label: 'Draw the zigzag pattern',
+    pageLabel: 'Assessment 5 of 6',
+  },
+  {
+    id: 'curve_wave',
+    label: 'Draw the wave',
+    pageLabel: 'Assessment 6 of 6',
+  },
+];
+
+// ─── Animated pointer path sampling ───────────────────────────────────────────
+// computePathPoints moved to utils/unifiedShapeScoreMirror.js as
+// computeShapeTemplate(shapeId, canvasWidth, canvasHeight) — same geometry,
+// now also the template the unified motor score is computed against, so the
+// pointer guide and the score can never drift apart. Local wrapper below
+// keeps every existing call site in this file unchanged.
+function computePathPoints(shapeId) {
+  return computeShapeTemplate(shapeId, CANVAS_WIDTH, CANVAS_HEIGHT);
+}
+
+// ─── Feature calculation ───────────────────────────────────────────────────────
+
+// Duration-correction pass: attempt_duration_ms/attempt_avg_speed/
+// attempt_pause_frequency/attempt_pause_duration_ratio below are ADDITIVE
+// new fields, derived from tAbs via utils/trajectoryFeatures.js — see that
+// module's doc comment for why the legacy duration_ms above (still
+// returned completely unchanged) can undercount a multi-stroke attempt.
+// Every field already returned above this comment is untouched.
+function calculateFeatures(paths, shapeId) {
+  const allPoints = paths.flat();
+  if (allPoints.length < 2) {
+    return {
+      duration_ms: 0, total_distance: 0, avg_speed: 0, smoothness: 0, pause_count: 0, accuracy: null, dtw_distance: null,
+      motor_score: null, dtw_score: null, smoothness_score: null,
+      attempt_duration_ms: null, attempt_avg_speed: null, attempt_pause_frequency: null, attempt_pause_duration_ratio: null,
+    };
+  }
+
+  const duration_ms = allPoints[allPoints.length - 1].t;
+
+  let total_distance = 0;
+  for (let i = 1; i < allPoints.length; i++) {
+    const dx = allPoints[i].x - allPoints[i - 1].x;
+    const dy = allPoints[i].y - allPoints[i - 1].y;
+    total_distance += Math.sqrt(dx * dx + dy * dy);
+  }
+
+  const avg_speed = duration_ms > 0 ? total_distance / duration_ms : 0;
+
+  let smoothness = 0;
+  if (allPoints.length >= 3) {
+    const changes = [];
+    for (let i = 1; i < allPoints.length - 1; i++) {
+      const v1x = allPoints[i].x     - allPoints[i - 1].x;
+      const v1y = allPoints[i].y     - allPoints[i - 1].y;
+      const v2x = allPoints[i + 1].x - allPoints[i].x;
+      const v2y = allPoints[i + 1].y - allPoints[i].y;
+      const l1  = Math.sqrt(v1x * v1x + v1y * v1y);
+      const l2  = Math.sqrt(v2x * v2x + v2y * v2y);
+      if (l1 > 0 && l2 > 0) {
+        const dot = (v1x * v2x + v1y * v2y) / (l1 * l2);
+        changes.push(Math.acos(Math.max(-1, Math.min(1, dot))));
+      }
+    }
+    if (changes.length > 0) smoothness = changes.reduce((a, b) => a + b, 0) / changes.length;
+  }
+
+  let pause_count = 0;
+  for (let i = 1; i < allPoints.length; i++) {
+    if (allPoints[i].t - allPoints[i - 1].t > 300) pause_count++;
+  }
+
+  const cx = CANVAS_CX;
+  const cy = CANVAS_CY;
+  // accuracy: diagnostic-only from here on (see unified motor score below).
+  // Kept exactly as before, still computed only for the 4 line/circle
+  // shapes — it no longer feeds any score, but is cheap and still useful
+  // for debugging/inspection.
+  let accuracy = null;
+
+  if (shapeId === 'horizontal_line') {
+    accuracy = allPoints.reduce((s, p) => s + Math.abs(p.y - cy), 0) / allPoints.length;
+  } else if (shapeId === 'vertical_line') {
+    accuracy = allPoints.reduce((s, p) => s + Math.abs(p.x - cx), 0) / allPoints.length;
+  } else if (shapeId === 'full_circle') {
+    const r = 120;
+    accuracy = allPoints.reduce((s, p) => {
+      return s + Math.abs(Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2) - r);
+    }, 0) / allPoints.length;
+  } else if (shapeId === 'half_circle') {
+    const r = 150;
+    accuracy = allPoints.reduce((s, p) => {
+      return s + Math.abs(Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2) - r);
+    }, 0) / allPoints.length;
+  }
+
+  // dtw_distance: now computed for ALL SIX shapes (previously zigzag/
+  // curve_wave only), via the direction- and (full_circle only)
+  // start-point-invariant DTW in utils/unifiedShapeScoreMirror.js. This is
+  // what motor_score below is actually derived from; accuracy above no
+  // longer feeds it.
+  const dtw_distance = computeInvariantDtwDistance(allPoints, shapeId, CANVAS_WIDTH, CANVAS_HEIGHT);
+  const { motor_score, dtw_score, smoothness_score } = computeUnifiedShapeScore(dtw_distance, smoothness);
+
+  // ML-safe duration pass — reuses the canonical pause metrics purely to get
+  // total_pause_duration_ms (this shape function's own `pause_count` above,
+  // computed inline, is left completely untouched and is what's returned).
+  const attemptDurationMs = calculateAttemptDurationFromAbsoluteTime(paths);
+  const { pause_count: canonicalPauseCount, total_pause_duration_ms } = calculatePauseMetrics(paths);
+  const attemptAvgSpeed = calculateAttemptAverageSpeed(total_distance, attemptDurationMs);
+  const { attempt_pause_frequency, attempt_pause_duration_ratio } =
+    calculateAttemptPauseMetrics(canonicalPauseCount, total_pause_duration_ms, attemptDurationMs);
+
+  return {
+    duration_ms, total_distance, avg_speed, smoothness, pause_count, accuracy, dtw_distance,
+    motor_score, dtw_score, smoothness_score,
+    attempt_duration_ms: attemptDurationMs,
+    attempt_avg_speed: attemptAvgSpeed,
+    attempt_pause_frequency,
+    attempt_pause_duration_ratio,
+  };
+}
+
+// ─── Guide shape SVG ──────────────────────────────────────────────────────────
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
+export default function ShapeAssessmentScreen({ route, navigation }) {
+  // The handwriting activities are designed for a tablet held in landscape:
+  // the canvas, tracer and avatar feedback all assume a wide viewport. Locked
+  // on focus, released on blur — see utils/useOrientationLock.js. The teacher
+  // progress report is the one screen that locks portrait instead.
+  useLockLandscape();
+
+  const { student, theme, collectionMode = false, collectionSessionId = null } = route.params;
+
+  const [currentShapeIndex, setCurrentShapeIndex] = useState(0);
+  const [completedShapes,   setCompletedShapes]   = useState([]);
+  const [currentPath,       setCurrentPath]       = useState([]);
+  const [allPaths,          setAllPaths]          = useState([]);
+  // Clear follows the CANVAS, not the session: it appears with the
+  // child's first point and disappears again the moment the canvas is
+  // empty. Deliberately not `hasDrawn`, which gates the guide and the
+  // tracer and stays true after a clear.
+  const canClearCanvas = hasCanvasDrawing({ allPaths, currentPath });
+  const [showNext,          setShowNext]          = useState(false);
+  const [assessmentFeedback, setAssessmentFeedback] = useState(false);
+  const [reduceMotion,      setReduceMotion]      = useState(false);
+
+  const startTime            = useRef(null);
+  // Border-touch bug fix — see touchPointSanitize.js.
+  const canvasRef       = useRef(null);
+  const canvasOriginRef = useRef({ x: 0, y: 0 });
+  // ORIGIN — View.measure() reports this view's own pageX/pageY, the SAME
+  // space nativeEvent.pageX/pageY uses. measureInWindow() reports WINDOW
+  // space, which on Android excludes the system inset the touch includes;
+  // mixing the two left a constant vertical offset on Y and none on X.
+  const measureCanvasOrigin = useCallback(() => {
+    canvasRef.current?.measure?.((_x, _y, _w, _h, pageX, pageY) => {
+      if (Number.isFinite(pageX) && Number.isFinite(pageY)) {
+        canvasOriginRef.current = { x: pageX, y: pageY };
+      }
+    });
+  }, []);
+  const sessionStartTime     = useRef(Date.now());
+  const currentShapeIndexRef = useRef(0);
+  const allPathsRef          = useRef([]);
+  const completedShapesRef   = useRef([]);
+  const animValue            = useRef(new Animated.Value(0)).current;
+  const pulseAnim            = useRef(new Animated.Value(0)).current;
+  const bgAnim               = useRef(new Animated.Value(0)).current;
+  const pulseLoopRef         = useRef(null);
+  const strokeIdCounter      = useRef(0);  // ML: counts strokes within the current shape
+  const feedbackActiveRef    = useRef(false);
+  const advancingRef         = useRef(false);
+
+  const currentShape = SHAPES[currentShapeIndex];
+  const displayedShape = useMemo(() => ({
+    ...currentShape,
+    instruction: ASSESSMENT_INSTRUCTION.en,
+    instructionSi: ASSESSMENT_INSTRUCTION.si,
+  }), [currentShape]);
+  const replayInstruction = useInstructionAudio(INSTRUCTION_KEYS.FOLLOW_PATH, {
+    autoPlay: true,
+    autoPlayToken: currentShapeIndex,
+    delayMs: 300,
+  });
+
+  const pulseScale = useMemo(
+    () => pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }),
+    [pulseAnim],
+  );
+  const pulseOpacity = useMemo(
+    () => pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.75, 0] }),
+    [pulseAnim],
+  );
+  const bgMoveUp = useMemo(
+    () => bgAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -16] }),
+    [bgAnim],
+  );
+  const bgMoveRight = useMemo(
+    () => bgAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 14] }),
+    [bgAnim],
+  );
+  const bgMoveLeft = useMemo(
+    () => bgAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] }),
+    [bgAnim],
+  );
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      bgAnim.setValue(0);
+      return undefined;
+    }
+
+    const bgLoop = Animated.loop(Animated.sequence([
+      Animated.timing(bgAnim, {
+        toValue: 1,
+        duration: 5200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bgAnim, {
+        toValue: 0,
+        duration: 5200,
+        useNativeDriver: true,
+      }),
+    ]));
+
+    bgLoop.start();
+
+    return () => {
+      bgLoop.stop();
+    };
+  }, [bgAnim, reduceMotion]);
+
+  // Precompute interpolation ranges for animated pointer
+  const pathPoints = computePathPoints(currentShape.id);
+  // Same two-keyframe minimum as PreWritingActivityScreen: computeShapeTemplate
+  // returns [] for a shape id it does not recognise, which would divide by -1
+  // here and hand interpolate() an empty range.
+  const hasPointerPath = pathPoints.length > 1;
+  const inputRange = hasPointerPath
+    ? pathPoints.map((_, i) => i / (pathPoints.length - 1))
+    : [0, 1];
+  const pointerLeft = animValue.interpolate({
+    inputRange,
+    outputRange: hasPointerPath ? pathPoints.map(p => p.x - POINTER_HALF) : [0, 0],
+  });
+  const pointerTop = animValue.interpolate({
+    inputRange,
+    outputRange: hasPointerPath ? pathPoints.map(p => p.y - POINTER_HALF) : [0, 0],
+  });
+
+  // Restart the visual guide on shape change. FOLLOW_PATH audio autoplay and
+  // lifecycle cleanup are handled by the shared fixed-instruction hook above.
+  useEffect(() => {
+    animValue.setValue(0);
+    pulseAnim.setValue(0);
+
+    // Slowed down (was 2500ms) + a short rest at the finished shape before
+    // looping back to the start, so the demo reads as a calm, predictable
+    // "trace, then pause" rhythm rather than a fast, continuous loop —
+    // easier for an ASD child to visually follow and anticipate.
+    const pointerLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animValue, {
+          toValue: 1,
+          duration: 6000,
+          useNativeDriver: false,
+        }),
+        Animated.delay(700),
+      ])
+    );
+    pointerLoop.start();
+
+    const pulseLoop = Animated.loop(
+      Animated.timing(pulseAnim, {
+        toValue: 1,
+        duration: 1100,
+        useNativeDriver: true,
+      })
+    );
+    pulseLoopRef.current = pulseLoop;
+    pulseLoop.start();
+
+    return () => {
+      pointerLoop.stop();
+      pulseLoop.stop();
+    };
+  }, [currentShapeIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── PanResponder ────────────────────────────────────────────────────────────
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !feedbackActiveRef.current,
+      onMoveShouldSetPanResponder:  () => !feedbackActiveRef.current,
+
+      onPanResponderGrant: (evt) => {
+        if (feedbackActiveRef.current) return;
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
+        const now = Date.now();
+        startTime.current = now;
+        strokeIdCounter.current += 1;  // ML: new stroke starts
+        setCurrentPath([{ x: locationX, y: locationY, t: 0, tAbs: now, stroke_id: strokeIdCounter.current }]);
+      },
+
+      onPanResponderMove: (evt) => {
+        const { x: locationX, y: locationY } = mapTouchToCanvas({
+          pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
+          origin: canvasOriginRef.current,
+          logical: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+          inset: CANVAS_BORDER_WIDTH,
+        });
+        const now = Date.now();
+        setCurrentPath(prev => {
+          const last = prev[prev.length - 1];
+          // Border-touch bug fix — see touchPointSanitize.js.
+          if (last && isImplausibleJump(last, { x: locationX, y: locationY }, CANVAS_WIDTH, CANVAS_HEIGHT)) return prev;
+          return [...prev, { x: locationX, y: locationY, t: now - startTime.current, tAbs: now, stroke_id: strokeIdCounter.current }];
+        });
+      },
+
+      onPanResponderRelease: () => {
+        setCurrentPath(prev => {
+          if (prev.length > 2) {
+            setAllPaths(paths => {
+              const updated = [...paths, prev];
+              allPathsRef.current = updated;
+              return updated;
+            });
+            setShowNext(true);
+          }
+          return [];
+        });
+      },
+    })
+  ).current;
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
+  const submitAssessment = useCallback(async (assessmentData) => {
+    try {
+      const response = await client.post(ENDPOINTS.HANDWRITING_ASSESSMENT, {
+        student_id:      student.sid,
+        session_start:   sessionStartTime.current,
+        session_end:     Date.now(),
+        collection_mode: collectionMode,
+        collection_session_id: collectionSessionId,
+        protocol_version:      PROTOCOL_VERSION,
+        feature_version:       FEATURE_VERSION,
+        template_version:      TEMPLATE_VERSION,
+        normalization_version: NORMALIZATION_VERSION,
+        ...getDeviceMetadata(),
+        shapes: assessmentData.map(shape => ({
+          shape_id:     shape.shapeId,
+          stroke_count: shape.strokes.length,
+          task_type:    'shape_tracing',         // ML: activity type label
+          canvas_width:  CANVAS_WIDTH,           // ML: needed to normalize x coordinates
+          canvas_height: CANVAS_HEIGHT,          // ML: needed to normalize y coordinates
+          strokes: shape.strokes.map((pts, i) => ({  // ML: structured stroke objects
+            stroke_id: i + 1,
+            points:    pts,                      // each point: {x, y, t, tAbs, stroke_id}
+          })),
+          features:     shape.features,
+        })),
+      });
+      return response.data?.id ?? null;
+    } catch (err) {
+      console.error('Failed to submit assessment data:', err);
+      return null;
+    }
+  }, [student.sid, collectionMode, collectionSessionId]);
+
+  const handleClear = useCallback(() => {
+    if (feedbackActiveRef.current) return;
+    setAllPaths([]);
+    allPathsRef.current = [];
+    setCurrentPath([]);
+    setShowNext(false);
+    strokeIdCounter.current = 0;  // ML: reset stroke counter when child clears and restarts
+  }, []);
+
+  const handleNext = useCallback(async () => {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
+    stopInstructionAudio();
+    const idx = currentShapeIndexRef.current;
+    const shapeId = SHAPES[idx].id;
+    const shapeData = {
+      shapeId,
+      strokes:   allPathsRef.current,
+      features:  calculateFeatures(allPathsRef.current, shapeId),
+      timestamp: Date.now(),
+    };
+
+    if (__DEV__ && (shapeId === 'zigzag' || shapeId === 'curve_wave')) {
+      // Developer-only export — full raw/normalized paths for offline
+      // inspection. Never sent to the backend, never used for scoring.
+      // JSON.stringify (not the raw object) — console.log's default
+      // object-inspection depth truncates normalized_child_path (an array
+      // of strokes of points, one level deeper than
+      // normalized_template_path) to "[Object]"; stringifying bypasses
+      // that depth limit entirely.
+      console.log('[DTW debug export]', JSON.stringify(buildDtwDebugExport({
+        childStrokes:   allPathsRef.current,
+        templatePoints: computePathPoints(shapeId),
+        dtwResult:      { normalizedDistance: shapeData.features.dtw_distance, strokeOrderMeta: null },
+        qualityScore:   null,
+      })));
+    }
+
+    // Assessment feedback is neutral and presentation-only. Feature
+    // extraction above is already complete; this overlay does not read or
+    // alter any score, threshold, baseline, or captured stroke.
+    feedbackActiveRef.current = true;
+    setAssessmentFeedback(true);
+    await new Promise(resolve => setTimeout(resolve, ASSESSMENT_FEEDBACK_MS));
+    setAssessmentFeedback(false);
+    feedbackActiveRef.current = false;
+
+    const updated = [...completedShapesRef.current, shapeData];
+    completedShapesRef.current = updated;
+    setCompletedShapes(updated);
+
+    if (idx < SHAPES.length - 1) {
+      currentShapeIndexRef.current = idx + 1;
+      setCurrentShapeIndex(idx + 1);
+      setAllPaths([]);
+      allPathsRef.current = [];
+      setCurrentPath([]);
+      setShowNext(false);
+      strokeIdCounter.current = 0;  // ML: reset stroke counter for the next shape
+      advancingRef.current = false;
+    } else {
+      const assessmentId = await submitAssessment(updated);
+      advancingRef.current = false;
+      if (collectionMode) {
+        navigation.navigate('LetterWriting', {
+          student,
+          theme,
+          caseType:       'lowercase',
+          letterSequence: DATA_COLLECTION_PROTOCOL.lowercase,
+          collectionMode: true,
+          collectionSessionId,
+        });
+      } else {
+        navigation.navigate('AssessmentComplete', {
+          student,
+          theme,
+          assessmentData: updated,
+          assessmentId,
+          collectionMode: false,
+        });
+      }
+    }
+  }, [navigation, student, theme, collectionMode, collectionSessionId, submitAssessment]);
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  const startDot = SHAPE_STARTS[currentShape.id];
+
+  return (
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.bgBubbleLarge,
+          {
+            backgroundColor: theme.button + '10',
+            transform: [{ translateY: bgMoveUp }],
+          },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.bgBubbleMedium,
+          {
+            backgroundColor: theme.button + '0C',
+            transform: [{ translateX: bgMoveRight }],
+          },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.bgBubbleSmall,
+          {
+            backgroundColor: theme.button + '0A',
+            transform: [{ translateY: bgMoveUp }, { translateX: bgMoveLeft }],
+          },
+        ]}
+      />
+      <SafeAreaView style={styles.safe}>
+
+        <View style={styles.container}>
+
+          {/* Instruction + drawing canvas, rendered by the SHARED
+              ShapeAssessmentStage so the "watch first" demonstration and this
+              real assessment are the same layout from the same file. */}
+          <ShapeAssessmentStage
+            mode="practice"
+            theme={theme}
+            shape={displayedShape}
+            startDot={startDot}
+            allPaths={allPaths}
+            currentPath={currentPath}
+            showPulse={!showNext}
+            pulseScale={pulseScale}
+            pulseOpacity={pulseOpacity}
+            pointerLeft={pointerLeft}
+            pointerTop={pointerTop}
+            onSpeak={replayInstruction}
+            canvasRef={canvasRef}
+            onCanvasLayout={measureCanvasOrigin}
+            panHandlers={panResponder.panHandlers}
+          />
+
+          {/* ── BOTTOM: progress dots + action buttons ── */}
+          <View style={styles.bottomArea}>
+            <View style={styles.progressDots}>
+              {SHAPES.map((_, i) => {
+                const done   = i < currentShapeIndex;
+                const active = i === currentShapeIndex;
+                return (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      done   && { backgroundColor: theme.button,    borderColor: theme.button   },
+                      active && { backgroundColor: 'transparent',   borderColor: theme.button   },
+                      !done && !active && { backgroundColor: 'transparent', borderColor: '#CCCCCC' },
+                    ]}
+                  />
+                );
+              })}
+            </View>
+
+            <View style={styles.buttonsRow}>
+              {canClearCanvas && (
+                <TouchableOpacity
+                  style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
+                  onPress={handleClear}
+                  disabled={assessmentFeedback}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="refresh" size={18} color={theme.button} />
+                  <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
+                </TouchableOpacity>
+              )}
+
+              {showNext && (
+                <TouchableOpacity
+                  style={[styles.nextButton, { backgroundColor: theme.button }]}
+                  onPress={handleNext}
+                  disabled={assessmentFeedback}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.nextText, { color: theme.buttonText }]}>Next</Text>
+                  <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+        </View>
+
+        {assessmentFeedback && (
+          <AttemptAvatarFeedback
+            avatarKey={student?.avatar_key}
+            passed
+            note="Nice work!"
+            theme={theme}
+          />
+        )}
+
+      </SafeAreaView>
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  gradient: { flex: 1 },
+  safe:     { flex: 1 },
+
+  bgBubbleLarge: {
+    position: 'absolute',
+    top: '-12%',
+    right: '-10%',
+    width: SCREEN_WIDTH * 0.36,
+    height: SCREEN_WIDTH * 0.36,
+    borderRadius: SCREEN_WIDTH * 0.18,
+  },
+  bgBubbleMedium: {
+    position: 'absolute',
+    bottom: '9%',
+    left: '-7%',
+    width: SCREEN_WIDTH * 0.24,
+    height: SCREEN_WIDTH * 0.24,
+    borderRadius: SCREEN_WIDTH * 0.12,
+  },
+  bgBubbleSmall: {
+    position: 'absolute',
+    top: '38%',
+    right: '7%',
+    width: SCREEN_WIDTH * 0.11,
+    height: SCREEN_WIDTH * 0.11,
+    borderRadius: SCREEN_WIDTH * 0.055,
+  },
+
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+
+  // Top area
+  successBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginBottom: 6,
+  },
+  successText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    color: '#2E7D32',
+  },
+
+  // Canvas area
+  // Bottom area
+  bottomArea: {
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  progressDots: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  dot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+  },
+  buttonsRow: {
+    minHeight: actionRowMinHeight({
+      maxButtonPaddingVertical: 13,
+      maxButtonBorderWidth: 1.5,
+    }),
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'center',
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    borderRadius: 50,
+  },
+  clearText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  nextButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 36,
+    paddingVertical: 13,
+    borderRadius: 50,
+  },
+  nextText: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+  },
+});

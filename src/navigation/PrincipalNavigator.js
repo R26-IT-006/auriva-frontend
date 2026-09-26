@@ -15,13 +15,11 @@ import StudentDetailScreen from '../screens/principal/students/StudentDetailScre
 import CreateStudentScreen from '../screens/principal/students/CreateStudentScreen';
 import EditStudentScreen from '../screens/principal/students/EditStudentScreen';
 
-import PrincipalSidebar from '../components/navigation/PrincipalSidebar';
-import { SidebarContext } from '../context/SidebarContext';
+import PrincipalSidebar from "../components/navigation/PrincipalSidebar";
+import { SidebarContext } from "../context/SidebarContext";
+import { SIDEBAR_WIDTH, MINI_WIDTH } from "../constants/layout";
 
-export const SIDEBAR_WIDTH = 230;
-export const MINI_WIDTH    = 64;
-
-const Tab   = createBottomTabNavigator();
+const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function TeachersStack() {

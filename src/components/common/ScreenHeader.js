@@ -1,5 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { ButtonFeedback } from './ButtonFeedback';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
@@ -12,9 +13,9 @@ export function ScreenHeader({ title, subtitle, onBack, rightAction }) {
     <View style={[styles.container, { paddingTop: insets.top + Layout.spacing.sm }]}>
       <View style={styles.row}>
         {onBack && (
-          <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <ButtonFeedback onPress={onBack} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="chevron-back" size={24} color={Colors.text.primary} />
-          </TouchableOpacity>
+          </ButtonFeedback>
         )}
         <View style={styles.titleBlock}>
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: Layout.fontSize.lg,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'DMSans_700Bold',
     color: Colors.text.primary,
   },
   subtitle: {
