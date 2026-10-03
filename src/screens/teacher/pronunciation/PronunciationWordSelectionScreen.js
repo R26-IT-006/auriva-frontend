@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { View, Text, StyleSheet, ScrollView, useWindowDimensions, Image, LayoutAnimation, Platform, UIManager, findNodeHandle } from "react-native";
-import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
+import React, { useCallback, useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, ScrollView, useWindowDimensions, Image, Pressable, Animated } from "react-native";
+import { ButtonFeedback, playClickSound } from "../../../components/common/ButtonFeedback";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,139 +18,129 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
-import { PronunciationStepIndicator } from "./PronunciationStepIndicator.js";
-import {
-  AvatarIdentityBadge,
-  EntranceItem,
-  SelectionCheck,
-  selectionElevation,
-  selectionSurface,
-  selectionTextColor,
-  ThemedGradientFill,
-} from "./pronunciationDesignKit.js";
+import { IMAGE_STYLES } from "./wordImageStyles.js";
 
-function MoreWordCard({ item, index, selected, onPress, width, theme }) {
+// Alphabet page spacing: side padding and the gap between letter tiles.
+const ALPHA_PAD = Layout.spacing.xl;
+const ALPHA_GAP = 16;
+// Gap between the word picture cards.
+const WORD_GAP = 20;
+
+// Alphabet mode: one big pastel tile per letter (the letter's own colour from
+// ALPHABET_BANK). Same press bounce as the Concept/Dialogue cards, plus this
+// module's click sound. Tapping starts the session from that letter.
+function LetterTile({ item, size, theme, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    Animated.spring(scale, { toValue: 0.9, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
+
   return (
-    <EntranceItem index={index} style={selectionElevation(theme, selected, 14)}>
-      <ButtonFeedback
-        activeOpacity={0.86}
-        onPress={onPress}
-        accessibilityRole="radio"
-        accessibilityState={{ selected, checked: selected }}
-        accessibilityLabel={item.word}
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={() => {
+          playClickSound();
+          onPress(item);
+        }}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`Letter ${item.letter}${item.completed ? ", completed" : ""}`}
         style={[
-          styles.moreWordCard,
-          { width },
-          selectionSurface(theme, selected),
+          styles.letterTile,
+          {
+            width: size,
+            height: size,
+            borderRadius: Math.round(size * 0.22),
+            backgroundColor: item.color,
+            borderColor: theme.cardOutline,
+          },
         ]}
       >
-        <SelectionCheck selected={selected} theme={theme} size={22} />
-
-        <View style={[styles.moreWordBadge, { backgroundColor: item.color }]}>
-          <Ionicons name="paw-outline" size={18} color="#5F6E83" />
-        </View>
-        <Text
-          style={[
-            styles.moreWordText,
-            { color: selectionTextColor(theme, selected, Colors.text.primary) },
-          ]}
-        >
-          {item.word}
+        <Text style={[styles.letterTileText, { fontSize: Math.round(size * 0.5) }]}>
+          {item.letter}
         </Text>
         {item.completed ? (
-          <View style={styles.completedPill}>
-            <Ionicons name="checkmark-circle" size={13} color={Colors.status.success} />
-            <Text style={styles.completedPillText}>Completed</Text>
+          <View style={styles.letterDoneBadge}>
+            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
           </View>
         ) : null}
-      </ButtonFeedback>
-    </EntranceItem>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-function WordCard({
-  item,
-  index,
-  selected,
-  onToggleExpand,
-  expanded,
-  width,
-  refCallback,
-  theme,
-  isAlphabetMode,
-}) {
-  const label = isAlphabetMode ? item.letter || item.word : item.word;
+// "ice cream" -> "Ice Cream". Only the first letter of each space-separated
+// part changes, so words like "don't" are left intact.
+function capitalizeWords(text) {
+  if (!text) return text;
+  return String(text)
+    .split(" ")
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
+// Word mode: a picture card per word (photo, or cartoon when the teacher has
+// switched pictures to cartoons), the word underneath — the Concept category
+// card style. Same press bounce and click sound as LetterTile; tapping starts
+// the session with that word.
+function WordPictureCard({ item, size, theme, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
   const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
   const imageSource = getWordImageSource(item, imageStyle);
+  // Photos fill their frame; cartoon drawings are shown whole.
+  const isCartoon = imageStyle === IMAGE_STYLES.CARTOON;
+
+  function pressIn() {
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
 
   return (
-    <EntranceItem index={index} style={selectionElevation(theme, selected, 12)}>
-    <View
-      ref={refCallback}
-      style={[styles.wordCard, { width }, selectionSurface(theme, selected)]}
-    >
-      <ButtonFeedback
-        activeOpacity={0.86}
-        onPress={() => onToggleExpand && onToggleExpand(item)}
-        accessibilityRole="radio"
-        accessibilityState={{ selected, checked: selected, expanded }}
-        accessibilityLabel={label}
-        style={styles.wordHeader}
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={() => {
+          playClickSound();
+          onPress(item);
+        }}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.word}${item.completed ? ", completed" : ""}`}
+        style={[
+          styles.wordPicCard,
+          { width: size, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+        ]}
       >
-        <View style={styles.wordMetaCompact}>
-          <Text
-            style={[
-              styles.wordText,
-              isAlphabetMode && styles.letterText,
-              { color: selectionTextColor(theme, selected, Colors.text.primary) },
-            ]}
-          >
-            {label}
-          </Text>
-          {item.completed ? (
-            <View style={styles.completedPill}>
-              <Ionicons name="checkmark-circle" size={13} color={Colors.status.success} />
-              <Text style={styles.completedPillText}>Completed</Text>
-            </View>
-          ) : null}
-        </View>
-        {/* Inline rather than pinned to the corner: this row already ends
-            in a chevron, and a badge floating over it would collide. Mounted
-            only while selected so it never holds an empty 30pt gap open in
-            front of the chevron on the other rows. */}
-        {selected ? (
-          <SelectionCheck
-            selected
-            theme={theme}
-            size={22}
-            style={styles.wordSelectionCheck}
-          />
-        ) : null}
-
-        <Ionicons
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={22}
-          color="#5F6E83"
-        />
-      </ButtonFeedback>
-
-      {expanded && selected && (
-        <View style={[styles.wordVisual, { backgroundColor: item.color }]}>
-          {isAlphabetMode ? (
-            <Text style={styles.letterVisualText}>{label}</Text>
-          ) : imageSource ? (
+        <View style={[styles.wordPicFrame, { height: size * 0.72, backgroundColor: item.color || "#F3F5F8" }]}>
+          {imageSource ? (
             <Image
               source={imageSource}
-              resizeMode="cover"
-              style={styles.wordImage}
+              resizeMode={isCartoon ? "contain" : "cover"}
+              style={styles.wordPicImage}
             />
           ) : (
-            <Ionicons name="image-outline" size={28} color="#7B8798" />
+            <Ionicons name="image-outline" size={Math.round(size * 0.25)} color="#7B8798" />
           )}
         </View>
-      )}
-    </View>
-    </EntranceItem>
+        {/* Capitalised in code, not with textTransform — Android measures
+            before transforming, which clips the last letter ("Fis"). */}
+        <Text style={styles.wordPicLabel} numberOfLines={1} adjustsFontSizeToFit>
+          {capitalizeWords(item.word)}
+        </Text>
+        {item.completed ? (
+          <View style={styles.letterDoneBadge}>
+            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+          </View>
+        ) : null}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -164,26 +154,19 @@ export default function PronunciationWordSelectionScreen({
   const categoryId = route.params?.categoryId;
   const mode = route.params?.mode || PRONUNCIATION_MODES.WORD;
   const isAlphabetMode = mode === PRONUNCIATION_MODES.ALPHABET;
-  const [selectedWord, setSelectedWord] = useState(null);
   const setSelectedWordInSession = usePronunciationSessionStore(
     (state) => state.setSelectedWord,
   );
   const setCurrentActivityStep = usePronunciationSessionStore(
     (state) => state.setCurrentActivityStep,
   );
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [expandedWordKey, setExpandedWordKey] = useState(null);
   const [completedIds, setCompletedIds] = useState(() => new Set());
-  const { width } = useWindowDimensions();
-  const isCompact = width < 720;
+  // "More words" (Animals) starts collapsed.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
+  const { width, height } = useWindowDimensions();
 
   useEffect(() => {
-    if (
-      Platform.OS === "android" &&
-      UIManager.setLayoutAnimationEnabledExperimental
-    ) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
     setCurrentActivityStep(PRONUNCIATION_STEPS.WORD_SELECTION);
   }, [setCurrentActivityStep]);
 
@@ -227,484 +210,397 @@ export default function PronunciationWordSelectionScreen({
     }, [categoryId, isAlphabetMode, mode, studentId]),
   );
 
-  const scrollRef = useRef(null);
-  const cardRefs = useRef({});
-
   const category = SESSION_CATEGORIES.find((c) => c.id === categoryId);
   const words = (isAlphabetMode ? ALPHABET_BANK : WORD_BANK[categoryId] || []).map((item) => ({
     ...item,
     completed: completedIds.has(item.id),
   }));
-  const moreWords = (isAlphabetMode || categoryId !== "animals" ? [] : WORD_BANK.moreAnimals || []).map((item) => ({
+  const extraAnimalWords = (isAlphabetMode || categoryId !== "animals" ? [] : WORD_BANK.moreAnimals || []).map((item) => ({
     ...item,
     completed: completedIds.has(item.id),
   }));
 
-  const cardWidth = useMemo(() => {
-    if (width < 560) return width - Layout.spacing.lg * 2;
-    if (width >= 1180) return 186;
-    if (width >= 980) return 170;
-    if (width >= 840) return 160;
-    return Math.min(240, (width - Layout.spacing.lg * 2 - Layout.spacing.sm) / 2);
-  }, [width]);
+  // Word mode: words with no picture (no photo, and no cartoon when cartoons
+  // are on) go to the collapsible "More words" section instead of the main
+  // grid, ahead of the Animals extra list. Uses the same lookup as the cards.
+  const hasPicture = (item) => Boolean(getWordImageSource(item, imageStyle));
+  const mainWords = isAlphabetMode ? words : words.filter(hasPicture);
+  const moreWords = isAlphabetMode
+    ? []
+    : [...words.filter((item) => !hasPicture(item)), ...extraAnimalWords];
 
-  const moreCardWidth = useMemo(() => {
-    if (width < 420) return width - Layout.spacing.lg * 2;
-    if (width >= 1180) return 150;
-    if (width >= 980) return 140;
-    if (width >= 840) return 132;
-    return Math.max(
-      120,
-      Math.min(156, (width - Layout.spacing.lg * 2 - Layout.spacing.sm) / 2),
-    );
-  }, [width]);
-
-  function handleStartSession() {
-    if (!selectedWord) return;
-    setSelectedWordInSession(selectedWord);
+// Tapping a letter / word starts straight away (no separate Start button):
+  // remember it as the selected item and open its Listen step.
+  const startFromItem = (item) => {
+    setSelectedWordInSession(item);
     navigation.navigate("PronunciationLearnWord", {
       student,
       mode,
       categoryId,
-      wordId: selectedWord.id,
-      word: selectedWord,
+      wordId: item.id,
+      word: item,
     });
-  }
+  };
 
-  function toggleMore() {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setMoreOpen((v) => !v);
-  }
+  // ── Alphabet mode: Concept-style page, letters as a tile grid ──────────────
+  if (isAlphabetMode) {
 
-  function handleToggleExpand(item) {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    const key = `${isAlphabetMode ? "alphabet" : categoryId || "cat"}-${item.id}`;
-    if (expandedWordKey === key) {
-      setExpandedWordKey(null);
-    } else {
-      setExpandedWordKey(key);
-      setSelectedWord(item);
-      setSelectedWordInSession(item);
-      // measure and scroll expanded card into view after layout settles
-      setTimeout(() => {
-        try {
-          const card = cardRefs.current[key];
-          const scrollNode = findNodeHandle(scrollRef.current);
-          if (!card || !scrollNode) return;
-          UIManager.measureLayout(
-            findNodeHandle(card),
-            scrollNode,
-            () => {},
-            (left, top, widthMeasured, heightMeasured) => {
-              if (
-                scrollRef.current &&
-                typeof scrollRef.current.scrollTo === "function"
-              ) {
-                scrollRef.current.scrollTo({
-                  y: Math.max(0, top - 48),
-                  animated: true,
-                });
-              }
-            },
-          );
-        } catch (e) {
-          // ignore measurement errors
-        }
-      }, 80);
-    }
-  }
+    // 7 tiles per row in landscape (26 letters → 7/7/7/5), 5 in portrait.
+    // A tile is as big as fits across the width and — for the rows below the
+    // header and the grid's top margin (~320) — down the height, capped at 130.
+    const columns = width > height ? 7 : 5;
+    const rows = Math.ceil(words.length / columns);
+    const tileSize = Math.max(
+      48,
+      Math.min(
+        (width - ALPHA_PAD * 2 - ALPHA_GAP * (columns - 1)) / columns,
+        (height - 320 - ALPHA_GAP * (rows - 1)) / rows,
+        130,
+      ),
+    );
 
-  return (
-    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
-    <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
+    return (
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        style={styles.safe}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       >
-        <View style={styles.headerRow}>
-          <ButtonFeedback
-            style={[styles.backBtn, { borderColor: theme.cardOutline }]}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.82}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={20}
-              color={theme.headingText}
-            />
-          </ButtonFeedback>
+        <View pointerEvents="none" style={[styles.alphaBlob, styles.alphaBlobTopRight, { backgroundColor: theme.cardOutline }]} />
+        <View pointerEvents="none" style={[styles.alphaBlob, styles.alphaBlobBottomLeft, { backgroundColor: theme.cardOutline }]} />
 
-          <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: theme.headingText }]}>
-              {isAlphabetMode ? "Choose a Letter" : "Choose a Word"}
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.headingText }]}>
-              {isAlphabetMode
-                ? "Choose a starting letter"
-                : "Configure the learning environment"}
-            </Text>
-          </View>
-
-          <AvatarIdentityBadge avatarKey={student?.avatar_key} theme={theme} size={44} style={styles.headerAvatar} />
-        </View>
-
-        <PronunciationStepIndicator currentStep={3} theme={theme} />
-
-        <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-          <View style={[styles.panelTopRow, isCompact && styles.panelTopRowCompact]}>
-            <Text style={[styles.panelTitle, { color: theme.headingText }]}>
-              {isAlphabetMode ? "Select Starting Letter" : "Select Starting Word"}
-            </Text>
+        <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
+          {/* Header — same as the Pronunciation setup / Concept screens */}
+          <View style={styles.alphaTopBar}>
             <ButtonFeedback
-              activeOpacity={0.86}
-              onPress={handleStartSession}
-              disabled={!selectedWord}
-              style={[styles.startBtnWrap, isCompact && styles.startBtnCompact]}
+              style={[styles.alphaIconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
             >
-              {selectedWord ? (
-                <ThemedGradientFill theme={theme} style={styles.startBtn}>
-                  <Text style={styles.startBtnText}>
-                    {isAlphabetMode ? "Start Alphabet" : "Start Session"}
-                  </Text>
-                </ThemedGradientFill>
-              ) : (
-                <View style={[styles.startBtn, styles.startBtnDisabled]}>
-                  <Text style={styles.startBtnTextDisabled}>
-                    {isAlphabetMode ? "Start Alphabet" : "Start Session"}
-                  </Text>
-                </View>
-              )}
+              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
             </ButtonFeedback>
+
+            <View style={styles.alphaTitleRow}>
+              <View style={[styles.alphaTitleIconCircle, { backgroundColor: theme.cardOutline }]}>
+                <Ionicons name="text" size={18} color="#FFF" />
+              </View>
+              <Text style={[styles.alphaTitle, { color: theme.headingText }]}>Alphabet</Text>
+            </View>
+
+            {/* Keeps the title centred, as Concept's empty right-hand slot. */}
+            <View style={styles.alphaIconBtnSpacer} />
           </View>
 
-          <Text style={[styles.contextText, { color: theme.headingText }]}>
-            {isAlphabetMode
-              ? "Alphabet pronunciation"
-              : category
-                ? `${category.title} category`
-                : "Selected category"}
+          <Text style={[styles.alphaSubtitle, { color: theme.headingText }]}>
+            Pick a letter to start
           </Text>
 
-          <View style={styles.wordGrid}>
-            {words.map((item, index) => {
-              const key = `${isAlphabetMode ? "alphabet" : categoryId || "cat"}-${item.id}`;
-              return (
-                <WordCard
-                  key={key}
+          <ScrollView
+            contentContainerStyle={[styles.alphaScroll, { paddingHorizontal: ALPHA_PAD }]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.alphaGrid, { gap: ALPHA_GAP }]}>
+              {words.map((item) => (
+                <LetterTile
+                  key={item.id}
                   item={item}
-                  index={index}
-                  width={cardWidth}
-                  selected={selectedWord?.id === item.id}
-                  expanded={expandedWordKey === key}
-                  onToggleExpand={handleToggleExpand}
-                  refCallback={(r) => (cardRefs.current[key] = r)}
+                  size={tileSize}
                   theme={theme}
-                  isAlphabetMode={isAlphabetMode}
+                  onPress={startFromItem}
                 />
-              );
-            })}
+              ))}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
+
+  // ── Word mode: same Concept-style page, words as picture cards ─────────────
+  // 5 cards per row in landscape, 3 in portrait; each as big as fits, capped.
+  const wordColumns = width > height ? 5 : 3;
+  const wordCardSize = Math.max(
+    100,
+    Math.min((width - ALPHA_PAD * 2 - WORD_GAP * (wordColumns - 1)) / wordColumns, 230),
+  );
+
+  return (
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.safe}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <View pointerEvents="none" style={[styles.alphaBlob, styles.alphaBlobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.alphaBlob, styles.alphaBlobBottomLeft, { backgroundColor: theme.cardOutline }]} />
+
+      <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
+        {/* Header — same as the alphabet page: category name as the title */}
+        <View style={styles.alphaTopBar}>
+          <ButtonFeedback
+            style={[styles.alphaIconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          </ButtonFeedback>
+
+          <View style={styles.alphaTitleRow}>
+            <View style={[styles.alphaTitleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name={category?.icon?.replace(/-outline$/, "") || "chatbubble-ellipses"} size={18} color="#FFF" />
+            </View>
+            <Text style={[styles.alphaTitle, { color: theme.headingText }]}>
+              {category?.title || "Words"}
+            </Text>
           </View>
 
-          {!isAlphabetMode ? (
-          <View style={styles.moreWordsSection}>
-            <ButtonFeedback
-              activeOpacity={0.86}
-              onPress={toggleMore}
-              style={[styles.moreHeaderRow, isCompact && styles.moreHeaderRowCompact]}
-            >
-              <View>
-                <Text style={[styles.moreWordsTitle, { color: theme.headingText }]}>More Words</Text>
-                <Text style={[styles.moreWordsSubtitle, { color: theme.headingText }]}>
-                  Extra animal words to practise and review
-                </Text>
-              </View>
+          <View style={styles.alphaIconBtnSpacer} />
+        </View>
 
-              <View style={styles.moreToggleBtn}>
+        <Text style={[styles.alphaSubtitle, { color: theme.headingText }]}>
+          Pick a word to start
+        </Text>
+
+        <ScrollView
+          contentContainerStyle={[styles.alphaScroll, { paddingHorizontal: ALPHA_PAD }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.wordPicGrid, { gap: WORD_GAP }]}>
+            {mainWords.map((item) => (
+              <WordPictureCard
+                key={item.id}
+                item={item}
+                size={wordCardSize}
+                theme={theme}
+                onPress={startFromItem}
+              />
+            ))}
+          </View>
+
+          {/* "More words": this category's words without a picture, plus the
+              Animals extra list — a collapsible group of the same cards,
+              closed until the heading is tapped. Shown only when non-empty. */}
+          {moreWords.length > 0 ? (
+            <>
+              <ButtonFeedback
+                onPress={() => setMoreOpen((open) => !open)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: moreOpen }}
+                accessibilityLabel={moreOpen ? "Hide more words" : "Show more words"}
+                style={[styles.moreToggle, { borderColor: theme.cardOutline }]}
+              >
+                <Text style={[styles.moreToggleText, { color: theme.headingText }]}>
+                  More words ({moreWords.length})
+                </Text>
                 <Ionicons
                   name={moreOpen ? "chevron-up" : "chevron-down"}
                   size={20}
-                  color={Colors.text.secondary}
+                  color={theme.headingText}
                 />
-              </View>
-            </ButtonFeedback>
+              </ButtonFeedback>
 
-            {moreOpen && (
-              <View style={styles.moreWordGrid}>
-                {moreWords.map((item, index) => (
-                  <MoreWordCard
-                    key={item.id}
-                    item={item}
-                    index={index}
-                    width={moreCardWidth}
-                    selected={selectedWord?.id === item.id}
-                    onPress={() => {
-                      setSelectedWord(item);
-                      setSelectedWordInSession(item);
-                      setCurrentActivityStep(PRONUNCIATION_STEPS.LISTEN);
-                    }}
-                    theme={theme}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
+              {moreOpen ? (
+                <View style={[styles.wordPicGrid, styles.wordPicGridMore, { gap: WORD_GAP }]}>
+                  {moreWords.map((item) => (
+                    <WordPictureCard
+                      key={item.id}
+                      item={item}
+                      size={wordCardSize}
+                      theme={theme}
+                      onPress={startFromItem}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </>
           ) : null}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  // ── Alphabet page (Concept-style; see PronunciationSessionSetupScreen) ───
+  alphaBlob: {
+    position: "absolute",
+    borderRadius: 999,
+    opacity: 0.08,
+  },
+  alphaBlobTopRight: {
+    width: 220,
+    height: 220,
+    top: -60,
+    right: -60,
+  },
+  alphaBlobBottomLeft: {
+    width: 260,
+    height: 260,
+    bottom: -80,
+    left: -80,
+  },
+  alphaTopBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
+  },
+  alphaIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  alphaIconBtnSpacer: {
+    width: 40,
+    height: 40,
+  },
+  alphaTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 70,
+  },
+  alphaTitleIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  alphaTitle: {
+    fontSize: 34,
+    fontFamily: "DMSans_800ExtraBold",
+    letterSpacing: -0.3,
+  },
+  alphaSubtitle: {
+    fontSize: 15,
+    fontFamily: "DMSans_600SemiBold",
+    opacity: 0.6,
+    textAlign: "center",
+    marginTop: 2,
+    marginBottom: Layout.spacing.sm,
+  },
+  alphaScroll: {
+    paddingTop: Layout.spacing.sm,
+    paddingBottom: Layout.spacing.xl,
+    alignItems: "center",
+  },
+  alphaGrid: {
+    marginTop: 64,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  letterTile: {
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  letterTileText: {
+    fontFamily: "DMSans_900Black",
+    color: "#1A1A1A",
+  },
+  // Completed letters: small green tick in the corner — the tile itself stays
+  // the same so the grid reads as one calm set.
+  // ── Word page: picture cards (Concept category-card style) ──────────────
+  wordPicGrid: {
+    marginTop: 64,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  wordPicGridMore: {
+    marginTop: 0,
+  },
+  // "More words" heading that opens / closes the extra cards: a translucent
+  // pill like the header buttons, with a chevron showing its state.
+  moreToggle: {
+    marginTop: Layout.spacing.xl,
+    marginBottom: Layout.spacing.md,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 22,
+    borderWidth: 2,
+    backgroundColor: "rgba(255,255,255,0.7)",
+  },
+  moreToggleText: {
+    fontSize: 17,
+    fontFamily: "DMSans_800ExtraBold",
+  },
+  wordPicCard: {
+    borderRadius: 20,
+    borderWidth: 3,
+    padding: 8,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  // The picture sits in a rounded frame tinted with the word's own colour.
+  wordPicFrame: {
+    width: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wordPicImage: {
+    width: "100%",
+    height: "100%",
+  },
+  wordPicLabel: {
+    marginTop: 8,
+    marginBottom: 2,
+    fontSize: 18,
+    fontFamily: "DMSans_800ExtraBold",
+    color: "#1A1A1A",
+    textAlign: "center",
+  },
+  letterDoneBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.status.success,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   safe: {
     flex: 1,
   },
   safeInner: {
     flex: 1,
-  },
-  scroll: {
-    paddingHorizontal: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.lg,
-    alignItems: "center",
-  },
-  headerRow: {
-    width: "100%",
-    maxWidth: 1040,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Layout.spacing.md,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: "#7E93AE",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.32)",
-    marginTop: 2,
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  headerAvatar: {
-    marginTop: 2,
-  },
-  title: {
-    fontSize: Layout.fontSize.xxxl,
-    color: Colors.text.primary,
-    fontFamily: Layout.fonts.bold,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    marginTop: 2,
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.secondary,
-    fontFamily: Layout.fonts.semibold,
-  },
-  panel: {
-    width: "100%",
-    maxWidth: 1040,
-    marginTop: Layout.spacing.lg,
-    backgroundColor: "#F7F8FA",
-    borderRadius: 22,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: "#E3E8EF",
-    minHeight: 420,
-  },
-  panelTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: Layout.spacing.md,
-  },
-  panelTopRowCompact: {
-    alignItems: "stretch",
-    flexDirection: "column",
-  },
-  panelTitle: {
-    fontSize: 36,
-    fontFamily: Layout.fonts.extrabold,
-    color: Colors.text.primary,
-    flexShrink: 1,
-  },
-  startBtnWrap: {
-    borderRadius: 11,
-    overflow: "hidden",
-  },
-  startBtn: {
-    borderRadius: 11,
-    minWidth: 140,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  startBtnCompact: {
-    width: "100%",
-  },
-  startBtnDisabled: {
-    backgroundColor: "#DFE5ED",
-  },
-  startBtnText: {
-    fontSize: Layout.fontSize.sm,
-    color: "#FFFFFF",
-    fontFamily: Layout.fonts.bold,
-  },
-  startBtnTextDisabled: {
-    fontSize: Layout.fontSize.sm,
-    color: "#90A0B5",
-    fontFamily: Layout.fonts.bold,
-  },
-  contextText: {
-    marginTop: 6,
-    color: Colors.text.secondary,
-    fontSize: Layout.fontSize.sm,
-    marginBottom: Layout.spacing.sm,
-  },
-  wordGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "flex-start",
-    justifyContent: "center",
-    gap: Layout.spacing.sm,
-  },
-  moreWordsSection: {
-    marginTop: Layout.spacing.xl,
-    paddingTop: Layout.spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: "#E3E8EF",
-  },
-  moreWordsTitle: {
-    fontSize: Layout.fontSize.xl,
-    fontFamily: Layout.fonts.extrabold,
-    color: Colors.text.primary,
-  },
-  moreWordsSubtitle: {
-    marginTop: 3,
-    marginBottom: Layout.spacing.sm,
-    fontSize: Layout.fontSize.sm,
-    color: Colors.text.secondary,
-  },
-  moreWordGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "flex-start",
-    justifyContent: "center",
-    gap: Layout.spacing.sm,
-  },
-  wordCard: {
-    borderRadius: 12,
-    overflow: "hidden",
-    minHeight: 62,
-  },
-  wordSelectionCheck: {
-    position: "relative",
-    top: 0,
-    right: 0,
-    marginRight: 8,
-  },
-  wordVisual: {
-    height: 165,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  wordImage: {
-    width: "100%",
-    height: "100%",
-  },
-  wordText: {
-    fontSize: 31,
-    color: Colors.text.primary,
-    fontFamily: Layout.fonts.bold,
-    textTransform: "lowercase",
-    lineHeight: 36,
-  },
-  letterText: {
-    textTransform: "uppercase",
-  },
-  letterVisualText: {
-    fontSize: 86,
-    lineHeight: 94,
-    color: "#263752",
-    fontFamily: Layout.fonts.extrabold,
-  },
-  wordHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E6EDF7",
-  },
-  wordMetaCompact: {
-    flex: 1,
-    flexDirection: "column",
-    alignItems: "flex-start",
-    justifyContent: "center",
-    gap: 6,
-  },
-  moreHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: Layout.spacing.sm,
-  },
-  moreHeaderRowCompact: {
-    alignItems: "flex-start",
-    gap: Layout.spacing.md,
-  },
-  moreToggleBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(124,140,160,0.06)",
-  },
-  moreWordCard: {
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  moreWordBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moreWordText: {
-    fontSize: 15,
-    color: Colors.text.primary,
-    fontFamily: Layout.fonts.bold,
-    textTransform: "lowercase",
-    textAlign: "center",
-  },
-  completedPill: {
-    alignSelf: "flex-start",
-    minHeight: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.status.successLight,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-    paddingHorizontal: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-  },
-  completedPillText: {
-    color: Colors.status.success,
-    fontSize: 11,
-    fontFamily: Layout.fonts.bold,
   },
 });

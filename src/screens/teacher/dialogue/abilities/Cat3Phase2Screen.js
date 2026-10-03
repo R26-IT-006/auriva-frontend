@@ -19,6 +19,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 import { dialogueApi } from '../../../../api/dialogue'; // RC-PROMPT: shared word lookup (TASK-06 A1)
 import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const PROGRESS_FRACTION = 0.70;
 
@@ -475,27 +476,31 @@ export default function Cat3Phase2Screen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       {/* ── Body ── */}
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.content}>
 
             <Text style={[styles.title, { color: theme.headingText }]}>
               {'Can you say '}
-              <Text style={{ fontWeight: '900', color: theme.button }}>{`"${WORD_UPPER}"`}</Text>
+              <Text style={{ fontFamily: 'DMSans_900Black', color: theme.button }}>{`"${WORD_UPPER}"`}</Text>
               {'?'}
             </Text>
 
@@ -566,12 +571,12 @@ export default function Cat3Phase2Screen({ route, navigation }) {
 
             <TouchableOpacity style={styles.nextBtn} onPress={handleNextPress} activeOpacity={0.75}>
               <Text style={[styles.nextBtnText, { color: theme.button }]}>Next</Text>
-              <Ionicons name="arrow-forward" size={16} color={theme.button} />
+              <Ionicons name="arrow-forward" size={20} color={theme.button} />
             </TouchableOpacity>
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* ── Parent Gate ── */}
       <ParentGateModal visible={showGate} onSuccess={onGateSuccess} onCancel={() => setShowGate(false)} />
@@ -603,7 +608,21 @@ const styles = StyleSheet.create({
   headerWrap: {},
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
   headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
-  levelLabel:    { fontSize: Layout.fontSize.sm, fontWeight: '700', opacity: 0.7 },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  levelLabel:    { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
   progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill:  { height: '100%', borderRadius: 4 },
 
@@ -615,7 +634,7 @@ const styles = StyleSheet.create({
     paddingBottom:     Layout.spacing.md,
   },
 
-  title: { fontSize: Layout.fontSize.xl, fontWeight: '600', textAlign: 'center', marginBottom: Layout.spacing.lg },
+  title: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_600SemiBold', textAlign: 'center', marginBottom: Layout.spacing.lg },
 
   wordTile: {
     minWidth:     200,
@@ -628,15 +647,15 @@ const styles = StyleSheet.create({
     ...Layout.shadow.md,
   },
   speakerCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  wordText:      { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center' },
+  wordText:      { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_900Black', textAlign: 'center' },
   wordTextCue: {
-    fontWeight: '900',
+    fontFamily: 'DMSans_900Black',
     textDecorationLine: 'underline',
     color: '#E05C2A',   // warm orange — contrasts with theme.button on all avatar themes
   },
 
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Layout.spacing.sm, opacity: 0.55 },
-  hintText: { fontSize: Layout.fontSize.xs, fontWeight: '500' },
+  hintText: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_600SemiBold' },
 
   bottomRow: { width: '100%', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: Layout.spacing.sm },
 
@@ -649,24 +668,43 @@ const styles = StyleSheet.create({
   recordBtnStop:   { backgroundColor: '#FF4D6D' },
   recordBtnGlow:   { borderWidth: 3, borderColor: '#2DC98E', shadowColor: '#2DC98E', shadowOpacity: 0.45, shadowRadius: 14, elevation: 8 },
   recordBtnDimmed: { opacity: 0.4 },
-  recordBtnText:   { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#FFF' },
-  tapSpeak:        { fontSize: Layout.fontSize.xs, fontWeight: '700', letterSpacing: 1, opacity: 0.45 },
+  recordBtnText:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#FFF' },
+  tapSpeak:        { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold', letterSpacing: 1, opacity: 0.45 },
 
   avatarWrap:  { alignItems: 'center', width: 130 },
   speechBubble: {
     borderRadius: Layout.radius.lg, paddingHorizontal: Layout.spacing.sm, paddingVertical: Layout.spacing.sm,
     maxWidth: 140, marginBottom: 6, position: 'relative', ...Layout.shadow.sm,
   },
-  speechText:  { fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  speechText:  { fontSize: 12, fontFamily: 'DMSans_600SemiBold', textAlign: 'center' },
   bubbleTail:  { position: 'absolute', bottom: -7, left: '50%', marginLeft: -7, width: 0, height: 0, borderLeftWidth: 7, borderRightWidth: 7, borderTopWidth: 7, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
   avatarMedia: { width: 115, height: 135 },
 
-  nextBtn:     { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 6, paddingVertical: Layout.spacing.sm, paddingHorizontal: Layout.spacing.md, marginBottom: Layout.spacing.sm },
-  nextBtnText: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
+  nextBtn:     {
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    marginBottom: Layout.spacing.sm,
+  },
+  nextBtnText: {
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
-  settingsTitle:   { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
+  settingsTitle:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
-  settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
+  settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
 });

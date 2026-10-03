@@ -31,8 +31,10 @@ describe('A — the report knows where it was opened from', () => {
   });
 
   it('the child paths already passed one, and still do', () => {
+    // LetterHome no longer opens the report at all (its Report button was
+    // removed), so the word chooser is the one child path left to check.
     expect(stripComments(read('../screens/teacher/handwriting/LetterHomeScreen.js')))
-      .toMatch(/originRoute: 'LetterHome'/);
+      .not.toMatch(/navigate\('TeacherReport'/);
     expect(stripComments(read('../screens/teacher/handwriting/words/WordLetterSelectScreen.js')))
       .toMatch(/originRoute: 'WordLetterSelect'/);
   });

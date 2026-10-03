@@ -13,6 +13,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function Cat3WordCompleteScreen({ route, navigation }) {
   const {
@@ -97,14 +98,22 @@ export default function Cat3WordCompleteScreen({ route, navigation }) {
 
   if (!apiDone) {
     return (
-      <View style={[styles.root, { backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center' }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
         <ActivityIndicator size="large" color={theme.button} />
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
         {/* Exit → parent gate */}
@@ -172,7 +181,7 @@ export default function Cat3WordCompleteScreen({ route, navigation }) {
               ) : (
                 <>
                   <Text style={[styles.primaryBtnText, { color: theme.buttonText }]}>Next word</Text>
-                  <Ionicons name="arrow-forward" size={18} color={theme.buttonText} />
+                  <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
                 </>
               )}
             </TouchableOpacity>
@@ -189,7 +198,7 @@ export default function Cat3WordCompleteScreen({ route, navigation }) {
         }}
         onCancel={() => setShowGate(false)}
       />
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -206,14 +215,32 @@ const styles = StyleSheet.create({
 
   card: { width: '100%', borderRadius: Layout.radius.xl, padding: Layout.spacing.xl, alignItems: 'center', gap: Layout.spacing.md, ...Layout.shadow.lg },
   iconCircle: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  heading:    { fontSize: Layout.fontSize.xxl, fontWeight: '900', textAlign: 'center' },
-  subtext:    { fontSize: Layout.fontSize.md, fontWeight: '600', textAlign: 'center', opacity: 0.75, lineHeight: 26 },
-  wordAccent: { fontWeight: '900', opacity: 1 },
-  masteredNote: { fontSize: Layout.fontSize.sm, fontWeight: '700', opacity: 0.55, marginTop: 4 },
+  heading:    { fontSize: Layout.fontSize.xxl, fontFamily: 'DMSans_900Black', textAlign: 'center' },
+  subtext:    { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', textAlign: 'center', opacity: 0.75, lineHeight: 26 },
+  wordAccent: { fontFamily: 'DMSans_900Black', opacity: 1 },
+  masteredNote: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.55, marginTop: 4 },
 
   buttonsWrap: { width: '100%', gap: Layout.spacing.md },
-  primaryBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, ...Layout.shadow.md },
-  primaryBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  primaryBtn:  {
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtnText: {
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
   secondaryBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, borderWidth: 2 },
-  secondaryBtnText: { fontSize: Layout.fontSize.md, fontWeight: '600' },
+  secondaryBtnText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold' },
 });

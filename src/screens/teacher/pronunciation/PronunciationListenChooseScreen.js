@@ -30,7 +30,7 @@ import {
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
-import { EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { EntranceItem } from "./pronunciationDesignKit.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 
@@ -186,7 +186,7 @@ function buildChoices(categoryId, targetWord, fieldSize = MAX_FIELD_SIZE, target
   return shuffle(picked);
 }
 
-function ChoiceCard({ item, index, state, onPress, width, disabled }) {
+function ChoiceCard({ item, index, state, onPress, width, disabled, theme }) {
   const isCorrect = state === "correct";
   const isWrong = state === "wrong";
   const imageStyle = usePronunciationSessionStore((store) => store.imageStyle);
@@ -200,7 +200,7 @@ function ChoiceCard({ item, index, state, onPress, width, disabled }) {
         disabled={disabled}
         style={[
           styles.choiceCard,
-          { width },
+          { width, borderColor: theme?.cardOutline || "#DCE4EF" },
           disabled && styles.choiceCardDisabled,
           isCorrect && styles.choiceCardCorrect,
           isWrong && styles.choiceCardWrong,
@@ -215,7 +215,9 @@ function ChoiceCard({ item, index, state, onPress, width, disabled }) {
             <Ionicons name="image-outline" size={36} color="#6D7890" />
           )}
         </View>
-        <Text style={styles.choiceLabel}>{item.word}</Text>
+        {/* No word under the picture: the child has to choose by listening,
+            not by reading. (Screen readers still get the word via
+            accessibilityLabel.) */}
         {isCorrect ? (
           <View style={styles.resultBadge}>
             <Ionicons name="checkmark" size={15} color="#FFFFFF" />
@@ -415,26 +417,30 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
   }
 
   return (
-    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.safe}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
       <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.headerRow}>
-            <ButtonFeedback
-              style={[styles.backBtn, { borderColor: theme.cardOutline }]}
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.82}
-            >
-              <Ionicons name="chevron-back" size={20} color={theme.headingText} />
-            </ButtonFeedback>
+        {/* Back — round translucent button, as the other pronunciation steps.
+            goBack still goes through useExitSessionGuard. */}
+        <View style={styles.topBar}>
+          <ButtonFeedback
+            style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          </ButtonFeedback>
+        </View>
 
-            <View style={styles.headerCopy}>
-              <Text style={[styles.title, { color: theme.headingText }]}>Listen and Choose</Text>
-              <Text style={[styles.titleSinhala, { color: theme.headingText }]}>අසා තෝරන්න</Text>
-              <Text style={[styles.subtitle, { color: theme.headingText }]}>
-                {student?.full_name ? `${student.full_name}'s listening activity` : "Listening activity"}
-              </Text>
-            </View>
-          </View>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <Text style={[styles.title, { color: theme.headingText }]}>Listen and Choose</Text>
+          <Text style={[styles.titleSinhala, { color: theme.headingText }]}>අසා තෝරන්න</Text>
 
           <View style={[styles.panel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
             {isSoundFocusRound ? (
@@ -445,27 +451,23 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
                 </Text>
               </View>
             ) : null}
-            <View style={[styles.promptRow, isCompact && styles.promptRowCompact]}>
-              <View style={styles.promptCopy}>
-                <Text style={[styles.promptTitle, { color: theme.headingText }]}>Tap the picture you hear</Text>
-                <Text style={[styles.promptTitleSinhala, { color: theme.headingText }]}>
-                  ඇසෙන පින්තූරය තට්ටු කරන්න
-                </Text>
-                <Text style={[styles.roundText, { color: theme.headingText }]}>
-                  Round {roundIndex + 1} of {activityWords.length}
-                </Text>
-              </View>
 
-              <ButtonFeedback
-                activeOpacity={0.88}
-                onPress={playTargetWord}
-                soundEnabled={false}
-                style={[styles.playBtn, { backgroundColor: theme.button }, isPlaying && styles.playBtnActive]}
-              >
-                <Ionicons name="volume-high-outline" size={22} color="#FFFFFF" />
-                <Text style={styles.playBtnText}>{isPlaying ? "Playing" : "Play Word"}</Text>
-              </ButtonFeedback>
-            </View>
+            {/* Prompt, round and Play Word stacked and centred. */}
+            <Text style={[styles.promptTitle, { color: theme.headingText }]}>Tap the picture you hear</Text>
+
+            {/* Concept's raised 3D button, as Hear Sounds / Play Word elsewhere. */}
+            <ButtonFeedback
+              activeOpacity={0.88}
+              onPress={playTargetWord}
+              soundEnabled={false}
+              accessibilityRole="button"
+              style={[styles.playBtn, { backgroundColor: theme.button }, isPlaying && styles.playBtnActive]}
+            >
+              <Ionicons name="volume-high" size={20} color={theme.buttonText} />
+              <Text style={[styles.playBtnText, { color: theme.buttonText }]}>
+                {isPlaying ? "Playing…" : "Play Word"}
+              </Text>
+            </ButtonFeedback>
 
             <View style={styles.choicesGrid}>
               {choices.map((item, index) => {
@@ -482,6 +484,7 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
                     index={index}
                     state={state}
                     width={cardWidth}
+                    theme={theme}
                     disabled={!hasHeardTarget || isPlaying}
                     onPress={() => handleSelectChoice(item)}
                   />
@@ -508,47 +511,54 @@ export default function PronunciationListenChooseScreen({ navigation, route }) {
               </Text>
             </View>
 
-            <View style={[styles.actionsRow, isCompact && styles.actionsRowCompact]}>
+          </View>
+
+          {/* Actions centred under the panel as Concept's 3D buttons: Replay
+              and Next Round (white), Next to the result (avatar colour). */}
+          <View style={[styles.actionsRow, isCompact && styles.actionsRowCompact]}>
+            <ButtonFeedback
+              activeOpacity={0.86}
+              onPress={playTargetWord}
+              soundEnabled={false}
+              accessibilityRole="button"
+              style={[styles.secondaryBtn, { borderColor: theme.cardOutline }]}
+            >
+              <Ionicons name="refresh" size={20} color={theme.headingText} />
+              <Text style={[styles.secondaryBtnText, { color: theme.headingText }]}>Replay</Text>
+            </ButtonFeedback>
+
+            {activityWords.length > 1 ? (
               <ButtonFeedback
                 activeOpacity={0.86}
-                onPress={playTargetWord}
-                soundEnabled={false}
-                style={[styles.secondaryBtn, { borderColor: theme.cardOutline }]}
-              >
-                <Ionicons name="refresh" size={18} color={theme.headingText} />
-                <Text style={[styles.secondaryBtnText, { color: theme.headingText }]}>Replay</Text>
-              </ButtonFeedback>
-
-              <ButtonFeedback
-                activeOpacity={0.9}
                 disabled={!selectedId}
-                onPress={handleNext}
+                onPress={handleNextRound}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !selectedId }}
                 style={[
-                  styles.primaryBtnWrap,
-                  !selectedId && styles.primaryBtnDisabled,
+                  styles.secondaryBtn,
+                  { borderColor: theme.cardOutline },
+                  !selectedId && styles.btnDisabled,
                 ]}
               >
-                <ThemedGradientFill theme={theme} style={styles.primaryBtn}>
-                  <Text style={styles.primaryBtnText}>Next</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-                </ThemedGradientFill>
+                <Text style={[styles.secondaryBtnText, { color: theme.headingText }]}>Next Round</Text>
               </ButtonFeedback>
+            ) : null}
 
-              {activityWords.length > 1 ? (
-                <ButtonFeedback
-                  activeOpacity={0.86}
-                  disabled={!selectedId}
-                  onPress={handleNextRound}
-                  style={[
-                    styles.secondaryBtn,
-                    { borderColor: theme.cardOutline },
-                    !selectedId && styles.secondaryBtnDisabled,
-                  ]}
-                >
-                  <Text style={[styles.secondaryBtnText, { color: theme.headingText }]}>Next</Text>
-                </ButtonFeedback>
-              ) : null}
-            </View>
+            <ButtonFeedback
+              activeOpacity={0.9}
+              disabled={!selectedId}
+              onPress={handleNext}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !selectedId }}
+              style={[
+                styles.primaryBtn,
+                { backgroundColor: theme.button },
+                !selectedId && styles.btnDisabled,
+              ]}
+            >
+              <Text style={[styles.primaryBtnText, { color: theme.buttonText }]}>Next</Text>
+              <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
+            </ButtonFeedback>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -575,60 +585,67 @@ const styles = StyleSheet.create({
   safeInner: {
     flex: 1,
   },
-  scroll: {
-    paddingHorizontal: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.lg,
-    alignItems: "center",
-  },
-  headerRow: {
-    width: "100%",
-    maxWidth: 1040,
+
+  // ── Header: round Back (ConceptCategoriesScreen topBar / iconBtn) ────────
+  topBar: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Layout.spacing.md,
+    alignItems: "center",
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
   },
-  backBtn: {
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.32)",
-    marginTop: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  headerCopy: {
-    flex: 1,
+
+  scroll: {
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: Layout.spacing.sm,
+    paddingBottom: Layout.spacing.xl,
+    alignItems: "center",
   },
+  // Same heading sizes as the Listen / Speak / Tap the Sounds steps.
   title: {
-    fontSize: Layout.fontSize.xxxl,
-    fontFamily: Layout.fonts.bold,
-    letterSpacing: 0,
+    fontSize: 34,
+    lineHeight: 40,
+    fontFamily: Layout.fonts.extrabold,
+    letterSpacing: -0.3,
+    textAlign: "center",
   },
   titleSinhala: {
     marginTop: 2,
-    fontSize: Layout.fontSize.xl,
+    fontSize: 20,
     lineHeight: 28,
     fontFamily: Layout.fonts.extrabold,
-    letterSpacing: 0,
     opacity: 0.82,
+    textAlign: "center",
   },
-  subtitle: {
-    marginTop: 2,
-    fontSize: Layout.fontSize.sm,
-    fontFamily: Layout.fonts.semibold,
-  },
+
+  // Concept/Dialogue card style: thick theme outline (colour set inline),
+  // round corners, soft shadow. Content centred.
   panel: {
     width: "100%",
-    maxWidth: 1040,
+    maxWidth: 900,
     marginTop: Layout.spacing.lg,
-    borderRadius: 22,
+    borderRadius: 28,
+    borderWidth: 3,
     padding: Layout.spacing.lg,
-    borderWidth: 1,
-    minHeight: 520,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   soundFocusBanner: {
-    alignSelf: "flex-start",
     marginBottom: Layout.spacing.md,
     borderRadius: 12,
     backgroundColor: Colors.status.reviewLight,
@@ -645,75 +662,60 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     fontFamily: Layout.fonts.bold,
   },
-  promptRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: Layout.spacing.lg,
-  },
-  promptRowCompact: {
-    alignItems: "stretch",
-    flexDirection: "column",
-  },
-  promptCopy: {
-    flex: 1,
-  },
   promptTitle: {
-    fontSize: 34,
-    lineHeight: 40,
-    fontFamily: Layout.fonts.extrabold,
-    letterSpacing: 0,
-  },
-  promptTitleSinhala: {
-    marginTop: 4,
-    fontSize: 24,
+    fontSize: 26,
     lineHeight: 32,
     fontFamily: Layout.fonts.extrabold,
-    letterSpacing: 0,
-    opacity: 0.82,
+    textAlign: "center",
   },
-  roundText: {
-    marginTop: 4,
-    fontSize: Layout.fontSize.sm,
-    opacity: 0.78,
-  },
+
+  // Concept's raised 3D button (ConceptImageScreen fwdBtn), Hear Sounds size.
   playBtn: {
-    minWidth: 170,
-    minHeight: 58,
-    borderRadius: 29,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    marginTop: Layout.spacing.md,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.86)",
-    ...Layout.shadow.md,
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: "rgba(0,0,0,0.22)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
+  // While the word plays: dimmed so the tap visibly registered.
   playBtnActive: {
-    transform: [{ scale: 0.98 }],
+    opacity: 0.8,
   },
   playBtnText: {
-    color: "#FFFFFF",
-    fontSize: Layout.fontSize.lg,
-    fontFamily: Layout.fonts.extrabold,
+    fontSize: 16,
+    fontFamily: "DMSans_800ExtraBold",
   },
+
   choicesGrid: {
     marginTop: Layout.spacing.xl,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: Layout.spacing.md,
+    gap: Layout.spacing.lg,
   },
+  // Same picture card as the word list (WordPictureCard): rounded, theme
+  // outline (set inline; green / red overrides it once chosen).
   choiceCard: {
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#DCE4EF",
+    borderRadius: 20,
+    borderWidth: 3,
     backgroundColor: "#FFFFFF",
-    padding: 10,
-    ...Layout.shadow.sm,
+    padding: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
+  // Locked until the word has been heard.
   choiceCardDisabled: {
     opacity: 0.48,
   },
@@ -728,7 +730,7 @@ const styles = StyleSheet.create({
   choiceImageWrap: {
     width: "100%",
     aspectRatio: 1.2,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -736,15 +738,6 @@ const styles = StyleSheet.create({
   choiceImage: {
     width: "100%",
     height: "100%",
-  },
-  choiceLabel: {
-    marginTop: 10,
-    fontSize: Layout.fontSize.xl,
-    lineHeight: 26,
-    color: Colors.text.primary,
-    fontFamily: Layout.fonts.extrabold,
-    textAlign: "center",
-    textTransform: "lowercase",
   },
   resultBadge: {
     position: "absolute",
@@ -762,9 +755,11 @@ const styles = StyleSheet.create({
   resultBadgeWrong: {
     backgroundColor: Colors.status.error,
   },
+
   feedbackBar: {
+    alignSelf: "stretch",
     marginTop: Layout.spacing.xl,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: "row",
@@ -787,57 +782,65 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontFamily: Layout.fonts.semibold,
   },
+
+  // ── Actions under the panel: Concept's 3D buttons, centred ──────────────
   actionsRow: {
-    marginTop: Layout.spacing.lg,
+    marginTop: Layout.spacing.xl,
     flexDirection: "row",
-    justifyContent: "flex-end",
+    flexWrap: "wrap",
+    justifyContent: "center",
     alignItems: "center",
-    gap: Layout.spacing.sm,
+    gap: 16,
   },
   actionsRowCompact: {
-    alignItems: "stretch",
     flexDirection: "column",
+    alignItems: "stretch",
   },
+  // White version (Replay, Next Round), outlined in the theme colour.
   secondaryBtn: {
-    minHeight: 48,
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
-    backgroundColor: "rgba(255,255,255,0.42)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-  },
-  secondaryBtnDisabled: {
-    opacity: 0.42,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderBottomWidth: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
   secondaryBtnText: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: Layout.fonts.extrabold,
+    fontSize: 17,
+    fontFamily: "DMSans_800ExtraBold",
   },
-  primaryBtnWrap: {
-    minHeight: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.85)",
-    overflow: "hidden",
-  },
+  // Next — the main action, in the avatar's button colour.
   primaryBtn: {
-    flex: 1,
-    minHeight: 48,
-    paddingHorizontal: 22,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-  },
-  primaryBtnDisabled: {
-    backgroundColor: "#DDE5EF",
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: "rgba(0,0,0,0.22)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
   primaryBtnText: {
-    color: "#FFFFFF",
-    fontSize: Layout.fontSize.md,
-    fontFamily: Layout.fonts.extrabold,
+    fontSize: 17,
+    fontFamily: "DMSans_800ExtraBold",
+  },
+  // Next / Next Round stay dimmed until a picture has been chosen.
+  btnDisabled: {
+    opacity: 0.42,
   },
 });

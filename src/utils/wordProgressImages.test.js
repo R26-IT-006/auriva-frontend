@@ -132,7 +132,8 @@ describe('§4 — the row renders it compactly', () => {
   });
 
   it('it is teacher-sized, not huge', () => {
-    expect(code).toMatch(/const WORD_ROW_IMAGE_SIZE = 48;/);
+    // 56 in the word-card layout — still inside the teacher-sized range below.
+    expect(code).toMatch(/const WORD_ROW_IMAGE_SIZE = 56;/);
     expect(code).toMatch(/size=\{WORD_ROW_IMAGE_SIZE\}/);
     const size = Number(code.match(/const WORD_ROW_IMAGE_SIZE = (\d+);/)[1]);
     expect(size).toBeGreaterThanOrEqual(48);
@@ -197,7 +198,9 @@ describe('§7 — nothing but the picture changed', () => {
   it('accuracy, status icons, stars and the accordion are untouched', () => {
     expect(code).toMatch(/const correct = Object\.values\(item\.status\)\.filter\(s => s === 'correct'\)\.length;/);
     expect(code).toMatch(/const stars\s+= correct === 4 \? 3 : correct >= 2 \? 2 : correct >= 1 \? 1 : 0;/);
-    expect(code).toMatch(/const cfg = STATUS\[item\.status\[ex\]\] \?\? STATUS\.pending;/);
+    // Each activity's result is now spelled out (On own / With help / Not yet)
+    // from one RESULT map, with the same fallback to "not attempted".
+    expect(code).toMatch(/const r = RESULT\[item\.status\?\.\[ex\]\] \?\? RESULT\.pending;/);
     expect(code).toMatch(/name=\{i < stars \? 'star' : 'star-outline'\}/);
     expect(code).toMatch(/function calcLetterScore\(wordResults\)/);
   });

@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, Ellipse, Circle, Rect, G } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { useFonts } from 'expo-font';
 import { DMSans_800ExtraBold, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { Layout } from '../../../../constants/layout';
@@ -104,7 +104,7 @@ function TopicCard({ topic, pos, cardW, cardH, theme, onPress, extraBadge, fonts
             style={[
               styles.topicLabel,
               { color: locked ? '#A0AAB4' : '#1E1B4B' },
-              fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', fontWeight: 'normal' },
+              fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', },
             ]}
             numberOfLines={2}
           >
@@ -209,73 +209,42 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
 
   return (
     <LinearGradient
-      colors={['#b2e8ff', '#c5f0d8', '#8acc8a']}
-      locations={[0, 0.48, 1]}
+      colors={theme.backgroundGradient}
       style={styles.gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
+        {/* ── Top bar: back | title ── same icon circle + 34pt heading as the
+            other module landing pages (LetterPractice / LetterHome / DialogueLanding). */}
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('DialogueLanding', { student })}
-            activeOpacity={0.7}
-            accessibilityLabel="Go back"
-          >
-            <Ionicons name="arrow-back" size={20} color="#1a3880" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.titleArea}>
-          <Svg
-            style={StyleSheet.absoluteFill}
-            viewBox="0 0 1024 260"
-            preserveAspectRatio="xMidYMid slice"
-          >
-            {/* Sun */}
-            <Circle cx="932" cy="78" r="40" fill="#FFE44D" opacity={0.9} />
-            <Circle cx="932" cy="78" r="58" fill="#FFE44D" opacity={0.18} />
-
-            {/* Clouds */}
-            <G opacity={0.9}>
-              <Ellipse cx="128" cy="68" rx="56" ry="27" fill="white" />
-              <Ellipse cx="164" cy="58" rx="40" ry="24" fill="white" />
-              <Ellipse cx="98" cy="61" rx="34" ry="21" fill="white" />
-            </G>
-            <G opacity={0.85}>
-              <Ellipse cx="532" cy="80" rx="50" ry="23" fill="white" />
-              <Ellipse cx="564" cy="70" rx="36" ry="20" fill="white" />
-              <Ellipse cx="506" cy="73" rx="32" ry="19" fill="white" />
-            </G>
-            <G opacity={0.55}>
-              <Ellipse cx="340" cy="105" rx="36" ry="17" fill="white" />
-              <Ellipse cx="364" cy="97" rx="26" ry="15" fill="white" />
-            </G>
-          </Svg>
-
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelBadgeText}>LEVEL 2</Text>
+          <View style={styles.sideGroup}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => navigation.navigate('DialogueLanding', { student })}
+              activeOpacity={0.7}
+              accessibilityLabel="Go back"
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            </TouchableOpacity>
           </View>
-          <Text
-            style={[
-              styles.heading,
-              { color: '#1a3880' },
-              fontsLoaded && { fontFamily: 'Colora', fontWeight: 'normal' },
-            ]}
-          >
-            Choose a Topic
-          </Text>
-          <Text
-            style={[
-              styles.sub,
-              fontsLoaded && { fontFamily: 'Colora', fontWeight: 'normal' },
-            ]}
-          >
-            Sentence Construction
-          </Text>
+
+          <View style={styles.titleRow}>
+            <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="chatbubbles" size={18} color="#FFF" />
+            </View>
+            <Text style={[styles.title, { color: theme.headingText }]}>Choose a Topic</Text>
+          </View>
+
+          <View style={styles.sideGroup} />
         </View>
+
+        <Text style={[styles.subtitle, { color: theme.headingText }]} numberOfLines={1}>
+          Level 2 · Sentence Construction
+        </Text>
 
         <View style={styles.pathArea}>
           <Svg
@@ -283,79 +252,6 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
             viewBox="0 0 1024 768"
             preserveAspectRatio="xMidYMid slice"
           >
-            {/* Rolling hills */}
-            <Ellipse cx="160" cy="780" rx="380" ry="230" fill="#52a852" opacity={0.3} />
-            <Ellipse cx="530" cy="780" rx="450" ry="210" fill="#47a047" opacity={0.25} />
-            <Ellipse cx="900" cy="780" rx="340" ry="200" fill="#52a852" opacity={0.3} />
-            <Ellipse cx="512" cy="775" rx="680" ry="110" fill="#6abf6a" opacity={0.28} />
-
-            {/* Sun */}
-            <Circle cx="932" cy="78" r="40" fill="#FFE44D" opacity={0.9} />
-            <Circle cx="932" cy="78" r="58" fill="#FFE44D" opacity={0.18} />
-
-            {/* Clouds */}
-            <G opacity={0.9}>
-              <Ellipse cx="128" cy="68" rx="56" ry="27" fill="white" />
-              <Ellipse cx="164" cy="58" rx="40" ry="24" fill="white" />
-              <Ellipse cx="98" cy="61" rx="34" ry="21" fill="white" />
-            </G>
-            <G opacity={0.85}>
-              <Ellipse cx="532" cy="80" rx="50" ry="23" fill="white" />
-              <Ellipse cx="564" cy="70" rx="36" ry="20" fill="white" />
-              <Ellipse cx="506" cy="73" rx="32" ry="19" fill="white" />
-            </G>
-            <G opacity={0.55}>
-              <Ellipse cx="340" cy="105" rx="36" ry="17" fill="white" />
-              <Ellipse cx="364" cy="97" rx="26" ry="15" fill="white" />
-            </G>
-
-            {/* Trees */}
-            <Rect x="30" y="570" width="13" height="55" fill="#7B4010" rx="3" />
-            <Circle cx="36" cy="558" r="34" fill="#2a7a2a" />
-            <Circle cx="36" cy="542" r="24" fill="#3a9a3a" />
-
-            <Rect x="200" y="582" width="11" height="46" fill="#7B4010" rx="3" />
-            <Circle cx="205" cy="572" r="27" fill="#2a7a2a" />
-            <Circle cx="205" cy="558" r="19" fill="#3a9a3a" />
-
-            <Rect x="740" y="578" width="11" height="44" fill="#7B4010" rx="3" />
-            <Circle cx="745" cy="568" r="26" fill="#2a7a2a" />
-            <Circle cx="745" cy="554" r="18" fill="#3a9a3a" />
-
-            <Rect x="964" y="565" width="13" height="54" fill="#7B4010" rx="3" />
-            <Circle cx="970" cy="554" r="32" fill="#2a7a2a" />
-            <Circle cx="970" cy="540" r="22" fill="#3a9a3a" />
-
-            {/* Mushroom */}
-            <Rect x="490" y="580" width="10" height="22" fill="#E8D5A8" rx="2" />
-            <Ellipse cx="495" cy="577" rx="18" ry="13" fill="#CC2222" />
-            <Circle cx="490" cy="572" r="3.2" fill="white" opacity={0.85} />
-            <Circle cx="501" cy="574" r="2.6" fill="white" opacity={0.85} />
-            <Circle cx="495" cy="580" r="2" fill="white" opacity={0.85} />
-
-            {/* Flowers */}
-            <G transform="translate(290,572)">
-              <Circle cx="0" cy="-8" r="5.5" fill="#FF69B4" />
-              <Circle cx="8" cy="0" r="5.5" fill="#FF69B4" />
-              <Circle cx="0" cy="8" r="5.5" fill="#FF69B4" />
-              <Circle cx="-8" cy="0" r="5.5" fill="#FF69B4" />
-              <Circle cx="0" cy="0" r="5" fill="#FFD700" />
-            </G>
-            <G transform="translate(650,566)">
-              <Circle cx="0" cy="-7" r="5" fill="#FF7F50" />
-              <Circle cx="7" cy="0" r="5" fill="#FF7F50" />
-              <Circle cx="0" cy="7" r="5" fill="#FF7F50" />
-              <Circle cx="-7" cy="0" r="5" fill="#FF7F50" />
-              <Circle cx="0" cy="0" r="4.5" fill="#FFD700" />
-            </G>
-            <G transform="translate(820,578)">
-              <Circle cx="0" cy="-6" r="4.5" fill="#DA70D6" />
-              <Circle cx="6" cy="0" r="4.5" fill="#DA70D6" />
-              <Circle cx="0" cy="6" r="4.5" fill="#DA70D6" />
-              <Circle cx="-6" cy="0" r="4.5" fill="#DA70D6" />
-              <Circle cx="0" cy="0" r="4" fill="#FFD700" />
-            </G>
-
             <Path d={ROAD_PATH} stroke="#C8A030" strokeWidth={66} fill="none" strokeLinecap="round" opacity={0.28} />
             <Path d={ROAD_PATH} stroke="#F2D980" strokeWidth={58} fill="none" strokeLinecap="round" />
             <Path
@@ -430,25 +326,72 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  gradient: { flex: 1 },
+  gradient: { flex: 1, overflow: 'hidden' },
+  // Decorative background shapes (same as the other module screens).
+  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
+  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
+  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
   safe: { flex: 1 },
 
-  topBar: { paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.sm },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Layout.spacing.md,
+    paddingTop: Layout.spacing.sm,
+  },
+  sideGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',   // back button stays in the corner while the title sits lower
+  },
+  // Concept's round translucent header button.
   iconBtn: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(26,56,128,0.25)',
-    backgroundColor: 'rgba(255,255,255,0.75)', alignItems: 'center', justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 36,
+  },
+  titleIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  title: {
+    fontSize: 34,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontFamily: 'DMSans_600SemiBold',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginTop: 2,
+    paddingHorizontal: Layout.spacing.lg,
   },
 
-  titleArea: { alignItems: 'center', paddingHorizontal: Layout.spacing.lg, gap: 6 },
-  levelBadge: {
-    backgroundColor: '#F59E0B', paddingHorizontal: 22, paddingVertical: 7,
-    borderRadius: 100,
-  },
-  levelBadgeText: { color: '#FFF', fontSize: 14, fontWeight: '800', letterSpacing: 1.5 },
-  heading: { fontSize: 40, fontWeight: '900', letterSpacing: -0.5 },
-  sub: { fontSize: 22, fontWeight: '500', color: '#1a3880', opacity: 0.65 },
-
-  pathArea: { flex: 1, position: 'relative', marginTop: -Layout.spacing.xs },
+  pathArea: { flex: 1, position: 'relative', marginTop: 28 },
 
   node: { position: 'absolute' },
   card: {
@@ -473,8 +416,8 @@ const styles = StyleSheet.create({
   },
 
   labelWrap: { flex: 1, padding: 8, justifyContent: 'center', alignItems: 'center' },
-  topicLabel: { fontSize: Layout.fontSize.sm, fontWeight: '700', lineHeight: 16, textAlign: 'center' },
-  topicSub: { fontSize: Layout.fontSize.xs, fontWeight: '600', marginTop: 2, textAlign: 'center' },
+  topicLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', lineHeight: 16, textAlign: 'center' },
+  topicSub: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_600SemiBold', marginTop: 2, textAlign: 'center' },
 
   loadingSpinner: { position: 'absolute', bottom: 24, alignSelf: 'center' },
 });

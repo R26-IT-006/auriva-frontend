@@ -56,7 +56,8 @@ describe('the back button is gated, never a direct navigation', () => {
   });
 
   it("'back' is part of the documented gate-action vocabulary", () => {
-    expect(screen).toMatch(/'why' \| 'assessment' \| 'progress' \| 'back'/);
+    // 'progress' left the vocabulary with the Report button.
+    expect(screen).toMatch(/'why' \| 'assessment' \| 'back'/);
   });
 
   it('navigation happens only inside handleGateSuccess, after the code is accepted', () => {

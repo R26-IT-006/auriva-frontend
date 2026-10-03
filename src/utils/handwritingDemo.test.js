@@ -444,40 +444,21 @@ describe('initial assessment', () => {
 });
 
 describe('letter categories', () => {
-  for (const [label, source, route] of [
-    ['lowercase', letterScreen, 'LetterWriting'],
-    ['uppercase', upperScreen, 'UppercaseWriting'],
+  // The one-time "watch first" category demonstration was removed from the
+  // letter screens: selecting a letter now goes straight to Attempt 1. The
+  // policy keys (makeLetterCategoryDemoKey) are kept and still tested below.
+  for (const [label, source] of [
+    ['lowercase', letterScreen],
+    ['uppercase', upperScreen],
   ]) {
     describe(label, () => {
-      const block = source.slice(source.indexOf('const categoryDemoKey'),
-        source.indexOf('const categoryDemoKey') + 2200);
-
-      it('keys the demo off the real category of the current letter', () => {
-        expect(block).toMatch(/makeLetterCategoryDemoKey\(\{\s*\n?\s*caseType, category: letterObj\?\.category,/);
-      });
-
-      it('fires BEFORE Attempt 1 and never mid-work', () => {
-        expect(block).toMatch(/enabled: attempt === 1 && !hasDrawn/);
-      });
-
-      it('demonstrates the REAL target letter, not a stand-in', () => {
-        expect(block).toMatch(/letter, caseType,/);
-        expect(block).not.toMatch(/letter: '[a-z]'/i);
-      });
-
-      it('returns to the same activity with the same target letter still active', () => {
-        expect(block).toMatch(new RegExp(`nextRoute: '${route}'`));
-        expect(block).toMatch(/letterSequence: sequence\.slice\(letterIdx\)/);
-        expect(block).toMatch(/collectionMode, collectionSessionId, interactionId/);
-      });
-
-      it('never runs in collection mode', () => {
-        expect(block).toMatch(/collectionMode,/);
+      it('opens no demo screen when a letter is selected', () => {
+        expect(source).not.toMatch(/HandwritingDemo/);
+        expect(source).not.toMatch(/useDemoDetour|makeLetterCategoryDemoKey|categoryDemoKey/);
+        expect(source).not.toMatch(/utils\/demoDetour|utils\/demoPolicy/);
       });
 
       it('leaves the three real attempts and the Attempt-1 tracer untouched', () => {
-        // The demo added no attempt arithmetic and removed no support.
-        expect(block).not.toMatch(/setAttempt|attempt \+ 1|isLastAttempt/);
         expect(source).toMatch(/showAnimatedTracer/);
         expect(source).toMatch(/const \[attempt,\s+setAttempt\]\s+= useState\(1\)/);
       });
@@ -505,26 +486,20 @@ describe('letter categories', () => {
 });
 
 describe('word writing', () => {
-  const block = wordWriting.slice(wordWriting.indexOf('const hasIntroVideo'),
-    wordWriting.indexOf('const hasIntroVideo') + 1400);
-
-  it('introduces word writing once, with the whole word', () => {
-    expect(block).toMatch(/DEMO_KEYS\.WORD_WRITING_INTRO/);
-    expect(block).toMatch(/word: wordEntry\.word/);
-    expect(block).toMatch(/nextRoute: 'WordWriting'/);
+  // Both pre-writing demonstrations were removed by request: the one-time
+  // "watch first" intro detour and the per-word intro video that auto-played
+  // over the canvas. Selecting a word now goes straight to writing it.
+  it('opens no demo screen and plays no intro video before writing', () => {
+    expect(wordWriting).not.toMatch(/useDemoDetour|HandwritingDemo|DEMO_KEYS/);
+    expect(wordWriting).not.toMatch(/WordVideoModal|showWordVideo|WORD_VIDEOS/);
   });
 
-  it('stands down when the word already has an intro video — no stacked tutorials', () => {
-    expect(block).toMatch(/const hasIntroVideo = !!\(wordEntry && WORD_VIDEOS\[wordEntry\.word\]\)/);
-    expect(block).toMatch(/enabled: .*!hasIntroVideo/);
+  it('the word-writing intro policy entry itself is kept', () => {
+    expect(isValidDemoKey(DEMO_KEYS.WORD_WRITING_INTRO)).toBe(true);
   });
 
-  it('fires before the first attempt only', () => {
-    expect(block).toMatch(/attempt === 1 && !hasDrawn/);
-  });
-
-  it('resumes the same word at the same index', () => {
-    expect(block).toMatch(/buildWordRouteParams\(\{[\s\S]*?currentWordIndex,/);
+  it('the word session still resumes the same word at the same index', () => {
+    expect(wordWriting).toMatch(/buildWordRouteParams\(\{[\s\S]*?currentWordIndex,/);
   });
 });
 
@@ -532,18 +507,15 @@ describe('word activities', () => {
   const demoStart = wordActivity.indexOf('useDemoDetour({');
   const block = wordActivity.slice(demoStart, demoStart + 1400);
 
-  it('only Exercise D gets a demo', () => {
-    expect(block).toMatch(/enabled: currentExercise === 'D'/);
-    expect(block).toMatch(/DEMO_KEYS\.WORD_ACTIVITY_SPELL_TILES/);
-    // Exactly one demo detour in the whole screen — A, B, C and E get none.
-    expect((wordActivity.match(/useDemoDetour\(/g) ?? []).length).toBe(1);
-    for (const other of ["=== 'A'", "=== 'B'", "=== 'C'", "=== 'E'"]) {
-      expect(block).not.toContain(other);
-    }
+  // The spelling-tile demonstration that used to open Exercise D was removed
+  // by request: no word activity opens a demo screen now. The policy key and
+  // its TAP presentation are kept (and still checked) for the demo screen.
+  it('no word activity opens a demo screen', () => {
+    expect(wordActivity).not.toMatch(/useDemoDetour|HandwritingDemo|DEMO_KEYS/);
+    expect(wordActivity).not.toMatch(/utils\/demoDetour|utils\/demoPolicy/);
   });
 
-  it('is a tap demo built from the child\'s own current word', () => {
-    expect(block).toMatch(/tapLetters: spellDemoLetters/);
+  it('the spelling demo\'s policy entry is kept as a TAP demo', () => {
     expect(getDemoPresentation(DEMO_KEYS.WORD_ACTIVITY_SPELL_TILES).type).toBe(DEMO_TYPES.TAP);
   });
 
@@ -551,8 +523,7 @@ describe('word activities', () => {
     expect(block).not.toMatch(/evaluate|score|saveWordActivity|submitWord|onComplete/i);
   });
 
-  it('returns the child to Exercise D, not back to Exercise A', () => {
-    expect(block).toMatch(/initialExerciseIndex: exIdx/);
+  it('the screen can still resume at a given exercise from its route', () => {
     expect(wordActivity).toMatch(/route\.params\?\.initialExerciseIndex/);
     // And the seed is bounded, so a bad param cannot skip past the registry.
     expect(wordActivity).toMatch(/requested < WORD_EXERCISE_COUNT/);

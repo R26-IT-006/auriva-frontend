@@ -10,6 +10,7 @@ import { Colors } from '../../../constants/colors';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../api/dialogue';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const PROGRESS_FRACTION = 0.72;
 
@@ -125,19 +126,23 @@ export default function BoldWordScreen({ route, navigation }) {
     <View style={styles.root}>
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={() => setShowGate(true)} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="exit-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => setShowGate(true)} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="exit-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
-      <View style={[styles.gradient, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.gradient}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.body}>
 
@@ -170,13 +175,13 @@ export default function BoldWordScreen({ route, navigation }) {
                 onPress={nextReady ? goNext : undefined}
               >
                 <Text style={[styles.nextBtnText, { color: theme.buttonText }]}>Let's try!</Text>
-                <Ionicons name="checkmark-circle-outline" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
+                <Ionicons name="checkmark-circle-outline" size={20} color={theme.buttonText} />
               </TouchableOpacity>
             </View>
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       <ParentGateModal
         visible={showGate}
@@ -201,6 +206,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerSide: { width: 40, alignItems: 'center', justifyContent: 'center' },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   progressTrack: {
     flex: 1,
     height: 8,
@@ -234,7 +253,7 @@ const styles = StyleSheet.create({
   },
   wordText: {
     fontSize: 85,
-    fontWeight: '900',
+    fontFamily: 'DMSans_900Black',
     color: Colors.text.primary,
     textAlign: 'center',
     letterSpacing: 1,
@@ -249,7 +268,7 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.full,
     ...Layout.shadow.sm,
   },
-  replayBtnText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  replayBtnText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
 
   spacer: { flex: 1 },
 
@@ -260,13 +279,23 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   nextBtn: {
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.full,
-    ...Layout.shadow.md,
   },
   nextBtnDisabled: { opacity: 0.45 },
-  nextBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  nextBtnText: {
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
 });

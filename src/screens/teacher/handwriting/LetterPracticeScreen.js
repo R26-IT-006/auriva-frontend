@@ -2,16 +2,15 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   Modal,
   StyleSheet,
-  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { Layout } from '../../../constants/layout';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
 import { LETTER_CATEGORIES } from '../../../data/letterCategories';
@@ -26,14 +25,8 @@ import {
   canOpen, isPreview, PREVIEW_BADGE, UPPERCASE_ORDER_CAPTION,
 } from '../../../constants/demoAccess';
 import ScreenBackButton from '../../../components/handwriting/ScreenBackButton';
+import LetterProgressPanel from '../../../components/handwriting/LetterProgressPanel';
 import useGatedBack from '../../../utils/useGatedBack';
-
-const AVATAR_MAP = {
-  boba:     require('../../../../assets/handwriting-avatars/Boba.png'),
-  glitter:  require('../../../../assets/handwriting-avatars/Glitter.png'),
-  lily:     require('../../../../assets/handwriting-avatars/Lily.png'),
-  megatron: require('../../../../assets/handwriting-avatars/Megatron.png'),
-};
 
 export default function LetterPracticeScreen({ route, navigation }) {
   // The handwriting activities are designed for a tablet held in landscape:
@@ -50,10 +43,12 @@ export default function LetterPracticeScreen({ route, navigation }) {
   ));
 
   const { student, theme, letterSequence = [], motorProfile = null } = route.params;
-  const { width } = useWindowDimensions();
 
   const [lowercaseProgress, setLowercaseProgress] = useState(0);
   const [uppercaseProgress, setUppercaseProgress] = useState(0);
+  // The two progress bars live in a small pop-up (Progress button), as on
+  // LetterHomeScreen, so the two cards have the screen to themselves.
+  const [showProgress, setShowProgress] = useState(false);
   const [pickerCase, setPickerCase] = useState(null);
   const [pickerCategory, setPickerCategory] = useState(null);
 
@@ -132,9 +127,6 @@ export default function LetterPracticeScreen({ route, navigation }) {
   // These two only decide whether it opens, and whether it says so.
   const uppercaseOpen    = canOpen(lowercaseDone);
   const uppercasePreview = isPreview(lowercaseDone);
-  const lowercasePercent = Math.min(100, Math.round((lowercaseProgress / 26) * 100));
-  const uppercasePercent = Math.min(100, Math.round((uppercaseProgress / 26) * 100));
-  const avatarSource = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
   return (
     <LinearGradient
@@ -143,201 +135,187 @@ export default function LetterPracticeScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      {/* Decorative background bubbles */}
-      <View style={[styles.bgBubbleLarge, {
-        backgroundColor: theme.button + '0E',
-        width: width * 0.45, height: width * 0.45, borderRadius: width * 0.225,
-      }]} />
-      <View style={[styles.bgBubbleMedium, {
-        backgroundColor: theme.button + '09',
-        width: width * 0.28, height: width * 0.28, borderRadius: width * 0.14,
-      }]} />
-      <View style={[styles.bgBubbleSmall, {
-        backgroundColor: theme.button + '07',
-        width: width * 0.16, height: width * 0.16, borderRadius: width * 0.08,
-      }]} />
+      {/* Decorative shapes — same treatment as the Concept / Dialogue landing pages */}
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
 
       <SafeAreaView style={styles.safe}>
 
-        {/* ── Top bar ── */}
+        {/* ── Top bar: back | title | Progress ── */}
         <View style={styles.topBar}>
           {/* Gated: leaving is an adult decision, so the tap opens the parent
               gate rather than navigating. See utils/useGatedBack.js. */}
-          <View style={styles.nameRow}>
+          <View style={styles.sideGroup}>
             <ScreenBackButton
               onPress={requestBack}
               gated
               tint={theme.button}
-              color={theme.button}
-              style={{ marginRight: 2 }}
+              color={theme.headingText}
+              style={styles.iconBtn}
             />
-            <View style={styles.headerTextBlock}>
-              <Text style={[styles.studentName, { color: theme.headingText }]}>
-                {student?.full_name}
-              </Text>
-              <Text style={styles.studentSubLabel}>Letter Practice</Text>
-            </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.reportBtn, { backgroundColor: theme.button }]}
-            onPress={() => navigation.navigate('ProgressReport', {
-              student,
-              theme,
-              lowercaseProgress,
-              uppercaseProgress,
-              letterSequence,
-              originRoute: 'LetterPractice',
-            })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
-            <Text style={[styles.reportBtnText, { color: theme.buttonText }]}>View Letter Progress</Text>
-          </TouchableOpacity>
+          {/* Module title — same icon circle + 34pt heading as the landing
+              pages (ConceptCategoriesScreen / DialogueLandingScreen / LetterHome). */}
+          <View style={styles.titleRow}>
+            <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="text" size={18} color="#FFF" />
+            </View>
+            <Text style={[styles.title, { color: theme.headingText }]}>Letter Practice</Text>
+          </View>
+
+          <View style={[styles.sideGroup, styles.sideGroupRight]}>
+            <TouchableOpacity
+              style={[styles.progressBtn, { backgroundColor: theme.button, borderColor: theme.button }]}
+              onPress={() => setShowProgress(true)}
+              activeOpacity={0.8}
+              accessibilityLabel="Progress"
+            >
+              <Ionicons name="trophy" size={17} color={theme.buttonText} />
+              <Text style={[styles.progressBtnText, { color: theme.buttonText }]}>Progress</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* ── Main content ── */}
+        <Text style={[styles.subtitle, { color: theme.headingText }]} numberOfLines={1}>
+          Choose lowercase or uppercase
+        </Text>
+
+        {/* ── Main content: the two cards, centred under the subtitle ── */}
         <View style={styles.content}>
 
-          {/* Hero section */}
-          <View style={styles.heroSection}>
-            <View style={styles.heroTextBlock}>
-              <Text style={[styles.heroGreeting, { color: theme.headingText }]}>Choose your practice!</Text>
-              <Text style={[styles.heroSubtitle, { color: theme.button }]}>What would you like to write today?</Text>
-            </View>
-            <View style={styles.heroAvatarCard}>
-              <Image
-                source={avatarSource}
-                style={styles.heroAvatar}
-                resizeMode="contain"
-              />
-            </View>
-          </View>
+          {/* ── Pills row ── */}
+          <View style={styles.pillsRow}>
 
-          {/* ── Card ── */}
-          <View style={styles.card}>
-
-            {/* Progress section */}
-            <View style={styles.progressSection}>
-              <View style={styles.progressCaseBlock}>
-                <View style={styles.progressHeader}>
-                  <View style={styles.progressHeaderLeft}>
-                    <Ionicons name="trophy-outline" size={18} color="#F57F17" />
-                    <Text style={styles.progressHeaderText}>
-                      Lowercase: {lowercaseProgress} / 26 completed
-                    </Text>
-                  </View>
-                  <Text style={styles.progressPercent}>{lowercasePercent}%</Text>
-                </View>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${lowercasePercent}%` }]} />
-                </View>
+            {/* Lowercase — always unlocked */}
+            <TouchableOpacity
+              style={styles.lowercasePill}
+              onPress={() => goToLetterScreen('lowercase',
+                { student, theme, caseType: 'lowercase', letterSequence, motorProfile },
+                letterSequence,
+              )}
+              onLongPress={() => setPickerCase('lowercase')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.pillIconCircle}>
+                <Ionicons name="text-outline" size={32} color="#1B5E20" />
               </View>
+              <Text style={styles.lowercaseTitle}>Lowercase</Text>
+              <Text style={styles.pillSubLabel}>{lowercaseProgress} / 26 done</Text>
+            </TouchableOpacity>
 
-              <View style={styles.progressCaseBlock}>
-                <View style={styles.progressHeader}>
-                  <View style={styles.progressHeaderLeft}>
-                    <Ionicons name="arrow-up-circle-outline" size={18} color="#9575CD" />
-                    <Text style={styles.progressHeaderText}>
-                      Uppercase: {uppercaseProgress} / 26 completed
-                    </Text>
-                  </View>
-                  <Text style={[styles.progressPercent, styles.uppercaseProgressPercent]}>
-                    {uppercasePercent}%
-                  </Text>
-                </View>
-                <View style={styles.progressTrack}>
-                  <View style={[
-                    styles.progressFill,
-                    styles.uppercaseProgressFill,
-                    { width: `${uppercasePercent}%` },
-                  ]} />
-                </View>
+            {/* Uppercase - earned once all 26 lowercase letters are done.
+                In a demo build it can also be opened early, and then it
+                wears its own calm "Preview" state: not dressed up as
+                earned, not left looking dead. */}
+            <TouchableOpacity
+              style={[
+                styles.uppercasePill,
+                !lowercaseDone && !uppercasePreview && styles.uppercaseLocked,
+                uppercasePreview && styles.previewPill,
+              ]}
+              onPress={() => uppercaseOpen && goToLetterScreen('uppercase',
+                { student, theme, letterSequence, motorProfile },
+                letterSequence,
+              )}
+              onLongPress={() => setPickerCase('uppercase')}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={
+                lowercaseDone ? 'Uppercase'
+                  : `Uppercase, preview. ${UPPERCASE_ORDER_CAPTION}`
+              }
+            >
+              <View style={[
+                styles.pillIconCircle,
+                { backgroundColor: lowercaseDone ? '#CE93D8' : (uppercasePreview ? '#EDE0F3' : '#E0E0E0') },
+              ]}>
+                <Ionicons
+                  name={uppercaseOpen ? 'arrow-up-circle-outline' : 'lock-closed'}
+                  size={32}
+                  color={lowercaseDone ? '#4A148C' : (uppercasePreview ? '#9575CD' : '#9E9E9E')}
+                />
               </View>
-            </View>
-
-            {/* ── Pills row ── */}
-            <View style={styles.pillsRow}>
-
-              {/* Lowercase — always unlocked */}
-              <TouchableOpacity
-                style={styles.lowercasePill}
-                onPress={() => goToLetterScreen('lowercase',
-                  { student, theme, caseType: 'lowercase', letterSequence, motorProfile },
-                  letterSequence,
-                )}
-                onLongPress={() => setPickerCase('lowercase')}
-                activeOpacity={0.85}
-              >
-                <View style={styles.pillIconCircle}>
-                  <Ionicons name="text-outline" size={32} color="#1B5E20" />
-                </View>
-                <Text style={styles.lowercaseTitle}>Lowercase</Text>
-                <Text style={styles.pillSubLabel}>{lowercaseProgress} / 26 done</Text>
-              </TouchableOpacity>
-
-              {/* Uppercase - earned once all 26 lowercase letters are done.
-                  In a demo build it can also be opened early, and then it
-                  wears its own calm "Preview" state: not dressed up as
-                  earned, not left looking dead. */}
-              <TouchableOpacity
-                style={[
-                  styles.uppercasePill,
-                  !lowercaseDone && !uppercasePreview && styles.uppercaseLocked,
-                  uppercasePreview && styles.previewPill,
-                ]}
-                onPress={() => uppercaseOpen && goToLetterScreen('uppercase',
-                  { student, theme, letterSequence, motorProfile },
-                  letterSequence,
-                )}
-                onLongPress={() => setPickerCase('uppercase')}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  lowercaseDone ? 'Uppercase'
-                    : `Uppercase, preview. ${UPPERCASE_ORDER_CAPTION}`
-                }
-              >
-                <View style={[
-                  styles.pillIconCircle,
-                  { backgroundColor: lowercaseDone ? '#CE93D8' : (uppercasePreview ? '#EDE0F3' : '#E0E0E0') },
-                ]}>
-                  <Ionicons
-                    name={uppercaseOpen ? 'arrow-up-circle-outline' : 'lock-closed'}
-                    size={32}
-                    color={lowercaseDone ? '#4A148C' : (uppercasePreview ? '#9575CD' : '#9E9E9E')}
-                  />
-                </View>
-                <Text style={[
-                  styles.uppercaseTitle,
-                  !lowercaseDone && !uppercasePreview && styles.lockedText,
-                  uppercasePreview && styles.previewTitle,
-                ]}>
-                  Uppercase
+              <Text style={[
+                styles.uppercaseTitle,
+                !lowercaseDone && !uppercasePreview && styles.lockedText,
+                uppercasePreview && styles.previewTitle,
+              ]}>
+                Uppercase
+              </Text>
+              {lowercaseDone ? (
+                <Text style={styles.pillSubLabel}>Ready to go!</Text>
+              ) : uppercasePreview ? (
+                <>
+                  <View style={styles.previewBadge}>
+                    <Text style={styles.previewBadgeText}>{PREVIEW_BADGE}</Text>
+                  </View>
+                  {/* One short line, present tense, says what comes first
+                      rather than what is forbidden. */}
+                  <Text style={styles.previewCaption}>{UPPERCASE_ORDER_CAPTION}</Text>
+                </>
+              ) : (
+                <Text style={[styles.pillSubLabel, styles.lockedSubLabel]}>
+                  Finish all lowercase{'\n'}letters to unlock
                 </Text>
-                {lowercaseDone ? (
-                  <Text style={styles.pillSubLabel}>Ready to go!</Text>
-                ) : uppercasePreview ? (
-                  <>
-                    <View style={styles.previewBadge}>
-                      <Text style={styles.previewBadgeText}>{PREVIEW_BADGE}</Text>
-                    </View>
-                    {/* One short line, present tense, says what comes first
-                        rather than what is forbidden. */}
-                    <Text style={styles.previewCaption}>{UPPERCASE_ORDER_CAPTION}</Text>
-                  </>
-                ) : (
-                  <Text style={[styles.pillSubLabel, styles.lockedSubLabel]}>
-                    Finish all lowercase{'\n'}letters to unlock
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-            </View>
+              )}
+            </TouchableOpacity>
 
           </View>
 
         </View>
+
+        {/* ── Progress pop-up (Progress button) ──
+            The full Letter Progress content — name banner (Done / Next /
+            Total), then the Lowercase and Uppercase sections with their
+            Next Letter badges — in place of the separate Letter Progress
+            screen. The panel loads fresh numbers each time it opens.
+            Tapping the dimmed backdrop or Close dismisses it. */}
+        <Modal
+          visible={showProgress}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowProgress(false)}
+        >
+          <TouchableOpacity
+            style={styles.popupOverlay}
+            activeOpacity={1}
+            onPress={() => setShowProgress(false)}
+          >
+            {/* Inner touchable swallows taps so only the backdrop closes it. */}
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.progressCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}
+            >
+              {/* Header — same icon circle + round close as the Assessment
+                  Summary pop-up on LetterHome. */}
+              <View style={styles.popupHeader}>
+                <View style={styles.popupTitleRow}>
+                  <View style={[styles.popupTitleIcon, { backgroundColor: theme.cardOutline }]}>
+                    <Ionicons name="trophy" size={18} color="#FFF" />
+                  </View>
+                  <Text style={[styles.popupTitle, { color: theme.headingText }]}>Your Progress</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowProgress(false)}
+                  style={[styles.popupCloseBtn, { backgroundColor: theme.cardOutline + '1F' }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Close"
+                >
+                  <Ionicons name="close" size={22} color={theme.headingText} />
+                </TouchableOpacity>
+              </View>
+
+              <LetterProgressPanel
+                student={student}
+                theme={theme}
+                letterSequence={letterSequence}
+                initLow={lowercaseProgress}
+                initUp={uppercaseProgress}
+              />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
 
         {/* ── Category picker modal (testing convenience) ── */}
         <Modal
@@ -439,253 +417,247 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
-  // Decorative background bubbles
-  bgBubbleLarge: {
+  // ── Decorative background shapes (Concept / Dialogue landing pages) ──────
+  blob: {
     position: 'absolute',
-    top: '-6%',
-    right: '-14%',
+    borderRadius: 999,
+    opacity: 0.08,
   },
-  bgBubbleMedium: {
-    position: 'absolute',
-    bottom: '4%',
-    left: '-10%',
+  blobTopRight: {
+    width: 220,
+    height: 220,
+    top: -60,
+    right: -60,
   },
-  bgBubbleSmall: {
-    position: 'absolute',
-    top: '42%',
-    right: '-5%',
+  blobBottomLeft: {
+    width: 260,
+    height: 260,
+    bottom: -80,
+    left: -80,
   },
 
-  // Top bar
+  // ── Top bar: back | title | Progress ──────────────────────────────────────
+  // The two side groups share the leftover width equally (flex: 1) so the
+  // title stays centred even though Progress is wider than Back.
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingVertical: 10,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
   },
-  nameRow: {
+  sideGroup: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
-  headerTextBlock: {
-    justifyContent: 'center',
+  sideGroupRight: {
+    justifyContent: 'flex-end',
   },
-  studentName: {
-    fontSize: 17,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
-  },
-  studentSubLabel: {
-    fontSize: 12,
-    color: '#888888',
-    marginTop: 1,
-  },
-  reportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+  // Overrides ScreenBackButton's tinted look with the landing pages' round,
+  // translucent white button (its 40px size comes from ScreenBackButton).
+  iconBtn: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderWidth: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
-  reportBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+  // marginTop matches the other landing pages, so the title sits at the
+  // same height on every one of them.
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 70,
   },
-  // Main content
+  titleIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  title: {
+    fontSize: 34,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontFamily: 'DMSans_600SemiBold',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginTop: 2,
+    paddingHorizontal: Layout.spacing.lg,
+  },
+  // Same pill as LetterHome's Progress button.
+  progressBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    minHeight: 40,
+  },
+  progressBtnText: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+  },
+
+  // ── Main content ──────────────────────────────────────────────────────────
+  // The two cards, centred both ways in the space under the subtitle; the
+  // extra bottom padding lifts the block a little, as the landing pages do.
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 22,
-    paddingBottom: 18,
-    gap: 14,
+    paddingHorizontal: 44,
+    paddingBottom: 48,
   },
 
-  // Hero section
-  heroSection: {
-    width: '100%',
-    maxWidth: 680,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-  },
-  heroTextBlock: {
+  // ── Progress pop-up ───────────────────────────────────────────────────────
+  // Dimmed backdrop, card centred on it (tapping the backdrop closes).
+  popupOverlay: {
     flex: 1,
-    alignItems: 'flex-start',
-    paddingLeft: 28,
-  },
-  heroAvatarCard: {
-    width: 260,
-    height: 210,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroAvatar: {
-    width: '100%',
-    height: '100%',
-  },
-  heroGreeting: {
-    fontSize: 32,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
-    textAlign: 'left',
-    letterSpacing: 0.3,
-  },
-  heroSubtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    textAlign: 'left',
-    opacity: 0.85,
-    marginTop: 6,
-  },
-
-  // Card
-  card: {
-    width: '100%',
-    maxWidth: 680,
-    minHeight: 350,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 26,
-    padding: 30,
-    elevation: 4,
+  // Landing-page card frame; surface and outline come from the avatar theme.
+  progressCard: {
+    width: '90%',
+    maxWidth: 820,
+    maxHeight: '94%',
+    borderRadius: 28,
+    borderWidth: 3,
+    paddingHorizontal: 30,
+    paddingTop: 20,
+    paddingBottom: 30,
+    gap: 18,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    gap: 22,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
-
-  // Progress section
-  progressSection: {
-    gap: 14,
-  },
-  progressCaseBlock: {
-    gap: 8,
-  },
-  progressHeader: {
+  // Pop-up header: icon circle + title on the left, round close on the right.
+  popupHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  progressHeaderLeft: {
+  popupTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
   },
-  progressHeaderText: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-    color: '#444444',
+  // Same icon circle as the landing pages' titles (titleIconCircle).
+  popupTitleIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  progressPercent: {
-    fontSize: 14,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
-    color: '#4CAF50',
+  popupTitle: {
+    fontSize: 24,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
   },
-  progressTrack: {
-    width: '100%',
-    height: 10,
-    backgroundColor: '#EEEEEE',
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 5,
-  },
-  uppercaseProgressPercent: {
-    color: '#9575CD',
-  },
-  uppercaseProgressFill: {
-    backgroundColor: '#9575CD',
+  popupCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  // Pills row
+  // ── Lowercase / Uppercase cards ───────────────────────────────────────────
   pillsRow: {
+    width: '100%',
+    maxWidth: 680,
     flexDirection: 'row',
-    gap: 14,
+    gap: 24,
   },
 
-  // Lowercase pill
+  // Lowercase card — white, landing-page frame (28 radius, 3px outline),
+  // green kept in the outline, icon circle and title.
   lowercasePill: {
     flex: 1,
-    backgroundColor: '#F1F8E9',
-    borderRadius: 22,
-    paddingVertical: 28,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingVertical: 32,
     paddingHorizontal: 22,
-    minHeight: 220,
+    minHeight: 260,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#A5D6A7',
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   pillIconCircle: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#DCEDC8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   lowercaseTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontSize: 26,
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#2E7D32',
   },
   pillSubLabel: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#555555',
-    fontWeight: '500',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 19,
   },
 
-  // Uppercase pill
+  // Uppercase card — same frame as Lowercase, purple when earned.
   uppercasePill: {
     flex: 1,
-    backgroundColor: '#F3E5F5',
-    borderRadius: 22,
-    paddingVertical: 28,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingVertical: 32,
     paddingHorizontal: 22,
-    minHeight: 220,
+    minHeight: 260,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#CE93D8',
-    shadowColor: '#7B1FA2',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   // Preview state: a soft, unalarming middle ground between earned and
   // locked. Same size and position as both, so the layout never shifts.
   previewPill: {
     backgroundColor: '#FAF6FD',
-    borderWidth: 1.5,
     borderColor: '#D9C7E8',
     borderStyle: 'dashed',
   },
@@ -697,15 +669,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#EDE0F3',
   },
-  previewBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: '#7E57C2', letterSpacing: 0.3 },
+  previewBadgeText: { fontSize: 11, fontFamily: 'DMSans_800ExtraBold', color: '#7E57C2', letterSpacing: 0.3 },
   previewCaption: {
-    fontSize: 11,
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
     color: '#8A7B96',
     textAlign: 'center',
     marginTop: 4,
     paddingHorizontal: 6,
   },
 
+  // Locked: soft grey, no shadow — clearly "not yet" without looking broken.
   uppercaseLocked: {
     backgroundColor: '#F8F8F8',
     borderColor: '#DDDDDD',
@@ -713,9 +687,8 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   uppercaseTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontSize: 26,
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#4A148C',
   },
   lockedText: {
@@ -746,8 +719,7 @@ const styles = StyleSheet.create({
   },
   pickerTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#333333',
     textAlign: 'center',
     marginBottom: 4,
@@ -764,15 +736,13 @@ const styles = StyleSheet.create({
   },
   pickerBtnText: {
     fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     flex: 1,
   },
   pickerCount: {
     fontSize: 12,
     color: '#888888',
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
   },
   pickerCancel: {
     alignSelf: 'center',
@@ -782,8 +752,7 @@ const styles = StyleSheet.create({
   },
   pickerCancelText: {
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#999999',
   },
   letterGrid: {
@@ -805,8 +774,7 @@ const styles = StyleSheet.create({
   },
   letterTileText: {
     fontSize: 24,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#333333',
   },
 });

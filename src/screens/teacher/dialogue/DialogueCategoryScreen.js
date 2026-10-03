@@ -81,10 +81,12 @@ export default function DialogueCategoryScreen({ route, navigation }) {
   const { width, height } = useWindowDimensions();
 
   const isLandscape = width > height;
-  const NUM_COLUMNS = isLandscape ? 4 : 3;
+  // Four categories: one row of 4 in landscape, a 2×2 grid in portrait. Three
+  // columns would strand the fourth card alone on a second row.
+  const NUM_COLUMNS = isLandscape ? 4 : 2;
   const H_PAD = Layout.spacing.xl;
   const GAP   = 22;
-  const cardW = (width - H_PAD * 2 - GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
+  const cardW = Math.min((width - H_PAD * 2 - GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS, 260);
   const cardH = cardW * 1.05;
 
   // Intercept Android hardware back → same destination as the UI back arrow
@@ -248,7 +250,9 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: Layout.spacing.md,
+    paddingTop: Layout.spacing.md,
+    // Extra bottom padding lifts the vertically-centred grid a little higher.
+    paddingBottom: 100,
   },
   card: {
     borderRadius: 20,

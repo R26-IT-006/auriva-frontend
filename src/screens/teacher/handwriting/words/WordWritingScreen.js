@@ -7,7 +7,6 @@ import {
   PanResponder,
   Dimensions,
   Animated,
-  Modal,
   AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,9 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Line, Circle, Polyline, Polygon, Path, Rect, Text as SvgText } from 'react-native-svg';
 import * as Speech from 'expo-speech';
-import { VideoView, useVideoPlayer } from 'expo-video';
 import WordImageDisplay from '../../../../components/word/WordImageDisplay';
-import WORD_VIDEOS from '../../../../data/wordVideos';
 import {
   buildWordGuide,
   wordGuideToSvgPath,
@@ -30,9 +27,6 @@ import {
 import { featuresToScore } from '../../../../utils/adaptiveSequencing';
 import { submitWordAttempt, newActionId } from '../../../../utils/wordApi';
 import { GUIDED_SUPPORT, afterGuidedAttempt, buildWordRouteParams, resolveWordSession } from '../../../../utils/wordWorkflow';
-// One-time word-writing introduction — see utils/demoPolicy.js.
-import { useDemoDetour } from '../../../../utils/demoDetour';
-import { DEMO_KEYS } from '../../../../utils/demoPolicy';
 import { childFeedbackMessage } from '../../../../utils/wordFeedback';
 import { clampToCanvas, isImplausibleJump, pageToLocal, mapTouchToCanvas } from '../../../../utils/touchPointSanitize';
 import { useLearningSessionActivity } from '../../../../context/LearningSessionContext';
@@ -168,8 +162,8 @@ export default function WordWritingScreen({ route, navigation }) {
   // Concept screens do. Cancelling navigates nowhere.
   // Back returns to the interface this flow STARTED from, not one frame down.
   //
-  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity'
-  // | 'HandwritingDemo') — a PUSH — and left with navigation.replace(nextRoute).
+  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity')
+  // — a PUSH — and left with navigation.replace(nextRoute).
   // replace() swaps the top frame, so each detour permanently leaves the frame
   // it was pushed over behind it. After one category transition the stack reads
   // [WordLetterSelect, WordWriting, WordWriting], and goBack() landed on that stale
@@ -229,9 +223,6 @@ export default function WordWritingScreen({ route, navigation }) {
   // pre-save estimate) and is still visible for a moment after the screen
   // has already advanced to the next attempt — advancing never waits on it.
   const [childFeedbackText, setChildFeedbackText] = useState(null);
-  const [showWordVideo, setShowWordVideo] = useState(() => {
-    return !!(wordEntry && WORD_VIDEOS[wordEntry.word]);
-  });
   const [reduceMotion,    setReduceMotion]    = useState(false);
   const [tracerVisible,   setTracerVisible]   = useState(false);
   const [tracerKeyframes, setTracerKeyframes] = useState(null);
@@ -247,42 +238,6 @@ export default function WordWritingScreen({ route, navigation }) {
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     return () => subscription.remove();
   }, []);
-
-  useEffect(() => {
-    const src = WORD_VIDEOS[wordEntry?.word] ?? null;
-    if (src) setShowWordVideo(true);
-  }, [wordEntry?.word]);
-
-  // ── One-time word-writing introduction (utils/demoPolicy.js) ─────────────
-  // Shown the first time this child writes a word — ONCE, not per word.
-  //
-  // Deliberately suppressed when this word already has an intro video: that
-  // video plays automatically on this same transition, and demo -> video ->
-  // writing would be two tutorials stacked before one activity. The video is
-  // the richer introduction of the two, so where one exists it satisfies the
-  // introduction and the animated demo stands down. (The key is left unmarked
-  // in that case, so a later word without a video still gets the demo.)
-  const hasIntroVideo = !!(wordEntry && WORD_VIDEOS[wordEntry.word]);
-
-  useDemoDetour({
-    studentId: student?.sid,
-    demoKey: DEMO_KEYS.WORD_WRITING_INTRO,
-    enabled: !!wordEntry?.word && !hasIntroVideo && attempt === 1 && !hasDrawn,
-    navigate: () => {
-      navigation.navigate('HandwritingDemo', {
-        student, theme,
-        demoKey: DEMO_KEYS.WORD_WRITING_INTRO,
-        // The whole word, animated letter by letter in writing order from
-        // wordPaths.js's own composed guide — the exact strokes this screen
-        // traces.
-        word: wordEntry.word,
-        nextRoute: 'WordWriting',
-        nextParams: buildWordRouteParams({
-          student, theme, selectedLetter, selectedWords, currentWordIndex,
-        }),
-      });
-    },
-  });
 
   const allPathsRef    = useRef([]);
   const startTimeRef   = useRef(null);
@@ -808,14 +763,6 @@ export default function WordWritingScreen({ route, navigation }) {
       </SafeAreaView>
 
       {/* â”€â”€ Celebration overlay â”€â”€ */}
-      {/* â”€â”€ Word video modal â”€â”€ */}
-      {showWordVideo && wordEntry && WORD_VIDEOS[wordEntry.word] && (
-        <WordVideoModal
-          videoSource={WORD_VIDEOS[wordEntry.word]}
-          theme={theme}
-          onDismiss={() => setShowWordVideo(false)}
-        />
-      )}
 
       <BreakPromptModal navigation={navigation} student={student} theme={theme} />
 
@@ -824,43 +771,6 @@ export default function WordWritingScreen({ route, navigation }) {
           end of the tree, so it overlays the whole screen. */}
       {gateModal}
     </LinearGradient>
-  );
-}
-
-// â”€â”€â”€ Word video modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function WordVideoModal({ videoSource, theme, onDismiss }) {
-  const player = useVideoPlayer(videoSource, p => { p.loop = false; p.play(); });
-
-  useEffect(() => {
-    const sub = player.addListener('playToEnd', onDismiss);
-    return () => sub.remove();
-  }, [player]);
-
-  return (
-    <Modal visible animationType="fade" statusBarTranslucent>
-      <TouchableOpacity
-        style={{ flex: 1 }}
-        activeOpacity={1}
-        onPress={onDismiss}
-        accessibilityRole="button"
-        accessibilityLabel="Close video"
-      >
-        <LinearGradient
-          colors={theme.backgroundGradient}
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
-          <VideoView
-            player={player}
-            style={{ width: SCREEN_W, flex: 1 }}
-            contentFit="contain"
-            nativeControls={false}
-          />
-        </LinearGradient>
-      </TouchableOpacity>
-    </Modal>
   );
 }
 
@@ -923,9 +833,11 @@ const styles = StyleSheet.create({
     // mid-stroke and `mainRow` (flex: 1, centred) re-centred the canvas
     // upward under the child's finger. See constants/writingActionRow.js.
     minHeight: actionRowMinHeight({
-      // Clear is the taller child here too — 10px padding plus a 1.5px
-      // border beats Next's borderless 11px.
-      maxButtonPaddingVertical: 10, maxButtonBorderWidth: 1.5, rowPaddingVertical: 6,
+      // The 3D buttons, as on the letter screens: Clear's 12px padding plus
+      // its 2px border and 5px bottom edge equals Next's 13px padding plus
+      // its 5px bottom edge.
+      maxButtonPaddingVertical: 12, maxButtonBorderWidth: 2, maxButtonBorderBottomWidth: 5,
+      rowPaddingVertical: 6,
     }),
     flexDirection: 'row',
     justifyContent: 'center',
@@ -933,25 +845,42 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: PAD,
     paddingVertical: 6,
+    // Nudged up closer to the canvas. A transform, not a margin, so the
+    // reserved height above and the canvas position are unchanged.
+    transform: [{ translateY: -16 }],
   },
+
+  // The other modules' raised 3D button, white version (outlined in the
+  // theme colour, set inline) — the secondary action.
   clearBtn: {
-    borderWidth: 1.5,
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    borderRadius: 50,
-  },
-  clearText: { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
-  nextBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderBottomWidth: 5,
     paddingHorizontal: 24,
-    paddingVertical: 11,
-    borderRadius: 50,
+    paddingVertical: 12,
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
     elevation: 4,
   },
-  nextText: { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
+  clearText: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
+  // The other modules' raised 3D button (ConceptImageScreen fwdBtn), in
+  // the theme colour — the main action.
+  nextBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  nextText: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
 
   // â”€â”€ Attempt dots (bottom) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bottomDots: {

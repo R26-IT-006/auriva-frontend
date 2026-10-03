@@ -17,7 +17,7 @@ function makeChoices(correct) {
   return [correct, ...extras].sort(() => Math.random() - 0.5);
 }
 
-export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete, onWrongAnswer, onCorrectAnswer }) {
+export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete, onWrongAnswer, onCorrectAnswer, onImagePress }) {
   const { word, emoji, imageKey } = wordEntry;
   const correct = word[0];
 
@@ -69,9 +69,17 @@ export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete, onW
   return (
     <View style={styles.wrap}>
       <View style={styles.imagePane}>
-        <View style={[styles.imageFrame, supportImageFrameStyle(theme)]}>
+        {/* Tap the picture to hear the word (onImagePress, from the screen). */}
+        <TouchableOpacity
+          style={[styles.imageFrame, supportImageFrameStyle(theme)]}
+          onPress={onImagePress}
+          disabled={!onImagePress}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Hear the word"
+        >
           <WordImageDisplay imageKey={imageKey} emoji={emoji} size={SUPPORT_IMAGE.imageSize} />
-        </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.taskPane}>
@@ -97,7 +105,7 @@ export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete, onW
             const bg = isWrong          ? ANSWER_FEEDBACK_COLORS.wrongSurface
                      : isRight          ? ANSWER_FEEDBACK_COLORS.correctSurface
                      : isHinted          ? HINT_COLORS.surface
-                     :                    '#F5F5F5';
+                     :                    '#FFFFFF';
 
             return (
               <View key={letter}>
@@ -107,7 +115,7 @@ export default function ExerciseA_WriteFirst({ wordEntry, theme, onComplete, onW
                     borderColor: isWrong  ? ANSWER_FEEDBACK_COLORS.wrongBorder
                                : isRight  ? ANSWER_FEEDBACK_COLORS.correctBorder
                                : isHinted ? HINT_COLORS.border
-                               :                    '#E0E0E0',
+                               :                    '#D6D6D6',
                   }]}
                   onPress={() => handlePress(letter)}
                   activeOpacity={0.7}
@@ -165,9 +173,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
+    // Nudged up, away from the options. A transform, so nothing else moves.
+    transform: [{ translateY: -14 }],
   },
+  // Sits right under the English line: the negative margin cancels most of
+  // the pane's 22px gap, which is meant to separate the instruction from
+  // the options, not its two languages from each other.
   instructionSi: {
     fontSize: 20,
+    marginTop: -18,
+    transform: [{ translateY: -14 }],
     lineHeight: 28,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
@@ -194,18 +209,22 @@ const styles = StyleSheet.create({
     color: '#333333',
     lineHeight: 64,
   },
+  // All six options on one line: 6 × 68 + 5 × 8 = 448, which fits the task
+  // pane beside the picture (card 900 − padding/border 66 − picture pane
+  // 230 − gap 34 = 570).
   grid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'center',
-    gap: 12,
-    maxWidth: 320,
+    gap: 8,
   },
   tile: {
     width: 68,
     height: 68,
     borderRadius: 16,
     borderWidth: 2,
+    // The raised 3D tile, as in Exercise D and the other modules.
+    borderBottomWidth: 5,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 1,

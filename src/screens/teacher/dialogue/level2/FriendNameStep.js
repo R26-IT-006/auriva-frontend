@@ -28,12 +28,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../../../constants/layout';
 import { level2Api } from '../../../../api/level2';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
 
 const PERSONALITY_OPTIONS = ['kind', 'funny', 'smart', 'brave', 'caring', 'creative'];
 const AGE_OPTIONS    = [5, 6, 7, 8, 9, 10, 11, 12];
 const GRADE_OPTIONS  = [1, 2, 3, 4, 5, 6];
 
 export default function FriendNameStep({ visible, student, existing, onSaved, onCancel }) {
+  // Selected chips and the Start button use the child's theme colour.
+  const theme = getAvatarTheme(student?.avatar_key);
+  const chipSel = { borderColor: theme.button, backgroundColor: theme.button + '18' };
+  const chipTextSel = { color: theme.button };
   const [name,        setName]        = useState(existing?.friend_name         ?? '');
   const [gender,      setGender]      = useState(existing?.friend_gender       ?? null);
   const [age,         setAge]         = useState(existing?.friend_age          ?? null);
@@ -66,7 +71,7 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.kvWrap}>
           <View style={styles.sheet}>
@@ -99,11 +104,11 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
                 {[{ v: 'girl', label: 'Girl 👧' }, { v: 'boy', label: 'Boy 👦' }].map(({ v, label }) => (
                   <TouchableOpacity
                     key={v}
-                    style={[styles.chip, gender === v && styles.chipSelected]}
+                    style={[styles.chip, gender === v && chipSel]}
                     onPress={() => setGender(v)}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.chipText, gender === v && styles.chipTextSelected]}>{label}</Text>
+                    <Text style={[styles.chipText, gender === v && chipTextSel]}>{label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -114,11 +119,11 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
                 {AGE_OPTIONS.map(a => (
                   <TouchableOpacity
                     key={a}
-                    style={[styles.chip, styles.chipSm, age === a && styles.chipSelected]}
+                    style={[styles.chip, styles.chipSm, age === a && chipSel]}
                     onPress={() => setAge(age === a ? null : a)}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.chipText, age === a && styles.chipTextSelected]}>{a}</Text>
+                    <Text style={[styles.chipText, age === a && chipTextSel]}>{a}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -129,11 +134,11 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
                 {GRADE_OPTIONS.map(g => (
                   <TouchableOpacity
                     key={g}
-                    style={[styles.chip, styles.chipSm, grade === g && styles.chipSelected]}
+                    style={[styles.chip, styles.chipSm, grade === g && chipSel]}
                     onPress={() => setGrade(grade === g ? null : g)}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.chipText, grade === g && styles.chipTextSelected]}>Grade {g}</Text>
+                    <Text style={[styles.chipText, grade === g && chipTextSel]}>Grade {g}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -144,11 +149,11 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
                 {PERSONALITY_OPTIONS.map(p => (
                   <TouchableOpacity
                     key={p}
-                    style={[styles.chip, personality === p && styles.chipSelected]}
+                    style={[styles.chip, personality === p && chipSel]}
                     onPress={() => setPersonality(personality === p ? null : p)}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.chipText, personality === p && styles.chipTextSelected]}>
+                    <Text style={[styles.chipText, personality === p && chipTextSel]}>
                       {p.charAt(0).toUpperCase() + p.slice(1)}
                     </Text>
                   </TouchableOpacity>
@@ -159,14 +164,14 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
 
               {/* Save button */}
               <TouchableOpacity
-                style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+                style={[styles.saveBtn, { backgroundColor: theme.button }, !canSave && styles.saveBtnDisabled]}
                 onPress={handleSave}
                 disabled={saving || !canSave}
                 activeOpacity={0.85}
               >
                 {saving
                   ? <ActivityIndicator color="#FFF" />
-                  : <Text style={styles.saveBtnText}>Save & Start! 🚀</Text>
+                  : <Text style={[styles.saveBtnText, { color: theme.buttonText }]}>Start!</Text>
                 }
               </TouchableOpacity>
 
@@ -179,54 +184,60 @@ export default function FriendNameStep({ visible, student, existing, onSaved, on
 }
 
 const styles = StyleSheet.create({
+  // Centred pop-up card, like the Progress pop-ups in the other modules.
   overlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: Layout.spacing.lg,
   },
-  kvWrap: { width: '100%' },
+  kvWrap: { width: '100%', maxWidth: 680 },
   sheet: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    maxHeight: '90%',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    borderRadius: 28,
+    maxHeight: '92%',
+    paddingBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
   },
-  scroll: { paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.lg, paddingBottom: Layout.spacing.xl, gap: 8 },
+  scroll: { paddingHorizontal: 28, paddingTop: 24, paddingBottom: Layout.spacing.xl, gap: 10 },
 
   header: { alignItems: 'center', marginBottom: Layout.spacing.sm, position: 'relative' },
-  closeBtn: { position: 'absolute', top: 0, right: 0, padding: 4 },
-  headerEmoji: { fontSize: 38, marginBottom: 4 },
-  title: { fontSize: Layout.fontSize.xl, fontWeight: '800', color: '#1A1A2E', textAlign: 'center' },
+  closeBtn: { position: 'absolute', top: 0, right: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  headerEmoji: { fontSize: 40, marginBottom: 4 },
+  title: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', textAlign: 'center' },
   titleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', color: '#666', textAlign: 'center', marginTop: 2 },
 
-  label: { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#1A1A2E', marginTop: Layout.spacing.md },
+  label: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', marginTop: Layout.spacing.md },
   labelSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', color: '#888', marginBottom: 4 },
   required: { color: '#EF4444' },
   optional: { fontWeight: '400', color: '#888' },
 
   textInput: {
-    borderWidth: 2, borderColor: '#E2E8F0', borderRadius: Layout.radius.md,
+    borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 16,
     paddingHorizontal: Layout.spacing.md, paddingVertical: 12,
-    fontSize: Layout.fontSize.lg, fontWeight: '700', color: '#1A1A2E',
+    fontSize: 18, fontFamily: 'DMSans_700Bold', color: '#1A1A2E',
   },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  // Raised 3D choice chips, like the buttons in the other modules.
   chip: {
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: Layout.radius.full,
-    borderWidth: 2, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC',
+    paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14,
+    borderWidth: 2, borderBottomWidth: 4, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF',
   },
   chipSm: { paddingHorizontal: 12, paddingVertical: 8 },
-  chipSelected: { borderColor: '#6366F1', backgroundColor: '#EEF2FF' },
-  chipText: { fontSize: Layout.fontSize.sm, fontWeight: '700', color: '#475569' },
-  chipTextSelected: { color: '#6366F1' },
+  chipText: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: '#475569' },
 
   errorText: { color: '#EF4444', fontSize: Layout.fontSize.sm, fontWeight: '600', marginTop: 4 },
 
+  // Raised 3D button, like the ones used in the other modules.
   saveBtn: {
-    backgroundColor: '#6366F1', borderRadius: Layout.radius.full,
-    paddingVertical: Layout.spacing.md, alignItems: 'center',
+    alignSelf: 'center', minWidth: 260,
+    borderRadius: 16,
+    paddingVertical: 16, paddingHorizontal: 40, alignItems: 'center',
+    borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)',
     marginTop: Layout.spacing.lg,
-    shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
   },
-  saveBtnDisabled: { backgroundColor: '#CBD5E1', shadowOpacity: 0 },
-  saveBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '800', color: '#FFF' },
+  // Faded (not greyed) until ready — same as the other screens' buttons.
+  saveBtnDisabled: { opacity: 0.4 },
+  saveBtnText: { fontSize: 17, fontFamily: 'DMSans_800ExtraBold', color: '#FFF' },
 });

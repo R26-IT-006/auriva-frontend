@@ -168,7 +168,8 @@ describe('the report screens use it', () => {
 
   it('every screen that opens a report passes an originRoute', () => {
     expect(stripComments(letterPractice)).toMatch(/originRoute:\s*'LetterPractice'/);
-    expect(stripComments(letterHome)).toMatch(/originRoute:\s*'LetterHome'/);
+    // LetterHome no longer opens a report (its Report button was removed).
+    expect(stripComments(letterHome)).not.toMatch(/navigate\('TeacherReport'/);
     expect(stripComments(wordSelect)).toMatch(/originRoute:\s*'WordLetterSelect'/);
   });
 

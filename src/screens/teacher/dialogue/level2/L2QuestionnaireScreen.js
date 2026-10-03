@@ -115,107 +115,128 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
+
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
-          <TouchableOpacity style={[styles.iconBtn, outline]} onPress={handleBack} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleBack} activeOpacity={0.7} accessibilityLabel="Go back">
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
-          <View style={styles.dots}>
-            {STEPS.map((s, i) => (
-              <View
-                key={s}
-                style={[
-                  styles.dot,
-                  { borderColor: theme.button },
-                  i === step && { backgroundColor: theme.button },
-                ]}
-              />
-            ))}
-          </View>
-          <View style={{ width: 40 }} />
-        </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.childText, { color: theme.headingText }]}>{copy.child}</Text>
-          <Text style={[styles.teacherCaption, { color: theme.headingText }]}>{copy.teacher}</Text>
-
-          {step === 0 && (
-            <>
-              <BadgeNameInput name={name} onChangeName={setName} theme={theme} />
-              <SinhalaNameInput
-                label="Sinhala Spelling"
-                englishValue={name}
-                sinhalaValue={nameSinhala}
-                onSinhalaChange={setNameSinhala}
-                theme={theme}
-              />
-            </>
-          )}
-
-          {step === 1 && (
-            <AgePicker age={age} onSelect={setAge} theme={theme} playInstruction={playInstruction} />
-          )}
-
-          {step === 2 && (
-            <HometownPicker hometown={hometown} onSelect={setHometown} theme={theme} />
-          )}
-
-          {step === 3 && (
-            <View style={styles.genderRow}>
-              {['boy', 'girl'].map(g => (
-                <TouchableOpacity
-                  key={g}
-                  style={[styles.genderBtn, outline, gender === g && { backgroundColor: theme.button, borderColor: theme.button }]}
-                  onPress={() => setGender(g)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name={g === 'boy' ? 'male-outline' : 'female-outline'} size={22} color={gender === g ? '#FFF' : theme.headingText} />
-                  <Text style={[styles.genderLabel, { color: gender === g ? '#FFF' : theme.headingText }]}>{g === 'boy' ? 'Boy' : 'Girl'}</Text>
-                </TouchableOpacity>
+          {/* Step progress: the current step is a wider filled pill. */}
+          <View style={styles.stepPill}>
+            <View style={styles.dots}>
+              {STEPS.map((s, i) => (
+                <View
+                  key={s}
+                  style={[
+                    styles.dot,
+                    { backgroundColor: i <= step ? theme.button : theme.cardOutline + '55' },
+                    i === step && styles.dotActive,
+                  ]}
+                />
               ))}
             </View>
-          )}
+            <Text style={[styles.stepText, { color: theme.headingText }]}>
+              {`Step ${step + 1} of ${STEPS.length}`}
+            </Text>
+          </View>
 
-          {step === 4 && (
-            <View style={styles.actGrid}>
-              {ALL_ACTIVITIES.map(act => {
-                const sel = activities.includes(act);
-                return (
+          <View style={{ width: 44 }} />
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* White question card framed in the theme outline, like the other modules. */}
+          <View style={[styles.card, { borderColor: theme.cardOutline }]}>
+            <Text style={[styles.childText, { color: theme.headingText }]}>{copy.child}</Text>
+            <Text style={[styles.teacherCaption, { color: theme.headingText }]}>{copy.teacher}</Text>
+
+            <View style={styles.cardBody}>
+              {step === 0 && (
+                <>
+                  <BadgeNameInput name={name} onChangeName={setName} theme={theme} />
+                  <SinhalaNameInput
+                    label="Sinhala Spelling"
+                    englishValue={name}
+                    sinhalaValue={nameSinhala}
+                    onSinhalaChange={setNameSinhala}
+                    theme={theme}
+                  />
+                </>
+              )}
+
+              {step === 1 && (
+                <AgePicker age={age} onSelect={setAge} theme={theme} playInstruction={playInstruction} />
+              )}
+
+              {step === 2 && (
+                <HometownPicker hometown={hometown} onSelect={setHometown} theme={theme} />
+              )}
+
+              {step === 3 && (
+                <View style={styles.genderRow}>
+                  {['boy', 'girl'].map(g => {
+                    const sel = gender === g;
+                    return (
+                      <TouchableOpacity
+                        key={g}
+                        style={[styles.choiceBtn, styles.genderBtn, outline, sel && { backgroundColor: theme.button, borderColor: theme.button }]}
+                        onPress={() => setGender(g)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name={g === 'boy' ? 'male' : 'female'} size={30} color={sel ? '#FFF' : theme.button} />
+                        <Text style={[styles.genderLabel, { color: sel ? '#FFF' : theme.headingText }]}>{g === 'boy' ? 'Boy' : 'Girl'}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {step === 4 && (
+                <View style={styles.actGrid}>
+                  {ALL_ACTIVITIES.map(act => {
+                    const sel = activities.includes(act);
+                    return (
+                      <TouchableOpacity
+                        key={act}
+                        style={[styles.choiceBtn, styles.actCard, outline, sel && { backgroundColor: theme.button, borderColor: theme.button }]}
+                        onPress={() => toggleActivity(act)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name={ACTIVITY_ICONS[act]} size={26} color={sel ? '#FFF' : theme.button} />
+                        <Text style={[styles.actLabel, { color: sel ? '#FFF' : theme.headingText }]}>{act}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {isReview && (
+                <View style={styles.review}>
+                  <NameBadge name={name} theme={theme} />
+                  <Text style={[styles.summary, { color: theme.headingText }]}>
+                    {`Hello! I'm ${name}. I'm ${age}. I live in ${hometown}.`}
+                  </Text>
+                  <Text style={[styles.reviewMeta, { color: theme.headingText }]}>
+                    {(gender === 'boy' ? 'Boy' : gender === 'girl' ? 'Girl' : '')}{activities.length ? `  ·  ${activities.join(', ')}` : ''}
+                  </Text>
                   <TouchableOpacity
-                    key={act}
-                    style={[styles.actCard, outline, sel && { backgroundColor: theme.button, borderColor: theme.button }]}
-                    onPress={() => toggleActivity(act)}
+                    style={[styles.replayBtn, outline]}
+                    onPress={() => playInstruction('l2_quest_review_replay')}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name={ACTIVITY_ICONS[act]} size={22} color={sel ? '#FFF' : theme.headingText} />
-                    <Text style={[styles.actLabel, { color: sel ? '#FFF' : theme.headingText }]}>{act}</Text>
+                    <Ionicons name="volume-high" size={18} color={theme.button} />
+                    <Text style={[styles.replayText, { color: theme.headingText }]}>Play again</Text>
                   </TouchableOpacity>
-                );
-              })}
+                </View>
+              )}
             </View>
-          )}
-
-          {isReview && (
-            <View style={styles.review}>
-              <NameBadge name={name} theme={theme} />
-              <Text style={[styles.summary, { color: theme.headingText }]}>
-                {`Hello! I'm ${name}. I'm ${age}. I live in ${hometown}.`}
-              </Text>
-              <Text style={[styles.reviewMeta, { color: theme.headingText }]}>
-                {(gender === 'boy' ? 'Boy' : gender === 'girl' ? 'Girl' : '')}{activities.length ? `  ·  ${activities.join(', ')}` : ''}
-              </Text>
-              <TouchableOpacity
-                style={[styles.replayBtn, outline]}
-                onPress={() => playInstruction('l2_quest_review_replay')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="volume-high-outline" size={18} color={theme.headingText} />
-                <Text style={[styles.replayText, { color: theme.headingText }]}>Play again</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={{ height: Layout.spacing.md }} />
+          </View>
         </ScrollView>
 
         <View style={styles.footerRow}>
@@ -231,7 +252,7 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
               disabled={!stepValid}
             >
               <Text style={[styles.footerBtnText, { color: theme.buttonText }]}>Next</Text>
-              <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
+              <Ionicons name="arrow-forward" size={20} color={theme.buttonText} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
           )}
         </View>
@@ -241,28 +262,73 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  gradient: { flex: 1 },
+  gradient: { flex: 1, overflow: 'hidden' },
   safe: { flex: 1 },
+
+  // Decorative background shapes (same as the other module screens).
+  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
+  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
+  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.sm },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, backgroundColor: 'rgba(255,255,255,0.6)', alignItems: 'center', justifyContent: 'center' },
-  dots: { flexDirection: 'row', gap: 8 },
-  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, backgroundColor: 'transparent' },
-  scroll: { paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.md, gap: Layout.spacing.md, flexGrow: 1 },
-  childText: { fontSize: Layout.fontSize.xxl, fontWeight: '800', textAlign: 'center' },
-  teacherCaption: { fontSize: Layout.fontSize.xs, fontWeight: '500', opacity: 0.55, textAlign: 'center', marginTop: -4 },
-  genderRow: { flexDirection: 'row', gap: Layout.spacing.md, justifyContent: 'center' },
-  genderBtn: { flex: 1, maxWidth: 160, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: Layout.radius.md, borderWidth: 1.5, paddingVertical: Layout.spacing.md, backgroundColor: 'rgba(255,255,255,0.85)' },
-  genderLabel: { fontSize: Layout.fontSize.md, fontWeight: '700' },
-  actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.sm, justifyContent: 'center' },
-  actCard: { alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: Layout.radius.md, borderWidth: 1.5, paddingVertical: 12, paddingHorizontal: Layout.spacing.md, backgroundColor: 'rgba(255,255,255,0.85)', minWidth: 90 },
-  actLabel: { fontSize: Layout.fontSize.xs, fontWeight: '700' },
+  // Concept's round translucent header button.
+  iconBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2,
+  },
+  stepPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: 999,
+    paddingHorizontal: 16, paddingVertical: 8,
+  },
+  dots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  dotActive: { width: 26 },
+  stepText: { fontSize: 13, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
+
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md },
+  card: {
+    width: '100%', maxWidth: 620, alignSelf: 'center',
+    backgroundColor: '#FFFFFF', borderRadius: 28, borderWidth: 3,
+    paddingHorizontal: 32, paddingTop: 28, paddingBottom: 30,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 6,
+  },
+  childText: { fontSize: 30, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', letterSpacing: -0.3 },
+  teacherCaption: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', opacity: 0.55, textAlign: 'center', marginTop: 4 },
+  cardBody: { marginTop: 24, gap: Layout.spacing.lg },
+
+  // Raised 3D choice tiles, like the buttons used in the other modules.
+  choiceBtn: {
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 2, borderBottomWidth: 5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
+  },
+  genderRow: { flexDirection: 'row', gap: 20, justifyContent: 'center' },
+  genderBtn: { flex: 1, maxWidth: 190, gap: 8, paddingVertical: 22 },
+  genderLabel: { fontSize: 20, fontFamily: 'DMSans_800ExtraBold' },
+  actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center' },
+  actCard: { gap: 6, paddingVertical: 14, width: 150 },
+  actLabel: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
+
   review: { alignItems: 'center', gap: Layout.spacing.md },
-  summary: { fontSize: Layout.fontSize.lg, fontWeight: '600', textAlign: 'center', lineHeight: 26 },
-  reviewMeta: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.6, textAlign: 'center' },
-  replayBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: Layout.radius.full, borderWidth: 1.5, paddingHorizontal: Layout.spacing.md, paddingVertical: Layout.spacing.sm, backgroundColor: 'rgba(255,255,255,0.7)' },
-  replayText: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
-  footerRow: { paddingHorizontal: Layout.spacing.lg, paddingBottom: Layout.spacing.md, paddingTop: Layout.spacing.sm },
-  footerBtn: { flexDirection: 'row', borderRadius: Layout.radius.full, paddingVertical: Layout.spacing.md, alignItems: 'center', justifyContent: 'center' },
-  footerBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  summary: { fontSize: 20, fontFamily: 'DMSans_700Bold', textAlign: 'center', lineHeight: 28 },
+  reviewMeta: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', opacity: 0.6, textAlign: 'center' },
+  replayBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 2, borderBottomWidth: 4,
+    paddingHorizontal: 20, paddingVertical: 10,
+  },
+  replayText: { fontSize: 15, fontFamily: 'DMSans_800ExtraBold' },
+
+  footerRow: { alignItems: 'center', paddingHorizontal: Layout.spacing.lg, paddingBottom: Layout.spacing.lg, paddingTop: Layout.spacing.sm },
+  // Raised 3D button, like the ones used in the other modules.
+  footerBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    minWidth: 280, paddingHorizontal: 40, paddingVertical: 16,
+    borderRadius: 16, borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
+  },
+  footerBtnText: { fontSize: 19, fontFamily: 'DMSans_800ExtraBold' },
   disabledBtn: { opacity: 0.4 },
 });

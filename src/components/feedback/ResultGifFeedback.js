@@ -44,10 +44,17 @@ export { RESULT_GIF_MS, RESULT_GIF_OFFSCREEN };
  * @param {{
  *   visible: boolean,   // driven by the caller's own result state
  *   correct: boolean,   // the activity's OWN verdict — never computed here
+ *   side?: {width: number} | null,
+ *     // Optional. When set, the gif slides in from the RIGHT edge into a
+ *     // strip of this width, centred vertically — for a screen whose content
+ *     // card leaves free space at the side, so the gif never covers it.
+ *     // Unset (the default, every concept screen) keeps the bottom slide-up.
  * }} props
  */
-export default function ResultGifFeedback({ visible, correct }) {
+export default function ResultGifFeedback({ visible, correct, side = null }) {
   const slide = useRef(new Animated.Value(RESULT_GIF_OFFSCREEN)).current;
+  // In the side strip the gif is sized to the strip, never wider.
+  const imageSize = side ? Math.min(200, Math.max(0, side.width - 16)) : 200;
 
   useEffect(() => {
     if (visible) {
@@ -67,12 +74,16 @@ export default function ResultGifFeedback({ visible, correct }) {
       accessible={visible}
       accessibilityLiveRegion="polite"
       accessibilityLabel={correct ? 'Correct' : 'Try again'}
-      style={[styles.popup, { transform: [{ translateY: slide }] }]}
+      style={side
+        // Side strip: same slide, horizontal — it starts RESULT_GIF_OFFSCREEN
+        // past the right edge and comes to rest inside the strip.
+        ? [styles.sidePopup, { width: side.width, transform: [{ translateX: slide }] }]
+        : [styles.popup, { transform: [{ translateY: slide }] }]}
     >
       {visible && (
         <ExpoImage
           source={correct ? CORRECT_GIF : WRONG_GIF}
-          style={styles.image}
+          style={[styles.image, { width: imageSize, height: imageSize }]}
           contentFit="contain"
         />
       )}
@@ -89,6 +100,16 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 24,
     alignItems: 'center',
+  },
+  // The optional side strip: pinned to the right edge, full height, the gif
+  // centred in it (width set by the caller's `side.width`).
+  sidePopup: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   image: {
     width: 200,

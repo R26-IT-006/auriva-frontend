@@ -14,8 +14,10 @@
  * demo that spaced a word even slightly differently would be showing the
  * child the wrong target.
  *
- * This JSX was MOVED, unchanged, out of WordWritingScreen. Nothing about the
- * practice appearance was redesigned.
+ * This JSX was moved out of WordWritingScreen. Its layout now matches
+ * LetterWritingStage: the word card above the picture, the instruction above
+ * the canvas, and the picture the canvas's height. The canvas itself and the
+ * word guide geometry are unchanged.
  *
  * In demo mode: no panHandlers are attached at all, the canvas is
  * pointerEvents="none", the child's stroke arrays are not read, and the
@@ -38,6 +40,11 @@ import {
 } from '../../constants/wordCanvasLayout';
 
 export const WORD_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'demo' });
+
+// The picture is the canvas's height (capped at its previous size) so the
+// two sit level, as on the letter screen. The column width (COL_L) is
+// canvas geometry and is unchanged.
+const IMAGE_SIZE = Math.min(CANVAS_H, IMG_SIZE);
 
 /**
  * @param {{
@@ -108,17 +115,14 @@ export default function WordWritingStage({
   return (
     <View style={styles.mainRow}>
 
-      {/* Left column — large image */}
-      <View style={styles.imageCol}>
-        <Animated.View style={{ transform: [{ scale: imageScale ?? 1 }] }}>
-          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={IMG_SIZE} />
-        </Animated.View>
-      </View>
+      {/* ── Instruction line ──
+          Two columns matching the two below, as on the letter screen:
+          the word card above the picture, the instruction above the canvas. */}
+      <View style={styles.instructionLine}>
+        <View style={styles.titleCol}>
 
-      {/* Right column — word card + spelling + badge + canvas */}
-      <View style={styles.contentCol}>
-
-        {/* Word title card */}
+        {/* Word title card — the spelling sits inside it, under the
+            Sinhala line, so it stays with the word. */}
         <View style={[styles.wordCard, {
           backgroundColor: theme.button + '14',
           borderColor:     theme.button + '35',
@@ -138,6 +142,12 @@ export default function WordWritingStage({
             >
               {targetInstruction.si}
             </Text>
+            {/* Spelling */}
+            {spelling ? (
+              <Text style={[styles.spellingText, { color: theme.headingText }]}>
+                {spelling}
+              </Text>
+            ) : null}
           </View>
           <TouchableOpacity
             style={[styles.soundBtn, { backgroundColor: theme.button }]}
@@ -152,10 +162,8 @@ export default function WordWritingStage({
           </TouchableOpacity>
         </View>
 
-        {/* Spelling */}
-        <Text style={[styles.spellingText, { color: theme.headingText }]}>
-          {spelling}
-        </Text>
+        </View>
+        <View style={styles.instructionCol}>
 
         {/* Attempt badge */}
         <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
@@ -174,6 +182,19 @@ export default function WordWritingStage({
             backgroundColor={badge.border + '35'}
           />
         </View>
+
+        </View>
+      </View>
+
+      {/* ── Picture + canvas, on one line ── */}
+      <View style={styles.canvasLine}>
+
+      {/* Left column — the picture, the canvas's height, level with it */}
+      <View style={styles.imageCol}>
+        <Animated.View style={{ transform: [{ scale: imageScale ?? 1 }] }}>
+          <WordImageDisplay imageKey={imageKey} emoji={emoji} size={IMAGE_SIZE} />
+        </Animated.View>
+      </View>
 
         {/* Writing canvas — canvasOuter wraps the card so the tracer dot
             is never clipped by the card's overflow:hidden */}
@@ -358,11 +379,41 @@ export default function WordWritingStage({
 
 // Values moved verbatim from WordWritingScreen.js's own StyleSheet.
 const styles = StyleSheet.create({
+  // Two lines, centred vertically: the instruction line, then the picture
+  // + canvas. Column widths are unchanged (COL_L | CANVAS_W).
+  // alignItems centres both lines horizontally: they are the same width
+  // (COL_L + CANVAS_W), so they stay aligned with each other.
   mainRow: {
-    flexDirection: 'row',
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: PAD,
     paddingBottom: 4,
+  },
+
+  // The two boxes share one line and stretch to the same height. Nudged up
+  // with a transform rather than a margin: a margin would re-centre the
+  // whole block and move the canvas too.
+  instructionLine: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    transform: [{ translateY: -16 }],
+  },
+  // Left: the picture column's width, the card as wide as the picture.
+  titleCol: {
+    width: COL_L,
+    alignItems: 'center',
+    paddingRight: 8,
+  },
+  // Right: the canvas's width.
+  instructionCol: {
+    width: CANVAS_W,
+  },
+
+  canvasLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   // The same soft surface the activities give their support picture. COL_L and
@@ -376,13 +427,12 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
 
-  contentCol: {
-    flex: 1,
-    gap: 8,
-    justifyContent: 'center',
-  },
-
+  // As wide as the picture below it. flexGrow (not flex: 1, whose zero
+  // basis collapses it in a content-sized column) keeps its natural height
+  // and stretches it to match the instruction box beside it.
   wordCard: {
+    width: IMAGE_SIZE,
+    flexGrow: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -425,10 +475,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     letterSpacing: 1.5,
     opacity: 0.65,
-    paddingLeft: 2,
+    marginTop: 2,
   },
 
   attemptBadge: {
+    flexGrow: 1,
     borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 10,

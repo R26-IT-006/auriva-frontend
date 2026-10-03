@@ -45,6 +45,7 @@ export const ACTION_LABEL_LINE_HEIGHT = 22;
  *   maxButtonPaddingVertical: number,  // the TALLEST button's paddingVertical
  *   rowPaddingVertical?: number,       // the row's own paddingVertical
  *   maxButtonBorderWidth?: number,     // that button's borderWidth, if any
+ *   maxButtonBorderBottomWidth?: number, // its thicker 3D bottom edge, if any
  * }} args
  * @returns {number} height in px, rounded up to a whole pixel.
  */
@@ -52,9 +53,14 @@ export function actionRowMinHeight({
   maxButtonPaddingVertical,
   rowPaddingVertical = 0,
   maxButtonBorderWidth = 0,
+  // The raised "3D" buttons have a thicker bottom edge than the rest of
+  // their border. Defaults to the plain border, so a flat button's
+  // reservation is exactly what it always was.
+  maxButtonBorderBottomWidth = maxButtonBorderWidth,
 } = {}) {
   const button = ACTION_LABEL_LINE_HEIGHT
     + maxButtonPaddingVertical * 2
-    + maxButtonBorderWidth * 2;
+    + maxButtonBorderWidth
+    + maxButtonBorderBottomWidth;
   return Math.ceil(button + rowPaddingVertical * 2);
 }

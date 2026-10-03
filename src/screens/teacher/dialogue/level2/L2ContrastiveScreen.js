@@ -90,7 +90,7 @@ export default function L2ContrastiveScreen({ route, navigation }) {
             <Ionicons name="bulb-outline" size={20} color={theme.button} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.exampleText, { color: theme.headingText }]}>
-                In Sinhala the <Text style={{ fontWeight: '900' }}>VERB</Text> comes last — Subject → Object → Verb!
+                In Sinhala the <Text style={{ fontFamily: 'DMSans_900Black' }}>VERB</Text> comes last — Subject → Object → Verb!
               </Text>
               <Text style={[styles.exampleSinhala, { color: theme.headingText }]}>
                 සිංහලෙන් VERB අවසානයේ එයි — Subject → Object → Verb!
@@ -119,7 +119,7 @@ export default function L2ContrastiveScreen({ route, navigation }) {
             activeOpacity={0.85}
           >
             <Text style={[styles.nextText, { color: theme.buttonText }]}>Let's Start!</Text>
-            <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
+            <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -131,26 +131,43 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
   header: { paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center' },
-  headerTitle: { fontSize: Layout.fontSize.lg, fontWeight: '800', textAlign: 'center' },
+  headerTitle: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center' },
   headerSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginTop: 3 },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, gap: Layout.spacing.md },
   rowLabels: { alignItems: 'flex-start', alignSelf: 'flex-start' },
-  rowLabel: { fontSize: Layout.fontSize.sm, fontWeight: '700', opacity: 0.7 },
+  rowLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
   slotsRow: { flexDirection: 'row', gap: Layout.spacing.sm },
   slotCol: { alignItems: 'center', flex: 1 },
   slot: { borderRadius: Layout.radius.md, borderWidth: 2, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center', width: '100%' },
-  slotText: { fontSize: 15, fontWeight: '800', textAlign: 'center' },
-  slotSub: { fontSize: 10, fontWeight: '600', opacity: 0.7, marginTop: 2 },
+  slotText: { fontSize: 15, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center' },
+  slotSub: { fontSize: 10, fontFamily: 'DMSans_600SemiBold', opacity: 0.7, marginTop: 2 },
   arrowDown: { marginVertical: 4 },
-  exampleCard: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Layout.radius.lg, borderWidth: 1.5, padding: Layout.spacing.md, width: '100%' },
-  exampleText: { fontSize: Layout.fontSize.sm, fontWeight: '500', lineHeight: 20 },
+  exampleCard: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Layout.radius.lg, borderWidth: 1.5, padding: Layout.spacing.md, width: '100%', maxWidth: 620 },
+  exampleText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold', lineHeight: 20 },
   exampleSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', opacity: 0.7, marginTop: 3, lineHeight: 18 },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Layout.spacing.sm },
   bubble: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
-  bubbleText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  bubbleText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
   bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.65, marginTop: 2 },
   bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
   avatar: { width: 80, height: 100 },
-  nextBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, ...Layout.shadow.md },
-  nextText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  nextBtn: {
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nextText: {
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
 });

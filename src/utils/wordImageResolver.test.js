@@ -231,7 +231,7 @@ describe('SENTINEL — earlier phases and the rest of the app', () => {
   it('K — Phase 3 A–E image sizes and layout are unchanged', () => {
     const { SUPPORT_IMAGE, SUPPORT_IMAGE_COMPACT, ANSWER_IMAGE } =
       require('../components/word/wordActivityLayout');
-    expect(SUPPORT_IMAGE.imageSize).toBe(230);
+    expect(SUPPORT_IMAGE.imageSize).toBe(190);   // reduced by request
     expect(SUPPORT_IMAGE_COMPACT.paneWidth).toBe(170);
     expect(ANSWER_IMAGE.imageSize).toBe(150);
     for (const rel of ['../components/word/ExerciseA_WriteFirst.js',

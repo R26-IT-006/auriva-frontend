@@ -81,7 +81,7 @@ function ColorfulTitle({ text, fontSize, fontsLoaded }) {
               fontSize,
               color: char === ' ' ? 'transparent' : TITLE_LETTER_COLORS[i % TITLE_LETTER_COLORS.length],
             },
-            fontsLoaded && { fontFamily: 'Colora', fontWeight: 'normal' },
+            fontsLoaded && { fontFamily: 'Colora', },
           ]}
         >
           {char}
@@ -127,7 +127,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
           <Text
             style={[
               styles.cardTitle,
-              fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', fontWeight: 'normal' },
+              fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', },
             ]}
             numberOfLines={1}
           >
@@ -137,7 +137,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
             <Text
               style={[
                 styles.cardSub,
-                fontsLoaded && { fontFamily: 'DMSans_600SemiBold', fontWeight: 'normal' },
+                fontsLoaded && { fontFamily: 'DMSans_600SemiBold', },
               ]}
             >
               {`Master ${EVAL_UNLOCK_THRESHOLD} words to unlock • ${entry.mastered_count}/${EVAL_UNLOCK_THRESHOLD}`}
@@ -146,7 +146,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
             <Text
               style={[
                 styles.cardSub,
-                fontsLoaded && { fontFamily: 'DMSans_600SemiBold', fontWeight: 'normal' },
+                fontsLoaded && { fontFamily: 'DMSans_600SemiBold', },
               ]}
             >
               Ready to try!
@@ -161,7 +161,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
               <Text
                 style={[
                   styles.statusPillText,
-                  fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', fontWeight: 'normal' },
+                  fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', },
                 ]}
               >
                 Locked
@@ -172,7 +172,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
               <Text
                 style={[
                   styles.statusPillText,
-                  fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', fontWeight: 'normal' },
+                  fontsLoaded && { fontFamily: 'DMSans_800ExtraBold', },
                 ]}
               >
                 Start
@@ -254,7 +254,7 @@ export default function EvaluationMenuScreen({ route, navigation }) {
           style={[
             styles.subheading,
             { color: theme.headingText },
-            fontsLoaded && { fontFamily: 'Colora', fontWeight: 'normal' },
+            fontsLoaded && { fontFamily: 'Colora', },
           ]}
         >
           Pick a category to show what you've learned!
@@ -319,19 +319,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontWeight: '900', letterSpacing: -0.4,
+    fontFamily: 'DMSans_900Black', letterSpacing: -0.4,
     textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
 
   subheading: {
-    fontSize: 20, fontWeight: '600',
+    fontSize: 20, fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center', opacity: 0.85,
     marginTop: 4, marginBottom: Layout.spacing.xl + AVATAR_OVERLAP - 20,
     paddingHorizontal: Layout.spacing.lg,
   },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorText: { color: '#FF4D6D', fontWeight: '600', textAlign: 'center', paddingHorizontal: 32 },
+  errorText: { color: '#FF4D6D', fontFamily: 'DMSans_600SemiBold', textAlign: 'center', paddingHorizontal: 32 },
 
   cardsRow: {
     flex: 1,
@@ -372,11 +372,11 @@ const styles = StyleSheet.create({
 
   cardTextWrap: { zIndex: 1 },
   cardTitle: {
-    fontSize: 20, fontWeight: '900', color: '#FFF',
+    fontSize: 20, fontFamily: 'DMSans_900Black', color: '#FFF',
     textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6,
   },
   cardSub: {
-    fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginTop: 4,
+    fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: 'rgba(255,255,255,0.9)', marginTop: 4,
   },
 
   statusPill: {
@@ -391,5 +391,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  statusPillText: { fontSize: 12, fontWeight: '700', color: '#FFF' },
+  statusPillText: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: '#FFF' },
 });

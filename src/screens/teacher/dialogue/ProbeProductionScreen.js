@@ -11,6 +11,7 @@ import { dialogueApi } from '../../../api/dialogue';
 import { cat3Api } from '../../../api/cat3';
 import { useGuardedRecorder } from '../../../utils/useGuardedRecorder';
 import { DIALOGUE_WORD_ASSETS } from '../../../data/dialogueAssets';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend).
 // Shared/category-agnostic, same precedent as AnimatedWordScreen.js/
@@ -170,15 +171,19 @@ export default function ProbeProductionScreen({ route, navigation }) {
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           {/* "Not now" exit — ungated, no hardware-back interception; a probe is optional and low-stakes */}
-          <TouchableOpacity onPress={exitToOverview} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="close" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={exitToOverview} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="close" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>Quick check-in</Text>
           <View style={styles.headerSide} />
         </View>
       </SafeAreaView>
 
-      <View style={[styles.gradient, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.gradient}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.body}>
 
@@ -242,7 +247,7 @@ export default function ProbeProductionScreen({ route, navigation }) {
             )}
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -261,7 +266,21 @@ const styles = StyleSheet.create({
     paddingVertical:   12,
   },
   headerSide:  { width: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
 
   body: {
     flex:              1,
@@ -281,7 +300,7 @@ const styles = StyleSheet.create({
   },
   image: { width: '100%', height: '100%' },
 
-  wordText: { fontSize: 32, fontWeight: '900', textAlign: 'center' },
+  wordText: { fontSize: 32, fontFamily: 'DMSans_900Black', textAlign: 'center' },
 
   speechBubble: {
     borderRadius:      Layout.radius.lg,
@@ -289,7 +308,7 @@ const styles = StyleSheet.create({
     paddingVertical:   Layout.spacing.sm,
     ...Layout.shadow.sm,
   },
-  speechText: { fontSize: Layout.fontSize.md, fontWeight: '600', textAlign: 'center' },
+  speechText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', textAlign: 'center' },
 
   replayBtn: {
     flexDirection:     'row',
@@ -300,7 +319,7 @@ const styles = StyleSheet.create({
     borderRadius:      Layout.radius.full,
     ...Layout.shadow.sm,
   },
-  replayBtnText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  replayBtnText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
 
   spacer: { flex: 1 },
 
@@ -315,7 +334,7 @@ const styles = StyleSheet.create({
   },
   recordBtnGo:   { backgroundColor: '#2DC98E' },
   recordBtnStop: { backgroundColor: '#FF4D6D' },
-  recordBtnText: { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#FFF' },
+  recordBtnText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#FFF' },
 
   doneBtn: {
     paddingHorizontal: Layout.spacing.xl,
@@ -323,5 +342,5 @@ const styles = StyleSheet.create({
     borderRadius:      Layout.radius.full,
     ...Layout.shadow.md,
   },
-  doneBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  doneBtnText: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold' },
 });

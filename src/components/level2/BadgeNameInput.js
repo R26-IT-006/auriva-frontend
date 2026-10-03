@@ -51,8 +51,10 @@ export default function BadgeNameInput({ name, onChangeName, theme }) {
 const styles = StyleSheet.create({
   badgeWrap: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', position: 'relative', paddingBottom: 14 },
   ribbonTab: { position: 'absolute', bottom: 0, width: 22, height: 34, borderRadius: 4 },
-  ribbonTabLeft: { left: '32%', transform: [{ rotate: '-8deg' }] },
-  ribbonTabRight: { right: '32%', transform: [{ rotate: '8deg' }] },
+  // Anchored to the centre (not a % of the wrap), so the tabs always hang
+  // just under the badge however wide the surrounding container is.
+  ribbonTabLeft: { left: '50%', marginLeft: -30, transform: [{ rotate: '-8deg' }] },
+  ribbonTabRight: { right: '50%', marginRight: -30, transform: [{ rotate: '8deg' }] },
   badgeFrame: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -61,10 +63,10 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.full,
     paddingHorizontal: Layout.spacing.lg,
     paddingVertical: Layout.spacing.md,
-    minWidth: 220,
+    minWidth: 280,
     justifyContent: 'center',
     ...Layout.shadow.md,
   },
-  badgeName: { fontSize: Layout.fontSize.xl, fontWeight: '800' },
-  badgeInput: { fontSize: Layout.fontSize.xl, fontWeight: '800', minWidth: 140, textAlign: 'center', paddingVertical: 0 },
+  badgeName: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold' },
+  badgeInput: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold', minWidth: 180, textAlign: 'center', paddingVertical: 0 },
 });

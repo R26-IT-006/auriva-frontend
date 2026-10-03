@@ -14,7 +14,7 @@
  * ────────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -35,10 +35,6 @@ import BreakPromptModal from '../../../../components/handwriting/BreakPromptModa
 import WORD_DATA from '../../../../data/wordData';
 import { saveWordActivity } from '../../../../utils/wordApi';
 import { afterExerciseESuccess, buildWordRouteParams, resolveWordSession } from '../../../../utils/wordWorkflow';
-// One-time demonstration for the letter-tile spelling activity (Exercise D)
-// only — see utils/demoPolicy.js for why A/B/C and E get none.
-import { useDemoDetour } from '../../../../utils/demoDetour';
-import { DEMO_KEYS } from '../../../../utils/demoPolicy';
 import ExerciseA_WriteFirst  from '../../../../components/word/ExerciseA_WriteFirst';
 import ExerciseB_CircleImage from '../../../../components/word/ExerciseB_CircleImage';
 import ExerciseC_FillBlank   from '../../../../components/word/ExerciseC_FillBlank';
@@ -65,7 +61,15 @@ const INCOMPLETE_WORD_FEEDBACK = Object.freeze({
   note: 'Finish every letter',
 });
 
-const { height: SCREEN_H } = Dimensions.get('window');
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
+// The exercise card is capped at 820 wide and centred, so each side of the
+// screen keeps a free strip. Feedback slides into the right-hand one so it
+// never covers the card. Below ~140px (a narrow screen) there is no real
+// strip, and the feedback keeps its default placement.
+const CARD_MAX_W = 820;
+const SIDE_STRIP_W = Math.floor((SCREEN_W - CARD_MAX_W) / 2) - 12;
+const FEEDBACK_SIDE = SIDE_STRIP_W >= 140 ? { width: SIDE_STRIP_W } : null;
 
 // ─── Exercise registry ────────────────────────────────────────────────────────
 
@@ -91,7 +95,7 @@ const EXERCISE_INSTRUCTION_KEY = Object.freeze({
 // ─── Status display config ────────────────────────────────────────────────────
 
 const STATUS = {
-  pending: { icon: 'ellipse-outline',     dotColor: '#E0E0E0', badgeBg: '#F5F5F5', badgeBorder: '#E0E0E0', iconColor: '#9E9E9E', label: 'Not done'  },
+  pending: { icon: 'ellipse-outline',     dotColor: '#FFFFFF', badgeBg: '#F5F5F5', badgeBorder: '#E0E0E0', iconColor: '#9E9E9E', label: 'Not done'  },
   correct: { icon: 'checkmark-circle',    dotColor: '#4CAF50', badgeBg: '#E8F5E9', badgeBorder: '#81C784', iconColor: '#2E7D32', label: 'Correct!'   },
   good:    { icon: 'help-circle-outline', dotColor: '#FF9800', badgeBg: '#FFF3E0', badgeBorder: '#FFB74D', iconColor: '#E65100', label: 'With help'  },
 };
@@ -114,8 +118,8 @@ export default function WordActivityScreen({ route, navigation }) {
   // Concept screens do. Cancelling navigates nowhere.
   // Back returns to the interface this flow STARTED from, not one frame down.
   //
-  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity'
-  // | 'HandwritingDemo') — a PUSH — and left with navigation.replace(nextRoute).
+  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity')
+  // — a PUSH — and left with navigation.replace(nextRoute).
   // replace() swaps the top frame, so each detour permanently leaves the frame
   // it was pushed over behind it. After one category transition the stack reads
   // [WordLetterSelect, WordPractice, WordPractice], and goBack() landed on that stale
@@ -167,13 +171,9 @@ export default function WordActivityScreen({ route, navigation }) {
     total: Object.values(route.params?.initialExerciseStatus ?? {}).filter(status => status === 'correct' || status === 'good').length,
   }));
 
-  // ── One-time spelling-tile demonstration (utils/demoPolicy.js) ───────────
-  // Exercise D is the only word activity that gets one. A, B and C are all
-  // "tap the correct large option" — an interaction this child already
-  // performs throughout the concept tiers — and E is the same write-on-a-
-  // guide canvas the word-writing introduction already demonstrated.
-  // Arranging letter tiles into an order is genuinely new, so it is shown
-  // once, the first time the child reaches it.
+  // ── Current exercise + its instruction audio ──────────────────────────────
+  // (The one-time spelling-tile demonstration that used to open Exercise D
+  // was removed by request: the spelling activity now starts directly.)
   const currentExercise = EXERCISES[exIdx];
   const {
     replay: replayInstruction,
@@ -194,38 +194,6 @@ export default function WordActivityScreen({ route, navigation }) {
     if (currentExercise === 'E') Speech.stop();
     return replayInstruction();
   }, [currentExercise, replayInstruction]);
-  const spellDemoLetters = useMemo(
-    () => (currentWord?.word ?? '').replace(/[^a-z]/gi, '').toLowerCase().split(''),
-    [currentWord?.word],
-  );
-
-  useDemoDetour({
-    studentId: student?.sid,
-    demoKey: DEMO_KEYS.WORD_ACTIVITY_SPELL_TILES,
-    enabled: currentExercise === 'D' && spellDemoLetters.length > 0,
-    navigate: () => {
-      navigation.navigate('HandwritingDemo', {
-        student, theme,
-        demoKey: DEMO_KEYS.WORD_ACTIVITY_SPELL_TILES,
-        // The child's own current word, so the example is the task — the
-        // demo calls no scoring or evaluation function with it.
-        tapLetters: spellDemoLetters,
-        nextRoute: 'WordPractice',
-        nextParams: {
-          ...buildWordRouteParams({
-            student, theme,
-            selectedLetter: letter, selectedWords: letterWords, currentWordIndex: wordIdx,
-          }),
-          // Resume at Exercise D, not back at A.
-          initialExerciseIndex: exIdx,
-          // The demo is a presentation detour, so the A-C outcomes already
-          // earned for this word must return with the child as session state.
-          initialExerciseStatus: exStatus,
-        },
-      });
-    },
-  });
-
   // Snapshot of all word results — set when letter is done, drives the summary modal
 
   // Accumulates word results throughout this letter (ref = no re-render overhead)
@@ -398,6 +366,14 @@ export default function WordActivityScreen({ route, navigation }) {
       onIncomplete: showIncompleteWritingFeedback,
       canWrite: currentExercise !== 'E' || instructionCanWrite,
       requestTargetSpeech,
+      // Tapping the support picture (A, C, D) says the word. Resolved at
+      // PRESS time, from the word being shown — never a captured first word.
+      onImagePress: () => {
+        const spoken = spokenWord(currentWord);
+        if (!spoken) return;
+        Speech.stop();            // no stacked utterances on repeat taps
+        Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
+      },
     };
     switch (exKey) {
       case 'A': return <ExerciseA_WriteFirst  key={`${currentWord.word}-A`} {...props} />;
@@ -417,17 +393,22 @@ export default function WordActivityScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      {/* Decorative shapes — same treatment as the other module screens */}
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
+
       <SafeAreaView style={styles.safe}>
 
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
           <TouchableOpacity
+            style={styles.iconBtn}
             onPress={requestBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.counterRow}>
@@ -448,10 +429,11 @@ export default function WordActivityScreen({ route, navigation }) {
 
           {/* Teacher shortcut to all-letters progress */}
           <TouchableOpacity
+            style={styles.iconBtn}
             onPress={() => navigation.navigate('WordProgress', { student, theme })}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="bar-chart-outline" size={22} color={theme.headingText} />
+            <Ionicons name="bar-chart-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
 
@@ -463,11 +445,13 @@ export default function WordActivityScreen({ route, navigation }) {
             note={activityFeedback.note}
             supportLevel="low"
             theme={theme}
+            side={FEEDBACK_SIDE}
           />
         )}
         <ResultGifFeedback
           visible={Boolean(activityFeedback) && !activityFeedback.isWriting}
           correct={Boolean(activityFeedback?.passed)}
+          side={FEEDBACK_SIDE}
         />
 
         <View style={styles.dotsRow}>
@@ -503,48 +487,42 @@ export default function WordActivityScreen({ route, navigation }) {
 
         {/* ── Exercise card ── */}
         <View style={styles.cardContainer}>
-          <Animated.View style={[styles.card, { opacity: cardAnim }]}>
-            <TouchableOpacity
-              style={styles.wordHeader}
-              onPress={() => {
-                if (currentExercise === 'E' && instructionPlaying) return;
-                // Resolved at PRESS time, from the word being displayed on the
-                // line below — never a captured first word.
-                const spoken = spokenWord(currentWord);
-                if (!spoken) return;
-                Speech.stop();            // no stacked utterances on repeat taps
-                Speech.speak(spoken, { rate: 0.75, pitch: 1.0, language: SPEECH_LOCALE_EN });
-              }}
-              disabled={currentExercise === 'E' && instructionPlaying}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.wordDisplay}>{currentWord.word.toUpperCase()}</Text>
-              <Ionicons name="volume-high-outline" size={22} color="#888888" />
-            </TouchableOpacity>
-            <View style={styles.divider} />
+          <Animated.View style={[styles.card, { opacity: cardAnim, borderColor: theme.cardOutline }]}>
+            {/* No word heading here — the word is spoken when it changes
+                (the effect above), and each exercise shows what it needs. */}
             {saveError && <Text accessibilityRole="alert" style={{ color:'#B91C1C', fontWeight:'700', fontFamily: 'Nunito_700Bold', textAlign:'center' }}>{saveError}</Text>}
             {renderExercise()}
           </Animated.View>
         </View>
 
         {wordResult && (
-          <View style={[styles.resultScreen, { backgroundColor: theme.backgroundGradient?.[0] ?? '#F7FAFC' }]}>
+          // The theme's full gradient + corner blobs, like the rest of the
+          // module (and the Concept completion screen), not one flat shade.
+          <LinearGradient
+            colors={theme.backgroundGradient}
+            style={styles.resultScreen}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          >
+            <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+            <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
             <TouchableOpacity
-              style={styles.resultBack}
+              style={[styles.iconBtn, styles.resultBack]}
               onPress={requestBack}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
             </TouchableOpacity>
             <WordPracticeResultCard
               word={wordResult.word}
               statuses={wordResult.statuses}
               theme={theme}
+              avatarKey={student?.avatar_key}
               onContinue={continueFromWordResult}
             />
-          </View>
+          </LinearGradient>
         )}
 
       </SafeAreaView>
@@ -581,14 +559,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-  resultBack: { position: 'absolute', top: 18, left: 20, padding: 8 },
+  resultBack: { position: 'absolute', top: 18, left: 20, zIndex: 2 },
+
+  // ── Decorative background shapes (same as the other module screens) ───
+  blob: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.08,
+  },
+  blobTopRight: { width: 220, height: 220, top: -60, right: -60 },
+  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+
+  // The landing pages' round, translucent white button.
+  iconBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 4, elevation: 2,
+  },
 
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   counterRow: {
     flexDirection: 'row',
@@ -599,10 +595,10 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
   },
-  letterBadgeText: { fontSize: 16, fontWeight: '900', fontFamily: 'Nunito_900Black' },
-  counterText:     { fontSize: 15, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  letterBadgeText: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
+  counterText:     { fontSize: 17, fontFamily: 'DMSans_800ExtraBold' },
   scoreBadge: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 50 },
-  scoreText:  { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  scoreText:  { fontSize: 14, fontFamily: 'DMSans_700Bold' },
 
   dotsRow: {
     flexDirection: 'row',
@@ -611,13 +607,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dotItem:  { alignItems: 'center', gap: 3 },
-  dot:      { width: 12, height: 12, borderRadius: 6 },
-  dotActive:{ width: 22, borderRadius: 11 },
-  dotLabel: { fontSize: 10, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', letterSpacing: 0.5 },
+  dot:      { width: 14, height: 14, borderRadius: 7 },
+  dotActive:{ width: 28, borderRadius: 7 },
+  dotLabel: { fontSize: 11, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 0.5 },
 
+  // The step name ("First Letter") — the landing pages' subtitle style.
   exLabel: {
-    fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', textAlign: 'center',
-    letterSpacing: 0.5, opacity: 0.7,
+    fontSize: 16, fontFamily: 'DMSans_700Bold', textAlign: 'center',
+    opacity: 0.7,
   },
   exLabelRow: {
     minHeight: 34,
@@ -627,25 +624,30 @@ const styles = StyleSheet.create({
   },
   instructionSpeaker: { position: 'absolute', right: 28 },
 
+  // The card is centred in the remaining space rather than stretched to fill
+  // it (see card.maxHeight).
   cardContainer: {
     flex: 1,
     paddingHorizontal: 28,
-    paddingBottom: 18,
+    // Extra bottom padding lifts the centred card a little higher.
+    paddingBottom: 58,
     alignItems: 'center',
+    justifyContent: 'center',
   },
+  // Landing-page card frame: white, 28 radius, 3px outline in the avatar
+  // theme colour (set inline), soft shadow.
   card: {
+    // 820 still leaves the six options one line beside the picture
+    // (820 − 66 − 230 − 34 = 490 ≥ 448). Capped in height too, so the card
+    // no longer stretches to the bottom of the screen.
     flex: 1,
-    width: '100%', maxWidth: 780,
-    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 30,
+    maxHeight: 500,
+    width: '100%', maxWidth: 820,
+    backgroundColor: '#FFFFFF', borderRadius: 28, borderWidth: 3, padding: 30,
     elevation: 4, shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10,
     gap: 16,
   },
-  wordHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-  },
-  wordDisplay: { fontSize: 32, fontWeight: '900', color: '#1A1A1A', letterSpacing: 4 },
-  divider:     { height: 1, backgroundColor: '#F0F0F0' },
 
   // ── Shared celebration elements ───────────────────────────────────────────
   overlay: {

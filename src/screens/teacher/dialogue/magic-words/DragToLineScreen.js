@@ -20,6 +20,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
@@ -141,12 +142,15 @@ const ACTIVITIES = {
   ],
 };
 
+const IMAGE_FRAME_PADDING = 10;
+const IMAGE_FRAME_BORDER  = 3;
+
 function getActivities(wordKey) {
   return ACTIVITIES[wordKey] ?? ACTIVITIES.thank_you;
 }
 
 // ── Draggable word card ──────────────────────────────────────────────────────
-function DraggableCard({ label, correct, dropZoneBounds, onCorrectDrop, onWrongDrop, disabled }) {
+function DraggableCard({ label, correct, dropZoneBounds, onCorrectDrop, onWrongDrop, disabled, accent, textColor }) {
   const pan    = useRef(new Animated.ValueXY()).current;
   const scale  = useRef(new Animated.Value(1)).current;
   const shakeX = useRef(new Animated.Value(0)).current;
@@ -217,6 +221,7 @@ function DraggableCard({ label, correct, dropZoneBounds, onCorrectDrop, onWrongD
     <Animated.View
       style={[
         styles.wordCard,
+        accent && { borderColor: accent },
         {
           transform: [
             { translateX: pan.x },
@@ -229,7 +234,7 @@ function DraggableCard({ label, correct, dropZoneBounds, onCorrectDrop, onWrongD
       ]}
       {...panResponder.panHandlers}
     >
-      <Text style={styles.wordCardText}>{label}</Text>
+      <Text style={[styles.wordCardText, textColor && { color: textColor }]}>{label}</Text>
       <Text style={styles.wordCardIcon}>✨</Text>
     </Animated.View>
   );
@@ -291,6 +296,19 @@ export default function DragToLineScreen({ route, navigation }) {
   const [cardKey, setCardKey] = useState(0);
 
   const current = activities[activityIdx];
+
+  // Fit the picture frame to the picture's own shape, so no empty white
+  // bands sit above and below a wide scene.
+  const [imageBox, setImageBox] = useState(null);
+  const imageAsset = Image.resolveAssetSource(current.image);
+  const imageRatio = imageAsset?.width && imageAsset?.height ? imageAsset.width / imageAsset.height : 4 / 3;
+  const FRAME_INSET = 2 * (IMAGE_FRAME_PADDING + IMAGE_FRAME_BORDER);
+  let imageFrame = null;
+  if (imageBox) {
+    const innerW = Math.min(imageBox.width - FRAME_INSET, (imageBox.height - FRAME_INSET) * imageRatio);
+    imageFrame = { width: innerW + FRAME_INSET, height: innerW / imageRatio + FRAME_INSET };
+  }
+
   const progressFraction = 0.75 + (activityIdx / activities.length) * 0.15;
 
   function measureDropZone() {
@@ -351,11 +369,11 @@ export default function DragToLineScreen({ route, navigation }) {
 
   const dropZoneBorderColor = dropZoneGlow.interpolate({
     inputRange:  [0, 1],
-    outputRange: ['rgba(0,0,0,0.18)', '#22C55E'],
+    outputRange: [theme.cardOutline, '#22C55E'],
   });
   const dropZoneBgColor = dropZoneGlow.interpolate({
     inputRange:  [0, 1],
-    outputRange: ['rgba(255,255,255,0.55)', 'rgba(34,197,94,0.12)'],
+    outputRange: ['rgba(255,255,255,0.7)', 'rgba(34,197,94,0.15)'],
   });
 
   const handleCorrectDrop = useCallback(() => {
@@ -433,35 +451,49 @@ export default function DragToLineScreen({ route, navigation }) {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progressFraction * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       {/* ── Body ───────────────────────────────────────────────── */}
-      <View style={[styles.gradient, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.gradient}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.body}>
 
-            {/* Left: scene image */}
-            <View style={[styles.imageWrap, { backgroundColor: theme.cardSurface }]}>
-              <Image source={current.image} style={styles.sceneImage} resizeMode={wordKey === 'youre_welcome' ? 'contain' : 'cover'} />
+            {/* Left: scene image, framed to its own shape */}
+            <View
+              style={styles.imageCol}
+              onLayout={(e) => setImageBox(e.nativeEvent.layout)}
+            >
+              {imageFrame && (
+                <View style={[styles.imageWrap, imageFrame, { borderColor: theme.cardOutline }]}>
+                  <Image source={current.image} style={styles.sceneImage} resizeMode="contain" />
+                </View>
+              )}
             </View>
 
             {/* Right: prompt card + drop zone + word cards */}
             <View style={styles.rightPanel}>
 
               {/* Prompt card */}
-              <View style={styles.promptCard}>
+              <View style={[styles.promptCard, { borderColor: theme.cardOutline }]}>
+                <View style={[styles.promptBadge, { backgroundColor: theme.button }]}>
+                  <Ionicons name="chatbubble-ellipses" size={20} color={theme.buttonText ?? '#FFFFFF'} />
+                </View>
                 <Text style={[styles.promptText, { color: theme.headingText }]}>
-                  {`"${current.prompt}"`}
+                  {current.prompt}
                 </Text>
               </View>
 
@@ -472,19 +504,27 @@ export default function DragToLineScreen({ route, navigation }) {
                 style={[styles.dropZone, { borderColor: dropZoneBorderColor, backgroundColor: dropZoneBgColor }]}
               >
                 {dropState === 'correct' ? (
-                  <Text style={styles.dropZoneFilledText}>
-                    {current.cards.find(c => c.correct)?.label} ✓
-                  </Text>
+                  <View style={styles.dropZoneRow}>
+                    <Ionicons name="checkmark-circle" size={30} color="#22C55E" />
+                    <Text style={styles.dropZoneFilledText}>
+                      {current.cards.find(c => c.correct)?.label}
+                    </Text>
+                  </View>
                 ) : (
-                  <Text style={styles.dropZonePlaceholder}>Drop the correct phrase here</Text>
+                  <View style={styles.dropZoneRow}>
+                    <Ionicons name="arrow-down-circle-outline" size={26} color={theme.cardOutline} />
+                    <Text style={[styles.dropZonePlaceholder, { color: theme.headingText }]}>
+                      Drop the correct phrase here
+                    </Text>
+                  </View>
                 )}
               </Animated.View>
 
               {/* Drag hint + word cards */}
               <View style={styles.cardsRow}>
                 <View style={styles.dragHint}>
-                  <Ionicons name="hand-left-outline" size={16} color={theme.headingText} style={{ opacity: 0.5 }} />
-                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag the card</Text>
+                  <Ionicons name="hand-left-outline" size={16} color={theme.headingText} />
+                  <Text style={[styles.dragHintText, { color: theme.headingText }]}>Drag a card into the box</Text>
                 </View>
                 <View style={styles.cardsArea}>
                   {current.cards.map((card) => (
@@ -496,6 +536,8 @@ export default function DragToLineScreen({ route, navigation }) {
                       onCorrectDrop={handleCorrectDrop}
                       onWrongDrop={handleWrongDrop}
                       disabled={dropState === 'correct'}
+                      accent={theme.cardOutline}
+                      textColor={theme.headingText}
                     />
                   ))}
                 </View>
@@ -504,7 +546,7 @@ export default function DragToLineScreen({ route, navigation }) {
             </View>
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* ── Wrong feedback toast ────────────────────────────────── */}
       <Animated.View
@@ -582,6 +624,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   progressTrack: {
     flex: 1,
     height: 8,
@@ -605,15 +661,23 @@ const styles = StyleSheet.create({
   },
 
   /* Left: scene image */
-  imageWrap: {
+  imageCol: {
     flex: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageWrap: {
+    backgroundColor: '#FFFFFF',
     borderRadius: Layout.radius.xl,
+    borderWidth: IMAGE_FRAME_BORDER,
+    padding: IMAGE_FRAME_PADDING,
     overflow: 'hidden',
     ...Layout.shadow.md,
   },
   sceneImage: {
     width: '100%',
     height: '100%',
+    borderRadius: Layout.radius.md,
   },
 
   /* Right panel */
@@ -626,68 +690,90 @@ const styles = StyleSheet.create({
 
   /* Prompt card */
   promptCard: {
-    backgroundColor: 'rgba(255,255,255,0.88)',
+    backgroundColor: '#FFFFFF',
     borderRadius: Layout.radius.xl,
+    borderWidth: 3,
     paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.lg,
+    paddingTop: Layout.spacing.xl,
+    paddingBottom: Layout.spacing.lg,
+    marginTop: 20,
+    alignItems: 'center',
+    ...Layout.shadow.sm,
+  },
+  promptBadge: {
+    position: 'absolute',
+    top: -22,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
     ...Layout.shadow.sm,
   },
   promptText: {
     fontSize: 22,
-    fontWeight: '800',
+    fontFamily: 'DMSans_800ExtraBold',
     lineHeight: 32,
     textAlign: 'center',
   },
 
   /* Drop zone */
   dropZone: {
-    borderWidth: 2.5,
+    borderWidth: 3,
     borderStyle: 'dashed',
-    borderRadius: Layout.radius.lg,
-    paddingVertical: Layout.spacing.xl,
+    borderRadius: Layout.radius.xl,
+    paddingVertical: Layout.spacing.lg,
     paddingHorizontal: Layout.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 80,
+    minHeight: 96,
+  },
+  dropZoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   dropZonePlaceholder: {
-    fontSize: Layout.fontSize.sm,
-    color: 'rgba(0,0,0,0.35)',
-    fontWeight: '600',
+    fontSize: Layout.fontSize.md,
+    opacity: 0.55,
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
   },
   dropZoneFilledText: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: '800',
-    color: '#22C55E',
+    fontSize: 24,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: '#16A34A',
     textAlign: 'center',
   },
 
-  /* Drag hint + cards row */
+  /* Drag hint + cards */
   cardsRow: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: Layout.spacing.md,
-    flexWrap: 'wrap',
   },
   dragHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: Layout.radius.full,
   },
   dragHintText: {
     fontSize: Layout.fontSize.sm,
-    opacity: 0.5,
-    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
   },
   cardsArea: {
     flexDirection: 'row',
-    gap: Layout.spacing.md,
+    justifyContent: 'center',
+    gap: Layout.spacing.lg,
     flexWrap: 'wrap',
-    flex: 1,
   },
 
-  /* Word card */
+  /* Word card — 3D, like the buttons in the other modules */
   wordCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -695,14 +781,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingVertical: 14,
     paddingHorizontal: Layout.spacing.xl,
-    borderRadius: Layout.radius.xl,
+    borderRadius: 18,
     borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderBottomWidth: 5,
+    borderColor: 'rgba(0,0,0,0.12)',
     ...Layout.shadow.md,
   },
   wordCardText: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: '800',
+    fontSize: 22,
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
   },
   wordCardIcon: {
@@ -722,7 +809,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,77,109,0.9)',
     color: '#FFF',
     fontSize: Layout.fontSize.md,
-    fontWeight: '700',
+    fontFamily: 'DMSans_700Bold',
     paddingHorizontal: Layout.spacing.xl,
     paddingVertical: Layout.spacing.md,
     borderRadius: Layout.radius.full,
@@ -752,7 +839,7 @@ const styles = StyleSheet.create({
   },
   speechBubbleText: {
     fontSize: Layout.fontSize.md,
-    fontWeight: '800',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#333',
   },
   speechBubbleTail: {
@@ -788,7 +875,7 @@ const styles = StyleSheet.create({
   },
   settingsTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: '700',
+    fontFamily: 'DMSans_700Bold',
     color: '#333',
     marginBottom: Layout.spacing.lg,
     textAlign: 'center',
@@ -801,7 +888,7 @@ const styles = StyleSheet.create({
   },
   settingsOptionText: {
     fontSize: Layout.fontSize.md,
-    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#333',
   },
   settingsDivider: {

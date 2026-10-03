@@ -194,7 +194,7 @@ describe('per-word drill-down uses canonical per-word images', () => {
 
   it('the image map is the canonical one shared with the child UI', () => {
     const images = read('../data/wordImages.js');
-    expect(images).toMatch(/apple:\s+require\('\.\.\/\.\.\/assets\/words\/A\/5-letter\/apple\.jpg'\)/);
+    expect(images).toMatch(/apple:\s+require\('\.\.\/\.\.\/assets\/words\/A\/5-letters\/apple\.jpg'\)/);
     expect(images).toMatch(/export default WORD_IMAGES/);
   });
 

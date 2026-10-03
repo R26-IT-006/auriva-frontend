@@ -10,6 +10,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
 
+// TEMPORARY: the gate is switched off app-wide. While false, opening the gate
+// immediately counts as a correct code — every caller's onSuccess runs as if
+// the adult had passed, and no modal is shown. All gate code below is kept
+// as-is; set this back to true to re-enable it everywhere.
+const PARENT_GATE_ENABLED = false;
+
 const WORDS = ['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE'];
 const CODE_LENGTH = 4;
 const ACCENT = '#4AABB8';
@@ -26,7 +32,17 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
   const scaleAnim             = useRef(new Animated.Value(0.92)).current;
   const opacityAnim           = useRef(new Animated.Value(0)).current;
 
+  // Latest onSuccess, so the bypass below never runs a stale callback.
+  const onSuccessRef = useRef(onSuccess);
+  useEffect(() => { onSuccessRef.current = onSuccess; });
+
+  // Gate disabled: pass straight through the moment a caller opens it.
   useEffect(() => {
+    if (!PARENT_GATE_ENABLED && visible) onSuccessRef.current?.();
+  }, [visible]);
+
+  useEffect(() => {
+    if (!PARENT_GATE_ENABLED) return;
     if (visible) {
       setCode(generateCode());
       setEntered([]);
@@ -76,6 +92,8 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
   }
 
   const KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'];
+
+  if (!PARENT_GATE_ENABLED) return null;
 
   return (
     <Modal visible={visible} animationType="none" transparent onRequestClose={handleClose}>

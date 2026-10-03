@@ -16,6 +16,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Scene videos for Phase 3 — same Phase1And3.mp4 as Phase 1, per word folder
 const CAT3_CONTEXT_CORRECT = {
@@ -297,21 +298,25 @@ export default function Cat3Phase3Screen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       {/* ── Body ── */}
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.content}>
 
@@ -395,7 +400,7 @@ export default function Cat3Phase3Screen({ route, navigation }) {
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* ── Feedback toast ── */}
       <Animated.View style={[styles.feedbackBanner, { opacity: feedbackOp }]} pointerEvents="none">
@@ -432,7 +437,21 @@ const styles = StyleSheet.create({
   headerWrap: {},
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
   headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
-  levelLabel:    { fontSize: Layout.fontSize.sm, fontWeight: '700', opacity: 0.7 },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  levelLabel:    { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
   progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill:  { height: '100%', borderRadius: 4 },
 
@@ -444,7 +463,7 @@ const styles = StyleSheet.create({
     paddingBottom:     Layout.spacing.lg,
   },
 
-  title:    { fontSize: Layout.fontSize.xl, fontWeight: '700', textAlign: 'center' },
+  title:    { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_700Bold', textAlign: 'center' },
   subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.6, marginTop: 4, marginBottom: Layout.spacing.lg },
 
   sceneWrap: {
@@ -458,7 +477,7 @@ const styles = StyleSheet.create({
     ...Layout.shadow.md,
   },
   sceneImg:    { width: '100%', height: '100%' },
-  wordFallback: { fontSize: 52, fontWeight: '900' },
+  wordFallback: { fontSize: 52, fontFamily: 'DMSans_900Black' },
 
   tilesWrap: {
     width:          '100%',
@@ -482,21 +501,21 @@ const styles = StyleSheet.create({
   },
   tileCorrect: { borderColor: '#22C55E', borderWidth: 2.5 },
   tileWrong:   { borderColor: '#FF4D6D', opacity: 0.7 },
-  tileText:    { fontSize: Layout.fontSize.lg, fontWeight: '800' },
+  tileText:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold' },
 
   feedbackBanner: { position: 'absolute', bottom: 60, left: 0, right: 0, alignItems: 'center', zIndex: 60 },
   feedbackText: {
     backgroundColor: 'rgba(255,77,109,0.9)', color: '#FFF',
-    fontSize: Layout.fontSize.md, fontWeight: '700',
+    fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold',
     paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md,
     borderRadius: Layout.radius.full, overflow: 'hidden',
   },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
-  settingsTitle:   { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
+  settingsTitle:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
-  settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
+  settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
 
   actionRow: {
     flexDirection:  'row',
@@ -514,7 +533,7 @@ const styles = StyleSheet.create({
     borderRadius:      Layout.radius.full,
     borderWidth:       1.5,
   },
-  hearAgainText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.bold },
+  hearAgainText: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold' },
   confirmButton: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -523,5 +542,5 @@ const styles = StyleSheet.create({
     paddingVertical:   8,
     borderRadius:      Layout.radius.full,
   },
-  confirmButtonText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#FFFFFF' },
+  confirmButtonText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },
 });

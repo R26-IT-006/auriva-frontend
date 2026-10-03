@@ -204,7 +204,7 @@ export default function L2ProductionScreen({ route, navigation }) {
             <Text style={[styles.nextText, { color: theme.buttonText }]}>
               {section === 'full' ? 'Next: Say each sentence' : sxsIdx < sentences.length - 1 ? 'Next Sentence' : 'Finish!'}
             </Text>
-            <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
+            <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
           </TouchableOpacity>
 
           <View style={{ height: 32 }} />
@@ -218,27 +218,46 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
   header: { paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center' },
+  headerTitle: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_900Black', textAlign: 'center' },
   headerSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginTop: 2 },
   progressTrack: { width: '100%', height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
-  scroll: { paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.md, gap: Layout.spacing.md },
+  // Capped + centred so the cards don't stretch edge to edge on a tablet.
+  scroll: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.md, gap: Layout.spacing.md },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   bubble: { flex: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
-  bubbleText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  bubbleText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
   bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, marginTop: 2 },
   bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
   avatar: { width: 90, height: 110 },
   textCard: { borderRadius: Layout.radius.xl, borderWidth: 2, padding: Layout.spacing.lg, gap: 8, ...Layout.shadow.sm },
-  textLabel: { fontSize: Layout.fontSize.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  targetText: { fontSize: Layout.fontSize.xl, fontWeight: '700', lineHeight: 28 },
+  textLabel: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
+  targetText: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_700Bold', lineHeight: 28 },
   promptCard: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Layout.radius.lg, padding: Layout.spacing.md },
-  promptText: { flex: 1, fontSize: Layout.fontSize.md, fontWeight: '600', opacity: 0.75 },
+  promptText: { flex: 1, fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', opacity: 0.75 },
   listenBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderRadius: Layout.radius.full, paddingHorizontal: Layout.spacing.md, paddingVertical: 8, alignSelf: 'center' },
-  listenBtnText: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
+  listenBtnText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
   micArea: { alignItems: 'center', gap: Layout.spacing.sm },
   micBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', ...Layout.shadow.sm },
-  micNote: { fontSize: Layout.fontSize.sm, fontWeight: '600' },
-  nextBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: Layout.radius.full, paddingVertical: Layout.spacing.md, ...Layout.shadow.md },
-  nextText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  micNote: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold' },
+  nextBtn: {
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextText: {
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
 });

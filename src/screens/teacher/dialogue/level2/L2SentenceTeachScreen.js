@@ -22,6 +22,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // ── Shared audio helpers ──────────────────────────────────────────────────────
 async function playBase64Audio(base64, soundRef) {
@@ -131,8 +132,8 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
       {/* Header */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => setShowGate(true)} style={styles.headerSide} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => setShowGate(true)} style={styles.headerBtn} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.button }]} />
@@ -144,7 +145,13 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
       </SafeAreaView>
 
       {/* Body */}
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
+        <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+        <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           {step === 'activityPre' && sentence && (
             <ActivityPreScreen sentence={sentence} sessionData={sessionData} theme={theme} onSelect={handleActivitySelect} />
@@ -165,7 +172,7 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
             <Step4Speak sentence={sentence} theme={theme} avatarImg={avatarImg} studentId={student?.sid} sessionId={sessionId} sentenceIndex={sentenceIndex} onNext={advanceStep} />
           )}
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       <ParentGateModal
         visible={showGate}
@@ -209,7 +216,7 @@ function Step1Listen({ sentence, theme, avatarImg, onNext }) {
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 1 · Listen</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
-      <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+      <View style={[styles.sentenceCard, { borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>
           {before}
           <Text style={[styles.underlined, { color: theme.button }]}>{dynamic}</Text>
@@ -218,7 +225,7 @@ function Step1Listen({ sentence, theme, avatarImg, onNext }) {
       </View>
       <Image source={avatarImg} style={styles.avatarMd} resizeMode="contain" />
       {hasAudio ? (
-        <TouchableOpacity style={[styles.ttsBtn, { borderColor: theme.button, backgroundColor: playing ? theme.button + '22' : 'transparent' }]} onPress={handlePlay} disabled={playing} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.ttsBtn, { borderColor: theme.cardOutline }, playing && { backgroundColor: theme.button + '18' }]} onPress={handlePlay} disabled={playing} activeOpacity={0.8}>
           <Ionicons name={playing ? 'volume-high' : 'volume-medium-outline'} size={22} color={theme.button} />
           <Text style={[styles.ttsBtnText, { color: theme.button }]}>{playing ? 'Playing…' : 'Listen again'}</Text>
         </TouchableOpacity>
@@ -231,7 +238,7 @@ function Step1Listen({ sentence, theme, avatarImg, onNext }) {
       <View style={styles.stepFooter}>
         <TouchableOpacity style={[styles.nextBtn, { backgroundColor: theme.button }]} onPress={onNext} activeOpacity={0.85}>
           <Text style={[styles.nextText, { color: theme.buttonText }]}>Next</Text>
-          <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
+          <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
         </TouchableOpacity>
       </View>
     </View>
@@ -244,59 +251,96 @@ const styles = StyleSheet.create({
   headerWrap: {},
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
   headerSide: { width: 40, alignItems: 'center', justifyContent: 'center' },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   sentBadge: { width: 74 },
-  sentBadgeText: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
+  sentBadgeText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
   progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
-  body: { flex: 1 },
-  stepBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, gap: Layout.spacing.md },
-  stepTitle: { fontSize: Layout.fontSize.xs, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
+  body: { flex: 1, overflow: 'hidden' },
+  // Decorative background shapes (same as the other module screens).
+  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
+  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
+  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+  stepBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, gap: 18 },
+  stepTitle: { fontSize: 13, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1, textTransform: 'uppercase', backgroundColor: 'rgba(255,255,255,0.75)', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 999, overflow: 'hidden' },
   stepTitleSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', opacity: 0.6, marginTop: -6, textAlign: 'center' },
-  prompt: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', lineHeight: 30 },
-  sentenceCard: { width: '100%', borderRadius: Layout.radius.xl, borderWidth: 2, paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', ...Layout.shadow.sm },
-  sentenceText: { fontSize: Layout.fontSize.xl, fontWeight: '700', textAlign: 'center' },
-  underlined: { textDecorationLine: 'underline', fontWeight: '900' },
+  prompt: { fontSize: 26, fontFamily: 'DMSans_900Black', textAlign: 'center', lineHeight: 34 },
+  sentenceCard: { width: '100%', maxWidth: 620, alignSelf: 'center', backgroundColor: '#FFFFFF', borderRadius: 28, borderWidth: 3, paddingHorizontal: 28, paddingVertical: 22, alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 6 },
+  sentenceText: { fontSize: 28, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', lineHeight: 38 },
+  underlined: { textDecorationLine: 'underline', fontFamily: 'DMSans_900Black' },
   avatarMd: { width: 120, height: 140 },
-  ttsDisabled: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderRadius: Layout.radius.full, paddingHorizontal: Layout.spacing.md, paddingVertical: 8, borderStyle: 'dashed' },
-  ttsDisabledText: { fontSize: Layout.fontSize.sm, color: '#AAA', fontWeight: '600' },
-  ttsBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderRadius: Layout.radius.full, paddingHorizontal: Layout.spacing.md, paddingVertical: 8 },
-  ttsBtnText: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
-  stepFooter: { width: '100%', alignItems: 'flex-end', marginTop: Layout.spacing.sm },
-  nextBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, ...Layout.shadow.md },
-  nextText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
-  dropSlot: { borderWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(0,0,0,0.25)', borderRadius: Layout.radius.md, paddingHorizontal: Layout.spacing.lg, paddingVertical: 10, minWidth: 80, alignItems: 'center', marginHorizontal: 4 },
-  dropSlotPlaceholder: { fontSize: Layout.fontSize.xl, color: 'rgba(0,0,0,0.3)', fontWeight: '700' },
-  dropSlotFilled: { fontSize: Layout.fontSize.xl, fontWeight: '900', color: '#22C55E' },
-  dragHint: { fontSize: Layout.fontSize.sm, opacity: 0.5, fontWeight: '600' },
+  ttsDisabled: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 2, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10, borderStyle: 'dashed', backgroundColor: 'rgba(255,255,255,0.7)' },
+  ttsDisabledText: { fontSize: Layout.fontSize.sm, color: '#AAA', fontFamily: 'DMSans_600SemiBold' },
+  ttsBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderWidth: 2, borderBottomWidth: 5, borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
+  ttsBtnText: { fontSize: 17, fontFamily: 'DMSans_800ExtraBold' },
+  stepFooter: { width: '100%', alignItems: 'center', marginTop: Layout.spacing.sm },
+  nextBtn: {
+    gap: 8,
+    minWidth: 220,
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nextText: {
+    fontSize: 19,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
+  dropSlot: { borderWidth: 2.5, borderStyle: 'dashed', borderColor: 'rgba(0,0,0,0.25)', borderRadius: 14, paddingHorizontal: 20, paddingVertical: 10, minWidth: 110, minHeight: 54, alignItems: 'center', justifyContent: 'center', marginHorizontal: 6 },
+  dropSlotPlaceholder: { fontSize: 26, color: 'rgba(0,0,0,0.3)', fontFamily: 'DMSans_800ExtraBold' },
+  dropSlotFilled: { fontSize: 26, fontFamily: 'DMSans_900Black', color: '#16A34A' },
+  dragHint: { fontSize: 14, opacity: 0.6, fontFamily: 'DMSans_600SemiBold' },
   dragHintSinhala: { fontSize: Layout.fontSize.xs, opacity: 0.45, fontWeight: '500', textAlign: 'center', marginTop: -6 },
-  tile: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', paddingVertical: 14, paddingHorizontal: Layout.spacing.xl, borderRadius: Layout.radius.xl, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)', ...Layout.shadow.md },
-  tileText: { fontSize: Layout.fontSize.lg, fontWeight: '800', color: '#1A1A2E' },
-  tilesRow: { flexDirection: 'row', gap: Layout.spacing.md, flexWrap: 'wrap', justifyContent: 'center' },
+  tile: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', paddingVertical: 15, paddingHorizontal: 28, borderRadius: 16, borderWidth: 2, borderBottomWidth: 5, borderColor: 'rgba(0,0,0,0.12)', ...Layout.shadow.md },
+  tileText: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E' },
+  tilesRow: { flexDirection: 'row', gap: 16, flexWrap: 'wrap', justifyContent: 'center' },
   tileWrong: { borderColor: '#FF4D6D' },
-  wrongMsg: { fontSize: Layout.fontSize.sm, color: '#FF4D6D', fontWeight: '700' },
+  wrongMsg: { fontSize: Layout.fontSize.sm, color: '#FF4D6D', fontFamily: 'DMSans_700Bold' },
   genderBody: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.lg, paddingHorizontal: Layout.spacing.lg },
-  genderPrompt: { fontSize: Layout.fontSize.xxl, fontWeight: '900', textAlign: 'center' },
+  genderPrompt: { fontSize: 28, fontFamily: 'DMSans_900Black', textAlign: 'center' },
   genderPromptSinhala: { fontSize: Layout.fontSize.md, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginTop: -6 },
   genderRow: { flexDirection: 'row', gap: Layout.spacing.xl },
-  genderCard: { alignItems: 'center', gap: Layout.spacing.sm, borderRadius: Layout.radius.xl, borderWidth: 3, padding: Layout.spacing.md, flex: 1, ...Layout.shadow.md, backgroundColor: '#FFF' },
+  genderCard: { alignItems: 'center', gap: Layout.spacing.sm, borderRadius: 24, borderWidth: 3, borderBottomWidth: 6, padding: Layout.spacing.md, flex: 1, maxWidth: 240, ...Layout.shadow.md, backgroundColor: '#FFF' },
   genderAvatar: { width: 110, height: 150 },
-  genderLabel: { fontSize: Layout.fontSize.lg, fontWeight: '800' },
+  genderLabel: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold' },
   actPreBody: { flex: 1, paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md },
-  actPreTitle: { fontSize: Layout.fontSize.xs, fontWeight: '600', opacity: 0.55, textTransform: 'uppercase', textAlign: 'center', marginBottom: Layout.spacing.sm },
-  actPrePrompt: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', marginBottom: Layout.spacing.sm },
+  actPreTitle: { fontSize: 13, fontFamily: 'DMSans_800ExtraBold', opacity: 0.6, letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', marginBottom: Layout.spacing.sm },
+  actPrePrompt: { fontSize: 26, fontFamily: 'DMSans_900Black', textAlign: 'center', marginBottom: Layout.spacing.md },
   actPreSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.md },
-  actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.md, justifyContent: 'center', flex: 1 },
-  actCard: { alignItems: 'center', gap: 8, borderRadius: Layout.radius.xl, borderWidth: 2.5, paddingVertical: Layout.spacing.lg, paddingHorizontal: Layout.spacing.lg, width: 100, backgroundColor: '#FFF', ...Layout.shadow.sm },
+  actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'center', alignContent: 'center', flex: 1 },
+  actCard: { alignItems: 'center', gap: 8, borderRadius: 20, borderWidth: 2.5, borderBottomWidth: 5, paddingVertical: Layout.spacing.lg, paddingHorizontal: Layout.spacing.lg, width: 130, backgroundColor: '#FFF', ...Layout.shadow.sm },
   actCardSel: {},
-  actCardLabel: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
-  actConfirmBtn: { borderRadius: Layout.radius.full, paddingVertical: Layout.spacing.md, alignItems: 'center', marginTop: Layout.spacing.md, ...Layout.shadow.md },
-  actConfirmText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  actCardLabel: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
+  actConfirmBtn: { alignSelf: 'center', minWidth: 260, borderRadius: 16, borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)', paddingVertical: 16, paddingHorizontal: 40, alignItems: 'center', marginTop: Layout.spacing.md, ...Layout.shadow.md },
+  actConfirmText: { fontSize: 19, fontFamily: 'DMSans_800ExtraBold' },
   micRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
-  micBtn: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', ...Layout.shadow.md },
-  micDisabledText: { fontSize: Layout.fontSize.sm, color: '#AAA', fontWeight: '600' },
+  micBtn: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)', ...Layout.shadow.md },
+  micDisabledText: { fontSize: Layout.fontSize.sm, color: '#AAA', fontFamily: 'DMSans_600SemiBold' },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  bubble: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
-  bubbleText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  bubble: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
+  bubbleText: { fontSize: 17, fontFamily: 'DMSans_800ExtraBold' },
   bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, marginTop: 2 },
   bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
 });
@@ -334,7 +378,7 @@ function Step2DragOne({ sentence, theme, onComplete }) {
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 2 · Drag & Drop</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
-      <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+      <View style={[styles.sentenceCard, { borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>
           {before}
         </Text>
@@ -419,7 +463,7 @@ function Step3DragTwo({ sentence, theme, onResult }) {
     <View style={styles.stepBody}>
       <Text style={[styles.stepTitle, { color: theme.headingText, opacity: 0.55 }]}>Step 3 · Pick the Right One</Text>
       <Text style={[styles.prompt, { color: theme.headingText }]}>{sentence.prompt}</Text>
-      <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+      <View style={[styles.sentenceCard, { borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>{before}</Text>
         <Animated.View ref={dropRef} onLayout={measureDrop} style={[styles.dropSlot, placed && { backgroundColor: '#D1FAE5', borderColor: '#22C55E' }]}>
           {placed ? <Text style={styles.dropSlotFilled}>{sentence.dynamic_value} ✓</Text>
@@ -547,7 +591,7 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
         </View>
         <Image source={avatarImg} style={styles.avatarMd} resizeMode="contain" />
       </View>
-      <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+      <View style={[styles.sentenceCard, { borderColor: theme.cardOutline }]}>
         <Text style={[styles.sentenceText, { color: theme.headingText }]}>{sentence.text}</Text>
       </View>
       {hasAudio && (
@@ -572,7 +616,7 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
       <View style={styles.stepFooter}>
         <TouchableOpacity style={[styles.nextBtn, { backgroundColor: theme.button }]} onPress={onNext} disabled={isProcessing} activeOpacity={0.85}>
           <Text style={[styles.nextText, { color: theme.buttonText }]}>Next</Text>
-          <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
+          <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
         </TouchableOpacity>
       </View>
     </View>

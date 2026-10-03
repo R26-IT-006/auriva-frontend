@@ -26,7 +26,6 @@ import {
   getPronunciationWordLabel,
 } from "./pronunciationPayloads.js";
 import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
-import { ThemedGradientFill } from "./pronunciationDesignKit.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import {
@@ -48,7 +47,7 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const word = route.params?.word || sessionSelectedWord;
   const imageStyle = usePronunciationSessionStore((state) => state.imageStyle);
   const wordImageSource = getWordImageSource(word, imageStyle);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [savedRecordingUri, setSavedRecordingUri] = useState(null);
@@ -87,9 +86,14 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const barAnimC = useRef(new Animated.Value(0.3)).current;
 
   const isCompact = width < 760;
+  // Same footprint as the Listen step (PronunciationLearnWordScreen): the row
+  // is ~55% of the screen, and both cards share one height that leaves room
+  // for the header, headline and Next (~330). The letter / picture card is a
+  // square of that height; the microphone card takes the rest of the row.
   const cardWidth = isCompact
     ? width - Layout.spacing.lg * 2
-    : Math.min(Math.max(width * 0.62, 700), 940);
+    : Math.min(Math.max(width * 0.55, 640), 820);
+  const panelHeight = Math.max(240, Math.min(height - 330, 340));
 
   const barAnimations = useMemo(
     () => [barAnimA, barAnimB, barAnimC],
@@ -419,8 +423,32 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
   const canContinue = !isRecording && !isScoring;
 
   return (
-    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.safe}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
+      {/* Back — Concept's round translucent header button. Disabled while
+          scoring, and goBack still goes through useExitSessionGuard. */}
+      <View style={styles.topBar}>
+        <ButtonFeedback
+          activeOpacity={0.7}
+          onPress={() => navigation.goBack()}
+          disabled={isScoring}
+          style={[
+            styles.iconBtn,
+            { backgroundColor: "rgba(255,255,255,0.7)" },
+            isScoring && styles.nextBtnDisabled,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+        </ButtonFeedback>
+      </View>
+
       <ScrollView
         contentContainerStyle={[styles.container, isCompact && styles.containerCompact]}
         showsVerticalScrollIndicator={false}
@@ -433,8 +461,15 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
         </Text>
 
         <View style={[styles.contentRow, isCompact && styles.contentRowCompact, { width: cardWidth }]}>
-          <View style={[styles.imageCard, isCompact && styles.imageCardCompact]}>
-            <View style={[styles.imageFrame, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+          <View style={[styles.imageCard, isCompact && styles.imageCardCompact, !isCompact && { width: panelHeight }]}>
+            <View
+              style={[
+                styles.imageFrame,
+                { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+                // Square on a tablet, matching the Listen step's letter panel.
+                !isCompact && { width: panelHeight, height: panelHeight, maxWidth: undefined },
+              ]}
+            >
               {isAlphabetMode ? (
                 <View style={[styles.image, styles.letterImage, { backgroundColor: word?.color || theme.cardSurface }]}>
                   <Text style={[styles.letterImageText, { color: theme.headingText }]}>
@@ -455,7 +490,17 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
             </View>
           </View>
 
-          <View style={[styles.voiceCard, isCompact && styles.voiceCardCompact, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+          <View
+            style={[
+              styles.voiceCard,
+              isCompact && styles.voiceCardCompact,
+              { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+              // At least as tall as the letter / picture card beside it (it may
+              // grow a little while recording adds the timer and wave bars);
+              // fills the rest of the row.
+              !isCompact && { minHeight: panelHeight, flex: 1, width: undefined },
+            ]}
+          >
             <ButtonFeedback
               activeOpacity={0.88}
               onPress={handleTapToSpeak}
@@ -520,44 +565,30 @@ export default function PronunciationSpeakWordScreen({ navigation, route }) {
           </View>
         </View>
 
-        <View
-          pointerEvents={isCompact ? "auto" : "box-none"}
-          style={isCompact ? styles.actionsRow : styles.actionsOverlay}
-        >
-          <ButtonFeedback
-            activeOpacity={0.82}
-            onPress={() => navigation.goBack()}
-            disabled={isScoring}
-            style={[
-              styles.backBtn,
-              isCompact && styles.backBtnCompact,
-              { borderColor: theme.cardOutline },
-              isScoring && styles.nextBtnDisabled,
-            ]}
-          >
-            <Ionicons name="arrow-back" size={26} color={theme.headingText} />
-          </ButtonFeedback>
-
+        {/* Next — Concept's 3D "Ready!" button, centred under the cards.
+            Disabled (dimmed) while recording or scoring, as before. */}
+        <View style={styles.actionsRow}>
           <ButtonFeedback
             activeOpacity={0.9}
             disabled={!canContinue}
             onPress={handleNext}
+            accessibilityRole="button"
+            accessibilityLabel={isScoring ? "Scoring" : "Next"}
+            accessibilityState={{ disabled: !canContinue, busy: isScoring }}
             style={[
-              styles.nextBtnWrap,
-              isCompact && styles.nextBtnCompact,
+              styles.nextBtn,
+              { backgroundColor: theme.button },
               !canContinue && styles.nextBtnDisabled,
             ]}
           >
-            <ThemedGradientFill theme={theme} style={styles.nextBtn}>
-              <Text style={styles.nextText}>
-                {isScoring ? "Scoring" : "Next"}
-              </Text>
-              {isScoring ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              )}
-            </ThemedGradientFill>
+            <Text style={[styles.nextText, { color: theme.buttonText }]}>
+              {isScoring ? "Scoring" : "Next"}
+            </Text>
+            {isScoring ? (
+              <ActivityIndicator size="small" color={theme.buttonText} />
+            ) : (
+              <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
+            )}
           </ButtonFeedback>
         </View>
       </ScrollView>
@@ -587,21 +618,42 @@ const styles = StyleSheet.create({
   safeInner: {
     flex: 1,
   },
+  // Header row holding the back button (ConceptCategoriesScreen topBar/iconBtn).
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   container: {
     flexGrow: 1,
-    minHeight: "100%",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.lg,
+    paddingBottom: Layout.spacing.xl,
   },
   containerCompact: {
     justifyContent: "flex-start",
   },
+  // Same heading sizes as the Listen step.
   title: {
-    fontSize: 28,
+    fontSize: 34,
+    lineHeight: 40,
     fontFamily: Layout.fonts.extrabold,
     color: "#2C5878",
+    letterSpacing: -0.3,
     marginBottom: 4,
     textAlign: "center",
   },
@@ -611,24 +663,26 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   titleSinhala: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 20,
+    lineHeight: 28,
     fontFamily: Layout.fonts.extrabold,
     color: "#2C5878",
-    marginBottom: 26,
+    // Wider gap under the instruction: the page is centred vertically, so
+    // this lifts the instruction away from the cards below it.
+    marginBottom: 56,
     textAlign: "center",
     opacity: 0.82,
   },
   titleSinhalaCompact: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 18,
+    lineHeight: 26,
     marginBottom: Layout.spacing.lg,
   },
   contentRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 32,
+    gap: 24,
   },
   contentRowCompact: {
     flexDirection: "column",
@@ -641,21 +695,27 @@ const styles = StyleSheet.create({
   imageCardCompact: {
     width: "100%",
   },
+  // Both cards in the Concept/Dialogue card style: thick theme outline
+  // (colour set inline), round corners, soft shadow.
   imageFrame: {
     width: "100%",
     maxWidth: 360,
     height: 220,
-    borderRadius: 18,
-    padding: 8,
+    borderRadius: 28,
+    padding: 10,
     backgroundColor: Colors.surface,
-    borderWidth: 1,
+    borderWidth: 3,
     borderColor: "#D7E1EC",
-    ...Layout.shadow.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   image: {
     width: "100%",
     height: "100%",
-    borderRadius: 14,
+    borderRadius: 20,
   },
   placeholder: {
     backgroundColor: "#E8EDF4",
@@ -675,14 +735,18 @@ const styles = StyleSheet.create({
   voiceCard: {
     width: "44%",
     minHeight: 220,
-    borderRadius: 18,
+    borderRadius: 28,
     backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
+    borderWidth: 3,
     borderColor: "#D7E1EC",
     padding: 24,
-    ...Layout.shadow.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   voiceCardCompact: {
     width: "100%",
@@ -738,77 +802,33 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderColor: "#3E4D62",
   },
-  backBtn: {
-    position: "absolute",
-    left: 12,
-    top: "50%",
-    marginTop: -24,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: "#4A5D79",
+  actionsRow: {
+    width: "100%",
+    marginTop: Layout.spacing.xl,
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.34)",
   },
-  backBtnCompact: {
-    position: "relative",
-    left: 0,
-    top: 0,
-    marginTop: 0,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  nextBtnWrap: {
-    position: "absolute",
-    right: 14,
-    top: "50%",
-    marginTop: -29,
-    minWidth: 146,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.9)",
-    overflow: "hidden",
-    ...Layout.shadow.md,
-  },
+  // Next — ConceptImageScreen's fwdBtn ("Ready!").
   nextBtn: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: "rgba(0,0,0,0.22)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  nextBtnCompact: {
-    position: "relative",
-    right: 0,
-    top: 0,
-    marginTop: 0,
-    flex: 1,
-  },
+  // Dimmed while recording / scoring (Next) and while scoring (Back).
   nextBtnDisabled: {
     opacity: 0.48,
   },
-  actionsOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  actionsRow: {
-    width: "100%",
-    maxWidth: 520,
-    marginTop: Layout.spacing.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Layout.spacing.md,
-  },
   nextText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontFamily: Layout.fonts.extrabold,
+    fontSize: 17,
+    fontFamily: "DMSans_800ExtraBold",
   },
 });

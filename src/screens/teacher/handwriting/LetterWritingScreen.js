@@ -45,10 +45,6 @@ import {
   hasRemediationHandled,
   markRemediationHandled,
 } from '../../../utils/preWritingSessionGuard';
-// One-time category demonstration — see utils/demoPolicy.js. Decides only;
-// writes nothing until the child presses "I'm Ready" on the demo screen.
-import { useDemoDetour } from '../../../utils/demoDetour';
-import { makeLetterCategoryDemoKey } from '../../../utils/demoPolicy';
 import { SUPPORT_LEVELS, getSupportPresentation, resolveSessionSupportLevel } from '../../../constants/handwritingSupportLevels';
 import { buildSessionAttemptRecord } from '../../../utils/handwritingAttemptPayload';
 import { fetchRecommendedStartSupport, shouldApplyRecommendation, resolveRecommendedStartSupport } from '../../../utils/supportRecommendation';
@@ -464,8 +460,8 @@ export default function LetterWritingScreen({ route, navigation }) {
   // Concept screens do. Cancelling navigates nowhere.
   // Back returns to the interface this flow STARTED from, not one frame down.
   //
-  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity'
-  // | 'HandwritingDemo') — a PUSH — and left with navigation.replace(nextRoute).
+  // Every warm-up detour is entered with navigation.navigate('PreWritingActivity')
+  // — a PUSH — and left with navigation.replace(nextRoute).
   // replace() swaps the top frame, so each detour permanently leaves the frame
   // it was pushed over behind it. After one category transition the stack reads
   // [LetterPractice, LetterWriting, LetterWriting], and goBack() landed on that stale
@@ -931,51 +927,6 @@ export default function LetterWritingScreen({ route, navigation }) {
 
     return () => { cancelled = true; };
   }, [letter, caseType, collectionMode, student.sid, interactionId, letterIdx, sequence, navigation, student, theme]);
-
-
-  // ── One-time category demonstration (utils/demoPolicy.js) ────────────────
-  // The FIRST time this child meets a motor category — lowercase straight,
-  // uppercase curved, and so on — they are taken to a full-screen "watch
-  // first" demonstration of the real target letter before Attempt 1.
-  //
-  // This is NOT Attempt 1, and it does not replace it. Attempt 1 keeps its
-  // HIGH support and its own on-canvas tracer exactly as before; the demo
-  // adds the one thing that tracer cannot, a moment where the child is
-  // asked to watch and there is nothing to draw on. Attempts 1/2/3 and
-  // everything downstream of them are untouched.
-  //
-  // Once per category, ever — not per letter and not per session. The
-  // second letter of the same category goes straight to Attempt 1.
-  const categoryDemoKey = makeLetterCategoryDemoKey({
-    caseType, category: letterObj?.category,
-  });
-
-  useDemoDetour({
-    studentId: student?.sid,
-    demoKey: categoryDemoKey,
-    // Before the child has done anything: attempt 1, nothing drawn. A demo
-    // must never interrupt work in progress.
-    enabled: attempt === 1 && !hasDrawn,
-    collectionMode,
-    navigate: () => {
-      navigation.navigate('HandwritingDemo', {
-        student, theme,
-        demoKey: categoryDemoKey,
-        // THIS letter, from the same reference waypoints Attempt 1 traces —
-        // never a stand-in letter.
-        letter, caseType,
-        nextRoute: 'LetterWriting',
-        // slice(letterIdx), not letterIdx + 1: the same target letter must
-        // still be active[0] on return, exactly as the adaptive pre-writing
-        // detour above does it.
-        nextParams: {
-          student, theme, caseType,
-          letterSequence: sequence.slice(letterIdx),
-          collectionMode, collectionSessionId, interactionId,
-        },
-      });
-    },
-  });
 
 
   // ── DEV-ONLY practice-cycle diagnostics ──────────────────────────────────
@@ -2022,9 +1973,12 @@ const styles = StyleSheet.create({
     // mid-stroke and `mainRow` (flex: 1, centred) re-centred the canvas
     // upward under the child's finger. See constants/writingActionRow.js.
     minHeight: actionRowMinHeight({
-      // Clear is the taller child: its 1.5px border outweighs Next's
-      // extra 1px of padding.
-      maxButtonPaddingVertical: 12, maxButtonBorderWidth: 1.5, rowPaddingVertical: 6,
+      // Clear and Next are the same height: Clear's 12px padding plus its
+      // 2px border and 5px bottom edge equals Next's 13px padding plus its
+      // 5px bottom edge.
+      // The 3D buttons: a 2px border with a 5px bottom edge.
+      maxButtonPaddingVertical: 12, maxButtonBorderWidth: 2, maxButtonBorderBottomWidth: 5,
+      rowPaddingVertical: 6,
     }),
     flexDirection: 'row',
     justifyContent: 'center',
@@ -2032,28 +1986,45 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: PAD,
     paddingVertical: 6,
+    // Nudged up closer to the canvas. A transform, not a margin, so the
+    // reserved height above and the canvas position are unchanged.
+    transform: [{ translateY: -16 }],
   },
+  // The other modules' raised 3D button, white version (outlined in the
+  // theme colour, set inline) — the secondary action.
   clearBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderBottomWidth: 5,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 50,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  clearText: { fontSize: 14, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
+  clearText: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
+  // The other modules' raised 3D button (ConceptImageScreen fwdBtn), in
+  // the theme colour — the main action. Same height as Clear: 13 + 13 + 5
+  // matches 12 + 12 + 2 + 5.
   nextBtn: {
     paddingHorizontal: 28,
     paddingVertical: 13,
-    borderRadius: 50,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  nextText: { fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
+  nextText: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
 
   // â”€â”€ Celebration overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   celebOverlay: {

@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -12,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Polygon } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { getAllWordProgress } from '../../../../utils/storage';
@@ -26,12 +26,16 @@ import { useToast } from '../../../../context/ToastContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const IS_TABLET  = SCREEN_W >= 768;
-const NUM_COLS   = IS_TABLET ? 4 : 3;
+// Smaller tiles: more per row (was 4 / 3). Everything inside a tile — letter,
+// stars, corner circle — scales from CARD_SIZE, so it all shrinks together.
+const NUM_COLS   = IS_TABLET ? 6 : 4;
 const SCROLL_PAD = IS_TABLET ? 24 : 16;
-const CARD_GAP   = IS_TABLET ? 10 : 8;
+const CARD_GAP   = IS_TABLET ? 16 : 10;
 const CARD_SIZE  = Math.floor(
   (SCREEN_W - SCROLL_PAD * 2 - CARD_GAP * (NUM_COLS - 1)) / NUM_COLS
 );
+// Progress stars, scaled with the card (about 21px on a 1280-wide tablet).
+const STAR_SIZE  = Math.max(14, Math.round(CARD_SIZE * 0.11));
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -42,23 +46,16 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const ALL_WORDS_COMPLETED = 'All words completed!';
 
 // ASD-friendly pastel palette — cycles per letter index
+// Tile colours. bg / shine are blended ~55% toward white (lighter tiles);
+// border and text keep their full colour so each letter stays easy to read.
 const PALETTE = [
-  { bg: '#EAF4FE', border: '#BDD8F5', text: '#2B6CB0', shine: '#DDEEFB' }, // sky blue
-  { bg: '#E8F5ED', border: '#B7DFC5', text: '#276749', shine: '#D5EDDE' }, // mint green
-  { bg: '#EDE8FA', border: '#CBBFF0', text: '#5E3FA3', shine: '#E0D8F7' }, // soft lavender
-  { bg: '#FEF0E8', border: '#F5D0AC', text: '#B5631E', shine: '#FAE3CE' }, // warm peach
-  { bg: '#FEF8E6', border: '#F0E1A6', text: '#957A0E', shine: '#FAF0CC' }, // golden butter
-  { bg: '#FDEDF3', border: '#F0C0D8', text: '#A83264', shine: '#F9D9EA' }, // rose pink
+  { bg: '#F6FAFF', border: '#BDD8F5', text: '#2B6CB0', shine: '#F0F7FD' }, // sky blue
+  { bg: '#F5FBF7', border: '#B7DFC5', text: '#276749', shine: '#ECF7F0' }, // mint green
+  { bg: '#F7F5FD', border: '#CBBFF0', text: '#5E3FA3', shine: '#F1EDFB' }, // soft lavender
+  { bg: '#FFF8F5', border: '#F5D0AC', text: '#B5631E', shine: '#FDF2E9' }, // warm peach
+  { bg: '#FFFCF4', border: '#F0E1A6', text: '#957A0E', shine: '#FDF8E8' }, // golden butter
+  { bg: '#FEF7FA', border: '#F0C0D8', text: '#A83264', shine: '#FCEEF6' }, // rose pink
 ];
-
-// ─── Avatar map ───────────────────────────────────────────────────────────────
-
-const AVATAR_MAP = {
-  boba:     require('../../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
-  lily:     require('../../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
-};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -145,29 +142,44 @@ export default function WordLetterSelectScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      {/* Decorative shapes — same treatment as LetterHome / LetterPractice
+          and the Concept / Dialogue landing pages */}
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
+
       <SafeAreaView style={styles.safe}>
 
-        {/* ── Top bar: back + Rewards/Teacher buttons ─────────────────── */}
+        {/* ── Top bar: back | title | Word Progress + Progress Report ──── */}
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.28)' }]}
-            onPress={requestBack}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityLabel="Go back"
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
-          </TouchableOpacity>
-
-          <View style={{ flex: 1 }} />
-
-          <View style={styles.topActions}>
+          <View style={styles.sideGroup}>
             <TouchableOpacity
-              style={[styles.topOutlineBtn, { borderColor: theme.button, backgroundColor: theme.button + '14' }]}
+              style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
+              onPress={requestBack}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityLabel="Go back"
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Module title — same icon circle + 34pt heading as LetterHome,
+              LetterPractice and the Concept / Dialogue landing pages. */}
+          <View style={styles.titleRow}>
+            <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="book" size={18} color="#FFF" />
+            </View>
+            <Text style={[styles.title, { color: theme.headingText }]}>Choose a Letter</Text>
+          </View>
+
+          <View style={[styles.sideGroup, styles.topActions]}>
+            {/* Same filled style as Progress Report beside it. */}
+            <TouchableOpacity
+              style={[styles.topFilledBtn, { backgroundColor: theme.button }]}
               onPress={() => navigation.navigate('WordProgress', { student, theme })}
               accessibilityLabel="Word Progress"
             >
-              <Ionicons name="ribbon-outline" size={14} color={theme.button} />
-              <Text style={[styles.topOutlineBtnText, { color: theme.button }]}>Word Progress</Text>
+              <Ionicons name="ribbon-outline" size={14} color={theme.buttonText} />
+              <Text style={[styles.topFilledBtnText, { color: theme.buttonText }]}>Word Progress</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -181,29 +193,14 @@ export default function WordLetterSelectScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* ── Header: avatar + title + progress pill ───────────────────── */}
-        <View style={styles.header}>
-          <Image
-            source={AVATAR_MAP[student?.avatar_key]}
-            style={styles.avatar}
-            resizeMode="contain"
-          />
-          <View style={styles.headerText}>
-            <Text style={[styles.title, { color: theme.headingText }]}>Choose a Letter</Text>
-            <Text style={[styles.subtitle, { color: theme.headingText + 'BB' }]}>
-              Tap a letter to start practising words
-            </Text>
-          </View>
-          <View style={[styles.progressPill, { backgroundColor: 'rgba(255,255,255,0.32)' }]}>
+        {/* ── Subtitle line: the one instruction, with progress beside it ── */}
+        <View style={styles.subtitleRow}>
+          <Text style={[styles.subtitle, { color: theme.headingText }]}>
+            Tap a letter to start practising words
+          </Text>
+          <View style={[styles.progressPill, { borderColor: theme.cardOutline + '88' }]}>
             <Text style={[styles.progressPillText, { color: theme.headingText }]}>{progressText}</Text>
           </View>
-        </View>
-
-        {/* ── Motivation card ──────────────────────────────────────────── */}
-        <View style={[styles.motivationCard, { backgroundColor: 'rgba(255,255,255,0.22)' }]}>
-          <Text style={[styles.motivationText, { color: theme.headingText }]}>
-            Pick any letter to start practising words! ⭐
-          </Text>
         </View>
 
         {/* ── Letter grid ──────────────────────────────────────────────── */}
@@ -270,6 +267,24 @@ export default function WordLetterSelectScreen({ route, navigation }) {
 
 // Every letter is open — the grid has no locked state, so there is one card
 // treatment and every card is tappable.
+// A soft, rounded star: a five-point star whose corners are rounded by a
+// round-joined stroke of the same colour. Filled when earned; an outline
+// when not.
+const STAR_POINTS = '12,3 14.6,8.6 20.6,9.3 16.1,13.4 17.4,19.4 12,16.4 6.6,19.4 7.9,13.4 3.4,9.3 9.4,8.6';
+function RoundedStar({ size, color, filled }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Polygon
+        points={STAR_POINTS}
+        fill={filled ? color : 'none'}
+        stroke={color}
+        strokeWidth={filled ? 3 : 2.2}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function LetterCard({ letter, progress, palette, globalPulse, theme, onPress }) {
   const stars = progress
     ? Math.min(3, Math.round((progress.length / 5) * 3))
@@ -303,10 +318,16 @@ function LetterCard({ letter, progress, palette, globalPulse, theme, onPress }) 
         {/* Letter */}
         <Text style={[styles.letter, { color: palette.text }]}>{letter}</Text>
 
-        {/* Stars row */}
-        <View style={styles.starsRow}>
+        {/* Stars row — solid gold when earned, an outline in the card's own
+            colour when not, sized from the card so they read at a glance. */}
+        <View style={styles.starsRow} accessibilityLabel={`${stars} of 3 stars`}>
           {[0, 1, 2].map(i => (
-            <Text key={i} style={styles.star}>{i < stars ? '⭐' : '☆'}</Text>
+            <RoundedStar
+              key={i}
+              size={STAR_SIZE}
+              filled={i < stars}
+              color={i < stars ? '#F5B301' : palette.text + '66'}
+            />
           ))}
         </View>
       </TouchableOpacity>
@@ -320,38 +341,80 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
-  // Top bar
+  // ── Decorative background shapes (same as LetterHome / LetterPractice) ──
+  blob: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.08,
+  },
+  blobTopRight: {
+    width: 220,
+    height: 220,
+    top: -60,
+    right: -60,
+  },
+  blobBottomLeft: {
+    width: 260,
+    height: 260,
+    bottom: -80,
+    left: -80,
+  },
+
+  // ── Top bar: back | title | Word Progress + Progress Report ──────────
+  // The two side groups share the leftover width equally (flex: 1) so the
+  // title stays centred even though the buttons are wider than Back.
   topBar: {
     flexDirection:     'row',
     alignItems:        'center',
     paddingHorizontal: IS_TABLET ? 24 : 16,
     paddingVertical:   IS_TABLET ? 12 : 8,
   },
-  backBtn: {
-    width:          IS_TABLET ? 44 : 38,
-    height:         IS_TABLET ? 44 : 38,
-    borderRadius:   IS_TABLET ? 22 : 19,
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
-  topActions: {
+  sideGroup: {
+    flex:          1,
     flexDirection: 'row',
-    gap:           IS_TABLET ? 10 : 8,
     alignItems:    'center',
   },
-  topOutlineBtn: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               5,
-    borderWidth:       1.5,
-    borderRadius:      20,
-    paddingHorizontal: IS_TABLET ? 14 : 10,
-    paddingVertical:   IS_TABLET ? 7 : 5,
+  // The landing pages' round, translucent white button.
+  backBtn: {
+    width:          40,
+    height:         40,
+    borderRadius:   20,
+    alignItems:     'center',
+    justifyContent: 'center',
+    shadowColor:    '#000',
+    shadowOffset:   { width: 0, height: 2 },
+    shadowOpacity:  0.08,
+    shadowRadius:   4,
+    elevation:      2,
   },
-  topOutlineBtnText: {
-    fontSize:   IS_TABLET ? 13 : 11,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+  // marginTop matches the other landing pages, so the title sits at the
+  // same height on every one of them.
+  titleRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           10,
+    marginTop:     IS_TABLET ? 70 : 24,
+  },
+  titleIconCircle: {
+    width:          34,
+    height:         34,
+    borderRadius:   17,
+    alignItems:     'center',
+    justifyContent: 'center',
+    shadowColor:    '#000',
+    shadowOffset:   { width: 0, height: 3 },
+    shadowOpacity:  0.15,
+    shadowRadius:   5,
+    elevation:      3,
+  },
+  title: {
+    fontSize:      IS_TABLET ? 34 : 26,
+    fontFamily:    'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
+  },
+  topActions: {
+    justifyContent: 'flex-end',
+    gap:            IS_TABLET ? 10 : 8,
   },
   topFilledBtn: {
     flexDirection:     'row',
@@ -359,64 +422,38 @@ const styles = StyleSheet.create({
     gap:               5,
     borderRadius:      20,
     paddingHorizontal: IS_TABLET ? 14 : 10,
-    paddingVertical:   IS_TABLET ? 7 : 5,
+    paddingVertical:   IS_TABLET ? 8 : 5,
   },
   topFilledBtnText: {
     fontSize:   IS_TABLET ? 13 : 11,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 
-  // Header
-  header: {
-    flexDirection:     'row',
-    alignItems:        'center',
+  // ── Subtitle line: instruction + progress pill, centred ─────────────────
+  subtitleRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'center',
+    gap:            10,
+    marginTop:      2,
+    marginBottom:   IS_TABLET ? 18 : 12,
     paddingHorizontal: IS_TABLET ? 24 : 16,
-    paddingBottom:     IS_TABLET ? 14 : 10,
-    gap:               IS_TABLET ? 14 : 10,
-  },
-  avatar: {
-    width:  IS_TABLET ? 56 : 44,
-    height: IS_TABLET ? 56 : 44,
-  },
-  headerText: {
-    flex: 1,
-    gap:  2,
-  },
-  title: {
-    fontSize:   IS_TABLET ? 22 : 18,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
   },
   subtitle: {
-    fontSize:   IS_TABLET ? 13 : 11,
-    fontWeight: '500',
-    fontFamily: 'Nunito_600SemiBold',
+    fontSize:   15,
+    fontFamily: 'DMSans_600SemiBold',
+    opacity:    0.6,
   },
   progressPill: {
+    backgroundColor:   '#FFFFFF',
+    borderWidth:       1.5,
     borderRadius:      20,
     paddingHorizontal: IS_TABLET ? 12 : 9,
-    paddingVertical:   IS_TABLET ? 5 : 4,
+    paddingVertical:   IS_TABLET ? 4 : 3,
   },
   progressPillText: {
     fontSize:   IS_TABLET ? 12 : 10,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-  },
-
-  // Motivation card
-  motivationCard: {
-    marginHorizontal:  IS_TABLET ? 24 : 16,
-    marginBottom:      IS_TABLET ? 14 : 10,
-    borderRadius:      14,
-    paddingHorizontal: IS_TABLET ? 16 : 12,
-    paddingVertical:   IS_TABLET ? 9 : 7,
-  },
-  motivationText: {
-    fontSize:   IS_TABLET ? 14 : 12,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    textAlign:  'center',
+    fontFamily: 'DMSans_700Bold',
   },
 
   // Grid
@@ -480,10 +517,7 @@ const styles = StyleSheet.create({
   // Stars
   starsRow: {
     flexDirection: 'row',
-    marginTop:     IS_TABLET ? 4 : 3,
-    gap:           1,
-  },
-  star: {
-    fontSize: IS_TABLET ? 11 : 9,
+    marginTop:     IS_TABLET ? 6 : 4,
+    gap:           IS_TABLET ? 4 : 2,
   },
 });

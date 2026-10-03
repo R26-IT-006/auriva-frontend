@@ -45,8 +45,11 @@ describe('§11 — every word maps to its own spoken text', () => {
   it('§3 normalisation is lookup-side only — display casing is not touched', () => {
     expect(spokenWord('Ant')).toBe('ant');
     expect(spokenWord('  APPLE  ')).toBe('apple');
-    // The screens still render their own casing.
-    expect(readCode(WORD_A)).toMatch(/\{currentWord\.word\.toUpperCase\(\)\}/);
+    // Normalising for speech never rewrites the word itself: the practice
+    // screen no longer shows it as a heading (removed by request), and still
+    // hands the exercises the catalogue entry unchanged.
+    expect(readCode(WORD_A)).not.toMatch(/spokenWord\(currentWord\)\.toUpperCase/);
+    expect(readCode(WORD_A)).toMatch(/wordEntry:\s+currentWord,/);
   });
 
   it('hyphens and spaces read as words, not spellings', () => {
@@ -125,7 +128,9 @@ describe('§4 / §5 — press time, and word change only', () => {
   const code = readCode(WORD_A);
 
   it('§4 the speaker resolves the word inside its handler', () => {
-    expect(code).toMatch(/onPress=\{\(\) => \{[\s\S]{0,180}const spoken = spokenWord\(currentWord\);/);
+    // The tap target is now the support picture (onImagePress, passed to
+    // A / C / D) — still resolved inside the handler, at press time.
+    expect(code).toMatch(/onImagePress: \(\) => \{[\s\S]{0,180}const spoken = spokenWord\(currentWord\);/);
     expect(code).toMatch(/if \(!spoken\) return;/);
   });
 
@@ -250,13 +255,14 @@ describe('SENTINEL — §13 nothing else changed', () => {
     expect(readCode(WORD_W)).toMatch(/submitWordAttempt\(\{student,actionId:submitActionIdRef\.current/);
     expect(readCode('./touchPointSanitize.js'))
       .toMatch(/clampToCanvas\(lx - border, ly - border, w, h\)/);
+    // Narrowed by request (85% of the column); height unchanged.
     expect(readCode('../constants/wordCanvasLayout.js'))
-      .toMatch(/export const CANVAS_W = SCREEN_W - COL_L - PAD \* 2;/);
+      .toMatch(/export const CANVAS_W = Math\.round\(CANVAS_AREA_W \* 0\.85\);/);
   });
 
   it('UI dimensions, images, navigation and worksheets are unchanged', () => {
     const { SUPPORT_IMAGE } = require('../components/word/wordActivityLayout');
-    expect(SUPPORT_IMAGE.imageSize).toBe(230);
+    expect(SUPPORT_IMAGE.imageSize).toBe(190);   // reduced by request
     expect(readCode('./wordImageResolver.js')).toMatch(/export function resolveWordImageKey/);
     expect(readCode(WORD_A)).toMatch(/\?\? 'WordLetterSelect'/);
     expect(readCode('./worksheetLayoutA4.js')).toMatch(/marginMm: 13/);

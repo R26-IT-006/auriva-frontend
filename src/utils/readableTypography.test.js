@@ -111,11 +111,15 @@ describe('every readable Writing style resolves its weight', () => {
     expect(withFaces.length).toBeGreaterThan(20);
   });
 
-  it('only Nunito faces were introduced — no third-party font', () => {
+  it('only app-registered faces are used — no third-party font', () => {
+    // Nunito, plus DM Sans: the landing-page / pop-up UI shared with the
+    // Concept, Dialogue and Pronunciation modules (e.g. LetterProgressPanel)
+    // uses the same DM Sans faces they do. Both families are registered in
+    // App.js; anything else is still rejected.
     for (const rel of WRITING_FILES) {
       const src = read(rel);
       const families = [...src.matchAll(/fontFamily:\s*'([^']+)'/g)].map(m => m[1]);
-      for (const f of families) expect(f).toMatch(/^Nunito_/);
+      for (const f of families) expect(f).toMatch(/^(Nunito|DMSans)_/);
     }
   });
 });
@@ -181,7 +185,9 @@ describe('SENTINEL — handwriting geometry is untouched by typography', () => {
   it('SENTINEL — non-overridden preview letters use the restored glyph style', () => {
     const src = read('components/handwriting/LetterWritingStage.js');
     expect(src).toMatch(/letterCardText:/);
-    expect(src).toMatch(/fontSize: Math\.round\(LETTER_CARD_SIZE \* 0\.60\)/);
+    // Same glyph-to-card proportion as the original, now scaled with the
+    // card (which matches the canvas height).
+    expect(src).toMatch(/fontSize: Math\.round\(PREVIEW_CARD_SIZE \* 0\.68\)/);
     expect(src).not.toMatch(/getCanonicalPreviewViewBox/);
     expect(src).toMatch(/d=\{isAngular \? toStraightPath\(rawPath\) : toSmoothPath\(rawPath\)\}/);
   });

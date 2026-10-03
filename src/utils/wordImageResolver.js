@@ -22,7 +22,7 @@
  * looks things up.
  *
  * ── Asset shape ──────────────────────────────────────────────────────────
- * `require('../../assets/words/A/3-letter/ant.jpg')` returns a React Native
+ * `require('../../assets/words/A/3-letters/ant.jpg')` returns a React Native
  * asset reference — a module id, NOT a URL. It must be given to <Image> as
  * `source={asset}`. Wrapping it as `{ uri: asset }` produces a silently broken
  * image, so this returns the asset exactly as the map holds it and never

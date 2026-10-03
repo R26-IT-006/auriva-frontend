@@ -32,17 +32,19 @@ const EX_E  = '../components/word/ExerciseE_WriteWord.js';
 // [file, row style, TALLEST button style, its paddingVertical, its borderWidth,
 //  row paddingVertical]
 //
-// The tallest child is Clear, not Next/Done: its 1.5px border adds 3px, which
-// outweighs the 1px of extra padding the other button carries.
+// The tallest child is Clear, not Next/Done. On the Exercise E row its 1.5px
+// border adds 3px, which outweighs the 1px of extra padding the other button
+// carries. On the letter and word rows both are raised 3D buttons with a 5px bottom
+// edge (7th column), and Clear's 2px border makes it the reference.
 const ROWS = [
-  [LOWER, 'buttonsRow', 'clearBtn', 12, 1.5, 6],
-  [UPPER, 'buttonsRow', 'clearBtn', 12, 1.5, 6],
-  [WORD,  'buttonsRow', 'clearBtn', 10, 1.5, 6],
+  [LOWER, 'buttonsRow', 'clearBtn', 12, 2, 6, 5],
+  [UPPER, 'buttonsRow', 'clearBtn', 12, 2, 6, 5],
+  [WORD,  'buttonsRow', 'clearBtn', 12, 2, 6, 5],
   [EX_E,  'actions',    'clearBtn', 10, 1.5, 0],
 ];
 /** The OTHER button in each row, which must also fit. */
 const OTHER = { [LOWER]: ['nextBtn', 13], [UPPER]: ['nextBtn', 13],
-                [WORD]: ['nextBtn', 11], [EX_E]: ['doneBtn', 11] };
+                [WORD]: ['nextBtn', 13], [EX_E]: ['doneBtn', 11] };
 const CANVASES = [LOWER, UPPER, WORD, EX_E];
 
 /** One StyleSheet entry's body. */
@@ -67,7 +69,7 @@ describe('the action row reserves its height before anything is in it', () => {
   });
 
   it.each(ROWS)('%s — the reservation is derived from its OWN tallest button',
-    (rel, row, button, btnPad, btnBorder, rowPad) => {
+    (rel, row, button, btnPad, btnBorder, rowPad, btnBottom = btnBorder) => {
       // The button really does have the padding and border assumed.
       expect(num(styleBody(rel, button), 'paddingVertical')).toBe(btnPad);
       expect(num(styleBody(rel, button), 'borderWidth')).toBe(btnBorder);
@@ -75,25 +77,32 @@ describe('the action row reserves its height before anything is in it', () => {
       const body = styleBody(rel, row);
       expect(body).toMatch(new RegExp(`maxButtonPaddingVertical: ${btnPad}`));
       expect(body).toMatch(new RegExp(`maxButtonBorderWidth: ${btnBorder}`));
+      if (btnBottom !== btnBorder) {
+        expect(num(styleBody(rel, button), 'borderBottomWidth')).toBe(btnBottom);
+        expect(body).toMatch(new RegExp(`maxButtonBorderBottomWidth: ${btnBottom}`));
+      }
       if (rowPad > 0) expect(body).toMatch(new RegExp(`rowPaddingVertical: ${rowPad}`));
     });
 
   it.each(ROWS)('%s — the reserved height covers BOTH buttons',
-    (rel, row, button, btnPad, btnBorder, rowPad) => {
+    (rel, row, button, btnPad, btnBorder, rowPad, btnBottom = btnBorder) => {
       const reserved = actionRowMinHeight({
         maxButtonPaddingVertical: btnPad,
         maxButtonBorderWidth: btnBorder,
+        maxButtonBorderBottomWidth: btnBottom,
         rowPaddingVertical: rowPad,
       });
-      const height = (pad, border) =>
-        ACTION_LABEL_LINE_HEIGHT + pad * 2 + border * 2 + rowPad * 2;
+      // Top border + (possibly thicker 3D) bottom border.
+      const height = (pad, border, bottom = border) =>
+        ACTION_LABEL_LINE_HEIGHT + pad * 2 + border + bottom + rowPad * 2;
       // Clear — the taller one.
-      expect(reserved).toBeGreaterThanOrEqual(height(btnPad, btnBorder));
+      expect(reserved).toBeGreaterThanOrEqual(height(btnPad, btnBorder, btnBottom));
       // And the other button, which must fit in the same reservation.
       const [otherName, otherPad] = OTHER[rel];
       expect(num(styleBody(rel, otherName), 'paddingVertical')).toBe(otherPad);
       const otherBorder = num(styleBody(rel, otherName), 'borderWidth') ?? 0;
-      expect(reserved).toBeGreaterThanOrEqual(height(otherPad, otherBorder));
+      const otherBottom = num(styleBody(rel, otherName), 'borderBottomWidth') ?? otherBorder;
+      expect(reserved).toBeGreaterThanOrEqual(height(otherPad, otherBorder, otherBottom));
     });
 
   it('the helper is arithmetic, not a table of magic numbers', () => {
@@ -102,6 +111,8 @@ describe('the action row reserves its height before anything is in it', () => {
     expect(actionRowMinHeight({ maxButtonPaddingVertical: 10, maxButtonBorderWidth: 1.5, rowPaddingVertical: 6 })).toBe(57);
     expect(actionRowMinHeight({ maxButtonPaddingVertical: 10, maxButtonBorderWidth: 1.5 })).toBe(45);
     expect(actionRowMinHeight({ maxButtonPaddingVertical: 13, rowPaddingVertical: 6 })).toBe(60);
+    // letter / uppercase 3D buttons: 22 + 24 + 2 + 5 + 12
+    expect(actionRowMinHeight({ maxButtonPaddingVertical: 12, maxButtonBorderWidth: 2, maxButtonBorderBottomWidth: 5, rowPaddingVertical: 6 })).toBe(65);
     expect(actionRowMinHeight()).toBeNaN();   // a caller must state the padding
   });
 
@@ -203,8 +214,10 @@ describe('SENTINEL — the touch mapping is untouched', () => {
   it('canvas geometry and the rendered stroke are unchanged', () => {
     expect(readCode('../constants/letterCanvasLayout.js'))
       .toMatch(/export const CANVAS_H\s+= Math\.round\(SCREEN_H \* 0\.50\);/);
+    // The word canvas was narrowed by request (85% of the column); its
+    // height, and so every letter in the word guide, is unchanged.
     expect(readCode('../constants/wordCanvasLayout.js'))
-      .toMatch(/export const CANVAS_W = SCREEN_W - COL_L - PAD \* 2;/);
+      .toMatch(/export const CANVAS_W = Math\.round\(CANVAS_AREA_W \* 0\.85\);/);
     expect(readCode('./wordExerciseECanvas.js')).toMatch(/const IMAGE_COL_W = 170;/);
     expect(readCode('../components/handwriting/LetterWritingStage.js'))
       .toMatch(/points=\{stroke\.map\(p => `\$\{p\.x\},\$\{p\.y\}`\)\.join\(' '\)\}/);

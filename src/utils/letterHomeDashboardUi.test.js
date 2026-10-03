@@ -7,12 +7,9 @@ const source = fs.readFileSync(
 );
 
 describe('LetterHome dashboard presentation', () => {
-  test('uses the selected handwriting avatar with Lily as the display fallback', () => {
-    for (const name of ['Boba', 'Glitter', 'Lily', 'Megatron']) {
-      expect(source).toContain(`assets/handwriting-avatars/${name}.png`);
-    }
-    expect(source).toContain('const avatarSource = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;');
-    expect(source.match(/source=\{avatarSource\}/g)).toHaveLength(3);
+  test('shows no avatar — the side-column, Learning Path and summary-banner avatars were all removed', () => {
+    expect(source).not.toContain('assets/handwriting-avatars/');
+    expect(source).not.toMatch(/AVATAR_MAP|avatarSource/);
   });
 
   test('shows one consistent 52-letter count and percentage', () => {
@@ -23,28 +20,32 @@ describe('LetterHome dashboard presentation', () => {
     expect(source).not.toMatch(/\{lowercaseProgress\}\s*(?:\/|of)\s*26/);
   });
 
-  test('uses the same card frame and edge-to-edge landscape band for Letters and Words', () => {
+  test('uses the same plain card frame for Letters and Words — no landscape band', () => {
     expect(source).toContain('style={[styles.learningModeCard, styles.lettersCard]}');
     expect(source).toContain('style={[styles.learningModeCard, styles.wordsCard]}');
-    const band = source.slice(source.indexOf('  cardLandscapeBand: {'), source.indexOf('  modeIconCircle: {'));
-    expect(band).toMatch(/left:\s*0/);
-    expect(band).toMatch(/right:\s*0/);
-    expect(band).toMatch(/bottom:\s*0/);
+    // The decorative green / purple hills along the bottom were removed by request.
+    expect(source).not.toMatch(/CardLandscape|cardLandscapeBand/);
   });
 
   test('presents Words as open — no padlock, no unlock caption', () => {
     expect(source).not.toContain('Complete all 52 letters to unlock words');
     expect(source).not.toContain('lock-closed');
-    expect(source).toContain('<CardLandscape variant="words" />');
     expect(source).toContain('Ready to practise words');
     expect(source).toContain('Words are unlocked');
   });
 
-  test('top controls retain their remaining gated actions without Writing Check', () => {
-    expect(source).toContain('accessibilityState={{ selected: true }}');
-    for (const action of ['dashboard', 'assessment', 'progress']) {
-      expect(source).toContain(`requestGatedAction('${action}')`);
+  test('top controls keep only the gated Assessment action — no Writing Check, Dashboard or Report', () => {
+    expect(source).toContain("requestGatedAction('assessment')");
+    for (const removed of ['dashboard', 'progress']) {
+      expect(source).not.toContain(`requestGatedAction('${removed}')`);
     }
+    expect(source).not.toMatch(/>Dashboard</);
+    expect(source).not.toMatch(/>Report</);
+  });
+
+  test('the Progress button opens the child-facing progress pop-up, ungated', () => {
+    expect(source).toContain('onPress={() => setShowProgress(true)}');
+    expect(source).toMatch(/visible=\{showProgress\}/);
 
     const topControls = source.slice(
       source.indexOf('<View style={styles.topBtnGroup}>'),

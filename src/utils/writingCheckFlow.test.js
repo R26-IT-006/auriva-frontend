@@ -287,9 +287,11 @@ describe('routing', () => {
 // ─── The demo detour must not intercept a Writing Check ─────────────────
 
 describe('the "watch first" demo never interrupts a Writing Check', () => {
-  it('the letter detour is gated on collection mode', () => {
-    const detour = between(letterScreen, 'const categoryDemoKey', 'Tracer dot animation');
-    expect(detour).toMatch(/collectionMode,/);
+  it('the letter screen has no demo detour at all, and the shared guards still exclude collection mode', () => {
+    // The category demo was removed from the letter screens, so nothing there
+    // can interrupt a Writing Check; the shared guards are kept for the word
+    // demos that remain.
+    expect(letterScreen).not.toMatch(/HandwritingDemo|useDemoDetour|categoryDemoKey/);
     expect(read('./demoDetour.js')).toMatch(/if \(collectionMode\) return false;/);
     expect(read('./demoPolicy.js')).toMatch(/if \(collectionMode\) return false;/);
   });

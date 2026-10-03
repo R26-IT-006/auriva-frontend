@@ -58,11 +58,12 @@ describe('A — A, C and D share one enlarged support picture', () => {
     expect(code).not.toMatch(/width: 240,\s*alignItems/);
   });
 
-  it('the increase is substantial, not cosmetic', () => {
+  it('is sized to leave the options a single line, and still above the original', () => {
+    // Reduced by request from 230 so the six options fit on one line; still
+    // larger than the original 170.
+    expect(SUPPORT_IMAGE.imageSize).toBe(190);
     expect(SUPPORT_IMAGE.imageSize).toBeGreaterThan(OLD.supportImage);
-    expect(SUPPORT_IMAGE.imageSize - OLD.supportImage).toBeGreaterThanOrEqual(40);
     expect(SUPPORT_IMAGE.frameSize).toBeGreaterThan(OLD.supportFrame);
-    expect(SUPPORT_IMAGE.paneWidth).toBeGreaterThan(OLD.supportPane);
   });
 
   it('the picture never touches the frame edge', () => {
@@ -204,10 +205,16 @@ describe('G / H / I — canvas and reference geometry are untouched', () => {
     const layout = readCode('../constants/wordCanvasLayout.js');
     expect(layout).toMatch(/export const COL_L\s+= Math\.round\(SCREEN_W \* 0\.28\);/);
     expect(layout).toMatch(/export const IMG_SIZE = COL_L - 8;/);
-    expect(layout).toMatch(/export const CANVAS_W = SCREEN_W - COL_L - PAD \* 2;/);
-    // The stage gained a surface, not a size.
+    // Narrowed to 85% of the right column; the height (and with it every
+    // letter's size and spacing in the word guide) is unchanged.
+    expect(layout).toMatch(/export const CANVAS_AREA_W = SCREEN_W - COL_L - PAD \* 2;/);
+    expect(layout).toMatch(/export const CANVAS_W = Math\.round\(CANVAS_AREA_W \* 0\.85\);/);
+    expect(layout).toMatch(/export const CANVAS_H = Math\.round\(SCREEN_H \* 0\.46\);/);
+    // The picture is now the canvas's height (capped at IMG_SIZE) so the two
+    // sit level, as on the letter screen; the canvas itself is unchanged.
     const stage = readCode(STAGE);
-    expect(stage).toMatch(/size=\{IMG_SIZE\}/);
+    expect(stage).toMatch(/const IMAGE_SIZE = Math\.min\(CANVAS_H, IMG_SIZE\);/);
+    expect(stage).toMatch(/size=\{IMAGE_SIZE\}/);
     expect(stage).toMatch(/imageCol: \{\s*borderRadius: 28,\s*width: COL_L,/);
     expect(stage).toMatch(/<Svg width=\{CANVAS_W\} height=\{CANVAS_H\}/);
   });
@@ -329,7 +336,7 @@ describe('SENTINEL — §22 logic untouched', () => {
   it('the word-practice shell is untouched', () => {
     const code = readCode(WORD_A);
     expect(code).toMatch(/const cfg\s+= STATUS\[exStatus\?\.\[ex\]\] \?\? STATUS\.pending;/);
-    expect(code).toMatch(/maxWidth: 780/);
+    expect(code).toMatch(/maxWidth: 820/);   // resized by request
     expect(code).toMatch(/saveWordActivity\(\{ student, word: currentWord\.word, activity: ex, status: result \}\)/);
   });
 });

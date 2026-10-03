@@ -57,8 +57,9 @@ import {
 } from '../../constants/leftLetterPreviewShapes';
 
 // The column allocation stays fixed so CANVAS_W and the entire writing side
-// remain unchanged. Only the card inside the left column is reduced slightly.
-const PREVIEW_CARD_SIZE = Math.round(LETTER_CARD_SIZE * 0.88);
+// remain unchanged. Only the card inside the left column is reduced: it is
+// the canvas's height (capped at the old size), so the two sit level.
+const PREVIEW_CARD_SIZE = Math.min(CANVAS_H, Math.round(LETTER_CARD_SIZE * 0.88));
 const PREVIEW_GLYPH_SIZE = Math.round(PREVIEW_CARD_SIZE * 0.80);
 
 // ─── Support badge vocabulary ───────────────────────────────────────────
@@ -235,22 +236,11 @@ export default function LetterWritingStage({
   return (
     <View style={styles.mainRow}>
 
-      {/* Left column — only approved a/I use custom SVG. Every other value
-          uses the original pre-canonical-path Text preview from Git history. */}
-      <View style={styles.letterCol}>
-        <View style={[styles.letterCard, { backgroundColor: theme.button }]}>
-          {previewShape ? (
-            <LeftPreviewShape shape={previewShape} color={theme.buttonText} />
-          ) : (
-            <Text style={[styles.letterCardText, { color: theme.buttonText }]}>
-              {letter}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      {/* Right column — title + badge + canvas */}
-      <View style={styles.contentCol}>
+      {/* ── Instruction line ──
+          Two columns matching the two below: "Write 'A'" above the letter
+          card, the attempt instruction above the canvas. */}
+      <View style={styles.instructionLine}>
+        <View style={styles.titleCol}>
 
         {/* Title card: "Write 'A'" + filled sound button */}
         <View style={[styles.titleCard, {
@@ -276,6 +266,9 @@ export default function LetterWritingStage({
           </TouchableOpacity>
         </View>
 
+        </View>
+        <View style={styles.instructionCol}>
+
         {/* Attempt badge */}
         <View style={[styles.attemptBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
           <View style={styles.attemptTexts}>
@@ -288,6 +281,27 @@ export default function LetterWritingStage({
             backgroundColor={badge.border + '35'}
           />
         </View>
+
+        </View>
+      </View>
+
+      {/* ── Letter card + canvas, on one line ── */}
+      <View style={styles.canvasLine}>
+
+      {/* Left column — only approved a/I use custom SVG. Every other value
+          uses the original pre-canonical-path Text preview from Git history.
+          The card is the canvas's height and sits level with it. */}
+      <View style={styles.letterCol}>
+        <View style={[styles.letterCard, { backgroundColor: theme.button }]}>
+          {previewShape ? (
+            <LeftPreviewShape shape={previewShape} color={theme.buttonText} />
+          ) : (
+            <Text style={[styles.letterCardText, { color: theme.buttonText }]}>
+              {letter}
+            </Text>
+          )}
+        </View>
+      </View>
 
         {/* Writing canvas — canvasOuter wraps the card so the tracer dot
             is never clipped by overflow:hidden */}
@@ -456,11 +470,39 @@ export default function LetterWritingStage({
 // Values moved verbatim from the two writing screens' own StyleSheets, which
 // held identical copies of every key below.
 const styles = StyleSheet.create({
+  // Two lines, centred vertically: the instruction line, then the letter
+  // card + canvas. Column widths are unchanged (COL_L | CANVAS_W).
   mainRow: {
-    flexDirection: 'row',
     flex: 1,
+    justifyContent: 'center',
+    gap: 8,
     paddingHorizontal: PAD,
     paddingBottom: 4,
+  },
+
+  // The two boxes share one line and stretch to the same height. Nudged up
+  // with a transform rather than a margin: a margin would re-centre the
+  // whole block and move the canvas too.
+  instructionLine: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    transform: [{ translateY: -16 }],
+  },
+  // Left: the letter column's width, with the title box as wide as the
+  // letter card beneath it.
+  titleCol: {
+    width: COL_L,
+    alignItems: 'center',
+    paddingRight: 8,
+  },
+  // Right: the canvas's width.
+  instructionCol: {
+    width: CANVAS_W,
+  },
+
+  canvasLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   letterCol: {
@@ -483,20 +525,21 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  // Exact original pre-canonical-path preview typography from c4f10f8^.
+  // The original pre-canonical-path preview typography (c4f10f8^), scaled
+  // with the card: the same glyph-to-card proportions as before
+  // (0.60 / 0.88 and 0.75 / 0.88 of the old card), now the canvas's height.
   letterCardText: {
-    fontSize: Math.round(LETTER_CARD_SIZE * 0.60),
+    fontSize: Math.round(PREVIEW_CARD_SIZE * 0.68),
     fontWeight: '900',
-    lineHeight: Math.round(LETTER_CARD_SIZE * 0.75),
+    lineHeight: Math.round(PREVIEW_CARD_SIZE * 0.85),
   },
 
-  contentCol: {
-    flex: 1,
-    gap: 8,
-    justifyContent: 'center',
-  },
-
+  // As wide as the letter card below it. flexGrow (not flex: 1, whose zero
+  // basis collapses it in a content-sized column) keeps its natural height
+  // and stretches it to match the instruction box beside it.
   titleCard: {
+    width: PREVIEW_CARD_SIZE,
+    flexGrow: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -537,6 +580,7 @@ const styles = StyleSheet.create({
 
 
   attemptBadge: {
+    flexGrow: 1,
     borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 10,

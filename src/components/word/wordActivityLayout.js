@@ -27,11 +27,12 @@
 
 'use strict';
 
-/** The support picture on A, C, D — the shared "family" size. */
+/** The support picture on A, C, D — the shared "family" size. Reduced by
+ * request (was 230 / 262 / 278) so the options get the room beside it. */
 export const SUPPORT_IMAGE = Object.freeze({
-  paneWidth:  278,
-  frameSize:  262,
-  imageSize:  230,
+  paneWidth:  230,
+  frameSize:  214,
+  imageSize:  190,
   radius:      28,
   borderWidth:  1,
 });

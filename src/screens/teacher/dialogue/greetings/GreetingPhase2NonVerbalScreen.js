@@ -18,6 +18,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const PROGRESS_FRACTION = 0.90;
 
@@ -289,26 +290,30 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
     <View style={styles.root}>
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.content}>
 
             <Text style={[styles.title, { color: theme.headingText }]}>
               {"Where do we say '"}
-              <Text style={{ color: theme.button, fontWeight: Layout.fontWeight.extrabold }}>
+              <Text style={{ color: theme.button, fontFamily: 'DMSans_800ExtraBold' }}>
                 {wordLabel}
               </Text>
               {"'?"}
@@ -383,7 +388,7 @@ export default function GreetingPhase2NonVerbalScreen({ route, navigation }) {
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       <ParentGateModal
         visible={showGate}
@@ -424,7 +429,21 @@ const styles = StyleSheet.create({
     gap: Layout.spacing.sm,
   },
   headerSide: { width: 32, alignItems: 'center' },
-  levelLabel: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  levelLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
   progressTrack: {
     flex: 1,
     height: 6,
@@ -443,7 +462,7 @@ const styles = StyleSheet.create({
     paddingBottom: Layout.spacing.md,
   },
 
-  title: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, textAlign: 'center', marginBottom: Layout.spacing.xs },
+  title: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_700Bold', textAlign: 'center', marginBottom: Layout.spacing.xs },
   subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
   subtitleSinhala: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
@@ -472,7 +491,7 @@ const styles = StyleSheet.create({
   },
   cardCaption: {
     fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center',
     paddingHorizontal: Layout.spacing.xs,
     paddingVertical: Layout.spacing.sm,
@@ -492,7 +511,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  speechText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, textAlign: 'center' },
+  speechText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', textAlign: 'center' },
   bubbleTail: {
     alignSelf: 'center',
     marginTop: -1,
@@ -518,8 +537,8 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
-  settingsTitle: { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
+  settingsTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
-  settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
+  settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
   settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: 4 },
 });

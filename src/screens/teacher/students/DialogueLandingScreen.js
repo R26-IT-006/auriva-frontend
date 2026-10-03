@@ -67,7 +67,6 @@ function LevelCard({ item, cardW, cardH, theme, onPress }) {
 export default function DialogueLandingScreen({ route, navigation }) {
   const student   = route.params?.student;
   const theme     = getAvatarTheme(student?.avatar_key);
-  const firstName = student?.full_name?.split(' ')[0] ?? student?.full_name ?? 'Student';
   const { width } = useWindowDimensions();
 
   // Intercept Android hardware back → same destination as the UI back arrow
@@ -80,8 +79,8 @@ export default function DialogueLandingScreen({ route, navigation }) {
   }, [student]));
 
   const H_PAD = Layout.spacing.lg;
-  const GAP   = 20;
-  const cardW = Math.min((width - H_PAD * 2 - GAP) / 2, 380);
+  const GAP   = 48;
+  const cardW = Math.min(((width - H_PAD * 2 - GAP) / 2) * 0.8, 300);
   const cardH = cardW * 0.95;
 
   function goToLevel(key) {
@@ -105,7 +104,7 @@ export default function DialogueLandingScreen({ route, navigation }) {
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
-        {/* ── Header ──────────────────────────────────────────── */}
+        {/* ── Header — same layout as ConceptCategoriesScreen ─── */}
         <View style={styles.topBar}>
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
@@ -115,13 +114,19 @@ export default function DialogueLandingScreen({ route, navigation }) {
             <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
 
-          <Text style={[styles.heading, { color: theme.headingText }]}>
-            Welcome back {firstName}!
-          </Text>
-          <Text style={[styles.subheading, { color: theme.headingText }]}>
-            What shall we learn today?
-          </Text>
+          <View style={styles.titleRow}>
+            <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="chatbubbles" size={18} color="#FFF" />
+            </View>
+            <Text style={[styles.title, { color: theme.headingText }]}>Dialogue Learning</Text>
+          </View>
+
+          <View style={styles.iconBtn} />
         </View>
+
+        <Text style={[styles.subtitle, { color: theme.headingText }]}>
+          Choose a level to begin
+        </Text>
 
         {/* ── Body ────────────────────────────────────────────── */}
         <View style={styles.body}>
@@ -169,9 +174,11 @@ const styles = StyleSheet.create({
   },
 
   topBar: {
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop:    Layout.spacing.sm,
-    paddingBottom: Layout.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
     width:  40,
@@ -191,22 +198,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xl,
+    // Extra bottom padding lifts the vertically-centred cards a little higher.
+    paddingBottom: 120,
   },
 
-  heading: {
-    fontSize: 28,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 70,
+  },
+  titleIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  title: {
+    fontSize: 34,
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: -0.3,
-    textAlign: 'center',
-    marginTop: Layout.spacing.md,
   },
-
-  subheading: {
-    fontSize: 13,
+  subtitle: {
+    fontSize: 15,
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
+    marginBottom: Layout.spacing.sm,
     marginTop: 2,
   },
 

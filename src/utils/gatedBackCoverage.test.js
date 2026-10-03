@@ -150,12 +150,13 @@ describe('every navigation to a teacher-facing destination is gated', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('LetterHomeScreen routes Dashboard through its gate, like every other exit', () => {
+  it('LetterHomeScreen has no Dashboard shortcut — the gated Back is its only exit', () => {
     const code = stripComments(read(path.join(SCREENS_DIR, 'LetterHomeScreen.js')));
-    expect(code).toMatch(/requestGatedAction\('dashboard'\)/);
-    expect(code).toMatch(/pendingGateAction === 'dashboard'\) navigation\.navigate\('TeacherMain'\)/);
-    // And never straight from a tap.
-    expect(code).not.toMatch(/onPress=\{\(\) => navigation\.navigate\('TeacherMain'\)\}/);
+    // The Dashboard button was removed outright, so there is no second,
+    // gate-able route to the teacher area left to keep in sync with Back.
+    expect(code).not.toMatch(/requestGatedAction\('dashboard'\)/);
+    expect(code).not.toMatch(/navigation\.navigate\('TeacherMain'\)/);
+    expect(code).toMatch(/requestGatedAction\('back'\)/);
   });
 
   it('WordLetterSelectScreen routes the Teacher button through the SAME gate mechanism', () => {

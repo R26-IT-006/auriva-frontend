@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Sentence emojis matching L2SentencePathScreen STOPS
 const SENTENCE_EMOJIS = { 1: '👤', 2: '🎂', 3: '🏠', 4: '⭐', 5: '🎨' };
@@ -170,8 +171,16 @@ export default function L2FillGapScreen({ route, navigation }) {
   // Split blankText on '___' for styled rendering
   const parts = blankText.split('___');
 
+  const filledWord = selected === 'correct' ? chosenOpt : null;
+
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.root}>
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 
         {/* Header */}
@@ -185,78 +194,111 @@ export default function L2FillGapScreen({ route, navigation }) {
         </View>
 
         <View style={styles.body}>
-          {/* Character / emoji */}
+          {/* Character / emoji — overlaps the top of the card */}
           {characterImage ? (
             <Image source={characterImage} style={styles.characterImg} resizeMode="contain" />
           ) : (
             <Text style={styles.emojiLarge}>{emoji}</Text>
           )}
 
-          {/* Sentence with blank */}
-          <View style={[styles.sentenceCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-            <Text style={[styles.sentenceText, { color: theme.headingText }]}>
-              {parts[0]}
-              <Text style={[styles.blank, { color: theme.button }]}>{'    ___    '}</Text>
-              {parts[1] ?? ''}
-            </Text>
-          </View>
+          {/* White activity card framed in the theme outline, like the other modules. */}
+          <View style={[styles.card, { borderColor: theme.cardOutline }]}>
 
-          {/* Instruction */}
-          <Text style={[styles.instruction, { color: theme.headingText }]}>
-            Tap the correct word to fill the blank!
-          </Text>
-
-          {/* Options */}
-          <Animated.View
-            style={[
-              styles.optionsRow,
-              { transform: [{ translateX: shakeAnim }] },
-            ]}
-          >
-            {options.map((opt, idx) => {
-              const isSelected = chosenOpt === opt;
-              const isCorrect  = selected === 'correct' && isSelected;
-              const isWrong    = selected === 'wrong'   && isSelected;
-              return (
-                <TouchableOpacity
-                  key={`${opt}-${idx}`}
+            {/* Sentence with a real blank box */}
+            <View style={styles.sentenceRow}>
+              {parts[0] ? (
+                <Text style={[styles.sentenceText, { color: theme.headingText }]}>{parts[0].trim()}</Text>
+              ) : null}
+              <View
+                style={[
+                  styles.blankBox,
+                  { borderColor: filledWord ? '#22C55E' : theme.button },
+                  filledWord ? styles.blankBoxFilled : { backgroundColor: theme.cardOutline + '18' },
+                ]}
+              >
+                <Text style={[styles.blankText, { color: filledWord ? '#16A34A' : theme.button }]}>
+                  {filledWord ?? '?'}
+                </Text>
+              </View>
+              {parts[1]?.trim() ? (
+                <Text
                   style={[
-                    styles.option,
-                    { borderColor: theme.cardOutline, backgroundColor: theme.cardSurface },
-                    isCorrect && styles.optionCorrect,
-                    isWrong   && styles.optionWrong,
-                  ]}
-                  onPress={() => handleOption(opt)}
-                  activeOpacity={0.8}
-                  accessibilityLabel={`Option: ${opt}`}
-                >
-                  {isCorrect && (
-                    <Ionicons name="checkmark-circle" size={22} color="#22C55E" style={{ marginRight: 6 }} />
-                  )}
-                  {isWrong && (
-                    <Ionicons name="close-circle" size={22} color="#EF4444" style={{ marginRight: 6 }} />
-                  )}
-                  <Text style={[
-                    styles.optionText,
+                    styles.sentenceText,
                     { color: theme.headingText },
-                    isCorrect && { color: '#22C55E', fontWeight: '800' },
-                    isWrong   && { color: '#EF4444' },
-                  ]}>
-                    {opt}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </Animated.View>
+                    // A trailing "." / "!" hugs the blank instead of floating a gap away.
+                    /^[.,!?]/.test(parts[1].trim()) && { marginLeft: -8 },
+                  ]}
+                >
+                  {parts[1].trim()}
+                </Text>
+              ) : null}
+            </View>
+
+            {/* Instruction */}
+            <View style={styles.hintPill}>
+              <Ionicons name="hand-left-outline" size={15} color={theme.headingText} />
+              <Text style={[styles.instruction, { color: theme.headingText }]}>
+                Tap the correct word to fill the blank!
+              </Text>
+            </View>
+
+            {/* Options */}
+            <Animated.View
+              style={[
+                styles.optionsRow,
+                { transform: [{ translateX: shakeAnim }] },
+              ]}
+            >
+              {options.map((opt, idx) => {
+                const isSelected = chosenOpt === opt;
+                const isCorrect  = selected === 'correct' && isSelected;
+                const isWrong    = selected === 'wrong'   && isSelected;
+                return (
+                  <TouchableOpacity
+                    key={`${opt}-${idx}`}
+                    style={[
+                      styles.option,
+                      { borderColor: theme.cardOutline },
+                      isCorrect && styles.optionCorrect,
+                      isWrong   && styles.optionWrong,
+                    ]}
+                    onPress={() => handleOption(opt)}
+                    activeOpacity={0.8}
+                    accessibilityLabel={`Option: ${opt}`}
+                  >
+                    {isCorrect && (
+                      <Ionicons name="checkmark-circle" size={24} color="#22C55E" style={{ marginRight: 6 }} />
+                    )}
+                    {isWrong && (
+                      <Ionicons name="close-circle" size={24} color="#EF4444" style={{ marginRight: 6 }} />
+                    )}
+                    <Text style={[
+                      styles.optionText,
+                      { color: theme.headingText },
+                      isCorrect && { color: '#16A34A' },
+                      isWrong   && { color: '#EF4444' },
+                    ]}>
+                      {opt}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </Animated.View>
+          </View>
         </View>
 
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, overflow: 'hidden' },
+
+  // Decorative background shapes (same as the other module screens).
+  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
+  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
+  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
 
   header: {
     paddingHorizontal: Layout.spacing.lg,
@@ -265,46 +307,81 @@ const styles = StyleSheet.create({
     gap: Layout.spacing.xs,
   },
   stepBadge: { alignItems: 'center' },
-  stepLabel: { fontSize: Layout.fontSize.xs, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
+  stepLabel: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1.2, textTransform: 'uppercase' },
   progressTrack: { height: 6, width: '80%', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
 
   body: {
-    flex: 1, alignItems: 'center', justifyContent: 'flex-start',
-    paddingHorizontal: Layout.spacing.xl, paddingTop: Layout.spacing.lg,
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: Layout.spacing.xl, paddingBottom: Layout.spacing.lg,
   },
 
-  emojiLarge: { fontSize: 52, marginBottom: Layout.spacing.sm },
-  characterImg: { width: 260, height: 300, marginBottom: Layout.spacing.sm },
+  emojiLarge: { fontSize: 60, marginBottom: -18, zIndex: 2 },
+  // Sits on the top edge of the card, like the avatar on the completion screens.
+  characterImg: { width: 190, height: 220, marginBottom: -34, zIndex: 2 },
 
-  sentenceCard: {
-    borderRadius: Layout.radius.lg ?? 16,
-    borderWidth: 2,
-    padding: Layout.spacing.lg,
+  card: {
     width: '100%',
+    maxWidth: 680,
     alignItems: 'center',
-    marginBottom: Layout.spacing.lg,
-    ...Layout.shadow?.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    borderWidth: 3,
+    paddingHorizontal: 32,
+    paddingTop: 44,
+    paddingBottom: 30,
+    gap: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+
+  sentenceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
   sentenceText: {
-    fontSize: Layout.fontSize.lg ?? 20,
-    fontWeight: '700',
+    fontSize: 30,
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    lineHeight: 32,
   },
-  blank: { fontWeight: '900', letterSpacing: 3 },
+  blankBox: {
+    minWidth: 130,
+    height: 56,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 2.5,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blankBoxFilled: { borderStyle: 'solid', backgroundColor: '#DCFCE7' },
+  blankText: { fontSize: 28, fontFamily: 'DMSans_900Black' },
 
-  instruction: { fontSize: Layout.fontSize.sm, fontWeight: '600', opacity: 0.7, textAlign: 'center', marginBottom: Layout.spacing.lg },
+  hintPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    opacity: 0.65,
+  },
+  instruction: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', textAlign: 'center' },
 
-  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, width: '100%' },
+  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 },
+  // Raised 3D answer tiles, like the buttons in the other modules.
   option: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: 14, borderWidth: 2,
-    paddingVertical: 14, paddingHorizontal: 20,
-    minWidth: 110, justifyContent: 'center',
-    ...Layout.shadow?.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderBottomWidth: 5,
+    paddingVertical: 16, paddingHorizontal: 26,
+    minWidth: 140,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 4,
   },
   optionCorrect: { backgroundColor: '#DCFCE7', borderColor: '#22C55E' },
   optionWrong:   { backgroundColor: '#FEE2E2', borderColor: '#EF4444' },
-  optionText: { fontSize: Layout.fontSize.lg ?? 18, fontWeight: '700' },
+  optionText: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold' },
 });

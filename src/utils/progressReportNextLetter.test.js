@@ -33,6 +33,10 @@ const readCode = (rel) => stripComments(read(rel));
 
 const REPORT   = '../screens/teacher/handwriting/ProgressReportScreen.js';
 const PRACTICE = '../screens/teacher/handwriting/LetterPracticeScreen.js';
+// The report's content — banner, both sections, the next-letter rule and its
+// data reads — moved here unchanged; LetterPractice's Progress pop-up and the
+// (now unlinked) report screen both render it.
+const PANEL    = '../components/handwriting/LetterProgressPanel.js';
 
 // The screen's own helper, reproduced exactly so the numbers below are
 // checking real behaviour. Kept in step by the source assertions further down.
@@ -129,7 +133,7 @@ describe('the next letter follows the sequence, not the count', () => {
 });
 
 describe('the report screen is wired to that derivation', () => {
-  const code = readCode(REPORT);
+  const code = readCode(PANEL);
 
   it('no longer indexes an alphabet by a completed count', () => {
     expect(code).not.toMatch(/LETTERS\[/);
@@ -203,19 +207,20 @@ describe('the report screen is wired to that derivation', () => {
 });
 
 describe('the report handles an optional adaptive sequence', () => {
-  it('LetterPracticeScreen passes letterSequence to ProgressReport', () => {
+  it('LetterPracticeScreen passes letterSequence to the progress panel', () => {
     const nav = readCode(PRACTICE);
-    const call = nav.slice(nav.indexOf("navigate('ProgressReport'"));
-    expect(call.slice(0, 400)).toMatch(/letterSequence,/);
+    const call = nav.slice(nav.indexOf('<LetterProgressPanel'));
+    expect(call.slice(0, 400)).toMatch(/letterSequence=\{letterSequence\}/);
   });
 
-  it('the report reads it with a safe default', () => {
+  it('the panel and the report both read it with a safe default', () => {
+    expect(readCode(PANEL)).toMatch(/letterSequence = \[\],/);
     expect(readCode(REPORT)).toMatch(/letterSequence = \[\],/);
   });
 });
 
 describe('SENTINEL — nothing else in the report changed', () => {
-  const code = readCode(REPORT);
+  const code = readCode(PANEL);
 
   it('the counts and percentages still come from the same endpoint fields', () => {
     expect(code).toMatch(/report\?\.lowercase_completed \?\? initLow/);
@@ -227,9 +232,12 @@ describe('SENTINEL — nothing else in the report changed', () => {
   });
 
   it('the endpoint, orientation lock and gated back are untouched', () => {
+    // The data read moved into the panel; the screen-level concerns stayed
+    // on the report screen.
     expect(code).toMatch(/ENDPOINTS\.LETTER_PROGRESS\(student\.sid\)/);
-    expect(code).toMatch(/useLockLandscape\(\)/);
-    expect(code).toMatch(/goBackToOrigin\(navigation, route\.params\?\.originRoute\)/);
+    const screen = readCode(REPORT);
+    expect(screen).toMatch(/useLockLandscape\(\)/);
+    expect(screen).toMatch(/goBackToOrigin\(navigation, route\.params\?\.originRoute\)/);
   });
 
   it('the mastery rule itself is untouched — this screen only READS it', () => {

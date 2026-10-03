@@ -20,13 +20,13 @@ describe('fixed handwriting instruction audio map', () => {
   const source = read('src/constants/handwritingInstructionAudio.js');
 
   test.each(Object.entries(EXPECTED_AUDIO))('%s maps only to %s', (key, file) => {
-    expect(source).toContain(`[INSTRUCTION_KEYS.${key}]: require('../../assets/handwriting_instructions/${file}')`);
-    expect(fs.existsSync(path.join(FRONTEND_ROOT, 'assets/handwriting_instructions', file))).toBe(true);
+    expect(source).toContain(`[INSTRUCTION_KEYS.${key}]: require('../../assets/handwriting-instructions/${file}')`);
+    expect(fs.existsSync(path.join(FRONTEND_ROOT, 'assets/handwriting-instructions', file))).toBe(true);
   });
 
   test('contains exactly the nine fixed recordings', () => {
     expect((source.match(/\[INSTRUCTION_KEYS\./g) ?? [])).toHaveLength(9);
-    expect(fs.existsSync(path.join(FRONTEND_ROOT, 'assets/handwriting_instructions/choose_picture.mp3.mp4'))).toBe(false);
+    expect(fs.existsSync(path.join(FRONTEND_ROOT, 'assets/handwriting-instructions/choose_picture.mp3.mp4'))).toBe(false);
   });
 });
 

@@ -13,7 +13,8 @@ import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, Circle, Rect, Polygon } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
+import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { DMSans_800ExtraBold, DMSans_700Bold, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
@@ -94,48 +95,10 @@ const POSITIONS = [
 
 const ROAD_PATH = 'M 79 260 C 110 260, 130 360, 210 360 C 290 360, 320 190, 400 190 C 480 190, 510 300, 590 300 C 660 300, 700 160, 770 160 C 830 160, 870 250, 900 250';
 
-const TREES = [
-  { x: 60,  y: 90,  s: 0.85, c1: '#FF6B9D', c2: '#E83A6D', c3: '#FF9DC0' },
-  { x: 200, y: 55,  s: 1.0,  c1: '#A855F7', c2: '#7C3AED', c3: '#C084FC' },
-  { x: 400, y: 340, s: 1.0,  c1: '#80f0f4', c2: '#7d58be', c3: '#C084FC' },
-  { x: 500, y: 60,  s: 0.85, c1: '#EAB308', c2: '#CA8A04', c3: '#FDE047' },
-  { x: 780, y: 400, s: 0.9,  c1: '#3B82F6', c2: '#1D4ED8', c3: '#93C5FD' },
-  { x: 900, y: 90,  s: 0.8,  c1: '#22C55E', c2: '#15803D', c3: '#86EFAC' },
-  { x: 40,  y: 360, s: 0.75, c1: '#22C55E', c2: '#15803D', c3: '#86EFAC' },
-  { x: 950, y: 340, s: 0.8,  c1: '#F97316', c2: '#EA580C', c3: '#FBA56C' },
-];
-
-const STARS = [
-  { x: 260, y: 100, s: 0.9 },
-  { x: 620, y: 110, s: 0.8 },
-  { x: 340, y: 380, s: 0.85 },
-  { x: 700, y: 360, s: 0.75 },
-];
-
-function LollipopTree({ x, y, s, c1, c2, c3 }) {
-  const r = 20 * s;
-  return (
-    <>
-      <Rect x={x - 3 * s} y={y} width={6 * s} height={32 * s} rx={3} fill="#8B6426" />
-      <Circle cx={x - 13 * s} cy={y - 5 * s} r={r} fill={c3} />
-      <Circle cx={x + 13 * s} cy={y - 5 * s} r={r} fill={c2} />
-      <Circle cx={x} cy={y - 18 * s} r={r * 1.05} fill={c1} />
-    </>
-  );
-}
-
-function StarSparkle({ x, y, s }) {
-  const sz = 9 * s;
-  const pts = [
-    [0, -sz], [sz * 0.35, -sz * 0.35], [sz, 0], [sz * 0.35, sz * 0.35],
-    [0, sz], [-sz * 0.35, sz * 0.35], [-sz, 0], [-sz * 0.35, -sz * 0.35],
-  ].map(([px, py]) => `${x + px},${y + py}`).join(' ');
-  return <Polygon points={pts} fill="#FFD700" stroke="#F59E0B" strokeWidth={1} />;
-}
-
 export default function L2SentencePathScreen({ route, navigation }) {
   const { student, sessionData } = route.params ?? {};
   const topicTitle = TOPIC_TITLES[sessionData?.topic] ?? 'Myself';
+  const theme = getAvatarTheme(student?.avatar_key);
 
   const stops = useMemo(
     () => getStops(sessionData?.topic, sessionData?.sentences ?? []),
@@ -150,7 +113,7 @@ export default function L2SentencePathScreen({ route, navigation }) {
     Colora: require('../../../../../assets/fonts/COLORA.ttf'),
     DMSans_800ExtraBold, DMSans_700Bold, DMSans_600SemiBold,
   });
-  const font = (weight) => (fontsLoaded ? { fontFamily: weight, fontWeight: 'normal' } : null);
+  const font = (weight) => (fontsLoaded ? { fontFamily: weight, } : null);
 
   // Pick up completion signal when returning from a sentence-teach or practice screen.
   useFocusEffect(useCallback(() => {
@@ -187,12 +150,13 @@ export default function L2SentencePathScreen({ route, navigation }) {
 
   return (
     <LinearGradient
-      colors={['#A8DCF0', '#C8E8F5', '#D4E870', '#BEDD40', '#A5C820']}
-      locations={[0, 0.12, 0.28, 0.55, 1]}
+      colors={theme.backgroundGradient}
       style={styles.gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
         <View style={styles.topBar}>
@@ -202,15 +166,13 @@ export default function L2SentencePathScreen({ route, navigation }) {
 
           <View style={styles.titlePill}>
             <Text style={styles.titleEmoji}>🌟</Text>
-            <Text style={[styles.titleText, fontsLoaded && { fontFamily: 'Colora', fontWeight: 'normal' }]}>{topicTitle}</Text>
+            <Text style={[styles.titleText, fontsLoaded && { fontFamily: 'Colora', }]}>{topicTitle}</Text>
             <Text style={styles.titleEmoji}>🌟</Text>
           </View>
         </View>
 
         <View style={styles.pathArea}>
           <Svg style={StyleSheet.absoluteFill} viewBox="0 0 1000 480" preserveAspectRatio="xMidYMid meet">
-            {TREES.map((t, i) => <LollipopTree key={i} {...t} />)}
-            {STARS.map((s, i) => <StarSparkle key={i} {...s} />)}
             <Path d={ROAD_PATH} fill="none" stroke="#A07848" strokeWidth={56} strokeLinecap="round" strokeLinejoin="round" />
             <Path d={ROAD_PATH} fill="none" stroke="#F2C98A" strokeWidth={48} strokeLinecap="round" strokeLinejoin="round" />
             <Path d={ROAD_PATH} fill="none" stroke="#E8B87A" strokeWidth={3.5} strokeLinecap="round" strokeDasharray="18 16" />
@@ -289,7 +251,11 @@ export default function L2SentencePathScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  gradient: { flex: 1 },
+  gradient: { flex: 1, overflow: 'hidden' },
+  // Decorative background shapes (same as the other module screens).
+  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
+  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
+  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
   safe: { flex: 1 },
 
   topBar: {
@@ -314,7 +280,7 @@ const styles = StyleSheet.create({
     shadowColor: '#C04800', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 1, shadowRadius: 0, elevation: 6,
   },
   titleEmoji: { fontSize: 21 },
-  titleText: { fontSize: 30, fontWeight: '900', color: '#FFF' },
+  titleText: { fontSize: 30, fontFamily: 'DMSans_900Black', color: '#FFF' },
 
   pathArea: { flex: 1, position: 'relative' },
 
@@ -326,7 +292,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: { width: '100%', alignItems: 'center', paddingVertical: 4 },
   cardEmoji: { fontSize: 14 },
-  cardTitle: { fontSize: 12, fontWeight: '800', color: '#1A2B1A', textAlign: 'center', paddingHorizontal: 6, paddingVertical: 6, lineHeight: 15 },
+  cardTitle: { fontSize: 12, fontFamily: 'DMSans_800ExtraBold', color: '#1A2B1A', textAlign: 'center', paddingHorizontal: 6, paddingVertical: 6, lineHeight: 15 },
   stem: { width: 5, height: 16, borderRadius: 3 },
 
   btnTouch: { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' },
@@ -336,7 +302,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   btnPressed: { transform: [{ translateY: 3 }] },
-  btnNumber: { fontSize: 26, fontWeight: '900', color: '#FFF' },
+  btnNumber: { fontSize: 26, fontFamily: 'DMSans_900Black', color: '#FFF' },
   doneBadge: {
     position: 'absolute', top: -2, right: -2,
     width: 24, height: 24, borderRadius: 12,
@@ -357,14 +323,14 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 6,
   },
   bannerEmoji: { fontSize: 32 },
-  bannerLabel: { fontSize: 12, fontWeight: '700', color: '#3DBB5A', letterSpacing: 1, textTransform: 'uppercase' },
-  bannerTitle: { fontSize: 20, fontWeight: '900', color: '#1A2B1A' },
+  bannerLabel: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: '#3DBB5A', letterSpacing: 1, textTransform: 'uppercase' },
+  bannerTitle: { fontSize: 20, fontFamily: 'DMSans_900Black', color: '#1A2B1A' },
   startBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#3DBB5A', borderRadius: 13,
     paddingVertical: 11, paddingHorizontal: 20,
     shadowColor: '#27843D', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3,
   },
-  startBtnText: { fontSize: 16, fontWeight: '900', color: '#FFF' },
+  startBtnText: { fontSize: 16, fontFamily: 'DMSans_900Black', color: '#FFF' },
   startBtnEmoji: { fontSize: 16 },
 });

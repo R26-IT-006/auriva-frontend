@@ -163,130 +163,138 @@ export default function TeacherNavigator() {
           screens resolves a screen's orientation by walking up to the nearest
           ancestor that sets one: the workspace's own screens leave it unset, so
           they inherit this, and any screen added to the stack later is covered
-          without having to remember. The sibling routes below leave it unset too,
-          which is what keeps the child-facing activities free to rotate. */}
+          without having to remember. The student-workspace routes below are locked
+          to landscape instead. */}
       <Stack.Screen
         name="TeacherMain"
         component={TeacherWorkspace}
         options={{ orientation: 'portrait' }}
       />
-      <Stack.Screen name="StudentPicker"    component={StudentPickerScreen} />
-      <Stack.Screen name="StudentDashboard"   component={StudentDashboardScreen} />
-      <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
+      {/* The handwriting module is kept out of the landscape group below on
+          purpose: each of its screens locks landscape itself on focus
+          (useLockLandscape), apart from the teacher Progress Report, which must
+          stay portrait — a route-level lock here would fight that. */}
       <Stack.Screen name="HandwritingModule" component={HandwritingNavigator} />
-      <Stack.Screen name="ConceptCategories" component={ConceptCategoriesScreen} />
-      <Stack.Screen name="ConceptItems"      component={ConceptItemsScreen} />
-      <Stack.Screen name="ConceptImage"      component={ConceptImageScreen} />
-      <Stack.Screen name="ConceptDemo"       component={ConceptDemoScreen} />
-      <Stack.Screen name="ConceptMatch"      component={ConceptMatchScreen} />
-      <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
-      <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
-      <Stack.Screen name="Tier2Image"          component={Tier2ImageScreen} />
-      <Stack.Screen name="Tier2Demo"           component={Tier2DemoScreen} />
-      <Stack.Screen name="Tier2Activity"       component={Tier2ActivityScreen} />
-      <Stack.Screen name="Tier2DragDrop"       component={Tier2DragDropScreen} />
-      <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />
-      <Stack.Screen name="ConceptColoring"          component={ConceptColoringScreen} />
-      <Stack.Screen name="ConceptActivity"          component={ConceptActivityScreen} />
-      <Stack.Screen name="ConceptBasketSort"        component={ConceptBasketSortScreen} />
-      <Stack.Screen name="ConceptPairMatch"         component={ConceptPairMatchScreen} />
-      <Stack.Screen name="ConceptMemory"            component={ConceptMemoryScreen} />
-      <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
-      <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
-      <Stack.Screen
-        name="PronunciationSessionSetup"
-        component={PronunciationSessionSetupScreen}
-      />
-      <Stack.Screen
-        name="PronunciationWordSelection"
-        component={PronunciationWordSelectionScreen}
-      />
-      <Stack.Screen
-        name="PronunciationLearnWord"
-        component={PronunciationLearnWordScreen}
-      />
-      <Stack.Screen
-        name="PronunciationTapSounds"
-        component={PronunciationTapSoundsScreen}
-      />
-      <Stack.Screen
-        name="PronunciationListenChoose"
-        component={PronunciationListenChooseScreen}
-      />
-      <Stack.Screen
-        name="PronunciationMouthShape"
-        component={PronunciationMouthShapeScreen}
-      />
-      <Stack.Screen
-        name="PronunciationSpeakWord"
-        component={PronunciationSpeakWordScreen}
-      />
-      <Stack.Screen
-        name="PronunciationResult"
-        component={PronunciationResultScreen}
-      />
-      <Stack.Screen
-        name="PronunciationResultsHistory"
-        component={PronunciationResultsHistoryScreen}
-      />
-      <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
-      <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
-      <Stack.Screen name="AnimatedWord"      component={AnimatedWordScreen} />
-      <Stack.Screen name="BoldWord"          component={BoldWordScreen} />
+      {/* Landscape for the whole student workspace — the picker, the dashboard
+          and every module screen it opens. */}
+      <Stack.Group screenOptions={{ orientation: 'landscape' }}>
+        <Stack.Screen name="StudentPicker"     component={StudentPickerScreen} />
+        <Stack.Screen name="StudentDashboard"  component={StudentDashboardScreen} />
+        <Stack.Screen name="AvatarSelection"   component={AvatarSelectionScreen} />
+        <Stack.Screen name="ConceptCategories" component={ConceptCategoriesScreen} />
+        <Stack.Screen name="ConceptItems"      component={ConceptItemsScreen} />
+        <Stack.Screen name="ConceptImage"      component={ConceptImageScreen} />
+        <Stack.Screen name="ConceptDemo"       component={ConceptDemoScreen} />
+        <Stack.Screen name="ConceptMatch"      component={ConceptMatchScreen} />
+        <Stack.Screen name="ConceptCongrats"      component={ConceptCongratulationsScreen} />
+        <Stack.Screen name="ConceptAdaptiveQuiz" component={ConceptAdaptiveQuizScreen} />
+        <Stack.Screen name="Tier2Image"          component={Tier2ImageScreen} />
+        <Stack.Screen name="Tier2Demo"           component={Tier2DemoScreen} />
+        <Stack.Screen name="Tier2Activity"       component={Tier2ActivityScreen} />
+        <Stack.Screen name="Tier2DragDrop"       component={Tier2DragDropScreen} />
+        <Stack.Screen name="Tier3Video"          component={Tier3VideoScreen} />
+        <Stack.Screen name="ConceptColoring"          component={ConceptColoringScreen} />
+        <Stack.Screen name="ConceptActivity"          component={ConceptActivityScreen} />
+        <Stack.Screen name="ConceptBasketSort"        component={ConceptBasketSortScreen} />
+        <Stack.Screen name="ConceptPairMatch"         component={ConceptPairMatchScreen} />
+        <Stack.Screen name="ConceptMemory"            component={ConceptMemoryScreen} />
+        <Stack.Screen name="StudentConceptProgress"   component={StudentConceptProgressScreen} />
+        <Stack.Screen name="DialogueLanding"   component={DialogueLandingScreen} />
+        <Stack.Screen
+          name="PronunciationSessionSetup"
+          component={PronunciationSessionSetupScreen}
+        />
+        <Stack.Screen
+          name="PronunciationWordSelection"
+          component={PronunciationWordSelectionScreen}
+        />
+        <Stack.Screen
+          name="PronunciationLearnWord"
+          component={PronunciationLearnWordScreen}
+        />
+        <Stack.Screen
+          name="PronunciationTapSounds"
+          component={PronunciationTapSoundsScreen}
+        />
+        <Stack.Screen
+          name="PronunciationListenChoose"
+          component={PronunciationListenChooseScreen}
+        />
+        <Stack.Screen
+          name="PronunciationMouthShape"
+          component={PronunciationMouthShapeScreen}
+        />
+        <Stack.Screen
+          name="PronunciationSpeakWord"
+          component={PronunciationSpeakWordScreen}
+        />
+        <Stack.Screen
+          name="PronunciationResult"
+          component={PronunciationResultScreen}
+        />
+        <Stack.Screen
+          name="PronunciationResultsHistory"
+          component={PronunciationResultsHistoryScreen}
+        />
+        <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
+        <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />
+        <Stack.Screen name="AnimatedWord"      component={AnimatedWordScreen} />
+        <Stack.Screen name="BoldWord"          component={BoldWordScreen} />
 
-      {/* Rule 5 — periodic production probe (TASK-39), shared across all 3 categories */}
-      <Stack.Screen name="ProbeProduction"     component={ProbeProductionScreen} />
-      <Stack.Screen name="ProbeRetentionCheck" component={ProbeRetentionCheckScreen} />
+        {/* Rule 5 — periodic production probe (TASK-39), shared across all 3 categories */}
+        <Stack.Screen name="ProbeProduction"     component={ProbeProductionScreen} />
+        <Stack.Screen name="ProbeRetentionCheck" component={ProbeRetentionCheckScreen} />
 
-      <Stack.Screen name="MagicWordLanding"  component={MagicWordLandingScreen} />
-      <Stack.Screen name="Phase1Video"       component={Phase1VideoScreen} />
-      <Stack.Screen name="DragToLine"        component={DragToLineScreen} />
-      <Stack.Screen name="Phase1Complete"    component={Phase1CompleteScreen} />
-      <Stack.Screen name="Phase2Production"  component={Phase2ProductionScreen} />
-      <Stack.Screen name="Phase2NonVerbal"   component={Phase2NonVerbalScreen} />
-      <Stack.Screen name="Phase3Contextual"  component={Phase3ContextualScreen} />
-      <Stack.Screen name="WordComplete"      component={WordCompleteScreen} />
-      <Stack.Screen name="VerbActivity"         component={VerbActivityScreen} />
-      <Stack.Screen name="ClapActivity"         component={ClapActivityScreen} />
-      <Stack.Screen name="RunActivity"          component={RunActivityScreen} />
-      <Stack.Screen name="Cat3Landing"          component={Cat3LandingScreen} />
-      <Stack.Screen name="Cat3Phase1"           component={Cat3Phase1Screen} />
-      <Stack.Screen name="Cat3DragToLine"       component={Cat3DragToLineScreen} />
-      <Stack.Screen name="Cat3Phase2"           component={Cat3Phase2Screen} />
-      <Stack.Screen name="Cat3Phase2NonVerbal"  component={Cat3Phase2NonVerbalScreen} />
-      <Stack.Screen name="Cat3Phase3"           component={Cat3Phase3Screen} />
-      <Stack.Screen name="Cat3WordComplete"     component={Cat3WordCompleteScreen} />
+        <Stack.Screen name="MagicWordLanding"  component={MagicWordLandingScreen} />
+        <Stack.Screen name="Phase1Video"       component={Phase1VideoScreen} />
+        <Stack.Screen name="DragToLine"        component={DragToLineScreen} />
+        <Stack.Screen name="Phase1Complete"    component={Phase1CompleteScreen} />
+        <Stack.Screen name="Phase2Production"  component={Phase2ProductionScreen} />
+        <Stack.Screen name="Phase2NonVerbal"   component={Phase2NonVerbalScreen} />
+        <Stack.Screen name="Phase3Contextual"  component={Phase3ContextualScreen} />
+        <Stack.Screen name="WordComplete"      component={WordCompleteScreen} />
+        <Stack.Screen name="VerbActivity"         component={VerbActivityScreen} />
+        <Stack.Screen name="ClapActivity"         component={ClapActivityScreen} />
+        <Stack.Screen name="RunActivity"          component={RunActivityScreen} />
+        <Stack.Screen name="Cat3Landing"          component={Cat3LandingScreen} />
+        <Stack.Screen name="Cat3Phase1"           component={Cat3Phase1Screen} />
+        <Stack.Screen name="Cat3DragToLine"       component={Cat3DragToLineScreen} />
+        <Stack.Screen name="Cat3Phase2"           component={Cat3Phase2Screen} />
+        <Stack.Screen name="Cat3Phase2NonVerbal"  component={Cat3Phase2NonVerbalScreen} />
+        <Stack.Screen name="Cat3Phase3"           component={Cat3Phase3Screen} />
+        <Stack.Screen name="Cat3WordComplete"     component={Cat3WordCompleteScreen} />
 
-      {/* Greetings */}
-      <Stack.Screen name="GreetingLanding"           component={GreetingLandingScreen} />
-      <Stack.Screen name="GreetingPhase1Video"        component={GreetingPhase1VideoScreen} />
-      <Stack.Screen name="GreetingDragToLine"         component={GreetingDragToLineScreen} />
-      <Stack.Screen name="GreetingPhase1Complete"     component={GreetingPhase1CompleteScreen} />
-      <Stack.Screen name="GreetingPhase2Production"   component={GreetingPhase2ProductionScreen} />
-      <Stack.Screen name="GreetingPhase2NonVerbal"    component={GreetingPhase2NonVerbalScreen} />
-      <Stack.Screen name="GreetingPhase3Contextual"   component={GreetingPhase3ContextualScreen} />
+        {/* Greetings */}
+        <Stack.Screen name="GreetingLanding"           component={GreetingLandingScreen} />
+        <Stack.Screen name="GreetingPhase1Video"        component={GreetingPhase1VideoScreen} />
+        <Stack.Screen name="GreetingDragToLine"         component={GreetingDragToLineScreen} />
+        <Stack.Screen name="GreetingPhase1Complete"     component={GreetingPhase1CompleteScreen} />
+        <Stack.Screen name="GreetingPhase2Production"   component={GreetingPhase2ProductionScreen} />
+        <Stack.Screen name="GreetingPhase2NonVerbal"    component={GreetingPhase2NonVerbalScreen} />
+        <Stack.Screen name="GreetingPhase3Contextual"   component={GreetingPhase3ContextualScreen} />
 
-      {/* Evaluations */}
-      <Stack.Screen name="EvaluationMenu"   component={EvaluationMenuScreen} />
-      <Stack.Screen name="EvaluationMatch"  component={EvaluationMatchScreen} />
+        {/* Evaluations */}
+        <Stack.Screen name="EvaluationMenu"   component={EvaluationMenuScreen} />
+        <Stack.Screen name="EvaluationMatch"  component={EvaluationMatchScreen} />
 
-      {/* Level 2 – Sentence Construction */}
-      <Stack.Screen name="L2TopicSelection"  component={L2TopicSelectionScreen} />
-      <Stack.Screen name="L2Questionnaire"   component={L2QuestionnaireScreen} />
-      <Stack.Screen name="L2Loading"         component={L2LoadingScreen} />
-      <Stack.Screen name="L2Contrastive"     component={L2ContrastiveScreen} />
-      <Stack.Screen name="L2SentencePath"    component={L2SentencePathScreen} />
-      {/* Sentence Familiarisation Ladder (TASK-18).
-          Flow per sentence stop: L2SentencePath → L2ListenWatch → L2SentenceBuild
-                                  → L2FillGap → L2SentenceTeach */}
-      <Stack.Screen name="L2ListenWatch"     component={L2ListenWatchScreen} />
-      <Stack.Screen name="L2SentenceBuild"   component={L2SentenceBuildScreen} />
-      <Stack.Screen name="L2FillGap"         component={L2FillGapScreen} />
-      <Stack.Screen name="L2SentenceTeach"   component={L2SentenceTeachScreen} />
-      <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />
-      <Stack.Screen name="L2Production"      component={L2ProductionScreen} />
-      <Stack.Screen name="L2SessionComplete" component={L2SessionCompleteScreen} />
-      <Stack.Screen name="L2Portrait"        component={L2PortraitScreen} />
+        {/* Level 2 – Sentence Construction */}
+        <Stack.Screen name="L2TopicSelection"  component={L2TopicSelectionScreen} />
+        <Stack.Screen name="L2Questionnaire"   component={L2QuestionnaireScreen} />
+        <Stack.Screen name="L2Loading"         component={L2LoadingScreen} />
+        <Stack.Screen name="L2Contrastive"     component={L2ContrastiveScreen} />
+        <Stack.Screen name="L2SentencePath"    component={L2SentencePathScreen} />
+        {/* Sentence Familiarisation Ladder (TASK-18).
+            Flow per sentence stop: L2SentencePath → L2ListenWatch → L2SentenceBuild
+                                    → L2FillGap → L2SentenceTeach */}
+        <Stack.Screen name="L2ListenWatch"     component={L2ListenWatchScreen} />
+        <Stack.Screen name="L2SentenceBuild"   component={L2SentenceBuildScreen} />
+        <Stack.Screen name="L2FillGap"         component={L2FillGapScreen} />
+        <Stack.Screen name="L2SentenceTeach"   component={L2SentenceTeachScreen} />
+        <Stack.Screen name="L2ListenTogether"  component={L2ListenTogetherScreen} />
+        <Stack.Screen name="L2Production"      component={L2ProductionScreen} />
+        <Stack.Screen name="L2SessionComplete" component={L2SessionCompleteScreen} />
+        <Stack.Screen name="L2Portrait"        component={L2PortraitScreen} />
+      </Stack.Group>
 
     </Stack.Navigator>
   );

@@ -19,6 +19,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { evaluationApi } from '../../../../api/evaluation';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const PLACEHOLDER_IMAGE = require('../../../../../assets/dialogue-images/placeholder.png');
 
@@ -311,8 +312,8 @@ export default function EvaluationMatchScreen({ route, navigation }) {
     <View style={styles.root}>
       <SafeAreaView style={{ backgroundColor: theme.headerBackground }} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => setShowGate(true)} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => setShowGate(true)} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]} numberOfLines={1}>
             {categoryLabel} Evaluation
@@ -321,7 +322,11 @@ export default function EvaluationMatchScreen({ route, navigation }) {
         </View>
       </SafeAreaView>
 
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
 
           {loading && (
@@ -426,7 +431,7 @@ export default function EvaluationMatchScreen({ route, navigation }) {
           )}
 
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* GIF feedback popup — same slide-in-from-right pattern as
           ConceptActivityScreen.js */}
@@ -462,10 +467,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerSide: { width: 40, alignItems: 'center', justifyContent: 'center' },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   headerTitle: {
     flex: 1,
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
   },
 
@@ -475,7 +494,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: {
     color: '#FF4D6D',
-    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center',
     paddingHorizontal: 32,
   },
@@ -489,13 +508,13 @@ const styles = StyleSheet.create({
 
   progressLabel: {
     fontSize: Layout.fontSize.sm,
-    fontWeight: '700',
+    fontFamily: 'DMSans_700Bold',
     opacity: 0.6,
     marginBottom: 2,
   },
   title: {
     fontSize: Layout.fontSize.xl,
-    fontWeight: '900',
+    fontFamily: 'DMSans_900Black',
     textAlign: 'center',
     marginBottom: Layout.spacing.lg,
   },
@@ -532,7 +551,7 @@ const styles = StyleSheet.create({
   // Soft-yellow hint after a second wrong tap — points at the correct tile
   // without giving it away as loudly as the green "correct" state.
   tileHint:    { backgroundColor: '#FEF9C3', borderColor: '#EAB308' },
-  tileText:    { fontSize: Layout.fontSize.lg, fontWeight: '800' },
+  tileText:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold' },
 
   stars: {
     fontSize: 48,
@@ -557,27 +576,36 @@ const styles = StyleSheet.create({
   },
   completeHeading: {
     fontSize: Layout.fontSize.xxl,
-    fontWeight: '900',
+    fontFamily: 'DMSans_900Black',
     textAlign: 'center',
   },
   completeSubtext: {
     fontSize: Layout.fontSize.md,
-    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center',
     opacity: 0.75,
   },
   primaryBtn: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.full,
     marginTop: Layout.spacing.xl,
-    ...Layout.shadow.md,
   },
   primaryBtnText: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: '700',
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
   },
 
   // Slides in from the right edge, vertically centred (same technique as

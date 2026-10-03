@@ -51,7 +51,9 @@ describe('final left-preview policy: custom a/I only', () => {
   test('restores the original Text renderer and exact historical typography for every non-override', () => {
     expect(leftPreviewBlock).toContain('<Text style={[styles.letterCardText, { color: theme.buttonText }]}>');
     expect(leftPreviewBlock).toContain('{letter}');
-    expect(stage).toMatch(/letterCardText:\s*\{\s*fontSize: Math\.round\(LETTER_CARD_SIZE \* 0\.60\),\s*fontWeight: '900',\s*lineHeight: Math\.round\(LETTER_CARD_SIZE \* 0\.75\),/);
+    // The historical proportions (0.60 / 0.88 and 0.75 / 0.88 of the old
+    // card), scaled with the card now that it matches the canvas height.
+    expect(stage).toMatch(/letterCardText:\s*\{\s*fontSize: Math\.round\(PREVIEW_CARD_SIZE \* 0\.68\),\s*fontWeight: '900',\s*lineHeight: Math\.round\(PREVIEW_CARD_SIZE \* 0\.85\),/);
     expect(stage).toContain('const previewShape = LEFT_PREVIEW_SHAPES[letter] ?? null;');
   });
 
@@ -86,7 +88,8 @@ describe('final left-preview policy: custom a/I only', () => {
   });
 
   test('keeps the approved card and all right-side allocations unchanged', () => {
-    expect(stage).toContain('const PREVIEW_CARD_SIZE = Math.round(LETTER_CARD_SIZE * 0.88);');
+    // The card is the canvas's height, capped at its previous size.
+    expect(stage).toContain('const PREVIEW_CARD_SIZE = Math.min(CANVAS_H, Math.round(LETTER_CARD_SIZE * 0.88));');
     expect(stage).toMatch(/letterCard:\s*\{\s*width: PREVIEW_CARD_SIZE,\s*height: PREVIEW_CARD_SIZE/);
     expect(stage).toMatch(/letterCol:\s*\{\s*width: COL_L/);
     expect(layout).toMatch(/export const COL_L\s+= Math\.round\(SCREEN_W \* 0\.43\)/);

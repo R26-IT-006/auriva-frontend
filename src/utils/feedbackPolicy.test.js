@@ -362,7 +362,7 @@ describe('SENTINEL — §26 nothing else changed', () => {
 
   it('A–E dimensions and word images are unchanged', () => {
     const { SUPPORT_IMAGE, ANSWER_IMAGE } = require('../components/word/wordActivityLayout');
-    expect(SUPPORT_IMAGE.imageSize).toBe(230);
+    expect(SUPPORT_IMAGE.imageSize).toBe(190);   // reduced by request
     expect(ANSWER_IMAGE.imageSize).toBe(150);
     expect(readCode('./wordImageResolver.js')).toMatch(/export function resolveWordImageKey/);
   });

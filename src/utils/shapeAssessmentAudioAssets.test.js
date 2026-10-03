@@ -83,7 +83,7 @@ describe('canonical fixed instruction recordings', () => {
   ];
 
   it.each(files)('%s is mapped and physically present', (file) => {
-    expect(map).toContain(`/handwriting_instructions/${file}`);
-    expect(fs.existsSync(path.join(ROOT, 'assets/handwriting_instructions', file))).toBe(true);
+    expect(map).toContain(`/handwriting-instructions/${file}`);
+    expect(fs.existsSync(path.join(ROOT, 'assets/handwriting-instructions', file))).toBe(true);
   });
 });

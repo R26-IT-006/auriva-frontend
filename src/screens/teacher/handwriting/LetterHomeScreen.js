@@ -2,18 +2,17 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Modal,
   ActivityIndicator,
-  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle, Ellipse, Line, Path } from 'react-native-svg';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
+import { Layout } from '../../../constants/layout';
 import client from '../../../api/client';
 import { ENDPOINTS } from '../../../constants/api';
 import { getLetterSequence, getMotorProfile } from '../../../utils/storage';
@@ -49,13 +48,6 @@ import { fetchInitialAssessmentShapes } from '../../../utils/initialAssessmentSh
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import ScreenBackButton from '../../../components/handwriting/ScreenBackButton';
 import { returnToStudentModuleSelection } from '../../../utils/postAssessmentNavigation';
-
-const AVATAR_MAP = {
-  boba:     require('../../../../assets/handwriting-avatars/Boba.png'),
-  glitter:  require('../../../../assets/handwriting-avatars/Glitter.png'),
-  lily:     require('../../../../assets/handwriting-avatars/Lily.png'),
-  megatron: require('../../../../assets/handwriting-avatars/Megatron.png'),
-};
 
 const SHAPE_ICONS = {
   horizontal_line: 'remove-outline',
@@ -95,27 +87,18 @@ function getLearningPathContent(primaryStrength) {
         icon:    'remove-outline',
         headline: "Great at straight lines!",
         detail:   "We'll start with letters like l, i, t that use the strokes you already control well.",
-        color:    '#1565C0',
-        bg:       '#E3F2FD',
-        border:   '#90CAF9',
       };
     case 'curved':
       return {
         icon:    'ellipse-outline',
         headline: "Smooth, confident curves!",
         detail:   "We'll start with letters like o, c, e that match your circle and arc strength.",
-        color:    '#6A1B9A',
-        bg:       '#F3E5F5',
-        border:   '#CE93D8',
       };
     default:
       return {
         icon:    'checkmark-circle-outline',
         headline: "Well-rounded motor skills!",
         detail:   "You're balanced across all strokes. We'll practise step by step, easy to hard.",
-        color:    '#2E7D32',
-        bg:       '#E8F5E9',
-        border:   '#A5D6A7',
       };
   }
 }
@@ -144,28 +127,27 @@ function getXAIExplanation(motorProfile) {
 // in-memory (just-completed) and persisted-baseline (later visit) data
 // states, so the two never drift into visually different presentations of
 // the same kind of number.
+// Shown as a progress circle (the same ProgressRing as the Progress pop-up),
+// coloured by the result band — green Good, amber Moderate, orange Needs
+// practice, grey when unavailable — with the label and result badge beneath.
 function OverallScoreCard({ theme, label, score, note }) {
   const badge = getScoreBadge(score);
   return (
-    <View style={[styles.overallCard, {
-      backgroundColor: theme.button + '10',
-      borderColor:     theme.button + '25',
-    }]}>
-      <View style={[styles.overallIconWrap, { backgroundColor: theme.button + '20' }]}>
-        <Ionicons name="analytics-outline" size={22} color={theme.button} />
-      </View>
-      <View style={styles.overallContent}>
-        <Text style={styles.overallLabel}>{label}</Text>
-        <View style={styles.overallResultRow}>
-          <Text style={[styles.overallValue, { color: theme.headingText }]}>
-            {score != null ? `${score}%` : 'N/A'}
-          </Text>
-          <View style={[styles.overallBadge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.overallBadgeText, { color: badge.color }]}>{badge.label}</Text>
-          </View>
+    <View style={styles.overallCard}>
+      <ProgressRing
+        percent={score ?? 0}
+        color={badge.color}
+        trackColor={badge.bg}
+        centerText={score != null ? `${score}%` : 'N/A'}
+        textColor={theme.headingText}
+      />
+      <Text style={styles.overallLabel}>{label}</Text>
+      <View style={styles.overallResultRow}>
+        <View style={[styles.overallBadge, { backgroundColor: badge.bg }]}>
+          <Text style={[styles.overallBadgeText, { color: badge.color }]}>{badge.label}</Text>
         </View>
-        {note ? <Text style={styles.overallNote}>{note}</Text> : null}
       </View>
+      {note ? <Text style={styles.overallNote}>{note}</Text> : null}
     </View>
   );
 }
@@ -203,7 +185,12 @@ function AssessmentShapeIcon({ shapeId, color }) {
 // Circular "Overall Progress" ring — same underlying progressPercent value
 // the old inline header/bar showed, just presented as a ring in the new
 // side panel instead of a straight bar. No new data source.
-function ProgressRing({ percent, size = 112, strokeWidth = 11, color = '#F5A623', trackColor = '#FCEACB' }) {
+// centerText / textColor are optional: the Assessment Summary passes 'N/A'
+// when a score is unavailable, rather than showing a misleading 0%.
+function ProgressRing({
+  percent, size = 112, strokeWidth = 11, color = '#F5A623', trackColor = '#FCEACB',
+  centerText, textColor,
+}) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.max(0, Math.min(100, percent ?? 0));
@@ -222,7 +209,9 @@ function ProgressRing({ percent, size = 112, strokeWidth = 11, color = '#F5A623'
           origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
-      <Text style={styles.ringPercentText}>{clamped}%</Text>
+      <Text style={[styles.ringPercentText, textColor ? { color: textColor } : null]}>
+        {centerText ?? `${clamped}%`}
+      </Text>
     </View>
   );
 }
@@ -234,57 +223,6 @@ function progressEncouragement(percent) {
   if (percent >= 50)  return "Almost there — amazing work!";
   if (percent > 0)    return "Keep going! You're doing great!";
   return "Let's get started!";
-}
-
-// Flat, static "rolling hills" scene filling the bottom of the Letters/
-// Words cards — purely decorative (pointerEvents="none"), built from plain
-// SVG shapes rather than an image asset. 'letters' keeps green tones and
-// the small flower accent; 'words' reuses this app's existing purple Words
-// theming instead of introducing a new color identity for just this card.
-function CardLandscape({ variant }) {
-  const isLetters = variant === 'letters';
-  const hillBack  = isLetters ? '#BFE3B8' : '#DCC7EF';
-  const hillFront = isLetters ? '#9ED895' : '#C7A3E0';
-  const bush      = isLetters ? '#5CA85A' : '#9B62C4';
-
-  return (
-    // Anchored to just the bottom band of the card (not the full height) —
-    // stretching a wide, flat scene across the whole card distorted it
-    // against the card's actual (taller, narrower) proportions. A shorter
-    // band close to the viewBox's own 300:160 aspect stretches cleanly.
-    <View style={styles.cardLandscapeBand} pointerEvents="none">
-      <Svg
-        width="100%" height="100%"
-        viewBox="0 0 300 160"
-        preserveAspectRatio="none"
-        style={StyleSheet.absoluteFillObject}
-      >
-      {/* Clouds */}
-      <Ellipse cx={46}  cy={22} rx={24} ry={12} fill="#FFFFFF" opacity={0.75} />
-      <Ellipse cx={252} cy={16} rx={20} ry={10} fill="#FFFFFF" opacity={0.6} />
-
-      {/* Rolling hills */}
-      <Ellipse cx={70}  cy={195} rx={210} ry={70} fill={hillBack} opacity={0.8} />
-      <Ellipse cx={230} cy={205} rx={220} ry={75} fill={hillFront} opacity={0.9} />
-
-      {/* Small bushes tucked into the hill line */}
-      <Circle cx={26}  cy={148} r={11} fill={bush} opacity={0.75} />
-      <Circle cx={40}  cy={152} r={8}  fill={bush} opacity={0.6} />
-      <Circle cx={272} cy={146} r={10} fill={bush} opacity={0.7} />
-
-      {/* Tiny flower accent — letters card only */}
-      {isLetters && (
-        <>
-          <Circle cx={264} cy={130} r={4} fill="#F8A5C2" />
-          <Circle cx={270} cy={126} r={4} fill="#F8A5C2" />
-          <Circle cx={274} cy={132} r={4} fill="#F8A5C2" />
-          <Circle cx={268} cy={136} r={4} fill="#F8A5C2" />
-          <Circle cx={269} cy={131} r={2.5} fill="#FFD966" />
-        </>
-      )}
-      </Svg>
-    </View>
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -303,10 +241,9 @@ export default function LetterHomeScreen({ route, navigation }) {
     motorProfile: passedProfile = null,
   } = route.params;
 
-  const { width, height } = useWindowDimensions();
-
   const [showSummary,       setShowSummary]       = useState(false);
   const [showWhyModal,      setShowWhyModal]       = useState(false);
+  const [showProgress,      setShowProgress]      = useState(false);
   const [lowercaseProgress, setLowercaseProgress] = useState(0);
   const [uppercaseProgress, setUppercaseProgress] = useState(0);
   const [motorProfile,      setMotorProfile]      = useState(passedProfile);
@@ -317,7 +254,7 @@ export default function LetterHomeScreen({ route, navigation }) {
   // modal instance can dispatch the right action once the code is entered,
   // rather than needing three separate gate/modal pairs.
   const [gateVisible,       setGateVisible]       = useState(false);
-  const [pendingGateAction, setPendingGateAction] = useState(null); // 'why' | 'assessment' | 'progress' | 'back'
+  const [pendingGateAction, setPendingGateAction] = useState(null); // 'why' | 'assessment' | 'back'
   // Screen-consistency fix: fallback authoritative source for the
   // Assessment Summary modal, fetched only when there's no in-memory
   // assessmentData to show (see effect below) — never fetched, and never
@@ -385,7 +322,6 @@ export default function LetterHomeScreen({ route, navigation }) {
     Math.max(0, lowercaseProgress) + Math.max(0, uppercaseProgress),
   );
   const progressPercent = Math.min(100, Math.round((completedLetterCount / 52) * 100));
-  const avatarSource = AVATAR_MAP[student?.avatar_key] ?? AVATAR_MAP.lily;
 
   // Assessment Summary modal's shape data — the just-completed session's
   // in-memory assessmentData when available, otherwise the same per-shape
@@ -424,10 +360,6 @@ export default function LetterHomeScreen({ route, navigation }) {
     setGateVisible(false);
     if (pendingGateAction === 'why') setShowWhyModal(true);
     else if (pendingGateAction === 'assessment') setShowSummary(true);
-    // originRoute tells the report where back should return to, so it can
-    // never land on a stale WritingCheck — see utils/backToOrigin.js.
-    else if (pendingGateAction === 'progress') navigation.navigate('TeacherReport', { student, theme, originRoute: 'LetterHome' });
-    else if (pendingGateAction === 'dashboard') navigation.navigate('TeacherMain');
     // Writing Check is a TEACHER-initiated assessment, so it goes through the
     // same ParentGateModal as every other teacher-facing action here. A child
     // cannot reach it unaided.
@@ -458,19 +390,9 @@ export default function LetterHomeScreen({ route, navigation }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      {/* Decorative background bubbles */}
-      <View style={[styles.bgBubbleLarge, {
-        backgroundColor: theme.button + '0E',
-        width: width * 0.50, height: width * 0.50, borderRadius: width * 0.25,
-      }]} />
-      <View style={[styles.bgBubbleMedium, {
-        backgroundColor: theme.button + '09',
-        width: width * 0.30, height: width * 0.30, borderRadius: width * 0.15,
-      }]} />
-      <View style={[styles.bgBubbleSmall, {
-        backgroundColor: theme.button + '07',
-        width: width * 0.18, height: width * 0.18, borderRadius: width * 0.09,
-      }]} />
+      {/* Decorative shapes — same treatment as the Concept / Dialogue landing pages */}
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
 
       <SafeAreaView style={styles.safe}>
 
@@ -485,53 +407,49 @@ export default function LetterHomeScreen({ route, navigation }) {
               This screen is the beginning of the explicit assessment Back
               chain; its own gated Back retains the module-level exit. */}
           <View style={styles.leftGroup}>
+            {/* Round, translucent white — the landing pages' iconBtn. */}
             <ScreenBackButton
               onPress={() => requestGatedAction('back')}
               gated
               tint={theme.button}
-              color={theme.button}
+              color={theme.headingText}
               accessibilityLabel="Back"
-              style={{ marginRight: 2 }}
+              style={styles.iconBtn}
             />
+          </View>
 
-            {/* Avatar moved out of the top bar — it now appears large, once,
-                in the side column above "Your Progress" (see below), rather
-                than being shown small here as well. */}
-            <View style={styles.nameRow}>
-            <Text style={[styles.studentName, { color: theme.headingText }]}>
-              {student?.full_name}
-            </Text>
-              <Text style={styles.studentSubLabel}>Letter Writing</Text>
+          {/* Module title — same icon circle + 34pt heading as
+              ConceptCategoriesScreen / DialogueLandingScreen. */}
+          <View style={styles.titleRow}>
+            <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="create" size={18} color="#FFF" />
             </View>
+            <Text style={[styles.title, { color: theme.headingText }]}>Letter Writing</Text>
           </View>
 
           <View style={styles.topBtnGroup}>
-            {/* Dashboard leaves the child's writing module for the TEACHER
-                area, so it is gated exactly like every other exit from this
-                screen. The back button below already gates the identical
-                'TeacherMain' destination (see handleGateSuccess's 'back'
-                branch) — leaving this one open made the gate bypassable by
-                tapping Dashboard instead of Back. */}
+            {/* Progress — the child's own progress, in a small pop-up. Not
+                gated: it is the same child-facing summary that used to sit
+                on screen as the "Your Progress" box. */}
             <TouchableOpacity
-              style={[styles.dashboardBtn, {
+              style={[styles.topBtn, {
                 backgroundColor: theme.button,
                 borderColor: theme.button,
               }]}
-              onPress={() => requestGatedAction('dashboard')}
+              onPress={() => setShowProgress(true)}
               activeOpacity={0.8}
-              accessibilityState={{ selected: true }}
-              accessibilityLabel="Dashboard — needs a code"
+              accessibilityLabel="Progress"
             >
-              <Ionicons name="home" size={17} color={theme.buttonText} />
-              <Text style={[styles.dashboardBtnText, { color: theme.buttonText }]}>Dashboard</Text>
+              <Ionicons name="trophy" size={17} color={theme.buttonText} />
+              <Text style={[styles.topBtnText, { color: theme.buttonText }]}>Progress</Text>
             </TouchableOpacity>
 
-            {/* Assessment + Progress — same pill style as Dashboard above,
-                so the top-bar buttons read as one consistent group.
-                Still gated by ParentGateModal on tap (requestGatedAction);
-                only the visual treatment matches Dashboard now. */}
+            {/* Assessment — the grown-up control, gated by ParentGateModal
+                on tap (requestGatedAction). No Dashboard or Report button
+                here: the gated Back is the one way out, and the teacher
+                report opens from the student's profile. */}
             <TouchableOpacity
-              style={[styles.dashboardBtn, {
+              style={[styles.topBtn, {
                 backgroundColor: theme.button + '20',
                 borderColor: theme.button + '70',
               }]}
@@ -540,23 +458,16 @@ export default function LetterHomeScreen({ route, navigation }) {
               accessibilityLabel="Assessment — needs a code"
             >
               <Ionicons name="clipboard-outline" size={17} color={theme.button} />
-              <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Assessment</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.dashboardBtn, {
-                backgroundColor: theme.button + '20',
-                borderColor: theme.button + '70',
-              }]}
-              onPress={() => requestGatedAction('progress')}
-              activeOpacity={0.8}
-              accessibilityLabel="Progress report — needs a code"
-            >
-              <Ionicons name="document-text-outline" size={17} color={theme.button} />
-              <Text style={[styles.dashboardBtnText, { color: theme.button }]}>Progress</Text>
+              <Text style={[styles.topBtnText, { color: theme.button }]}>Assessment</Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* One short instruction, like the other landing pages' subtitles
+            ("Choose a category to explore", "Choose a level to begin"). */}
+        <Text style={[styles.subtitle, { color: theme.headingText }]} numberOfLines={1}>
+          Choose letters or words to practise
+        </Text>
 
         {/* ── Main content ── */}
         <View style={styles.mainContent}>
@@ -564,46 +475,28 @@ export default function LetterHomeScreen({ route, navigation }) {
           {/* ── Main column ── */}
           <View style={styles.mainColumn}>
 
-            {/* ── Hero section ── */}
-            {/* Avatar removed here — it now appears once, in the side
-                column above "Your Progress", rather than twice on screen. */}
-            <View style={styles.heroSection}>
-              <Text style={[styles.heroGreeting, { color: theme.headingText }]}>
-                Hello, {student?.full_name}!
-              </Text>
-              <Text style={[styles.heroSubtitle, { color: theme.button }]}>
-                Ready to practice writing today?
-              </Text>
-            </View>
-
             {/* ── "Your Learning Path" card ── */}
+            {/* White, framed in the avatar theme's outline like the landing
+                pages' cards, with the icon, heading and Why? in that same
+                outline colour. */}
             <View style={[styles.learningPathCard, {
-              backgroundColor: pathContent.bg,
-              borderColor: pathContent.border,
+              backgroundColor: theme.cardSurface,
+              borderColor: theme.cardOutline,
             }]}>
-              {/* Decorative — the student's own avatar, reused rather than a
-                  new illustration asset, sitting behind the text as a quiet
-                  bit of personality in the corner. */}
-              <Image
-                source={avatarSource}
-                style={styles.learningPathAvatar}
-                resizeMode="contain"
-                pointerEvents="none"
-              />
               <View style={styles.learningPathHeader}>
                 <View style={styles.learningPathLeft}>
-                  <View style={[styles.pathIconBadge, { backgroundColor: pathContent.color + '20' }]}>
-                    <Ionicons name={pathContent.icon} size={24} color={pathContent.color} />
+                  <View style={[styles.pathIconBadge, { backgroundColor: theme.cardOutline + '20' }]}>
+                    <Ionicons name={pathContent.icon} size={24} color={theme.cardOutline} />
                   </View>
                   <View style={styles.learningPathTextCol}>
-                    <Text style={[styles.learningPathHeadline, { color: pathContent.color }]}>
+                    <Text style={[styles.learningPathHeadline, { color: theme.cardOutline }]}>
                       {pathContent.headline}
                     </Text>
                     <Text style={styles.learningPathDetail}>
                       {pathContent.detail}
                     </Text>
                     {motorProfile && (
-                      <Text style={[styles.sequenceTag, { color: pathContent.color + 'CC' }]}>
+                      <Text style={[styles.sequenceTag, { color: theme.cardOutline + 'CC' }]}>
                         {motorProfile.recommendedSequence}
                       </Text>
                     )}
@@ -611,11 +504,11 @@ export default function LetterHomeScreen({ route, navigation }) {
                 </View>
                 <TouchableOpacity
                   onPress={() => requestGatedAction('why')}
-                  style={[styles.whyBtn, { borderColor: pathContent.color + '50', backgroundColor: pathContent.color + '12' }]}
+                  style={[styles.whyBtn, { borderColor: theme.cardOutline + '50', backgroundColor: theme.cardOutline + '12' }]}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="information-circle-outline" size={14} color={pathContent.color} />
-                  <Text style={[styles.whyBtnText, { color: pathContent.color }]}>Why?</Text>
+                  <Ionicons name="information-circle-outline" size={14} color={theme.cardOutline} />
+                  <Text style={[styles.whyBtnText, { color: theme.cardOutline }]}>Why?</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -634,13 +527,6 @@ export default function LetterHomeScreen({ route, navigation }) {
                 })}
                 activeOpacity={0.9}
               >
-                <LinearGradient
-                  colors={['#EFFAEC', '#D8F0D0']}
-                  style={StyleSheet.absoluteFillObject}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                />
-                <CardLandscape variant="letters" />
                 <View style={styles.modeIconCircle}>
                   <Text style={styles.aaIconText}>Aa</Text>
                 </View>
@@ -665,13 +551,6 @@ export default function LetterHomeScreen({ route, navigation }) {
                 accessibilityRole="button"
                 accessibilityLabel="Words"
               >
-                <LinearGradient
-                  colors={['#F6EEFC', '#E8D6F5']}
-                  style={StyleSheet.absoluteFillObject}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                />
-                <CardLandscape variant="words" />
                 <View style={[styles.modeIconCircle, { backgroundColor: '#EDE7F6' }]}>
                   <Ionicons name="book-outline" size={38} color="#7B1FA2" />
                 </View>
@@ -693,70 +572,87 @@ export default function LetterHomeScreen({ route, navigation }) {
 
           </View>
 
-          {/* ── Side column ── */}
-          <View style={styles.sideColumn}>
-
-            {/* The student's avatar, moved here from the top bar — sits at
-                the top of this column, roughly level with the hero section
-                on the left, so the column doesn't start with empty space
-                above "Your Progress". No frame/border — just the image. */}
-            <View style={styles.sideAvatarCard}>
-              <Image
-                source={avatarSource}
-                style={styles.sideAvatarImg}
-                resizeMode="contain"
-              />
-            </View>
-
-            {/* "Your Progress" panel — pushed down by the avatar card above
-                it, landing roughly level with the Learning Path / Letters-
-                Words cards instead of starting at the very top. */}
-            <View style={[styles.progressPanel, { borderColor: theme.button + '25' }]}>
-              <View style={styles.progressPanelHeader}>
-                <Ionicons name="trophy" size={18} color="#F5A623" />
-                <Text style={styles.progressPanelTitle}>Your Progress</Text>
-              </View>
-
-              <ProgressRing percent={progressPercent} color={theme.button} />
-
-              <Text style={styles.progressPanelLabel}>Overall Progress</Text>
-              <Text style={styles.progressPanelNote}>{progressEncouragement(progressPercent)}</Text>
-
-              <View style={styles.progressPanelStat}>
-                <Ionicons name="book-outline" size={14} color={theme.button} />
-                <Text style={styles.progressPanelStatText}>{completedLetterCount} of 52 letters done</Text>
-              </View>
-              <View style={[styles.progressPanelStat, styles.wordsProgressStat]}>
-                <Ionicons name="book-outline" size={14} color="#7B1FA2" />
-                <Text style={styles.progressPanelStatText}>
-                  Words are unlocked
-                </Text>
-              </View>
-            </View>
-
-          </View>
-
         </View>
 
-        {/* ── Assessment Summary Modal ── */}
+        {/* ── "Your Progress" pop-up (Progress button) ──
+            The same panel that used to sit beside the cards, now opened on
+            demand so the cards have the screen to themselves. Tapping the
+            dimmed backdrop or Close dismisses it. */}
+        <Modal
+          visible={showProgress}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowProgress(false)}
+        >
+          <TouchableOpacity
+            style={styles.popupOverlay}
+            activeOpacity={1}
+            onPress={() => setShowProgress(false)}
+          >
+            {/* Inner touchable swallows taps so only the backdrop closes it. */}
+            <TouchableOpacity activeOpacity={1}>
+              <View style={[styles.progressPanel, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+                <View style={styles.progressPanelHeader}>
+                  <Ionicons name="trophy" size={18} color="#F5A623" />
+                  <Text style={styles.progressPanelTitle}>Your Progress</Text>
+                </View>
+
+                <ProgressRing percent={progressPercent} color={theme.button} />
+
+                <Text style={styles.progressPanelLabel}>Overall Progress</Text>
+                <Text style={styles.progressPanelNote}>{progressEncouragement(progressPercent)}</Text>
+
+                <View style={styles.progressPanelStat}>
+                  <Ionicons name="book-outline" size={14} color={theme.button} />
+                  <Text style={styles.progressPanelStatText}>{completedLetterCount} of 52 letters done</Text>
+                </View>
+                <View style={[styles.progressPanelStat, styles.wordsProgressStat]}>
+                  <Ionicons name="book-outline" size={14} color="#7B1FA2" />
+                  <Text style={styles.progressPanelStatText}>
+                    Words are unlocked
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.progressCloseBtn, { backgroundColor: theme.button }]}
+                  onPress={() => setShowProgress(false)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.progressCloseText, { color: theme.buttonText }]}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* ── Assessment Summary Modal ──
+            A pop-up card over the dimmed screen, like the Progress pop-up,
+            rather than a full-screen page. Still opened only through the
+            grown-up gate (requestGatedAction('assessment')). Tapping the
+            backdrop or the close button dismisses it. */}
         <Modal
           visible={showSummary}
-          animationType="slide"
+          transparent
+          animationType="fade"
           onRequestClose={() => setShowSummary(false)}
         >
-          <LinearGradient
-            colors={theme.backgroundGradient}
-            style={styles.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
+          <TouchableOpacity
+            style={styles.popupOverlay}
+            activeOpacity={1}
+            onPress={() => setShowSummary(false)}
           >
-            <SafeAreaView style={styles.safe}>
+            {/* Inner touchable swallows taps so only the backdrop closes it. */}
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}
+            >
 
               {/* Modal header bar */}
               <View style={styles.modalHeader}>
+                {/* Same icon circle as the landing pages' titles. */}
                 <View style={styles.modalTitleRow}>
-                  <View style={[styles.modalTitleIcon, { backgroundColor: theme.button + '20' }]}>
-                    <Ionicons name="clipboard-outline" size={20} color={theme.button} />
+                  <View style={[styles.modalTitleIcon, { backgroundColor: theme.cardOutline }]}>
+                    <Ionicons name="clipboard" size={18} color="#FFF" />
                   </View>
                   <Text style={[styles.modalTitle, { color: theme.headingText }]}>
                     Assessment Summary
@@ -764,30 +660,24 @@ export default function LetterHomeScreen({ route, navigation }) {
                 </View>
                 <TouchableOpacity
                   onPress={() => setShowSummary(false)}
-                  style={[styles.modalCloseBtn, { backgroundColor: theme.button + '15' }]}
+                  style={[styles.modalCloseBtn, { backgroundColor: theme.cardOutline + '1F' }]}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Close"
                 >
-                  <Ionicons name="close" size={24} color={theme.headingText} />
+                  <Ionicons name="close" size={22} color={theme.headingText} />
                 </TouchableOpacity>
               </View>
 
-              {/* Main card — fills remaining space, no scroll */}
-              <View style={styles.modalCard}>
+              {/* Card body — sized to its content, no scroll */}
+              <View style={styles.modalBody}>
 
-                {/* Student banner */}
-                <View style={[styles.modalStudentBanner, { backgroundColor: theme.button + '0F' }]}>
-                  <Image
-                    source={avatarSource}
-                    style={styles.modalStudentAvatar}
-                    resizeMode="contain"
-                  />
-                  <View>
-                    <Text style={[styles.modalChildName, { color: theme.headingText }]}>
-                      {student?.full_name}
-                    </Text>
-                    <Text style={styles.modalChildSub}>Shape Assessment Results</Text>
+                {/* Top line: the one number that sums it up, centred, so the
+                    overall result is seen first. */}
+                {summaryShapes.length > 0 && (
+                  <View style={styles.summaryTopRow}>
+                    <OverallScoreCard theme={theme} label="Overall Assessment Score" score={overallShapeScore} />
                   </View>
-                </View>
+                )}
 
                 {/* Shape rows — fills available space evenly.
                     Screen-consistency fix: ONE 6-shape data shape and ONE
@@ -803,42 +693,43 @@ export default function LetterHomeScreen({ route, navigation }) {
                        assessment was never finalized into a Feature 1
                        baseline.
                     3. Neither available yet → loading / empty state. */}
+                {/* Shapes as a 2-column grid of tiles (3 rows of 2) — uses the
+                    pop-up's width instead of one long list. Each tile: icon,
+                    name and result label on top; bar and % underneath. */}
                 {summaryShapes.length > 0 ? (
-                  <>
-                    <View style={styles.modalShapeList}>
-                      {summaryShapes.map((item, index) => {
-                        const score    = shapeScores[index];
-                        const badge    = getScoreBadge(score);
-                        const indicatorPercent = Math.max(0, Math.min(100, score ?? 0));
-                        return (
-                          <View key={item.shapeId ?? index} style={styles.shapeRow}>
+                  <View style={styles.modalShapeList}>
+                    {summaryShapes.map((item, index) => {
+                      const score    = shapeScores[index];
+                      const badge    = getScoreBadge(score);
+                      const indicatorPercent = Math.max(0, Math.min(100, score ?? 0));
+                      return (
+                        <View key={item.shapeId ?? index} style={styles.shapeRow}>
+                          <View style={styles.shapeTileTop}>
                             <View style={[styles.shapeIconWrap, { backgroundColor: badge.bg }]}>
                               <AssessmentShapeIcon shapeId={item.shapeId} color={badge.color} />
                             </View>
-                            <View style={styles.shapeMetricColumn}>
-                              <Text style={styles.shapeName} numberOfLines={1}>
-                                {formatShapeName(item.shapeId ?? '')}
-                              </Text>
-                              <View style={styles.shapeProgressTrack}>
-                                <View style={[
-                                  styles.shapeProgressFill,
-                                  { width: `${indicatorPercent}%`, backgroundColor: badge.color },
-                                ]} />
-                              </View>
-                            </View>
-                            <Text style={styles.shapeScoreText}>{score != null ? `${score}%` : 'N/A'}</Text>
+                            <Text style={styles.shapeName} numberOfLines={1}>
+                              {formatShapeName(item.shapeId ?? '')}
+                            </Text>
                             <View style={[styles.badge, { backgroundColor: badge.bg }]}>
                               <Text style={[styles.badgeText, { color: badge.color }]}>
                                 {badge.label}
                               </Text>
                             </View>
                           </View>
-                        );
-                      })}
-                    </View>
-
-                    <OverallScoreCard theme={theme} label="Overall Assessment Score" score={overallShapeScore} />
-                  </>
+                          <View style={styles.shapeMetricColumn}>
+                            <View style={styles.shapeProgressTrack}>
+                              <View style={[
+                                styles.shapeProgressFill,
+                                { width: `${indicatorPercent}%`, backgroundColor: badge.color },
+                              ]} />
+                            </View>
+                            <Text style={styles.shapeScoreText}>{score != null ? `${score}%` : 'N/A'}</Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
                 ) : initialShapesSummary.status === 'loading' ? (
                   <View style={styles.summaryLoadingRow}>
                     <ActivityIndicator size="small" color={theme.button} />
@@ -850,8 +741,8 @@ export default function LetterHomeScreen({ route, navigation }) {
 
               </View>
 
-            </SafeAreaView>
-          </LinearGradient>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
 
         {/* ── "Why this order?" XAI Modal ── */}
@@ -921,154 +812,148 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe:     { flex: 1 },
 
-  // Decorative background bubbles
-  bgBubbleLarge: {
+  // ── Decorative background shapes (Concept / Dialogue landing pages) ──────
+  blob: {
     position: 'absolute',
-    top: '-6%',
-    right: '-14%',
+    borderRadius: 999,
+    opacity: 0.08,
   },
-  bgBubbleMedium: {
-    position: 'absolute',
-    bottom: '4%',
-    left: '-10%',
+  blobTopRight: {
+    width: 220,
+    height: 220,
+    top: -60,
+    right: -60,
   },
-  bgBubbleSmall: {
-    position: 'absolute',
-    top: '42%',
-    right: '-5%',
+  blobBottomLeft: {
+    width: 260,
+    height: 260,
+    bottom: -80,
+    left: -80,
   },
 
-  // Top bar
+  // ── Top bar: back | title | grown-up buttons ───────────────────────────
+  // The two side groups share the leftover width equally (flex: 1) so the
+  // title stays centred even though the button group is wider than Back.
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
   },
-  // Column now — no avatar to sit alongside since it moved to the side
-  // column (see sideAvatarCard below).
   leftGroup: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
-  nameRow: {
-    flexDirection: 'column',
+  // Overrides ScreenBackButton's tinted look with the landing pages' round,
+  // translucent white button (its 40px size comes from ScreenBackButton).
+  iconBtn: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  studentName: {
-    fontSize: 17,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
-  },
-  studentSubLabel: {
-    fontSize: 12,
-    color: '#888888',
-    marginTop: 1,
-  },
-  topBtnGroup: {
+  // marginTop matches ConceptCategoriesScreen / DialogueLandingScreen, so the
+  // title sits at the same height on every module landing page.
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginTop: 70,
   },
-  dashboardBtn: {
+  titleIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  title: {
+    fontSize: 34,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontFamily: 'DMSans_600SemiBold',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.lg,
+  },
+  topBtnGroup: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  topBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1.5,
     minHeight: 40,
   },
-  dashboardBtnText: {
+  topBtnText: {
     fontSize: 13,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_700Bold',
   },
-  // Grown-ups-only cluster (Assessment + Progress, both gated) — quiet grey,
-  // deliberately smaller and less colorful than Dashboard or the Letters/
-  // Words cards, so a child's attention isn't pulled toward controls that
+  // Grown-ups-only cluster (Assessment + Progress, both gated) — quiet,
+  // deliberately smaller and less colorful than the Letters/Words cards,
+  // so a child's attention isn't pulled toward controls that
   // aren't meant for them.
   // Main content
-  // Two columns: the main choice column (hero + learning path + Letters/
-  // Words) alongside a dedicated "Your Progress" side panel — same data as
-  // before (progressPercent/lowercaseProgress), just laid out the way a
-  // wide tablet screen has room for, instead of a single centered column.
-  // No flex:1 here, and alignItems:'stretch' (not 'flex-start') — the two
-  // columns should size to match each other (sideColumn stretched to
-  // mainColumn's natural content height), not to the full remaining screen
-  // height, so "Your Progress" ends up matching the height of [Learning
-  // Path card + Letters/Words row] rather than stretching to the bottom of
-  // the screen.
-  // More outer breathing room (32 → 44), and mainColumn now has a maxWidth
-  // (see below) rather than filling all available width — so the whole
-  // [mainColumn + sideColumn] block is narrower than the screen and
-  // justifyContent:'center' actually has room to center it, instead of
-  // mainColumn consuming every pixel up to sideColumn.
+  // One column (learning path + Letters/Words), centred both ways in the
+  // space under the subtitle — the same placement as DialogueLandingScreen's
+  // body. "Your Progress" used to sit in a side column here; it now opens
+  // from the Progress button as a pop-up. The extra bottom padding lifts
+  // the centred block a little, as the landing pages do.
   mainContent: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'stretch',
+    alignItems: 'center',
     paddingHorizontal: 44,
-    paddingTop: 6,
-    paddingBottom: 20,
-    gap: 20,
+    paddingBottom: 48,
   },
-  // Capped width so the Letters/Words cards come out closer to square
-  // (width roughly matching their height) instead of being stretched wide
-  // — also what makes the centering above actually visible. Widened back
-  // up from an earlier, too-small 480 to 560. gap widened further (36 →
-  // 44) so pathRow's bottom edge lands level with the progress panel's
-  // bottom edge, instead of relying on stretching the progress panel
-  // (see its own note — that caused a real overflow bug last time).
+  // Capped width so the Letters/Words cards stay close to square instead of
+  // being stretched wide — and so justifyContent:'center' above has room to
+  // centre the column. Wider than before (560 → 680) now that the side
+  // panel is gone.
   mainColumn: {
     flex: 1,
-    maxWidth: 560,
-    gap: 44,
+    maxWidth: 680,
+    gap: 22,
     alignItems: 'stretch',
-  },
-
-  // ── Hero section ──────────────────────────────────────────────────────────
-  heroSection: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  heroGreeting: {
-    fontSize: 30,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
-    textAlign: 'center',
-    letterSpacing: 0.3,
-  },
-  heroSubtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    textAlign: 'center',
-    opacity: 0.85,
   },
 
   // ── Learning Path Card ─────────────────────────────────────────────────────
+  // Landing-page card frame (28 radius, 3px outline, soft shadow); surface
+  // and outline colours come from the avatar theme.
   learningPathCard: {
     width: '100%',
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 28,
+    borderWidth: 3,
     padding: 18,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  learningPathAvatar: {
-    position: 'absolute',
-    right: -6,
-    bottom: -10,
-    width: 92,
-    height: 92,
-    opacity: 0.16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   learningPathHeader: {
     flexDirection: 'row',
@@ -1095,8 +980,7 @@ const styles = StyleSheet.create({
   },
   learningPathHeadline: {
     fontSize: 15,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   learningPathDetail: {
     fontSize: 13,
@@ -1105,8 +989,7 @@ const styles = StyleSheet.create({
   },
   sequenceTag: {
     fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     marginTop: 2,
     letterSpacing: 0.3,
   },
@@ -1122,8 +1005,7 @@ const styles = StyleSheet.create({
   },
   whyBtnText: {
     fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 
   // ── Letters / Words cards ──────────────────────────────────────────────────
@@ -1133,48 +1015,32 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
+  // Same frame as the landing pages' CategoryCard / LevelCard: 28 radius,
+  // 3px outline, soft shadow. Each card keeps its own colour identity.
   learningModeCard: {
     flex: 1,
-    borderRadius: 26,
+    borderRadius: 28,
     paddingVertical: 26,
     paddingHorizontal: 18,
     minHeight: 300,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    borderWidth: 2,
+    borderWidth: 3,
     overflow: 'hidden',
     position: 'relative',
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
 
+  // White, like the landing pages' cards; the green lives in the outline,
+  // icon circle and title.
   lettersCard: {
-    flex: 1,
-    backgroundColor: '#F1F8E9',
-    borderRadius: 26,
-    paddingVertical: 26,
-    paddingHorizontal: 18,
-    minHeight: 300,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
     borderColor: '#A5D6A7',
-    overflow: 'hidden',
-    position: 'relative',
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardLandscapeBand: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '40%',
-    overflow: 'hidden',
   },
   modeIconCircle: {
     width: 82,
@@ -1189,22 +1055,19 @@ const styles = StyleSheet.create({
   // matches the reference design directly.
   aaIconText: {
     fontSize: 34,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#2E7D32',
   },
   lettersTitle: {
     fontSize: 26,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#2E7D32',
     zIndex: 1,
   },
   modeSubLabel: {
     fontSize: 13,
     color: '#555555',
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'DMSans_600SemiBold',
     lineHeight: 18,
     minHeight: 36,
     maxWidth: '94%',
@@ -1215,23 +1078,30 @@ const styles = StyleSheet.create({
   // only (the whole card is already the tap target), matching how clearly
   // spelled-out, unambiguous actions help an ASD child know exactly what
   // happens when they tap.
+  // The concept screens' raised 3D "Ready!" button, card-sized.
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 18,
-    paddingRight: 8,
-    paddingVertical: 8,
-    borderRadius: 24,
+    paddingLeft: 20,
+    paddingRight: 10,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
     marginTop: 4,
     minWidth: 150,
     justifyContent: 'center',
     zIndex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 4,
   },
   startBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 15,
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#FFFFFF',
   },
   startBtnChevronWrap: {
@@ -1243,68 +1113,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  // White, with the purple in the outline and the bottom hills.
   wordsCard: {
-    flex: 1,
-    backgroundColor: '#F3E5F5',
-    borderRadius: 26,
-    paddingVertical: 26,
-    paddingHorizontal: 18,
-    minHeight: 300,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
     borderColor: '#CE93D8',
-    overflow: 'hidden',
-    position: 'relative',
-    shadowColor: '#7B1FA2',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 2,
   },
   wordsTitle: {
     fontSize: 26,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#7B1FA2',
     zIndex: 1,
   },
 
-  // ── Side column: avatar + Your Progress panel ──────────────────────────────
-  sideColumn: {
-    width: 260,
-    gap: 18,
-    justifyContent: 'space-between',
-  },
-  // Fills the vertical gap above the progress panel — roughly level with
-  // the hero section on the left, so the side column doesn't start empty.
-  // No border/background/shadow — just the image, no card frame around it.
-  sideAvatarCard: {
-    width: '100%',
-    height: 210,
+  // ── "Your Progress" pop-up ─────────────────────────────────────────────────
+  // Dimmed backdrop shared by the Progress and Assessment pop-ups; the card
+  // is centred on it, and tapping the backdrop closes.
+  popupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sideAvatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  // flex:1 (matching the left column's stretched height) turned out
-  // unreliable here — a flex-grow child inside a column whose own height
-  // is itself content-derived (no ancestor gives mainContent an explicit
-  // height) doesn't reliably get a definite size to grow into, and the
-  // ring/text ended up overflowing past the card's rounded edges. Sized to
-  // its own content instead, with generous padding so nothing is tight;
-  // height parity with the left side is now achieved via more generous
-  // spacing on the left (see mainColumn's gap) rather than stretching this
-  // card to fit. overflow:hidden is a safety net, not the real fix — it
-  // should never actually need to clip anything now.
+  // Landing-page card frame; surface and outline come from the avatar theme.
+  // Sized to its own content — a small pop-up, not a full sheet.
   progressPanel: {
-    width: '100%',
-    backgroundColor: '#FFFBF0',
-    borderRadius: 26,
-    borderWidth: 1.5,
+    width: 300,
+    borderRadius: 28,
+    borderWidth: 3,
     paddingVertical: 26,
     paddingHorizontal: 18,
     alignItems: 'center',
@@ -1312,9 +1147,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   progressPanelHeader: {
     flexDirection: 'row',
@@ -1324,21 +1159,18 @@ const styles = StyleSheet.create({
   },
   progressPanelTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#3A2E1F',
   },
   ringPercentText: {
     position: 'absolute',
     fontSize: 22,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#3A2E1F',
   },
   progressPanelLabel: {
     fontSize: 14,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#3A2E1F',
     marginTop: 10,
   },
@@ -1361,99 +1193,114 @@ const styles = StyleSheet.create({
   },
   progressPanelStatText: {
     fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#555555',
   },
   wordsProgressStat: {
     marginTop: 6,
     backgroundColor: '#F7F1FA',
   },
+  // The concept screens' 3D button, small.
+  progressCloseBtn: {
+    marginTop: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+  },
+  progressCloseText: {
+    fontSize: 15,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
   // ── Assessment Summary Modal ───────────────────────────────────────────────
+  // The pop-up card itself: landing-page frame (28 radius, 3px theme
+  // outline), sized to its content and capped so it always fits on screen.
+  modalCard: {
+    width: '92%',
+    maxWidth: 760,
+    maxHeight: '94%',
+    borderRadius: 28,
+    borderWidth: 3,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 26,
-    paddingVertical: 12,
+    paddingBottom: 12,
   },
   modalTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
+  // Same icon circle as the landing pages' titles (titleIconCircle).
   modalTitleIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
+  },
+  modalCloseBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalTitle: {
-    fontSize: 23,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+  modalBody: {
+    gap: 14,
   },
-  modalCloseBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCard: {
-    flex: 1,
-    width: '94%',
-    maxWidth: 920,
-    alignSelf: 'center',
-    marginBottom: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 16,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  modalStudentBanner: {
+
+  // ── Top line: overall score, centred ────────────────────────────────────
+  summaryTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  modalStudentAvatar: {
-    width: 60,
-    height: 60,
-  },
-  modalChildName: {
-    fontSize: 19,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
-  },
-  modalChildSub: {
-    fontSize: 13,
-    color: '#888888',
-    marginTop: 2,
-  },
-  modalShapeList: {
-    flex: 1,
     justifyContent: 'center',
-    gap: 6,
+  },
+
+  // ── Shape tiles: 2 columns × 3 rows ─────────────────────────────────────
+  // No flex here: the pop-up sizes to its content. flexBasis just under
+  // half + flexGrow puts exactly two tiles on each row, filling the width.
+  modalShapeList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 18,
   },
   shapeRow: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 16,
+    // White tile, light-brown frame.
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#DCC7B0',
+  },
+  shapeTileTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    height: 52,
-    paddingHorizontal: 11,
-    borderRadius: 13,
-    backgroundColor: '#F8F9FB',
-    borderWidth: 1,
-    borderColor: '#EEF0F3',
   },
   shapeIconWrap: {
     width: 36,
@@ -1464,86 +1311,64 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   shapeName: {
+    flex: 1,
     fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#333333',
   },
+  // Bottom line of a tile: the bar, then its %.
   shapeMetricColumn: {
-    flex: 1,
-    minWidth: 120,
-    gap: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   shapeProgressTrack: {
-    width: '100%',
-    height: 4,
-    borderRadius: 2,
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#E7E9ED',
     overflow: 'hidden',
   },
   shapeProgressFill: {
     height: '100%',
-    borderRadius: 2,
-    opacity: 0.72,
+    borderRadius: 3,
+    opacity: 0.8,
   },
   shapeScoreText: {
-    width: 58,
+    minWidth: 44,
     fontSize: 15,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#3F4550',
     textAlign: 'right',
   },
   badge: {
-    width: 120,
-    minHeight: 28,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 14,
+    minWidth: 84,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
+  // Ring, label and badge stacked and centred; sized to its content so it
+  // sits centred on its line.
   overallCard: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 13,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 11,
-  },
-  overallIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
+    gap: 6,
   },
   overallLabel: {
-    fontSize: 13,
+    marginTop: 4,
+    fontSize: 14,
     color: '#6D7280',
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-  },
-  overallContent: {
-    flex: 1,
+    fontFamily: 'DMSans_700Bold',
   },
   overallResultRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 2,
-  },
-  overallValue: {
-    fontSize: 24,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    justifyContent: 'center',
   },
   overallBadge: {
     minWidth: 112,
@@ -1554,8 +1379,7 @@ const styles = StyleSheet.create({
   },
   overallBadgeText: {
     fontSize: 12,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
   overallNote: {
     fontSize: 11,
@@ -1571,10 +1395,12 @@ const styles = StyleSheet.create({
   },
   summaryLoadingText: {
     fontSize: 14,
+    fontFamily: 'DMSans_600SemiBold',
     color: '#888888',
   },
   emptyText: {
     fontSize: 14,
+    fontFamily: 'DMSans_600SemiBold',
     color: '#999999',
     textAlign: 'center',
     marginTop: 20,
@@ -1603,8 +1429,7 @@ const styles = StyleSheet.create({
   },
   xaiTitle: {
     fontSize: 17,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A1A',
     flexShrink: 1,
     marginRight: 8,
@@ -1632,8 +1457,7 @@ const styles = StyleSheet.create({
   },
   xaiScoreValue: {
     fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
     color: '#1A1A1A',
   },
   xaiCloseBtn: {
@@ -1643,7 +1467,6 @@ const styles = StyleSheet.create({
   },
   xaiCloseBtnText: {
     fontSize: 15,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
   },
 });

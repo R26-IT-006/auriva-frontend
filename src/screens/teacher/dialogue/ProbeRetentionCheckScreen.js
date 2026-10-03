@@ -7,6 +7,7 @@ import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { dialogueApi } from '../../../api/dialogue';
 import { cat3Api } from '../../../api/cat3';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend).
 // Shared/category-agnostic, reached only from ProbeProductionScreen.js when
@@ -246,15 +247,19 @@ export default function ProbeRetentionCheckScreen({ route, navigation }) {
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           {/* "Not now" exit — ungated, no hardware-back interception; a probe is optional and low-stakes */}
-          <TouchableOpacity onPress={exitToOverview} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="close" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={exitToOverview} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="close" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>Quick check-in</Text>
           <View style={styles.headerSide} />
         </View>
       </SafeAreaView>
 
-      <View style={[styles.gradient, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.gradient}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.body}>
 
@@ -262,7 +267,7 @@ export default function ProbeRetentionCheckScreen({ route, navigation }) {
               <>
                 <Text style={[styles.title, { color: theme.headingText }]}>
                   {"Where do we say '"}
-                  <Text style={{ color: theme.button, fontWeight: '800' }}>{wordLabel}</Text>
+                  <Text style={{ color: theme.button, fontFamily: 'DMSans_800ExtraBold' }}>{wordLabel}</Text>
                   {"'?"}
                 </Text>
                 <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -303,7 +308,7 @@ export default function ProbeRetentionCheckScreen({ route, navigation }) {
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -322,7 +327,21 @@ const styles = StyleSheet.create({
     paddingVertical:   12,
   },
   headerSide:  { width: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
 
   body: {
     flex:              1,
@@ -335,7 +354,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize:     Layout.fontSize.xl,
-    fontWeight:   '700',
+    fontFamily: 'DMSans_700Bold',
     textAlign:    'center',
     marginBottom: Layout.spacing.xs,
   },
@@ -360,19 +379,19 @@ const styles = StyleSheet.create({
   cardImage: { width: '100%', height: 104 },
   cardCaption: {
     fontSize:          Layout.fontSize.xs,
-    fontWeight:         '600',
+    fontFamily: 'DMSans_600SemiBold',
     textAlign:          'center',
     paddingHorizontal:  Layout.spacing.xs,
     paddingVertical:    Layout.spacing.sm,
   },
 
   closingWrap: { alignItems: 'center', gap: Layout.spacing.lg },
-  closingText: { fontSize: Layout.fontSize.xl, fontWeight: '700', textAlign: 'center' },
+  closingText: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_700Bold', textAlign: 'center' },
   doneBtn: {
     paddingHorizontal: Layout.spacing.xl,
     paddingVertical:   Layout.spacing.md,
     borderRadius:      Layout.radius.full,
     ...Layout.shadow.md,
   },
-  doneBtnText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  doneBtnText: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold' },
 });

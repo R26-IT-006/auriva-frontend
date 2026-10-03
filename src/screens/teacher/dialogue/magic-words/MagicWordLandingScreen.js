@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   Modal,
@@ -12,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
@@ -28,11 +29,14 @@ const WORD_LABELS = {
   excuse_me: 'EXCUSE ME',
 };
 
-const AVATAR_DANCING_VIDEOS = {
-  lily:     require('../../../../../assets/avatar-videos/LilyDancing.mp4'),
-  megatron: require('../../../../../assets/avatar-videos/MegatronDancing.mp4'),
-  boba:     require('../../../../../assets/avatar-videos/Boba_Dancing.mp4'),
-  glitter:  require('../../../../../assets/avatar-videos/GlitterDancing.mp4'),
+// Same per-avatar photos as the handwriting screens (LetterHomeScreen etc.).
+// A still image rather than a video: nothing moves or plays sound while the
+// child takes in the word.
+const AVATAR_IMAGES = {
+  boba:     require('../../../../../assets/handwriting-avatars/Boba.png'),
+  glitter:  require('../../../../../assets/handwriting-avatars/Glitter.png'),
+  lily:     require('../../../../../assets/handwriting-avatars/Lily.png'),
+  megatron: require('../../../../../assets/handwriting-avatars/Megatron.png'),
 };
 
 const PROGRESS_FRACTION = 0.08;
@@ -43,13 +47,17 @@ export default function MagicWordLandingScreen({ route, navigation }) {
   const wordLabel = WORD_LABELS[wordKey] ?? wordKey.replace(/_/g, ' ').toUpperCase();
 
   const avatarKey = student?.avatar_key ?? 'lily';
-  const videoSource = AVATAR_DANCING_VIDEOS[avatarKey] ?? AVATAR_DANCING_VIDEOS.lily;
+  const avatarImage = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const videoWidth  = Math.min(screenWidth * 0.6, screenHeight * 0.45 * (3 / 4));
-  const videoHeight = videoWidth * (4 / 3);
-
-  const videoRef = useRef(null);
+  // The avatar photos are square (500×500), so the frame is square too. It
+  // fills the measured space between the word and the button, capped so it
+  // stays a companion to the word rather than dominating the screen.
+  const [avatarAreaHeight, setAvatarAreaHeight] = useState(0);
+  const avatarSize = Math.max(
+    0,
+    Math.min(avatarAreaHeight - 24, screenWidth * 0.52, screenHeight * 0.45),
+  );
 
   const [showGate, setShowGate]         = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -87,17 +95,14 @@ export default function MagicWordLandingScreen({ route, navigation }) {
     }
   }
 
-  // Stop audio when navigating away; also intercept Android hardware back
+  // Intercept Android hardware back
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
         goBackSmart();
         return true;
       });
-      return () => {
-        sub.remove();
-        videoRef.current?.pauseAsync().catch(() => {});
-      };
+      return () => sub.remove();
     }, [])
   );
 
@@ -145,9 +150,9 @@ export default function MagicWordLandingScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={goBackSmart}
             activeOpacity={0.7}
-            style={styles.headerSide}
+            style={styles.iconBtn}
           >
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
 
           {/* Progress bar */}
@@ -158,9 +163,9 @@ export default function MagicWordLandingScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={openSettings}
             activeOpacity={0.7}
-            style={styles.headerSide}
+            style={styles.iconBtn}
           >
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -175,32 +180,50 @@ export default function MagicWordLandingScreen({ route, navigation }) {
         />
       )}
 
-      {/* ── Body ──────────────────────────────────────────── */}
-      <View style={[styles.gradient, { backgroundColor: theme.background }]}>
+      {/* ── Body ──────────────────────────────────────────────
+          One column, one path: the word (what this screen is about), the
+          avatar, then Next in a fixed spot — no decoration competing for
+          attention. Gradient matches the other module screens. */}
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.body}>
-            {/* Title */}
             <Text style={[styles.title, { color: theme.headingText }]}>
               {"Let's learn the word"}
             </Text>
-            <Text style={[styles.wordHighlight, { color: theme.button }]}>
-              "{wordLabel}"
-            </Text>
-
-            {/* Avatar dancing video */}
-            <View style={[styles.videoWrapper, { width: videoWidth, height: videoHeight }]}>
-              <Video
-                ref={videoRef}
-                source={videoSource}
-                style={styles.video}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay
-                isLooping
-                isMuted={false}
-              />
+            <View style={[styles.wordCard, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
+              <Text
+                style={[styles.wordHighlight, { color: theme.headingText }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {wordLabel}
+              </Text>
             </View>
 
-            {/* Next button */}
+            {/* Avatar photo — sized to the space left between the word and
+                the button, so it is as large as fits without ever pushing
+                Next off screen (e.g. when the probe banner shows). */}
+            <View
+              style={styles.avatarArea}
+              onLayout={(e) => setAvatarAreaHeight(e.nativeEvent.layout.height)}
+            >
+              {avatarSize > 0 && (
+                <Image
+                  source={avatarImage}
+                  style={{ width: avatarSize, height: avatarSize }}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+
+            {/* Next — same 3D button and bottom position as the concept
+                screens' "Ready!" button, so "go forward" is always found in
+                the same place. */}
             <TouchableOpacity
               style={[styles.nextBtn, { backgroundColor: theme.button }]}
               activeOpacity={0.85}
@@ -210,11 +233,11 @@ export default function MagicWordLandingScreen({ route, navigation }) {
               }}
             >
               <Text style={[styles.nextBtnText, { color: theme.buttonText }]}>Next</Text>
-              <Ionicons name="arrow-forward" size={18} color={theme.buttonText} style={{ marginLeft: 6 }} />
+              <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* ── Parent Gate ────────────────────────────────────── */}
       <ParentGateModal
@@ -263,10 +286,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
-  headerSide: {
+  // Same round translucent button as ConceptCategoriesScreen's iconBtn.
+  iconBtn: {
     width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   progressTrack: {
     flex: 1,
@@ -281,58 +313,65 @@ const styles = StyleSheet.create({
   },
 
   /* Body */
+  // Top → bottom: word, avatar (fills the middle), Next. paddingBottom puts
+  // Next where the concept screens' "Ready!" button sits (bottom: 80).
   body: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xl,
-    gap: 8,
+    paddingTop: Layout.spacing.lg,
+    paddingBottom: 80,
   },
   title: {
-    fontSize: Layout.fontSize.xl,
-    fontWeight: '700',
+    fontSize: Layout.fontSize.lg,
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
-    opacity: 0.75,
+    opacity: 0.7,
+    marginBottom: Layout.spacing.sm,
   },
-  titleSinhala: {
-    fontSize: Layout.fontSize.sm,
-    fontWeight: '600',
-    textAlign: 'center',
-    opacity: 0.65,
+  // The word is the one thing this screen teaches, so it is the largest,
+  // highest-contrast element: dark heading text on the light card surface.
+  wordCard: {
+    maxWidth: '90%',
+    paddingHorizontal: 36,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 2,
   },
   wordHighlight: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 52,
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    letterSpacing: 0.5,
-    marginBottom: Layout.spacing.md,
+    letterSpacing: 1,
   },
 
-  videoWrapper: {
-    borderRadius: Layout.radius.xl,
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-    marginBottom: Layout.spacing.xl,
-    ...Layout.shadow.sm,
-  },
-  video: {
-    width: '100%',
-    height: '100%',
+  avatarArea: {
+    flex: 1,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   /* Next button */
+  // Same 3D button as the concept screens' "Ready!" button (ConceptImageScreen fwdBtn).
   nextBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.full,
-    ...Layout.shadow.md,
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
   nextBtnText: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: '700',
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
   },
 
   /* Settings modal */

@@ -19,6 +19,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
@@ -508,21 +509,25 @@ export default function Phase3ContextualScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progressFraction * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       {/* ── Body ── */}
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.content}>
 
@@ -532,7 +537,7 @@ export default function Phase3ContextualScreen({ route, navigation }) {
 
             <Text style={[styles.title, { color: theme.headingText }]}>
               {"When do we say '"}
-              <Text style={{ color: theme.button, fontWeight: Layout.fontWeight.extrabold }}>
+              <Text style={{ color: theme.button, fontFamily: 'DMSans_800ExtraBold' }}>
                 {wordLabel}
               </Text>
               {"'?"}
@@ -671,7 +676,7 @@ export default function Phase3ContextualScreen({ route, navigation }) {
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* ── Parent Gate ── */}
       <ParentGateModal
@@ -716,9 +721,23 @@ const styles = StyleSheet.create({
     gap:               Layout.spacing.sm,
   },
   headerSide:    { width: 32, alignItems: 'center' },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   levelLabel: {
     fontSize:   Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'DMSans_700Bold',
   },
   progressTrack: {
     flex:            1,
@@ -745,7 +764,7 @@ const styles = StyleSheet.create({
   scenarioBadge: {
     alignSelf:         'center',
     fontSize:          Layout.fontSize.xs,
-    fontWeight:        Layout.fontWeight.bold,
+    fontFamily: 'DMSans_700Bold',
     paddingHorizontal: Layout.spacing.md,
     paddingVertical:   4,
     borderRadius:      Layout.radius.full,
@@ -757,7 +776,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize:     Layout.fontSize.xl,
-    fontWeight:   Layout.fontWeight.bold,
+    fontFamily: 'DMSans_700Bold',
     textAlign:    'center',
     marginBottom: Layout.spacing.xs,
   },
@@ -829,7 +848,7 @@ const styles = StyleSheet.create({
   },
   cardCaption: {
     fontSize:          Layout.fontSize.xs,
-    fontWeight:        Layout.fontWeight.semibold,
+    fontFamily: 'DMSans_600SemiBold',
     textAlign:         'center',
     paddingHorizontal: Layout.spacing.xs,
     paddingVertical:   Layout.spacing.sm,
@@ -861,7 +880,7 @@ const styles = StyleSheet.create({
   },
   speechText: {
     fontSize:   Layout.fontSize.sm,
-    fontWeight: Layout.fontWeight.bold,
+    fontFamily: 'DMSans_700Bold',
     textAlign:  'center',
   },
   bubbleTail: {
@@ -895,7 +914,7 @@ const styles = StyleSheet.create({
   },
   settingsTitle: {
     fontSize:     Layout.fontSize.md,
-    fontWeight:   '700',
+    fontFamily: 'DMSans_700Bold',
     color:        '#333',
     marginBottom: Layout.spacing.lg,
     textAlign:    'center',
@@ -908,7 +927,7 @@ const styles = StyleSheet.create({
   },
   settingsOptionText: {
     fontSize:   Layout.fontSize.md,
-    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
     color:      '#333',
   },
   settingsDivider: {
@@ -933,7 +952,7 @@ const styles = StyleSheet.create({
     borderRadius:      Layout.radius.full,
     borderWidth:       1.5,
   },
-  hearAgainText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.bold },
+  hearAgainText: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold' },
   confirmButton: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -942,5 +961,5 @@ const styles = StyleSheet.create({
     paddingVertical:   8,
     borderRadius:      Layout.radius.full,
   },
-  confirmButtonText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#FFFFFF' },
+  confirmButtonText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },
 });

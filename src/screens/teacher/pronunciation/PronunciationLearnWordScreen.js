@@ -32,7 +32,7 @@ import {
   setPronunciationPlaybackMode,
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
-import { AvatarIdentityBadge, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { AvatarIdentityBadge } from "./pronunciationDesignKit.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
 import {
   PronunciationAlert,
@@ -86,6 +86,12 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   const cardWidth = isCompact
     ? width - Layout.spacing.lg * 2
     : Math.min(Math.max(width * 0.7, 760), 1060);
+  // Landscape tablet: the card gets a fixed height that leaves room for the
+  // header, the headline and the Next button below it (~330), so it can never
+  // run off the bottom of the screen. The picture / letter panel is a square
+  // of the card's inner height (card padding 20 on each side).
+  const cardHeight = Math.max(260, Math.min(height - 330, 440));
+  const paneSize = cardHeight - 40;
   const flashcardWidth = isLandscape
     ? Math.min(width - 92, 820)
     : Math.min(width - 44, 680);
@@ -321,8 +327,27 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
   }
 
   return (
-    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.safe}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
+      {/* Back — Concept's round translucent header button. goBack still goes
+          through useExitSessionGuard's "Leave this activity?" check. */}
+      <View style={styles.topBar}>
+        <ButtonFeedback
+          activeOpacity={0.7}
+          onPress={() => navigation.goBack()}
+          style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+        </ButtonFeedback>
+      </View>
+
       <ScrollView
         contentContainerStyle={[
           styles.container,
@@ -344,6 +369,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
               styles.wordCard,
               !isWideTablet && styles.wordCardCompact,
               { width: cardWidth, backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
+              isWideTablet && { height: cardHeight, minHeight: 0 },
             ]}
           >
             <View style={styles.soundStage}>
@@ -365,6 +391,7 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                       style={[
                         styles.soundBlock,
                         isDenseWord && styles.soundBlockDense,
+                        isAlphabetMode && styles.soundBlockLetter,
                         isVowel && styles.soundBlockVowel,
                       ]}
                     >
@@ -374,12 +401,13 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                         style={[
                           styles.soundText,
                           isDenseWord && styles.soundTextDense,
+                          isAlphabetMode && styles.soundTextLetter,
                           { color: theme.headingText },
                         ]}
                       >
                         {soundLetters[index] || sound.text}
                       </Text>
-                      <Text style={[styles.soundType, isVowel && styles.soundTypeVowel]}>
+                      <Text style={[styles.soundType, isAlphabetMode && styles.soundTypeLetter, isVowel && styles.soundTypeVowel]}>
                         {sound.type}
                       </Text>
                     </View>
@@ -387,20 +415,21 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
                 })}
               </View>
 
+              {/* Concept's raised 3D button, in the avatar's button colour. */}
               <ButtonFeedback
                 activeOpacity={0.88}
                 onPress={handleHearSounds}
                 soundEnabled={false}
-                style={[styles.hearBtnWrap, isPlaying && styles.hearBtnActive]}
+                accessibilityRole="button"
+                accessibilityLabel="Hear sounds"
+                style={[
+                  styles.hearBtn,
+                  { backgroundColor: theme.button },
+                  isPlaying && styles.hearBtnActive,
+                ]}
               >
-                <ThemedGradientFill theme={theme} style={styles.hearBtn}>
-                  <Ionicons
-                    name="volume-high-outline"
-                    size={18}
-                    color="#FFFFFF"
-                  />
-                  <Text style={styles.hearBtnText}>Hear Sounds</Text>
-                </ThemedGradientFill>
+                <Ionicons name="volume-high" size={20} color={theme.buttonText} />
+                <Text style={[styles.hearBtnText, { color: theme.buttonText }]}>Hear Sounds</Text>
               </ButtonFeedback>
 
               {sinhalaTranslation ? (
@@ -411,7 +440,14 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
               ) : null}
             </View>
 
-            <View style={[styles.imagePane, !isWideTablet && styles.imagePaneCompact]}>
+            <View
+              style={[
+                styles.imagePane,
+                !isWideTablet && styles.imagePaneCompact,
+                // Square panel on a landscape tablet (see cardHeight).
+                isWideTablet && { width: paneSize, height: paneSize, minHeight: 0 },
+              ]}
+            >
               {isAlphabetMode ? (
                 <View style={[styles.wordImage, styles.letterPane, { backgroundColor: selectedWord?.color || theme.cardSurface }]}>
                   <Text style={[styles.letterPaneText, { color: theme.headingText }]}>
@@ -445,27 +481,17 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
           </View>
         </View>
 
-        <View
-          pointerEvents={isCompact ? "auto" : "box-none"}
-          style={isCompact ? styles.actionsRow : styles.actionsOverlay}
-        >
-          <ButtonFeedback
-            activeOpacity={0.82}
-            onPress={() => navigation.goBack()}
-            style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }]}
-          >
-            <Ionicons name="arrow-back" size={26} color={theme.headingText} />
-          </ButtonFeedback>
-
+        {/* Next — Concept's 3D "Ready!" button, centred under the card. */}
+        <View style={styles.actionsRow}>
           <ButtonFeedback
             activeOpacity={0.9}
             onPress={handleNext}
-            style={[styles.nextBtnWrap, isCompact && styles.nextBtnCompact]}
+            accessibilityRole="button"
+            accessibilityLabel="Next"
+            style={[styles.nextBtn, { backgroundColor: theme.button }]}
           >
-            <ThemedGradientFill theme={theme} style={styles.nextBtn}>
-              <Text style={styles.nextText}>Next</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-            </ThemedGradientFill>
+            <Text style={[styles.nextText, { color: theme.buttonText }]}>Next</Text>
+            <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
           </ButtonFeedback>
         </View>
       </ScrollView>
@@ -555,66 +581,99 @@ const styles = StyleSheet.create({
   safeInner: {
     flex: 1,
   },
+  // Header row holding the back button (ConceptCategoriesScreen topBar/iconBtn).
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   container: {
     flexGrow: 1,
-    minHeight: "100%",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.lg,
+    paddingBottom: Layout.spacing.xl,
   },
   containerCompact: {
     justifyContent: "flex-start",
   },
+  // The side buttons used to float here, so landscape kept 88px clear for
+  // them; with Back in the header and Next under the card, normal padding.
   containerLandscape: {
-    paddingHorizontal: 88,
+    paddingHorizontal: Layout.spacing.xl,
   },
   centerStage: {
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -40,
   },
   centerStageCompact: {
     marginTop: 0,
   },
+  // Same size as the module titles (Concept / Dialogue / Pronunciation
+  // Learning, 34) rather than the old 46.
   headline: {
-    fontSize: 46,
+    fontSize: 34,
+    lineHeight: 40,
     fontFamily: Layout.fonts.extrabold,
     color: "#1F4C66",
-    letterSpacing: 0,
-    marginBottom: 6,
+    letterSpacing: -0.3,
+    marginBottom: 4,
     textAlign: "center",
   },
   headlineCompact: {
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 26,
+    lineHeight: 32,
     marginBottom: 4,
   },
   headlineSinhala: {
-    fontSize: 28,
-    lineHeight: 36,
+    fontSize: 20,
+    lineHeight: 28,
     fontFamily: Layout.fonts.extrabold,
     letterSpacing: 0,
-    marginBottom: 26,
+    marginBottom: 20,
     textAlign: "center",
     opacity: 0.82,
   },
   headlineSinhalaCompact: {
-    fontSize: 22,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 26,
     marginBottom: Layout.spacing.lg,
   },
+  // Card styling as the Concept/Dialogue cards: thick theme outline (colour
+  // set inline), round corners, soft shadow. On a landscape tablet the height
+  // is fixed inline (cardHeight); the panes centre inside it.
   wordCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 24,
-    borderWidth: 1,
+    borderRadius: 28,
+    borderWidth: 3,
     borderColor: "#D7E1EC",
-    padding: 18,
-    flexDirection: "row",
-    alignItems: "stretch",
+    padding: 20,
+    // Reversed: the letter / picture panel sits on the left and the sound
+    // parts + Hear Sounds on the right. (Narrow screens stack them instead —
+    // see wordCardCompact.)
+    flexDirection: "row-reverse",
+    alignItems: "center",
     gap: 18,
     minHeight: 360,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   wordCardCompact: {
     flexDirection: "column",
@@ -656,6 +715,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     minHeight: 82,
   },
+  // Alphabet mode has a single sound part — show it big, so it fills its
+  // half of the card instead of sitting small in empty space.
+  soundBlockLetter: {
+    minWidth: 150,
+    minHeight: 160,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    borderRadius: 22,
+    borderWidth: 2,
+  },
   soundBlockVowel: {
     backgroundColor: "#FFF6EA",
     borderColor: "#F1DAC0",
@@ -665,6 +734,10 @@ const styles = StyleSheet.create({
     fontFamily: Layout.fonts.extrabold,
     color: "#3A4A61",
     lineHeight: 40,
+  },
+  soundTextLetter: {
+    fontSize: 72,
+    lineHeight: 82,
   },
   soundTextDense: {
     fontSize: 26,
@@ -677,30 +750,37 @@ const styles = StyleSheet.create({
     color: "#5C6A7E",
     textTransform: "lowercase",
   },
+  soundTypeLetter: {
+    marginTop: 8,
+    fontSize: 15,
+  },
   soundTypeVowel: {
     color: "#96610F",
   },
-  hearBtnWrap: {
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.9)",
-    overflow: "hidden",
-    ...Layout.shadow.md,
-  },
+  // Concept's raised 3D button (ConceptImageScreen fwdBtn), a little smaller
+  // than Next so the primary action stays the one under the card.
   hearBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingHorizontal: 18,
+    paddingHorizontal: 24,
     paddingVertical: 12,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: "rgba(0,0,0,0.22)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
+  // While the clip plays: dimmed slightly so the tap visibly registered.
   hearBtnActive: {
-    transform: [{ scale: 0.98 }],
+    opacity: 0.8,
   },
   hearBtnText: {
-    color: "#FFFFFF",
-    fontSize: Layout.fontSize.sm,
-    fontFamily: Layout.fonts.bold,
+    fontSize: 16,
+    fontFamily: "DMSans_800ExtraBold",
   },
   translationBox: {
     minWidth: 160,
@@ -793,75 +873,30 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.md,
     color: Colors.text.secondary,
   },
-  backBtn: {
-    position: "absolute",
-    left: 22,
-    top: "50%",
-    marginTop: -34,
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 3,
-    borderColor: "#4A5D79",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.3)",
-  },
-  backBtnCompact: {
-    position: "relative",
-    left: 0,
-    top: 0,
-    marginTop: 0,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  nextBtnWrap: {
-    position: "absolute",
-    right: 18,
-    top: "50%",
-    marginTop: -30,
-    minWidth: 158,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.85)",
-    overflow: "hidden",
-    ...Layout.shadow.md,
-  },
-  nextBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  nextBtnCompact: {
-    position: "relative",
-    right: 0,
-    top: 0,
-    marginTop: 0,
-    flex: 1,
-  },
-  actionsOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
   actionsRow: {
     width: "100%",
-    maxWidth: 520,
-    marginTop: Layout.spacing.lg,
+    marginTop: Layout.spacing.xl,
+    alignItems: "center",
+  },
+  // Next — ConceptImageScreen's fwdBtn ("Ready!").
+  nextBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Layout.spacing.md,
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: "rgba(0,0,0,0.22)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
   nextText: {
-    color: "#FFFFFF",
-    fontSize: 30,
-    fontFamily: Layout.fonts.bold,
+    fontSize: 17,
+    fontFamily: "DMSans_800ExtraBold",
   },
   flashcardModal: {
     flex: 1,

@@ -58,7 +58,6 @@ describe('LetterHomeScreen — the Words card opens on every tap', () => {
 
   it('the card has one appearance, not an earned/locked pair', () => {
     // A single treatment: no ternary chooses its icon, gradient or caption.
-    expect(letterHome).toContain('<CardLandscape variant="words" />');
     expect(letterHome).toContain("<Ionicons name=\"book-outline\" size={38} color=\"#7B1FA2\" />");
     expect(letterHome).toContain('Ready to practise words');
     expect(letterHome).toContain('<Text style={styles.startBtnText}>Start Practice</Text>');

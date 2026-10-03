@@ -19,6 +19,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { DIALOGUE_WORD_ASSETS } from '../../../../data/dialogueAssets';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const WORD_LABELS = {
   thank_you:     'Thank You',
@@ -276,8 +277,8 @@ export default function Phase1VideoScreen({ route, navigation }) {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={goBack} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={goBack} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.progressTrack}>
@@ -289,14 +290,18 @@ export default function Phase1VideoScreen({ route, navigation }) {
             />
           </View>
 
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       {/* ── Body ────────────────────────────────────────────── */}
-      <View style={[styles.gradient, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.gradient}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.body}>
 
@@ -370,16 +375,15 @@ export default function Phase1VideoScreen({ route, navigation }) {
                 </Text>
                 <Ionicons
                   name={isLastVideo ? 'checkmark-circle-outline' : 'arrow-forward'}
-                  size={18}
+                  size={20}
                   color={theme.buttonText}
-                  style={{ marginLeft: 6 }}
                 />
               </TouchableOpacity>
             </View>
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* ── Parent Gate ─────────────────────────────────────── */}
       <ParentGateModal
@@ -433,6 +437,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   progressTrack: {
     flex: 1,
     height: 8,
@@ -464,7 +482,7 @@ const styles = StyleSheet.create({
   },
   caption: {
     fontSize: Layout.fontSize.lg,
-    fontWeight: '700',
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
     lineHeight: 26,
   },
@@ -524,24 +542,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nextBtn: {
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.full,
-    ...Layout.shadow.md,
   },
   nextBtnDisabled: {
     opacity: 0.45,
   },
   nextBtnText: {
-    fontSize: Layout.fontSize.lg,
-    fontWeight: '700',
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
   },
   watchHint: {
     fontSize: Layout.fontSize.xs,
     opacity: 0.5,
-    fontWeight: '500',
+    fontFamily: 'DMSans_600SemiBold',
   },
 
   /* Settings */
@@ -559,7 +584,7 @@ const styles = StyleSheet.create({
   },
   settingsTitle: {
     fontSize: Layout.fontSize.md,
-    fontWeight: '700',
+    fontFamily: 'DMSans_700Bold',
     color: '#333',
     marginBottom: Layout.spacing.lg,
     textAlign: 'center',
@@ -572,7 +597,7 @@ const styles = StyleSheet.create({
   },
   settingsOptionText: {
     fontSize: Layout.fontSize.md,
-    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
     color: '#333',
   },
   settingsDivider: {

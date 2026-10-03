@@ -21,6 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Emoji keyed by sentence index (matches L2SentencePathScreen STOPS)
 const SENTENCE_EMOJIS = { 1: '👤', 2: '🎂', 3: '🏠', 4: '⭐', 5: '🎨' };
@@ -127,7 +128,11 @@ export default function L2ListenWatchScreen({ route, navigation }) {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 
         {/* Header */}
@@ -184,7 +189,7 @@ export default function L2ListenWatchScreen({ route, navigation }) {
               accessibilityLabel="Next activity"
             >
               <Text style={[styles.nextText, { color: theme.buttonText }]}>Next</Text>
-              <Ionicons name="arrow-forward" size={20} color={theme.buttonText} style={{ marginLeft: 6 }} />
+              <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
             </TouchableOpacity>
           ) : (
             <View style={[styles.nextBtn, styles.nextBtnDisabled, { backgroundColor: theme.cardOutline }]}>
@@ -194,7 +199,7 @@ export default function L2ListenWatchScreen({ route, navigation }) {
           )}
         </View>
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -208,7 +213,7 @@ const styles = StyleSheet.create({
     gap: Layout.spacing.xs,
   },
   stepBadge: { alignItems: 'center' },
-  stepLabel: { fontSize: Layout.fontSize.xs, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
+  stepLabel: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1.2, textTransform: 'uppercase' },
   progressTrack: { height: 6, width: '80%', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
 
@@ -229,6 +234,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     padding: Layout.spacing.lg,
     width: '100%',
+    maxWidth: 620,
+    alignSelf: 'center',
     minHeight: 80,
     alignItems: 'center',
     justifyContent: 'center',
@@ -236,17 +243,29 @@ const styles = StyleSheet.create({
     ...Layout.shadow.sm,
   },
   wordsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4 },
-  word: { fontSize: Layout.fontSize.xl ?? 24, fontWeight: '700', lineHeight: 36 },
+  word: { fontSize: Layout.fontSize.xl ?? 24, fontFamily: 'DMSans_700Bold', lineHeight: 36 },
 
-  instruction: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, textAlign: 'center' },
+  instruction: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold', opacity: 0.7, textAlign: 'center' },
 
   footer: { paddingHorizontal: Layout.spacing.xl, paddingBottom: Layout.spacing.xl, alignItems: 'center' },
   nextBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.full ?? 100,
-    ...Layout.shadow.md,
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   nextBtnDisabled: { opacity: 0.6 },
-  nextText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  nextText: {
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
 });

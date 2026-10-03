@@ -17,27 +17,27 @@ import {
 export const VOICE_PROMPTS = {
   repeatAfterMe: {
     kind: "instruction",
-    asset: require("../../../../assets/new_audio/Repeat_after_me.mp3"),
+    asset: require("../../../../assets/pronunciation-voice-prompts/Repeat_after_me.mp3"),
   },
   tapRecordAndSpeak: {
     kind: "instruction",
-    asset: require("../../../../assets/new_audio/Tap_the_record_button_and_speak.mp3"),
+    asset: require("../../../../assets/pronunciation-voice-prompts/Tap_the_record_button_and_speak.mp3"),
   },
   listenAgain: {
     kind: "instruction",
-    asset: require("../../../../assets/new_audio/Tap_on_the_button_to_listen_again.mp3"),
+    asset: require("../../../../assets/pronunciation-voice-prompts/Tap_on_the_button_to_listen_again.mp3"),
   },
   goodJob: {
     kind: "praise",
-    asset: require("../../../../assets/new_audio/Good_job.mp3"),
+    asset: require("../../../../assets/pronunciation-voice-prompts/Good_job.mp3"),
   },
   tryOneMoreTime: {
     kind: "instruction",
-    asset: require("../../../../assets/new_audio/Lets_try_one_more_time.mp3"),
+    asset: require("../../../../assets/pronunciation-voice-prompts/Lets_try_one_more_time.mp3"),
   },
   youCanDoIt: {
     kind: "praise",
-    asset: require("../../../../assets/new_audio/You_can_do_it.mp3"),
+    asset: require("../../../../assets/pronunciation-voice-prompts/You_can_do_it.mp3"),
   },
 };
 

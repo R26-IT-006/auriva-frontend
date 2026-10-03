@@ -25,7 +25,12 @@ export const PAD = 16;
 
 export const COL_L    = Math.round(SCREEN_W * 0.28);   // left column (image)
 export const IMG_SIZE = COL_L - 8;                      // image fills the column
-export const CANVAS_W = SCREEN_W - COL_L - PAD * 2;     // canvas = right column width
+// The canvas is 85% of the right column's width — narrower, same height. The
+// word guide's letter size and spacing come from CANVAS_H alone (x =
+// 0.5·W + (fx − 0.5)·H in wordPaths.js), so a narrower canvas only re-centres
+// the same word; nothing about the letters changes.
+export const CANVAS_AREA_W = SCREEN_W - COL_L - PAD * 2;  // the right column's full width
+export const CANVAS_W = Math.round(CANVAS_AREA_W * 0.85);
 export const CANVAS_H = Math.round(SCREEN_H * 0.46);    // 46 % of screen height
 
 // 4-line handwriting ruling — baseline/descender match the LETTER_PATHS

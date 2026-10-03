@@ -17,6 +17,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Non-verbal context images — every abilities word folder has its own
 // Non_Verbal.jpg (difficulty 1 and 2 both). `correct` is the tapped word's
@@ -279,27 +280,31 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
       {/* ── Header ── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       {/* ── Body ── */}
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.content}>
 
             <Text style={[styles.title, { color: theme.headingText }]}>
               {'Show me '}
-              <Text style={{ color: theme.button, fontWeight: '900' }}>{wordLabel}</Text>
+              <Text style={{ color: theme.button, fontFamily: 'DMSans_900Black' }}>{wordLabel}</Text>
               {'!'}
             </Text>
             <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -372,7 +377,7 @@ export default function Cat3Phase2NonVerbalScreen({ route, navigation }) {
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* ── Parent Gate ── */}
       <ParentGateModal visible={showGate} onSuccess={onGateSuccess} onCancel={() => setShowGate(false)} />
@@ -404,13 +409,27 @@ const styles = StyleSheet.create({
   headerWrap: {},
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
   headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
-  levelLabel:    { fontSize: Layout.fontSize.sm, fontWeight: '700', opacity: 0.7 },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  levelLabel:    { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
   progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
   progressFill:  { height: '100%', borderRadius: 4 },
 
   content: { flex: 1, paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.lg, paddingBottom: Layout.spacing.md },
 
-  title:    { fontSize: Layout.fontSize.xl, fontWeight: '700', textAlign: 'center', marginBottom: Layout.spacing.xs },
+  title:    { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_700Bold', textAlign: 'center', marginBottom: Layout.spacing.xs },
   subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
   cardsRow: { flexDirection: 'row', justifyContent: 'center', gap: Layout.spacing.md },
@@ -432,7 +451,7 @@ const styles = StyleSheet.create({
 
   cardCaption: {
     fontSize:    Layout.fontSize.md,
-    fontWeight:  '700',
+    fontFamily: 'DMSans_700Bold',
     textAlign:   'center',
     paddingHorizontal: Layout.spacing.sm,
     paddingVertical:   Layout.spacing.md,
@@ -448,7 +467,7 @@ const styles = StyleSheet.create({
     maxWidth:          180,
     ...Layout.shadow.sm,
   },
-  speechText: { fontSize: Layout.fontSize.sm, fontWeight: '700', textAlign: 'center' },
+  speechText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', textAlign: 'center' },
   bubbleTail: {
     alignSelf:       'center',
     marginTop:       -1,
@@ -461,7 +480,7 @@ const styles = StyleSheet.create({
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
-  settingsTitle:   { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
+  settingsTitle:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
-  settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
+  settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
 });

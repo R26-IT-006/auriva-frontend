@@ -43,6 +43,7 @@ function buildTiles(word) {
 export default function ExerciseD_SpellWord({
   wordEntry, theme, onComplete, onWrongAnswer, onCorrectAnswer,
   demoMode = false, demoPlayToken = 0, onDemoPassComplete,
+  onImagePress,
 }) {
   const { word, emoji, imageKey } = wordEntry;
   const letters = useMemo(() => getLetters(word), [word]);
@@ -245,9 +246,17 @@ export default function ExerciseD_SpellWord({
 
       {/* Left: image with soft themed background */}
       <View style={styles.leftCol}>
-        <View style={[styles.imageBg, supportImageFrameStyle(theme)]}>
+        {/* Tap the picture to hear the word (onImagePress, from the screen). */}
+        <TouchableOpacity
+          style={[styles.imageBg, supportImageFrameStyle(theme)]}
+          onPress={onImagePress}
+          disabled={!onImagePress}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Hear the word"
+        >
           <WordImageDisplay imageKey={imageKey} emoji={emoji} size={SUPPORT_IMAGE.imageSize} />
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Right: instruction + boxes + tiles */}
@@ -412,9 +421,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
+    // Nudged up, away from the options. A transform, so nothing else moves.
+    transform: [{ translateY: -14 }],
   },
+  // Sits right under the English line: the negative margin cancels most of
+  // the pane's 20px gap, which is meant to separate the instruction from
+  // the options, not its two languages from each other.
   instructionSi: {
     fontSize: 20,
+    marginTop: -16,
+    transform: [{ translateY: -14 }],
     lineHeight: 28,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',

@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Modal,
@@ -11,13 +10,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, Video, ResizeMode } from 'expo-av';
+import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
+import { LinearGradient } from 'expo-linear-gradient';
+import ProductionStage from '../../../../components/dialogue/ProductionStage';
 
 const PROGRESS_FRACTION = 0.85;
 
@@ -31,20 +32,6 @@ const WORD_DISPLAY = {
   how_are_you:    'How Are You?',
   im_fine:        "I'm Fine",
   happy_new_year: 'Happy New Year',
-};
-
-const AVATAR_IMAGES = {
-  lily:     require('../../../../../assets/avatar-images/Lily.png'),
-  megatron: require('../../../../../assets/avatar-images/Megatron.png'),
-  boba:     require('../../../../../assets/avatar-images/Boba.png'),
-  glitter:  require('../../../../../assets/avatar-images/Glitter.png'),
-};
-
-const PRODUCTION_VIDEOS = {
-  lily:     require('../../../../../assets/avatar-videos/Lily_Production.mp4'),
-  boba:     require('../../../../../assets/avatar-videos/Boba_Dancing.mp4'),
-  megatron: require('../../../../../assets/avatar-videos/MegatronDancing.mp4'),
-  glitter:  require('../../../../../assets/avatar-videos/GlitterDancing.mp4'),
 };
 
 const AUDIO = {
@@ -128,9 +115,6 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
   const theme     = getAvatarTheme(student?.avatar_key);
   const wordLabel = WORD_DISPLAY[wordKey] ?? wordKey.replace(/_/g, ' ');
   const wordAudio = WORD_AUDIO[wordKey] ?? WORD_AUDIO.hello;
-  const avatarKey = student?.avatar_key ?? 'lily';
-  const avatarImg = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
-  const prodVideo = PRODUCTION_VIDEOS[avatarKey] ?? null;
 
   const [phase, _setPhase]         = useState(P.INTRO);
   const [cloudText, setCloudText]  = useState(wordLabel);
@@ -552,129 +536,47 @@ export default function GreetingPhase2ProductionScreen({ route, navigation }) {
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
 
-  const WORD_UPPER   = wordLabel.toUpperCase();
   const isRecording  = recorderState === 'recording';
   const isDimmed     = [P.INTRO, P.PROCESSING, P.DONE, P.NONVERBAL].includes(phase)
     || recorderState === 'starting' || recorderState === 'stopping';
-  const showProdVideo = phase === P.INTRO && prodVideo !== null;
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
-          <View style={styles.content}>
-
-            <Text style={[styles.title, { color: theme.headingText }]}>
-              {'Can you say '}
-              <Text style={[styles.titleEmphasis, { color: theme.headingText }]}>
-                {`"${WORD_UPPER}"`}
-              </Text>
-              {'?'}
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.wordTile,
-                { backgroundColor: theme.cardSurface },
-                tileGlow && { borderColor: theme.button, borderWidth: 3 },
-              ]}
-              onPress={handleTileTap}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.speakerCircle, { backgroundColor: theme.button + '22' }]}>
-                <Ionicons name="volume-high" size={36} color={theme.button} />
-              </View>
-              {showCue ? (() => {
-                const [pre, cue, suf] = splitWordByCue(wordLabel, cueGrapheme);
-                return (
-                  <Text style={[styles.wordText, { color: theme.button }]}>
-                    {pre}
-                    <Text style={styles.wordTextCue}>{cue}</Text>
-                    {suf.replace(' ', '\n')}
-                  </Text>
-                );
-              })() : (
-                <Text style={[styles.wordText, { color: theme.button }]}>
-                  {wordLabel.replace(' ', '\n')}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.hintRow}>
-              <Ionicons name="hand-left-outline" size={15} color={theme.headingText} style={{ opacity: 0.45 }} />
-              <Text style={[styles.hintText, { color: theme.headingText }]}>
-                Click on the card to hear the audio
-              </Text>
-            </View>
-
-            <View style={{ flex: 1 }} />
-
-            <View style={styles.bottomRow}>
-              <View style={styles.recordSection}>
-                <TouchableOpacity
-                  style={[
-                    styles.recordBtn,
-                    isRecording ? styles.recordBtnStop : { backgroundColor: '#2DC98E' },
-                    btnGlow && styles.recordBtnGlow,
-                    isDimmed && styles.recordBtnDimmed,
-                  ]}
-                  onPress={handleRecordBtn}
-                  activeOpacity={0.85}
-                  disabled={isDimmed}
-                >
-                  <Ionicons name={isRecording ? 'stop-circle' : 'mic'} size={20} color="#FFF" />
-                  <Text style={styles.recordBtnText}>
-                    {isRecording ? 'Stop Recording' : 'Record Audio'}
-                  </Text>
-                </TouchableOpacity>
-                <Text style={[styles.tapSpeak, { color: theme.headingText }]}>TAP AND SPEAK</Text>
-              </View>
-
-              <View style={styles.avatarWrap}>
-                <View style={[styles.speechBubble, { backgroundColor: theme.cardSurface }]}>
-                  <Text style={[styles.speechText, { color: theme.headingText }]} numberOfLines={3}>
-                    {cloudText}
-                  </Text>
-                  <View style={[styles.bubbleTail, { borderTopColor: theme.cardSurface }]} />
-                </View>
-                {showProdVideo ? (
-                  <Video
-                    source={prodVideo}
-                    style={styles.avatarMedia}
-                    resizeMode={ResizeMode.CONTAIN}
-                    shouldPlay
-                    isLooping
-                    isMuted
-                  />
-                ) : (
-                  <Image source={avatarImg} style={styles.avatarMedia} resizeMode="contain" />
-                )}
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.nextBtn} onPress={handleNextPress} activeOpacity={0.75}>
-              <Text style={[styles.nextBtnText, { color: theme.button }]}>Next</Text>
-              <Ionicons name="arrow-forward" size={16} color={theme.button} />
-            </TouchableOpacity>
-
-          </View>
+          <ProductionStage
+            theme={theme}
+            wordLabel={wordLabel}
+            wordParts={showCue ? splitWordByCue(wordLabel, cueGrapheme) : null}
+            tileGlow={tileGlow}
+            onTileTap={handleTileTap}
+            isRecording={isRecording}
+            btnGlow={btnGlow}
+            isDimmed={isDimmed}
+            onRecord={handleRecordBtn}
+            onNext={handleNextPress}
+          />
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       <ParentGateModal
         visible={showGate}
@@ -717,8 +619,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
-  headerSide: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  levelLabel: { fontSize: Layout.fontSize.sm, fontWeight: '700', opacity: 0.7 },
+  // Concept's round translucent header button.
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  levelLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
   progressTrack: {
     flex: 1,
     height: 8,
@@ -728,107 +643,6 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: '100%', borderRadius: 4 },
 
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.md,
-  },
-
-  title: { fontSize: Layout.fontSize.xl, fontWeight: '600', textAlign: 'center', marginBottom: 4 },
-  titleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '600', textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.lg },
-  titleEmphasis: { fontSize: Layout.fontSize.xl, fontWeight: '900' },
-
-  wordTile: {
-    minWidth: 240,
-    borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.xl,
-    alignItems: 'center',
-    gap: Layout.spacing.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    shadowColor: '#6478C8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  speakerCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  wordText: { fontSize: Layout.fontSize.xl, fontWeight: '900', textAlign: 'center', lineHeight: 28 },
-  wordTextCue: {
-    fontWeight: '900',
-    textDecorationLine: 'underline',
-    color: '#E05C2A',   // warm orange — contrasts with theme.button on all avatar themes
-  },
-
-  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Layout.spacing.sm, opacity: 0.6 },
-  hintText: { fontSize: Layout.fontSize.xs, fontWeight: '500' },
-
-  bottomRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingBottom: Layout.spacing.sm,
-  },
-
-  recordSection: { flex: 1, alignItems: 'center', gap: 8, paddingBottom: Layout.spacing.md },
-  recordBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.full,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  recordBtnStop: { backgroundColor: '#FF4D6D' },
-  recordBtnGlow: { borderWidth: 3, borderColor: '#2DC98E', shadowColor: '#2DC98E', shadowOpacity: 0.45, shadowRadius: 14, elevation: 8 },
-  recordBtnDimmed: { opacity: 0.4 },
-  recordBtnText: { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#FFF' },
-  tapSpeak: { fontSize: Layout.fontSize.xs, fontWeight: '700', letterSpacing: 1, opacity: 0.45 },
-
-  avatarWrap: { alignItems: 'center', width: 130 },
-  speechBubble: {
-    borderRadius: Layout.radius.lg,
-    paddingHorizontal: Layout.spacing.sm,
-    paddingVertical: Layout.spacing.sm,
-    maxWidth: 140,
-    marginBottom: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-    position: 'relative',
-  },
-  speechText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  bubbleTail: {
-    position: 'absolute',
-    bottom: -7,
-    left: '50%',
-    marginLeft: -7,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 7,
-    borderRightWidth: 7,
-    borderTopWidth: 7,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  avatarMedia: { width: 115, height: 135 },
-
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   settingsSheet: {
     backgroundColor: '#FFF',
@@ -837,19 +651,9 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
-  settingsTitle: { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
+  settingsTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
-  settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
+  settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
   settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: 4 },
 
-  nextBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    gap: 6,
-    paddingVertical: Layout.spacing.sm,
-    paddingHorizontal: Layout.spacing.md,
-    marginBottom: Layout.spacing.sm,
-  },
-  nextBtnText: { fontSize: Layout.fontSize.sm, fontWeight: '700' },
 });

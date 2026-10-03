@@ -18,6 +18,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const AUDIO_GOOD_JOB = require('../../../../../assets/dialogue-audios/Good_job.mp3');
 
@@ -415,7 +416,7 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
   // The source photos are wide (landscape), so cards are sized for 2 per row
   // (wrapping a 3rd to its own centered row) instead of squeezing 3 into one
   // row and cropping them into near-squares.
-  const cardW = Math.min(Math.floor((screenWidth - 64 - Layout.spacing.md) / 2), 380);
+  const cardW = Math.min(Math.floor((screenWidth - 64 - Layout.spacing.md) / 2), 330);
 
   const [scenario,     setScenario]     = useState('A');
   const [cloudText,    setCloudText]    = useState('');
@@ -677,95 +678,104 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
     <View style={styles.root}>
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progressFraction * 100}%`, backgroundColor: theme.button }]} />
           </View>
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerSide}>
-            <Ionicons name="settings-outline" size={22} color={theme.headingText} />
+          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+            <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
 
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
         <SafeAreaView style={styles.safe} edges={['bottom']}>
           <View style={styles.content}>
+            <View style={styles.mainBlock}>
 
-            <Text style={[styles.scenarioBadge, { color: theme.button, borderColor: theme.button + '44', backgroundColor: theme.button + '18' }]}>
-              {scenarioLabel}
-            </Text>
-
-            <Text style={[styles.title, { color: theme.headingText }]}>
-              {"When do we say '"}
-              <Text style={{ color: theme.button, fontWeight: Layout.fontWeight.extrabold }}>
-                {wordLabel}
+              <Text style={[styles.scenarioBadge, { color: theme.button, borderColor: theme.cardOutline, backgroundColor: '#FFFFFF' }]}>
+                {scenarioLabel}
               </Text>
-              {"'?"}
-            </Text>
 
-            <Text style={[styles.subtitle, { color: theme.headingText }]}>
-              {`Select the image where we can use the word '${wordLabel}'`}
-            </Text>
+              <Text style={[styles.title, { color: theme.headingText }]}>
+                {"When do we say '"}
+                <Text style={{ color: theme.button, fontFamily: 'DMSans_800ExtraBold' }}>
+                  {wordLabel}
+                </Text>
+                {"'?"}
+              </Text>
 
-            <View style={styles.cardsRow}>
-              {imageItems.map(item => {
-                const isSelected      = selectedId === item.id;
-                const showProvisional = isSelected && !settled;
-                const showGreenBorder = isSelected && settled && item.isCorrect;
-                const showRedDim      = isSelected && settled && !item.isCorrect;
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    onPress={() => handleImageTap(item)}
-                    activeOpacity={settled ? 1 : 0.82}
-                    style={[
-                      styles.imageCard,
-                      { width: cardW, backgroundColor: theme.cardSurface },
-                      showProvisional && { borderColor: theme.button, borderWidth: 3 },
-                      showGreenBorder && styles.cardCorrect,
-                      showRedDim      && styles.cardWrong,
-                    ]}
-                  >
-                    <View style={styles.imageWrap}>
-                      <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
-                      {showGreenBorder && (
-                        <View style={styles.correctBadge}>
-                          <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
-                        </View>
-                      )}
-                    </View>
-                    <Text style={[styles.cardCaption, { color: theme.headingText }]} numberOfLines={2}>
-                      {item.caption}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+              <Text style={[styles.subtitle, { color: theme.headingText }]}>
+                {`Select the image where we can use the word '${wordLabel}'`}
+              </Text>
 
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                onPress={handleHearAgain}
-                disabled={settled}
-                style={[styles.hearAgainButton, { borderColor: theme.button }]}
-              >
-                <Ionicons name="volume-high-outline" size={16} color={theme.button} />
-                <Text style={[styles.hearAgainText, { color: theme.button }]}>Hear it again</Text>
-              </TouchableOpacity>
-              {selectedId !== null && !settled && (
+              <View style={styles.cardsRow}>
+                {imageItems.map(item => {
+                  const isSelected      = selectedId === item.id;
+                  const showProvisional = isSelected && !settled;
+                  const showGreenBorder = isSelected && settled && item.isCorrect;
+                  const showRedDim      = isSelected && settled && !item.isCorrect;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => handleImageTap(item)}
+                      activeOpacity={settled ? 1 : 0.82}
+                      style={[
+                        styles.imageCard,
+                        { width: cardW, borderColor: theme.cardOutline },
+                        showProvisional && [styles.cardSelected, { borderColor: theme.button, shadowColor: theme.button }],
+                        showGreenBorder && styles.cardCorrect,
+                        showRedDim      && styles.cardWrong,
+                      ]}
+                    >
+                      <View style={styles.imageWrap}>
+                        <Image source={item.image} style={styles.cardImage} resizeMode="contain" />
+                        {showProvisional && (
+                          <View style={[styles.selectedBadge, { backgroundColor: theme.button }]}>
+                            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                          </View>
+                        )}
+                        {showGreenBorder && (
+                          <View style={styles.correctBadge}>
+                            <Ionicons name="checkmark-circle" size={30} color="#22C55E" />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.cardCaption, { color: theme.headingText }]} numberOfLines={2}>
+                        {item.caption}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.actionRow}>
                 <TouchableOpacity
-                  onPress={handleConfirmSelection}
-                  style={[styles.confirmButton, { backgroundColor: theme.button }]}
+                  onPress={handleHearAgain}
+                  disabled={settled}
+                  style={[styles.hearAgainButton, { borderColor: theme.cardOutline }, settled && { opacity: 0.5 }]}
                 >
-                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                  <Ionicons name="volume-high" size={20} color={theme.button} />
+                  <Text style={[styles.hearAgainText, { color: theme.button }]}>Hear it again</Text>
                 </TouchableOpacity>
-              )}
+                {selectedId !== null && !settled && (
+                  <TouchableOpacity
+                    onPress={handleConfirmSelection}
+                    style={[styles.confirmButton, { backgroundColor: theme.button }]}
+                  >
+                    <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+                    <Text style={styles.confirmButtonText}>Confirm</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-
-            <View style={{ flex: 1 }} />
 
             <View style={styles.avatarRow}>
               {cloudText ? (
@@ -796,7 +806,7 @@ export default function GreetingPhase3ContextualScreen({ route, navigation }) {
 
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       <ParentGateModal
         visible={showGate}
@@ -837,7 +847,21 @@ const styles = StyleSheet.create({
     gap: Layout.spacing.sm,
   },
   headerSide: { width: 32, alignItems: 'center' },
-  levelLabel: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  levelLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
   progressTrack: {
     flex: 1,
     height: 6,
@@ -855,56 +879,86 @@ const styles = StyleSheet.create({
     paddingTop: Layout.spacing.md,
     paddingBottom: Layout.spacing.md,
   },
+  // Centres the prompt, the picture cards and the buttons vertically.
+  mainBlock: {
+    flex: 1,
+    justifyContent: 'center',
+  },
 
   scenarioBadge: {
     alignSelf: 'center',
-    fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.bold,
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: 4,
+    fontSize: 13,
+    fontFamily: 'DMSans_800ExtraBold',
+    paddingHorizontal: 16,
+    paddingVertical: 5,
     borderRadius: Layout.radius.full,
-    borderWidth: 1,
+    borderWidth: 2,
     marginBottom: Layout.spacing.sm,
     overflow: 'hidden',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
+    transform: [{ translateY: -20 }],
   },
-  title: { fontSize: Layout.fontSize.xl, fontWeight: Layout.fontWeight.bold, textAlign: 'center', marginBottom: Layout.spacing.xs },
-  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
+  title: { fontSize: 28, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', marginBottom: 4, transform: [{ translateY: -20 }] },
+  subtitle: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.lg, transform: [{ translateY: -20 }] },
   subtitleSinhala: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.xl },
 
-  cardsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Layout.spacing.md },
+  cardsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 20 },
+  // White picture card framed in the theme outline, like the other modules.
   imageCard: {
-    borderRadius: Layout.radius.lg,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 3,
+    padding: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  cardCorrect: { borderColor: '#22C55E', borderWidth: 3 },
-  cardWrong:   { borderColor: '#FF4D6D', borderWidth: 2, opacity: 0.55 },
-  imageWrap:   { position: 'relative', overflow: 'hidden', width: '100%', aspectRatio: 4 / 3 },
+  // Chosen but not yet confirmed: lifted, thicker theme border, glow.
+  cardSelected: {
+    borderWidth: 4,
+    transform: [{ translateY: -6 }],
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  cardCorrect: { borderColor: '#22C55E', borderWidth: 4 },
+  cardWrong:   { borderColor: '#FF4D6D', borderWidth: 3, opacity: 0.55 },
+  imageWrap:   { position: 'relative', overflow: 'hidden', width: '100%', aspectRatio: 4 / 3, borderRadius: 16 },
   cardImage:   { width: '100%', height: '100%' },
+  selectedBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   correctBadge: {
     position: 'absolute',
     top: 6,
     right: 6,
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 16,
   },
   cardCaption: {
-    fontSize: Layout.fontSize.xs,
-    fontWeight: Layout.fontWeight.semibold,
+    fontSize: 15,
+    lineHeight: 20,
+    fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
     paddingHorizontal: Layout.spacing.xs,
-    paddingVertical: Layout.spacing.sm,
+    paddingTop: 10,
+    paddingBottom: 2,
   },
 
-  avatarRow: { flexDirection: 'column', alignItems: 'flex-end', marginTop: Layout.spacing.md },
+  // Floats in the corner so it never pushes the cards around when it pops in.
+  avatarRow: { position: 'absolute', right: Layout.spacing.lg, bottom: Layout.spacing.md, alignItems: 'flex-end' },
   bubbleWrap: { width: 145, alignItems: 'center', alignSelf: 'flex-end', marginBottom: 2 },
   speechBubble: {
     backgroundColor: '#FFFFFF',
@@ -918,7 +972,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  speechText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, textAlign: 'center' },
+  speechText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', textAlign: 'center' },
   bubbleTail: {
     alignSelf: 'center',
     marginTop: -1,
@@ -944,35 +998,50 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
-  settingsTitle: { fontSize: Layout.fontSize.md, fontWeight: '700', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
+  settingsTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
-  settingsOptionText: { fontSize: Layout.fontSize.md, fontWeight: '600', color: '#333' },
+  settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
   settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: 4 },
 
   actionRow: {
     flexDirection:  'row',
     justifyContent: 'center',
     alignItems:     'center',
-    gap:            Layout.spacing.md,
-    marginTop:      Layout.spacing.md,
+    gap:            20,
+    marginTop:      28,
   },
+  // Raised 3D buttons, like the ones used in the other modules.
   hearAgainButton: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               6,
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical:   8,
-    borderRadius:      Layout.radius.full,
-    borderWidth:       1.5,
+    gap:               8,
+    backgroundColor:   '#FFFFFF',
+    paddingHorizontal: 26,
+    paddingVertical:   13,
+    borderRadius:      16,
+    borderWidth:       2,
+    borderBottomWidth: 5,
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: 3 },
+    shadowOpacity:     0.1,
+    shadowRadius:      8,
+    elevation:         4,
   },
-  hearAgainText: { fontSize: Layout.fontSize.xs, fontWeight: Layout.fontWeight.bold },
+  hearAgainText: { fontSize: 17, fontFamily: 'DMSans_800ExtraBold' },
   confirmButton: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               6,
-    paddingHorizontal: Layout.spacing.lg,
-    paddingVertical:   8,
-    borderRadius:      Layout.radius.full,
+    gap:               8,
+    paddingHorizontal: 34,
+    paddingVertical:   14,
+    borderRadius:      16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: 4 },
+    shadowOpacity:     0.18,
+    shadowRadius:      10,
+    elevation:         6,
   },
-  confirmButtonText: { fontSize: Layout.fontSize.sm, fontWeight: Layout.fontWeight.bold, color: '#FFFFFF' },
+  confirmButtonText: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold', color: '#FFFFFF' },
 });

@@ -68,6 +68,14 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
   return (
     <View style={styles.wrap}>
       <View style={styles.wordPane}>
+        {/* The instruction sits above the word it is about, not above the
+            pictures — read the word, then choose its picture. */}
+        <Text style={[styles.instruction, { color: theme.headingText }]}>
+          {ACTIVITY_INSTRUCTION.en}
+        </Text>
+        <Text style={[styles.instructionSi, { color: theme.headingText }]}>
+          {ACTIVITY_INSTRUCTION.si}
+        </Text>
         <View style={[styles.wordChip, {
           backgroundColor: theme.button + '18',
           borderColor:     theme.button + '40',
@@ -79,13 +87,6 @@ export default function ExerciseB_CircleImage({ wordEntry, allWords, theme, onCo
       </View>
 
       <View style={styles.taskPane}>
-        <Text style={[styles.instruction, { color: theme.headingText }]}>
-          {ACTIVITY_INSTRUCTION.en}
-        </Text>
-        <Text style={[styles.instructionSi, { color: theme.headingText }]}>
-          {ACTIVITY_INSTRUCTION.si}
-        </Text>
-
         <View style={styles.grid}>
           {options.map((opt) => {
             const isCorrect = opt.word === word;
@@ -135,11 +136,15 @@ const styles = StyleSheet.create({
     gap: BODY.columnGap,
     width: '100%',
   },
+  // Instruction (two lines) above the word chip. The 18px gap matches the
+  // one the instruction had in the task pane, so instructionSi's negative
+  // margin still keeps the two languages together.
   wordPane: {
     width: 240,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    gap: 18,
   },
   taskPane: {
     flex: 1,
@@ -153,9 +158,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
+    // Nudged up, away from the options. A transform, so nothing else moves.
+    transform: [{ translateY: -14 }],
   },
+  // Sits right under the English line: the negative margin cancels most of
+  // the pane's 18px gap, which is meant to separate the instruction from
+  // the options, not its two languages from each other.
   instructionSi: {
     fontSize: 20,
+    marginTop: -14,
+    transform: [{ translateY: -14 }],
     lineHeight: 28,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',

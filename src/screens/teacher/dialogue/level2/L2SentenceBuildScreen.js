@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Fisher-Yates shuffle (pure, no mutation of original)
 function shuffle(arr) {
@@ -139,7 +140,13 @@ export default function L2SentenceBuildScreen({ route, navigation }) {
   const allFilled = slots.every((s) => s !== null);
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.root}>
+      <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
+      <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
 
         {/* Header */}
@@ -153,65 +160,67 @@ export default function L2SentenceBuildScreen({ route, navigation }) {
         </View>
 
         <View style={styles.body}>
-          {/* Instruction */}
-          <Text style={[styles.instruction, { color: theme.headingText }]}>
-            Tap the words to build the sentence!
-          </Text>
+          {/* One white activity card framed in the theme outline, like the other modules. */}
+          <View style={[styles.card, { borderColor: theme.cardOutline }]}>
+            <Text style={[styles.instruction, { color: theme.headingText }]}>
+              Tap the words to build the sentence!
+            </Text>
 
-          {/* Slots row */}
-          <View style={[styles.slotsContainer, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-            <View style={styles.slotsRow}>
-              {slots.map((item, i) => {
-                const isWrong = wrongSlots.includes(i);
-                return (
-                  <Animated.View
-                    key={i}
-                    style={{ transform: [{ translateX: shakeAnims[i] }] }}
-                  >
-                    <TouchableOpacity
-                      style={[
-                        styles.slot,
-                        item ? styles.slotFilled : styles.slotEmpty,
-                        item && { backgroundColor: theme.button + '22', borderColor: theme.button },
-                        isWrong && styles.slotWrong,
-                      ]}
-                      onPress={() => item && returnTile(i)}
-                      activeOpacity={item ? 0.7 : 1}
-                      accessibilityLabel={item ? `Return word ${item.word}` : 'Empty slot'}
+            {/* Sentence slots */}
+            <View style={[styles.slotsZone, { borderColor: theme.cardOutline, backgroundColor: theme.cardOutline + '14' }]}>
+              <View style={styles.slotsRow}>
+                {slots.map((item, i) => {
+                  const isWrong = wrongSlots.includes(i);
+                  return (
+                    <Animated.View
+                      key={i}
+                      style={{ transform: [{ translateX: shakeAnims[i] }] }}
                     >
-                      {item ? (
-                        <Text style={[styles.slotText, { color: theme.button }]}>{item.word}</Text>
-                      ) : (
-                        <View style={[styles.slotPlaceholder, { backgroundColor: theme.cardOutline }]} />
-                      )}
-                    </TouchableOpacity>
-                  </Animated.View>
-                );
-              })}
+                      <TouchableOpacity
+                        style={[
+                          styles.slot,
+                          item ? styles.slotFilled : styles.slotEmpty,
+                          item ? { borderColor: theme.button } : { borderColor: theme.cardOutline },
+                          isWrong && styles.slotWrong,
+                        ]}
+                        onPress={() => item && returnTile(i)}
+                        activeOpacity={item ? 0.7 : 1}
+                        accessibilityLabel={item ? `Return word ${item.word}` : 'Empty slot'}
+                      >
+                        {item ? (
+                          <Text style={[styles.slotText, { color: theme.button }]}>{item.word}</Text>
+                        ) : (
+                          <Text style={[styles.slotNumber, { color: theme.cardOutline }]}>{i + 1}</Text>
+                        )}
+                      </TouchableOpacity>
+                    </Animated.View>
+                  );
+                })}
+              </View>
             </View>
-          </View>
 
-          {/* Tray row */}
-          <View style={styles.trayLabel}>
-            <Ionicons name="hand-left-outline" size={16} color={theme.headingText} />
-            <Text style={[styles.trayLabelText, { color: theme.headingText }]}>Tap a word to place it</Text>
-          </View>
-          <View style={[styles.tray, { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline }]}>
-            {tray.map((item, i) => (
-              item ? (
-                <TouchableOpacity
-                  key={i}
-                  style={[styles.tile, { backgroundColor: theme.button, borderColor: theme.button }]}
-                  onPress={() => placeTile(i)}
-                  activeOpacity={0.8}
-                  accessibilityLabel={`Place word ${item.word}`}
-                >
-                  <Text style={[styles.tileText, { color: theme.buttonText }]}>{item.word}</Text>
-                </TouchableOpacity>
-              ) : (
-                <View key={i} style={styles.tilePlaceholder} />
-              )
-            ))}
+            {/* Word bank */}
+            <View style={styles.trayLabel}>
+              <Ionicons name="hand-left-outline" size={16} color={theme.headingText} />
+              <Text style={[styles.trayLabelText, { color: theme.headingText }]}>Tap a word to place it</Text>
+            </View>
+            <View style={styles.tray}>
+              {tray.map((item, i) => (
+                item ? (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.tile, { backgroundColor: theme.button }]}
+                    onPress={() => placeTile(i)}
+                    activeOpacity={0.8}
+                    accessibilityLabel={`Place word ${item.word}`}
+                  >
+                    <Text style={[styles.tileText, { color: theme.buttonText }]}>{item.word}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View key={i} style={styles.tilePlaceholder} />
+                )
+              ))}
+            </View>
           </View>
         </View>
 
@@ -220,27 +229,33 @@ export default function L2SentenceBuildScreen({ route, navigation }) {
           <TouchableOpacity
             style={[
               styles.confirmBtn,
-              { backgroundColor: allFilled ? theme.button : theme.cardOutline },
+              { backgroundColor: theme.button },
+              !allFilled && styles.confirmBtnDisabled,
             ]}
             onPress={handleConfirm}
             disabled={!allFilled}
             activeOpacity={0.85}
             accessibilityLabel="Check my sentence"
           >
-            <Ionicons name="checkmark-circle-outline" size={22} color={allFilled ? theme.buttonText : theme.headingText} />
-            <Text style={[styles.confirmText, { color: allFilled ? theme.buttonText : theme.headingText }]}>
+            <Ionicons name="checkmark-circle" size={24} color={theme.buttonText} />
+            <Text style={[styles.confirmText, { color: theme.buttonText }]}>
               Check!
             </Text>
           </TouchableOpacity>
         </View>
 
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, overflow: 'hidden' },
+
+  // Decorative background shapes (same as the other module screens).
+  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
+  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
+  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
 
   header: {
     paddingHorizontal: Layout.spacing.lg,
@@ -249,60 +264,96 @@ const styles = StyleSheet.create({
     gap: Layout.spacing.xs,
   },
   stepBadge: { alignItems: 'center' },
-  stepLabel: { fontSize: Layout.fontSize.xs, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
+  stepLabel: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1.2, textTransform: 'uppercase' },
   progressTrack: { height: 6, width: '80%', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
 
-  body: { flex: 1, paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.lg, gap: Layout.spacing.md },
+  body: { flex: 1, justifyContent: 'center', paddingHorizontal: Layout.spacing.lg },
 
-  instruction: { fontSize: Layout.fontSize.md, fontWeight: '600', textAlign: 'center' },
+  card: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    borderWidth: 3,
+    paddingHorizontal: 32,
+    paddingTop: 26,
+    paddingBottom: 30,
+    gap: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
+  },
 
-  slotsContainer: {
-    borderRadius: Layout.radius.lg ?? 16,
+  instruction: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center' },
+
+  slotsZone: {
+    borderRadius: 20,
     borderWidth: 2,
-    padding: Layout.spacing.md,
-    minHeight: 80,
+    borderStyle: 'dashed',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
-  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
+  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
   slot: {
-    borderRadius: 10, borderWidth: 2,
-    paddingVertical: 8, paddingHorizontal: 12,
-    minWidth: 48, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 14, borderWidth: 2,
+    minHeight: 58, minWidth: 90,
+    paddingHorizontal: 16,
+    alignItems: 'center', justifyContent: 'center',
   },
-  slotEmpty: { borderStyle: 'dashed', borderColor: '#AAAAAA', backgroundColor: 'transparent' },
-  slotFilled: {},
+  slotEmpty: { borderStyle: 'dashed', backgroundColor: '#FFFFFF' },
+  slotFilled: { backgroundColor: '#FFFFFF', borderBottomWidth: 5 },
   slotWrong: { borderColor: '#EF4444', backgroundColor: '#FEE2E2' },
-  slotPlaceholder: { width: 32, height: 4, borderRadius: 2 },
-  slotText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
+  slotNumber: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold' },
+  slotText: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold' },
 
-  trayLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, opacity: 0.6 },
-  trayLabelText: { fontSize: Layout.fontSize.xs, fontWeight: '600' },
+  trayLabel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: 0.6, marginTop: 4 },
+  trayLabelText: { fontSize: 14, fontFamily: 'DMSans_600SemiBold' },
 
   tray: {
-    borderRadius: Layout.radius.lg ?? 16,
-    borderWidth: 2,
-    padding: Layout.spacing.md,
-    minHeight: 80,
+    minHeight: 64,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Raised 3D word tiles, like the buttons in the other modules.
   tile: {
-    borderRadius: 10, borderWidth: 2,
-    paddingVertical: 10, paddingHorizontal: 14,
-    ...Layout.shadow?.sm,
+    minHeight: 58,
+    minWidth: 90,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  tileText: { fontSize: Layout.fontSize.md, fontWeight: '700' },
-  tilePlaceholder: { width: 56, height: 40 }, // ghost spacer
+  tileText: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold' },
+  tilePlaceholder: { width: 90, height: 58 }, // ghost spacer
 
   footer: { paddingHorizontal: Layout.spacing.xl, paddingBottom: Layout.spacing.xl, alignItems: 'center' },
+  // Raised 3D button, like the ones used in the other modules.
   confirmBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.full ?? 100,
-    ...Layout.shadow?.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    minWidth: 240, paddingHorizontal: 40, paddingVertical: 16,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  confirmText: { fontSize: Layout.fontSize.lg, fontWeight: '700' },
+  confirmBtnDisabled: { opacity: 0.4 },
+  confirmText: { fontSize: 20, fontFamily: 'DMSans_800ExtraBold' },
 });

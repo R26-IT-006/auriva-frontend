@@ -224,9 +224,15 @@ describe('every letter card is open', () => {
     expect(code).not.toMatch(/locked`/);
   });
 
-  it('the six card colours themselves are untouched', () => {
+  it('the six card colours are the lightened set, with full-strength text and borders', () => {
     const palette = read(CHOOSER).slice(read(CHOOSER).indexOf('const PALETTE = ['));
-    for (const hex of ['#EAF4FE', '#E8F5ED', '#EDE8FA', '#FEF0E8', '#FEF8E6', '#FDEDF3']) {
+    // Backgrounds blended ~55% toward white so the tiles read lighter.
+    for (const hex of ['#F6FAFF', '#F5FBF7', '#F7F5FD', '#FFF8F5', '#FFFCF4', '#FEF7FA']) {
+      expect(palette).toContain(hex);
+    }
+    // Letter and outline colours unchanged, so each letter stays easy to read.
+    for (const hex of ['#2B6CB0', '#276749', '#5E3FA3', '#B5631E', '#957A0E', '#A83264',
+                       '#BDD8F5', '#B7DFC5', '#CBBFF0', '#F5D0AC', '#F0E1A6', '#F0C0D8']) {
       expect(palette).toContain(hex);
     }
   });

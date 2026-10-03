@@ -28,7 +28,7 @@ import {
   setPronunciationPlaybackMode,
   unloadSoundRef,
 } from "./pronunciationAudioPlayback.js";
-import { EntranceItem, ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { EntranceItem } from "./pronunciationDesignKit.js";
 import { getSoundLetters } from "./wordBank.js";
 import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
@@ -215,36 +215,47 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
   }
 
   return (
-    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.safe}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
       <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
+        {/* Header — round Back (top-left) and a Skip pill (top-right), as the
+            other pronunciation steps. goBack still goes through
+            useExitSessionGuard's "Leave this activity?" check. */}
+        <View style={styles.topBar}>
+          <ButtonFeedback
+            activeOpacity={0.7}
+            onPress={() => navigation.goBack()}
+            style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          </ButtonFeedback>
+
+          <ButtonFeedback
+            activeOpacity={0.7}
+            onPress={handleSkip}
+            style={styles.skipBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Skip this activity"
+          >
+            <Text style={[styles.skipText, { color: theme.headingText }]}>Skip</Text>
+            <Ionicons name="play-skip-forward" size={14} color={theme.headingText} />
+          </ButtonFeedback>
+        </View>
+
         <ScrollView
           contentContainerStyle={[styles.container, isCompact && styles.containerCompact]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.headerRow}>
-            <ButtonFeedback
-              activeOpacity={0.82}
-              onPress={() => navigation.goBack()}
-              style={[styles.backBtn, { borderColor: theme.cardOutline }]}
-            >
-              <Ionicons name="chevron-back" size={20} color={theme.headingText} />
-            </ButtonFeedback>
-
-            <View style={styles.headerCopy}>
-              <Text style={[styles.title, { color: theme.headingText }]}>Tap the Sounds</Text>
-              <Text style={[styles.subtitle, { color: theme.headingText }]}>
-                Listen to the word, then tap its sounds in order
-              </Text>
-            </View>
-
-            <ButtonFeedback
-              activeOpacity={0.82}
-              onPress={handleSkip}
-              style={styles.skipBtn}
-            >
-              <Text style={[styles.skipText, { color: theme.headingText }]}>Skip</Text>
-            </ButtonFeedback>
-          </View>
+          <Text style={[styles.title, { color: theme.headingText }]}>Tap the Sounds</Text>
+          <Text style={[styles.subtitle, { color: theme.headingText }]}>
+            Listen to the word, then tap its sounds in order
+          </Text>
 
           <View
             style={[
@@ -253,19 +264,23 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
               { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
             ]}
           >
+            {/* Concept's raised 3D button, as Hear Sounds on the Listen step. */}
             <ButtonFeedback
               activeOpacity={0.88}
               onPress={playWordAudio}
               disabled={!audioAsset || isPlaying}
               soundEnabled={false}
-              style={[styles.playBtnWrap, (!audioAsset) && styles.playBtnDisabled]}
+              accessibilityRole="button"
+              style={[
+                styles.playBtn,
+                { backgroundColor: theme.button },
+                (!audioAsset || isPlaying) && styles.playBtnDisabled,
+              ]}
             >
-              <ThemedGradientFill theme={theme} style={styles.playBtn}>
-                <Ionicons name="volume-high-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.playBtnText}>
-                  {!audioAsset ? "Word audio unavailable" : isPlaying ? "Playing…" : "Play Word"}
-                </Text>
-              </ThemedGradientFill>
+              <Ionicons name="volume-high" size={20} color={theme.buttonText} />
+              <Text style={[styles.playBtnText, { color: theme.buttonText }]}>
+                {!audioAsset ? "Word audio unavailable" : isPlaying ? "Playing…" : "Play Word"}
+              </Text>
             </ButtonFeedback>
 
             {/* An ordered task has to show the order it has captured so far.
@@ -288,7 +303,9 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
                     key={`slot-${index}`}
                     style={[
                       styles.slot,
-                      isActive && styles.slotActive,
+                      // The slot being filled next is outlined in the avatar
+                      // colour, so it reads as part of this child's theme.
+                      isActive && [styles.slotActive, { borderColor: theme.button }],
                       isFilled && styles.slotFilled,
                     ]}
                   >
@@ -324,7 +341,7 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
                         style={[
                           styles.soundChip,
                           isDone && styles.soundChipDone,
-                          isUpNext && !isDone && styles.soundChipUpNext,
+                          isUpNext && !isDone && [styles.soundChipUpNext, { borderColor: theme.button }],
                         ]}
                         accessibilityRole="button"
                         accessibilityLabel={`Sound ${chip.label}`}
@@ -364,18 +381,25 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
               </Text>
             </View>
 
-            <ButtonFeedback
-              activeOpacity={0.9}
-              onPress={handleContinue}
-              disabled={!isComplete}
-              style={[styles.continueBtnWrap, !isComplete && styles.continueBtnDisabled]}
-            >
-              <ThemedGradientFill theme={theme} style={styles.continueBtn}>
-                <Text style={styles.continueText}>Continue</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </ThemedGradientFill>
-            </ButtonFeedback>
           </View>
+
+          {/* Continue — Concept's 3D "Ready!" button, centred under the panel;
+              dimmed and disabled until every sound has been found. */}
+          <ButtonFeedback
+            activeOpacity={0.9}
+            onPress={handleContinue}
+            disabled={!isComplete}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !isComplete }}
+            style={[
+              styles.continueBtn,
+              { backgroundColor: theme.button },
+              !isComplete && styles.continueBtnDisabled,
+            ]}
+          >
+            <Text style={[styles.continueText, { color: theme.buttonText }]}>Continue</Text>
+            <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
+          </ButtonFeedback>
         </ScrollView>
       </SafeAreaView>
 
@@ -397,86 +421,124 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   safeInner: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.lg,
-    maxWidth: 900,
-    width: "100%",
-    alignSelf: "center",
-  },
-  containerCompact: {
-    paddingHorizontal: Layout.spacing.md,
-  },
-  headerRow: {
+
+  // ── Header: round Back (left) + Skip pill (right) ─────────────────────────
+  topBar: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Layout.spacing.md,
-    marginBottom: Layout.spacing.lg,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
   },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
+  // ConceptCategoriesScreen iconBtn.
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.5)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  headerCopy: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: Layout.fonts.extrabold,
-  },
-  subtitle: {
-    marginTop: 2,
-    fontSize: Layout.fontSize.sm,
-    opacity: 0.75,
-  },
+  // Same translucent wash as the icon button, as a small pill.
   skipBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   skipText: {
     fontSize: Layout.fontSize.sm,
     fontFamily: Layout.fonts.bold,
-    opacity: 0.85,
-    textDecorationLine: "underline",
   },
+
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: Layout.spacing.sm,
+    paddingBottom: Layout.spacing.xl,
+    maxWidth: 820,
+    width: "100%",
+    alignSelf: "center",
+    alignItems: "center",
+  },
+  containerCompact: {
+    paddingHorizontal: Layout.spacing.md,
+  },
+  // Same heading sizes as the Listen / Speak steps.
+  title: {
+    fontSize: 34,
+    lineHeight: 40,
+    fontFamily: Layout.fonts.extrabold,
+    letterSpacing: -0.3,
+    textAlign: "center",
+  },
+  subtitle: {
+    marginTop: 2,
+    // Wider gap so the panel sits a little lower under the heading.
+    marginBottom: 56,
+    fontSize: 15,
+    fontFamily: Layout.fonts.semibold,
+    opacity: 0.6,
+    textAlign: "center",
+  },
+
+  // Concept/Dialogue card style: thick theme outline (colour set inline),
+  // round corners, soft shadow.
   panel: {
-    borderRadius: 24,
-    borderWidth: 1,
+    width: "100%",
+    borderRadius: 28,
+    borderWidth: 3,
     padding: 24,
     gap: 22,
-    ...Layout.shadow.sm,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   panelCompact: {
     padding: 16,
     gap: 18,
   },
-  playBtnWrap: {
-    alignSelf: "center",
-    borderRadius: 18,
-    overflow: "hidden",
-    ...Layout.shadow.md,
-  },
-  playBtnDisabled: {
-    opacity: 0.5,
-  },
+
+  // Concept's raised 3D button (ConceptImageScreen fwdBtn), Hear Sounds size.
   playBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: "rgba(0,0,0,0.22)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  // No audio for this word, or the clip is already playing.
+  playBtnDisabled: {
+    opacity: 0.55,
   },
   playBtnText: {
-    color: "#FFFFFF",
-    fontSize: Layout.fontSize.md,
-    fontFamily: Layout.fonts.bold,
+    fontSize: 16,
+    fontFamily: "DMSans_800ExtraBold",
   },
+
   slotRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -487,28 +549,29 @@ const styles = StyleSheet.create({
   slot: {
     // Sized so a 6-part word ("jellyfish") still assembles on one line at
     // phone width rather than wrapping into a 5+1 that reads as two words.
-    minWidth: 44,
-    minHeight: 52,
+    minWidth: 48,
+    minHeight: 56,
     paddingHorizontal: 6,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: "#DCE4EF",
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
+  // Border colour set inline from the avatar theme.
   slotActive: {
-    borderColor: Colors.primary,
-    backgroundColor: "#F4F7FE",
+    borderWidth: 3,
+    backgroundColor: "#FFFFFF",
   },
   slotFilled: {
     borderColor: Colors.status.success,
     backgroundColor: Colors.status.successLight,
   },
   slotText: {
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 22,
+    lineHeight: 28,
     fontFamily: Layout.fonts.extrabold,
     color: "#3A4A61",
   },
@@ -517,36 +580,45 @@ const styles = StyleSheet.create({
     // not as text. The darker green keeps the same hue above 4.5:1.
     color: "#166534",
   },
+
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: 14,
   },
+  // Raised tile (darker bottom edge, as the 3D buttons) — these are tapped.
   soundChip: {
-    minWidth: 88,
+    minWidth: 96,
+    minHeight: 96,
     paddingHorizontal: 18,
     paddingVertical: 12,
-    minHeight: 86,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: "#FFFFFF",
     borderWidth: 2,
+    borderBottomWidth: 5,
     borderColor: "#E1E7EF",
     alignItems: "center",
     justifyContent: "center",
-    ...Layout.shadow.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
+  // Border colour set inline from the avatar theme.
   soundChipUpNext: {
-    borderColor: Colors.primary,
+    borderWidth: 3,
+    borderBottomWidth: 5,
   },
   soundChipDone: {
     backgroundColor: Colors.status.successLight,
     borderColor: Colors.status.success,
   },
   soundChipText: {
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 36,
+    lineHeight: 44,
     fontFamily: Layout.fonts.extrabold,
     color: "#3A4A61",
   },
@@ -564,11 +636,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   feedbackBar: {
+    alignSelf: "stretch",
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -584,27 +658,29 @@ const styles = StyleSheet.create({
     color: "#3A4A61",
     fontFamily: Layout.fonts.semibold,
   },
-  continueBtnWrap: {
-    alignSelf: "center",
-    borderRadius: 18,
-    overflow: "hidden",
-    minWidth: 200,
-    ...Layout.shadow.md,
+
+  // Continue — ConceptImageScreen's fwdBtn ("Ready!"), under the panel.
+  continueBtn: {
+    marginTop: Layout.spacing.xl,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: "rgba(0,0,0,0.22)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
   continueBtnDisabled: {
     opacity: 0.4,
   },
-  continueBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-  },
   continueText: {
-    color: "#FFFFFF",
-    fontSize: Layout.fontSize.md,
-    fontFamily: Layout.fonts.bold,
+    fontSize: 17,
+    fontFamily: "DMSans_800ExtraBold",
   },
 });

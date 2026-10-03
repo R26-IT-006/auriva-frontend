@@ -46,8 +46,10 @@ describe('word-practice verdict and result experience wiring', () => {
     expect(card).not.toMatch(/Motor Score|DTW|threshold/);
   });
 
-  it('preserves A-C session outcomes through the existing Activity D demo detour', () => {
-    expect(screen).toMatch(/initialExerciseStatus: exStatus/);
+  it('preserves A-C session outcomes — no demo detour leaves the screen before D', () => {
+    // The Activity D demo detour was removed, so the child never navigates
+    // away mid-word; the screen still restores outcomes from its route.
+    expect(screen).not.toMatch(/HandwritingDemo/);
     expect(screen).toMatch(/\.\.\.\(route\.params\?\.initialExerciseStatus \?\? \{\}\)/);
   });
 });

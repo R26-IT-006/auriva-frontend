@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const SAMAN_VIDEO = require('../../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4');
 
@@ -46,9 +47,9 @@ export default function ClapActivityScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
-            style={styles.headerSide}
+            style={styles.headerBtn}
           >
-            <Ionicons name="arrow-back" size={22} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.headerSide} />
@@ -56,7 +57,11 @@ export default function ClapActivityScreen({ route, navigation }) {
       </SafeAreaView>
 
       {/* ── Body ──────────────────────────────── */}
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.body}>
 
         {/* Instruction text */}
         <Text style={[styles.prompt, { color: theme.headingText }]}>
@@ -94,7 +99,7 @@ export default function ClapActivityScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-      </View>
+      </LinearGradient>
 
     </View>
   );
@@ -115,10 +120,24 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
+  // Concept's round translucent header button (spacers keep headerSide).
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   headerTitle: {
     flex:       1,
     fontSize:   17,
-    fontWeight: '800',
+    fontFamily: 'DMSans_800ExtraBold',
     textAlign:  'center',
   },
 
@@ -132,7 +151,7 @@ const styles = StyleSheet.create({
 
   prompt: {
     fontSize:           22,
-    fontWeight:         '700',
+    fontFamily: 'DMSans_700Bold',
     textAlign:          'center',
     lineHeight:         32,
     textDecorationLine: 'underline',
@@ -157,13 +176,22 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   nextBtn: {
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical:   Layout.spacing.md,
-    borderRadius:      Layout.radius.full,
-    ...Layout.shadow.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
   nextBtnText: {
-    fontSize:   Layout.fontSize.lg,
-    fontWeight: '700',
+    fontSize: 17,
+    fontFamily: 'DMSans_800ExtraBold',
   },
 });

@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
-  Image,
+  Modal,
+  Pressable,
   View,
   Text,
   StyleSheet,
@@ -27,19 +28,13 @@ import {
   usePronunciationSessionStore,
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
-import { endTeachingSession } from "./pronunciationSessionLifecycle.js";
 import { buildPronunciationResultPayload } from "./pronunciationPayloads.js";
-import { AvatarIdentityBadge, ThemedGradientFill } from "./pronunciationDesignKit.js";
-import {
-  CORRECT_STAMP_GIF,
-  getCongratulationsImage,
-  WRONG_STAMP_GIF,
-} from "./pronunciationCelebrationAssets.js";
+import { getCongratulationsImage } from "./pronunciationCelebrationAssets.js";
 import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 
 const EXPECTED_PRONUNCIATION_SCORE = 80;
-const WELL_DONE_AUDIO_ASSET = require("../../../../assets/pronounciation-audios/well-done-female.mp3");
-const HOORAY_AUDIO_ASSET = require("../../../../assets/pronounciation-audios/hooray-female.mp3");
+const WELL_DONE_AUDIO_ASSET = require("../../../../assets/pronunciation-audios/well-done-female.mp3");
+const HOORAY_AUDIO_ASSET = require("../../../../assets/pronunciation-audios/hooray-female.mp3");
 
 function FeedbackButton({ onPress, style, activeOpacity = 0.92, children }) {
   return (
@@ -49,32 +44,72 @@ function FeedbackButton({ onPress, style, activeOpacity = 0.92, children }) {
   );
 }
 
-function ConfettiBurst({ pieces }) {
+// "ice cream" -> "Ice Cream". Only the first letter of each space-separated
+// part changes, so words like "don't" are left intact.
+function capitalizeWords(text) {
+  if (!text) return text;
+  return String(text)
+    .split(" ")
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
+// The child's buddy, shown on every result (Great Job uses the celebrating
+// picture from pronunciationCelebrationAssets instead, when there is one).
+const AVATAR_IMAGES = {
+  boba: require("../../../../assets/avatar-images/Boba.png"),
+  glitter: require("../../../../assets/avatar-images/Glitter.png"),
+  lily: require("../../../../assets/avatar-images/Lily.png"),
+  megatron: require("../../../../assets/avatar-images/Megatron.png"),
+};
+
+// Falling stars behind a Great Job — the same effect as Concept Learning's
+// celebration screen (ConceptCongratulationsScreen's FallingStar).
+const STAR_COUNT = 8;
+const STAR_GLYPHS = ["⭐", "✨", "🎉"];
+
+function FallingStar({ delay, startX, glyph, size, fallDistance, duration }) {
+  const translateY = useRef(new Animated.Value(-20)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let loop = null;
+    const t = setTimeout(() => {
+      loop = Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(translateY, { toValue: fallDistance, duration, useNativeDriver: true }),
+            Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+            Animated.timing(rotate, { toValue: 1, duration, useNativeDriver: true }),
+          ]),
+          Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+          Animated.parallel([
+            Animated.timing(translateY, { toValue: -20, duration: 0, useNativeDriver: true }),
+            Animated.timing(opacity, { toValue: 0, duration: 0, useNativeDriver: true }),
+            Animated.timing(rotate, { toValue: 0, duration: 0, useNativeDriver: true }),
+          ]),
+        ]),
+      );
+      loop.start();
+    }, delay);
+    return () => {
+      clearTimeout(t);
+      loop?.stop();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const spin = rotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+
   return (
-    <View pointerEvents="none" style={styles.confettiLayer}>
-      {pieces.map((piece) => (
-        <Animated.View
-          key={piece.id}
-          style={[
-            styles.confettiPiece,
-            {
-              backgroundColor: piece.color,
-              left: piece.left,
-              top: piece.top,
-              width: piece.width,
-              height: piece.height,
-              opacity: piece.opacity,
-              transform: [
-                { translateX: piece.translateX },
-                { translateY: piece.translateY },
-                { rotate: piece.rotate },
-                { scale: piece.scale },
-              ],
-            },
-          ]}
-        />
-      ))}
-    </View>
+    <Animated.Text
+      style={[
+        styles.fallingStar,
+        { left: startX, top: 0, fontSize: size, transform: [{ translateY }, { rotate: spin }], opacity },
+      ]}
+    >
+      {glyph}
+    </Animated.Text>
   );
 }
 
@@ -84,7 +119,6 @@ export default function PronunciationResultScreen({ navigation, route }) {
   const hasSavedResultRef = useRef(false);
   const theme = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
-  const isCompact = width < 820;
   const sessionCategory = usePronunciationSessionStore(
     (state) => state.selectedCategory,
   );
@@ -149,7 +183,6 @@ export default function PronunciationResultScreen({ navigation, route }) {
     (state) => state.numberOfAttempts,
   );
   const lowScorePulse = useRef(new Animated.Value(1)).current;
-  const lowScoreShake = useRef(new Animated.Value(0)).current;
   const setSelectedWord = usePronunciationSessionStore(
     (state) => state.setSelectedWord,
   );
@@ -175,11 +208,87 @@ export default function PronunciationResultScreen({ navigation, route }) {
   // earned the celebration; the flag lives on in the teacher's review queue.
   const isNeutralFeedback = confidenceLevel === "low";
   const isHighScore = !isNeutralFeedback && displayScore >= EXPECTED_PRONUNCIATION_SCORE;
+  // Teacher-only status, kept out of the child's view behind the eye button
+  // on the result card. Flagged covers both the neutral (low-confidence)
+  // result and any other needs_teacher_review reason.
+  const [teacherInfoOpen, setTeacherInfoOpen] = useState(false);
+  const isFlaggedForReview = isNeutralFeedback || Boolean(needsTeacherReview);
   // Sensory sensitivity varies hugely per ASD child — confetti/vibration/
   // sound that motivates one kid can overwhelm another. Teacher-set per
   // student on the session setup screen; text-based praise stays either way.
   const reduceStimulation = Boolean(student?.reduce_stimulation);
   const congratulationsImage = getCongratulationsImage(student?.avatar_key);
+
+  // ── Concept-style celebration layout (ConceptCongratulationsScreen) ─────
+  // Buddy above the card on Great Job only (the celebrating picture, or the
+  // plain one if there is no celebrating version). Keep Practicing and Let's
+  // Try Together show no buddy.
+  const buddyImage = isHighScore
+    ? congratulationsImage || AVATAR_IMAGES[student?.avatar_key] || null
+    : null;
+  // Capitalised here rather than with textTransform: "capitalize" — on
+  // Android that style measures the text before transforming it, so the wider
+  // capital pushes the last letter out ("Fish" rendered as "Fis").
+  const practisedLabel = isAlphabetMode
+    ? currentWord?.letter
+      ? `Letter ${currentWord.letter}`
+      : null
+    : capitalizeWords(currentWord?.word) || null;
+  const encouragement = isHighScore
+    ? "That sounded great!"
+    : isNeutralFeedback
+      ? "Let's listen and say it again together."
+      : "Listen once more, then have another go.";
+  // Falling stars only celebrate a Great Job, and never for a student set to
+  // reduced celebration effects. Positions fixed once per screen.
+  const showFallingStars = isHighScore && !reduceStimulation;
+  const fallingStars = useMemo(
+    () =>
+      Array.from({ length: STAR_COUNT }, (_, i) => ({
+        delay: i * 260,
+        startX: (width / STAR_COUNT) * i + Math.random() * 18,
+        glyph: STAR_GLYPHS[i % STAR_GLYPHS.length],
+        size: 18 + Math.random() * 14,
+        fallDistance: 120 + Math.random() * 60,
+        duration: 1600 + Math.random() * 700,
+      })),
+    [width],
+  );
+
+  const buddyScale = useRef(new Animated.Value(0)).current;
+  const buddyBounce = useRef(new Animated.Value(0)).current;
+  const cardScale = useRef(new Animated.Value(0.82)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const burstScale = useRef(new Animated.Value(0)).current;
+
+  // Entrance, as Concept: the card pops in, the burst springs after a beat,
+  // the buddy springs in — and keeps gently bouncing only on a Great Job
+  // (still for a reduced-stimulation student).
+  useEffect(() => {
+    let bounceLoop = null;
+    Animated.parallel([
+      Animated.spring(cardScale, { toValue: 1, useNativeDriver: true, bounciness: 10, speed: 5 }),
+      Animated.timing(cardOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+    const burstTimer = setTimeout(() => {
+      Animated.spring(burstScale, { toValue: 1, useNativeDriver: true, bounciness: 24, speed: 5 }).start();
+    }, 200);
+    Animated.spring(buddyScale, { toValue: 1, useNativeDriver: true, bounciness: 24, speed: 4 }).start(() => {
+      if (!isHighScore || reduceStimulation) return;
+      bounceLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(buddyBounce, { toValue: -18, duration: 420, useNativeDriver: true }),
+          Animated.timing(buddyBounce, { toValue: 0, duration: 360, useNativeDriver: true }),
+          Animated.delay(280),
+        ]),
+      );
+      bounceLoop.start();
+    });
+    return () => {
+      clearTimeout(burstTimer);
+      bounceLoop?.stop();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const phonemeScores = mockPhonemeScores?.length
     ? mockPhonemeScores
     : null;
@@ -236,12 +345,7 @@ export default function PronunciationResultScreen({ navigation, route }) {
     [],
   );
 
-  const lowScoreTranslateX = lowScoreShake.interpolate({
-    inputRange: [-1, 1],
-    outputRange: [-8, 8],
-  });
-
-  const nextWord = useMemo(() => {
+const nextWord = useMemo(() => {
     const currentIndex = words.findIndex((item) => item.id === currentWord?.id);
     if (recommendation?.word) return recommendation.word;
     if (currentIndex >= 0 && words[currentIndex + 1]) {
@@ -433,53 +537,31 @@ export default function PronunciationResultScreen({ navigation, route }) {
       ]),
     );
 
-    const shakeLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(lowScoreShake, {
-          toValue: 1,
-          duration: 80,
-          useNativeDriver: true,
-        }),
-        Animated.timing(lowScoreShake, {
-          toValue: -1,
-          duration: 80,
-          useNativeDriver: true,
-        }),
-        Animated.timing(lowScoreShake, {
-          toValue: 0,
-          duration: 80,
-          useNativeDriver: true,
-        }),
-        Animated.delay(850),
-      ]),
-    );
-
+    // Gentle pulse only — the left-right "no" shake was removed.
     pulseLoop.start();
-    shakeLoop.start();
-    // Says out loud what the shaking retry card means, for a child who does
+    // Says out loud what the pulsing retry card means, for a child who does
     // not read the "Keep Practicing" heading.
     playVoicePrompt("tryOneMoreTime");
 
     return () => {
       pulseLoop.stop();
-      shakeLoop.stop();
       stopVoicePrompt();
     };
-  }, [confettiPieces, isHighScore, isNeutralFeedback, lowScorePulse, lowScoreShake, reduceStimulation]);
+  }, [confettiPieces, isHighScore, isNeutralFeedback, lowScorePulse, reduceStimulation]);
 
-  function handleGoDashboard() {
-    // Back to setup ends this teaching session — the next one opens its own
-    // backend row when the teacher continues from the setup screen.
-    endTeachingSession(student);
-    navigation.navigate("PronunciationSessionSetup", { student });
-  }
-
-  function handleGoHome() {
-    endTeachingSession(student);
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "WorkspaceSelect" }],
-    });
+  // Back to the letter list (alphabet) / this category's word list (words).
+  // { pop: true } returns to the list screen already in the stack, dropping
+  // this word's Learn/Speak/Result screens — same reasoning as Try Again.
+  function handleBackToList() {
+    navigation.navigate(
+      "PronunciationWordSelection",
+      {
+        student,
+        mode,
+        categoryId: navigationCategoryId,
+      },
+      { pop: true }
+    );
   }
 
   function handleTryAgain() {
@@ -523,225 +605,215 @@ export default function PronunciationResultScreen({ navigation, route }) {
   }
 
   return (
-    <LinearGradient colors={theme.backgroundGradient} style={styles.safe}>
+    <LinearGradient
+      colors={theme.backgroundGradient}
+      style={styles.safe}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
+      {/* Back to the letter / word list — a translucent pill in the top-left,
+          like the round header buttons on the other screens. */}
+      <View style={styles.topBar}>
+        <FeedbackButton
+          style={styles.navPill}
+          activeOpacity={0.8}
+          onPress={handleBackToList}
+        >
+          <Ionicons name="arrow-back" size={18} color={theme.headingText} />
+          <Text style={[styles.navPillText, { color: theme.headingText }]}>
+            {isAlphabetMode ? "Letters" : "Words"}
+          </Text>
+        </FeedbackButton>
+      </View>
+
+      {/* Falling stars behind a Great Job (not for reduced stimulation). */}
+      {showFallingStars ? (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          {fallingStars.map((s, i) => (
+            <FallingStar key={i} {...s} />
+          ))}
+        </View>
+      ) : null}
+
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.topBar, isCompact && styles.topBarCompact, { borderColor: theme.cardOutline }]}>
-          <View style={styles.studentWrap}>
-            <AvatarIdentityBadge
-              avatarKey={student?.avatar_key}
-              theme={theme}
-              size={40}
-              style={styles.avatarDot}
-            />
-            <View style={styles.studentTitleWrap}>
-              <Text style={[styles.studentText, isCompact && styles.studentTextCompact, { color: theme.headingText }]}>
-                {student?.full_name || "Leo M."}'s Result
-              </Text>
-              <View style={styles.completedPill}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={14}
-                  color={Colors.status.success}
-                />
-                <Text style={styles.completedPillText}>Completed</Text>
-              </View>
-            </View>
-          </View>
-          <View style={[styles.buttonsGroup, isCompact && styles.buttonsGroupCompact]}>
-            <FeedbackButton
-              style={[styles.homeBtn, isCompact && styles.navBtnCompact]}
-              activeOpacity={0.88}
-              onPress={handleGoHome}
-            >
-              <Ionicons name="home" size={16} color="#5C6C85" />
-              <Text style={styles.btnText}>Home</Text>
-            </FeedbackButton>
-            <FeedbackButton
-              style={[styles.dashboardBtn, isCompact && styles.navBtnCompact]}
-              activeOpacity={0.88}
-              onPress={handleGoDashboard}
-            >
-              <Ionicons name="home-outline" size={16} color="#5C6C85" />
-              <Text style={styles.btnText}>Dashboard</Text>
-            </FeedbackButton>
-          </View>
-        </View>
 
         <View style={styles.studentResultWrap}>
-          <View
+          {/* The child's buddy pops in on top of the card (Concept layout). */}
+          {buddyImage ? (
+            <Animated.Image
+              source={buddyImage}
+              resizeMode="contain"
+              accessibilityLabel={isHighScore ? "Your buddy is celebrating with you" : "Your buddy"}
+              style={[
+                styles.buddy,
+                { transform: [{ scale: buddyScale }, { translateY: buddyBounce }] },
+              ]}
+            />
+          ) : null}
+
+          <Animated.View
             style={[
               styles.studentResultCard,
               {
-                backgroundColor: theme.cardSurface,
-                borderColor: isHighScore || isNeutralFeedback ? theme.cardOutline : "#FFB7C4",
+                opacity: cardOpacity,
+                transform: [{ scale: cardScale }],
               },
             ]}
           >
-            {isHighScore && !reduceStimulation && <ConfettiBurst pieces={confettiPieces} />}
 
-            {isNeutralFeedback ? (
-              <View style={styles.celebrationContent}>
-                <View
-                  style={[
-                    styles.resultIconWrap,
-                    { backgroundColor: theme.background },
-                  ]}
-                >
-                  <Ionicons name="people" size={44} color={theme.button} />
-                </View>
-                <Text
-                  style={[
-                    styles.studentResultTitle,
-                    isCompact && styles.studentResultTitleCompact,
-                    { color: theme.headingText },
-                  ]}
-                >
-                  Let's Try Together
-                </Text>
-                <Text
-                  style={[
-                    styles.studentResultTitleSinhala,
-                    isCompact && styles.studentResultTitleSinhalaCompact,
-                    { color: theme.headingText },
-                  ]}
-                >
-                  එකට උත්සාහ කරමු
-                </Text>
-                <View style={styles.reviewPill}>
-                  <Ionicons name="eye-outline" size={13} color={Colors.status.review} />
-                  <Text style={styles.reviewPillText}>Flagged for teacher review</Text>
-                </View>
-              </View>
-            ) : isHighScore ? (
-              <View style={styles.celebrationContent}>
-                {congratulationsImage ? (
-                  <View style={styles.congratsImageWrap}>
-                    <Image
-                      source={congratulationsImage}
-                      resizeMode="contain"
-                      style={styles.congratsImage}
-                      accessibilityLabel="Your buddy is celebrating with you"
-                    />
-                    {reduceStimulation ? null : (
-                      <Image
-                        source={CORRECT_STAMP_GIF}
-                        resizeMode="contain"
-                        style={styles.feedbackStamp}
-                      />
-                    )}
-                  </View>
-                ) : (
-                  <View
+            {/* Teacher-only: small, quiet eye button in the card's corner that
+                opens the attempt's status (completed / review flag). Tinted in
+                the review colour when this attempt is flagged. */}
+            <Pressable
+              onPress={() => setTeacherInfoOpen(true)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Teacher info for this attempt"
+              style={styles.teacherInfoBtn}
+            >
+              <Ionicons
+                name="eye-outline"
+                size={16}
+                color={isFlaggedForReview ? Colors.status.review : "#9AA5B5"}
+              />
+            </Pressable>
+
+            {/* Concept order: glowing burst → heading → what was practised →
+                encouragement. Keep Practicing keeps its gentle pulse and the
+                "sound to practice" tip. */}
+            <Animated.View
+              style={[
+                styles.celebrationContent,
+                !isHighScore && !isNeutralFeedback && {
+                  transform: [{ scale: lowScorePulse }],
+                },
+              ]}
+            >
+              {/* Icon burst for Let's Try Together / Keep Practicing. Great
+                  Job has none — the celebrating buddy says it. */}
+              {!isHighScore ? (
+                <View style={styles.burstWrap}>
+                  <Animated.View
                     style={[
-                      styles.resultIconWrap,
-                      { backgroundColor: theme.background },
+                      styles.burstGlow,
+                      {
+                        backgroundColor: isNeutralFeedback ? theme.cardOutline : "#FFB7C4",
+                        transform: [{ scale: burstScale }],
+                      },
                     ]}
-                  >
-                    <Ionicons name="sparkles" size={44} color={theme.button} />
-                  </View>
-                )}
-                <Text
-                  style={[
-                    styles.studentResultTitle,
-                    isCompact && styles.studentResultTitleCompact,
-                    { color: theme.headingText },
-                  ]}
-                >
-                  Great Job
-                </Text>
-                <Text
-                  style={[
-                    styles.studentResultTitleSinhala,
-                    isCompact && styles.studentResultTitleSinhalaCompact,
-                    { color: theme.headingText },
-                  ]}
-                >
-                  හරිම හොඳයි
-                </Text>
-              </View>
-            ) : (
-              <Animated.View
+                  />
+                  <Animated.View style={{ transform: [{ scale: burstScale }] }}>
+                    {isNeutralFeedback ? (
+                      <Ionicons name="people" size={40} color={theme.button} />
+                    ) : (
+                      <Ionicons name="refresh-circle" size={44} color={Colors.status.error} />
+                    )}
+                  </Animated.View>
+                </View>
+              ) : null}
+
+              <Text
                 style={[
-                  styles.lowScoreContent,
-                  {
-                    transform: [
-                      { translateX: lowScoreTranslateX },
-                      { scale: lowScorePulse },
-                    ],
-                  },
+                  styles.studentResultTitle,
+                  !isHighScore && !isNeutralFeedback
+                    ? styles.lowScoreTitle
+                    : { color: theme.headingText },
                 ]}
               >
-                <View style={styles.lowScoreIconWrap}>
-                  {reduceStimulation ? (
-                    <Ionicons name="refresh-circle" size={52} color={Colors.status.error} />
-                  ) : (
-                    <Image
-                      source={WRONG_STAMP_GIF}
-                      resizeMode="contain"
-                      style={styles.lowScoreStamp}
-                    />
-                  )}
-                </View>
-                <Text
-                  style={[
-                    styles.studentResultTitle,
-                    styles.lowScoreTitle,
-                    isCompact && styles.studentResultTitleCompact,
-                  ]}
-                >
-                  Keep Practicing
-                </Text>
-                <Text
-                  style={[
-                    styles.studentResultTitleSinhala,
-                    styles.lowScoreTitle,
-                    isCompact && styles.studentResultTitleSinhalaCompact,
-                  ]}
-                >
-                  තව පුහුණු වෙමු
-                </Text>
-                {weakSoundText ? (
-                  <View style={styles.soundFocusCard}>
-                    <Text style={styles.soundFocusLabel}>Sound to practice</Text>
-                    <Text style={styles.soundFocusSound}>{weakSoundText}</Text>
-                    {weakSoundCue ? (
-                      <Text style={styles.soundFocusCue}>{weakSoundCue}</Text>
-                    ) : null}
-                  </View>
-                ) : null}
-              </Animated.View>
-            )}
-          </View>
+                {isHighScore ? "Great Job!" : isNeutralFeedback ? "Let's Try Together" : "Keep Practicing"}
+              </Text>
 
-          <View style={[styles.studentActions, isCompact && styles.studentActionsCompact]}>
+              {practisedLabel ? (
+                <Text style={[styles.practisedLabel, { color: theme.button }]}>{practisedLabel}</Text>
+              ) : null}
+
+              <Text style={[styles.encouragement, { color: theme.headingText }]}>{encouragement}</Text>
+
+              {!isHighScore && !isNeutralFeedback && weakSoundText ? (
+                <View style={styles.soundFocusCard}>
+                  <Text style={styles.soundFocusLabel}>Sound to practice</Text>
+                  <Text style={styles.soundFocusSound}>{weakSoundText}</Text>
+                  {weakSoundCue ? (
+                    <Text style={styles.soundFocusCue}>{weakSoundCue}</Text>
+                  ) : null}
+                </View>
+              ) : null}
+            </Animated.View>
+          </Animated.View>
+
+          {/* Both as Concept's raised 3D buttons, centred under the card:
+              Next is the main action (avatar colour), Try Again the quieter
+              white one. Sized by padding, so the label can never overflow. */}
+          <View style={styles.studentActions}>
             <FeedbackButton
-              style={styles.tryAgainBtn}
+              style={[styles.tryAgainBtn, { borderColor: theme.cardOutline }]}
               activeOpacity={0.9}
               onPress={handleTryAgain}
             >
-              <Ionicons name="refresh-outline" size={24} color="#4B5B72" />
-              <Text style={styles.tryAgainText}>Try Again</Text>
+              <Ionicons name="refresh" size={20} color={theme.headingText} />
+              <Text style={[styles.tryAgainText, { color: theme.headingText }]}>Try Again</Text>
             </FeedbackButton>
 
             <FeedbackButton
-              style={styles.nextWordBtnWrap}
+              style={[styles.nextWordBtn, { backgroundColor: theme.button }]}
               activeOpacity={0.9}
               onPress={handleNextWord}
             >
-              <ThemedGradientFill theme={theme} style={styles.nextWordBtn}>
-                <Text style={styles.nextWordBtnText}>
-                  {isAlphabetMode ? "Next Letter" : "Next Word"}
-                </Text>
-                <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
-              </ThemedGradientFill>
+              <Text style={[styles.nextWordBtnText, { color: theme.buttonText }]}>
+                {isAlphabetMode ? "Next Letter" : "Next Word"}
+              </Text>
+              <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
             </FeedbackButton>
           </View>
         </View>
       </ScrollView>
+
+      {/* ── Teacher info — opened from the eye button on the result card ── */}
+      <Modal
+        visible={teacherInfoOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTeacherInfoOpen(false)}
+      >
+        <Pressable style={styles.teacherInfoBackdrop} onPress={() => setTeacherInfoOpen(false)}>
+          <Pressable
+            style={[styles.teacherInfoCard, { borderColor: theme.cardOutline }]}
+            onPress={() => {}}
+          >
+            <View style={styles.teacherInfoHeader}>
+              <Ionicons name="eye-outline" size={18} color={theme.headingText} />
+              <Text style={[styles.teacherInfoTitle, { color: theme.headingText }]}>For the teacher</Text>
+              <Pressable
+                onPress={() => setTeacherInfoOpen(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={styles.teacherInfoClose}
+              >
+                <Ionicons name="close" size={20} color="#8A959C" />
+              </Pressable>
+            </View>
+
+            <View style={styles.completedPill}>
+              <Ionicons name="checkmark-circle" size={14} color={Colors.status.success} />
+              <Text style={styles.completedPillText}>Completed</Text>
+            </View>
+
+            {isFlaggedForReview ? (
+              <View style={styles.reviewPill}>
+                <Ionicons name="eye-outline" size={13} color={Colors.status.review} />
+                <Text style={styles.reviewPillText}>Flagged for teacher review</Text>
+              </View>
+            ) : (
+              <Text style={styles.teacherInfoNote}>No review needed for this attempt.</Text>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
     </LinearGradient>
   );
@@ -754,96 +826,53 @@ const styles = StyleSheet.create({
   safeInner: {
     flex: 1,
   },
+  // Buddy + card + buttons centred vertically in the space under the header;
+  // the extra bottom padding lifts the group a little above centre.
   container: {
     flexGrow: 1,
+    justifyContent: "center",
     paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: Layout.spacing.lg,
+    paddingTop: Layout.spacing.sm,
+    paddingBottom: Layout.spacing.xl + 120,
     alignItems: "center",
   },
+  // ── Header: back to the letter / word list ───────────────────────────────
+  // Full width with the button pinned to the left; lowered by its top
+  // padding (40 more than the bottom).
   topBar: {
-    width: "100%",
-    maxWidth: 1040,
-    height: 60,
-    backgroundColor: "rgba(255,255,255,0.5)",
-    borderRadius: 2,
-    paddingHorizontal: 12,
+    alignSelf: "stretch",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
+    // Button sits a little in from the left edge.
+    paddingLeft: 40,
+    paddingRight: Layout.spacing.md,
+    paddingTop: Layout.spacing.sm + 40,
+    paddingBottom: Layout.spacing.sm,
   },
-  topBarCompact: {
-    height: "auto",
-    minHeight: 60,
-    alignItems: "stretch",
-    flexDirection: "column",
-    gap: Layout.spacing.sm,
-    paddingVertical: Layout.spacing.sm,
-  },
-  studentWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: 12,
-  },
-  studentTitleWrap: {
-    flex: 1,
-  },
-  avatarDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#AFC4DA",
-    backgroundColor: "#E8F0F9",
-  },
-  studentText: {
-    fontSize: 34,
-    color: "#1F2F49",
-    fontFamily: Layout.fonts.bold,
-  },
-  studentTextCompact: {
-    fontSize: 24,
-    lineHeight: 30,
-  },
-  buttonsGroup: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-  },
-  buttonsGroupCompact: {
-    width: "100%",
-  },
-  homeBtn: {
+  // Translucent pill, the same white wash and shadow as the round header
+  // buttons on the other screens (ConceptCategoriesScreen iconBtn).
+  navPill: {
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#F3F5F8",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    height: 42,
+    backgroundColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  dashboardBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#F3F5F8",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    height: 42,
-  },
-  navBtnCompact: {
-    flex: 1,
-  },
-  btnText: {
-    color: "#5D6D87",
+  navPillText: {
     fontFamily: Layout.fonts.bold,
     fontSize: 14,
   },
   completedPill: {
-    alignSelf: "flex-start",
+    alignSelf: "center",
     marginTop: 3,
     minHeight: 24,
     borderRadius: 12,
@@ -880,6 +909,71 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: Layout.fonts.bold,
   },
+  // ── Teacher-only info (eye button + popup) ──────────────────────────────
+  // Deliberately small and grey: easy for the teacher to find, easy for the
+  // child to ignore.
+  teacherInfoBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  teacherInfoBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Layout.spacing.xl,
+  },
+  teacherInfoCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    borderWidth: 2,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: Layout.spacing.md,
+    paddingBottom: Layout.spacing.lg,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    elevation: 16,
+  },
+  teacherInfoHeader: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: Layout.spacing.md,
+  },
+  teacherInfoTitle: {
+    flex: 1,
+    fontSize: Layout.fontSize.lg,
+    fontFamily: Layout.fonts.extrabold,
+  },
+  teacherInfoClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F2F5F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  teacherInfoNote: {
+    marginTop: 10,
+    fontSize: Layout.fontSize.sm,
+    fontFamily: Layout.fonts.semibold,
+    color: Colors.text.secondary,
+    textAlign: "center",
+  },
   dashboardText: {
     color: "#5D6D87",
     fontFamily: Layout.fonts.bold,
@@ -895,92 +989,79 @@ const styles = StyleSheet.create({
   contentRowCompact: {
     flexDirection: "column",
   },
+  // ── Celebration card (ConceptCongratulationsScreen layout) ───────────────
   studentResultWrap: {
     width: "100%",
-    maxWidth: 760,
-    marginTop: 22,
+    maxWidth: 440,
     alignItems: "center",
   },
+  // The buddy stands on its own above the card, with a small gap — not
+  // overlapping it (Concept overlaps; here they are kept separate).
+  // 280px buddy. The negative bottom margin lets the picture's lower edge
+  // extend into the (now invisible) card's top padding, so the buddy grew
+  // without pushing the text below down: 280 - 36 = the old 240 + 4.
+  buddy: {
+    width: 280,
+    height: 280,
+    marginBottom: -36,
+  },
+  // No visible box: the result content sits directly on the gradient. The
+  // view stays (transparent, no shadow — a shadow on a transparent view
+  // draws a stray outline on Android) so the content keeps its spacing, the
+  // pop-in animation, and the eye button's top-right position.
   studentResultCard: {
     width: "100%",
-    minHeight: 360,
-    borderRadius: 24,
-    borderWidth: 2,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
-    padding: Layout.spacing.lg,
+    paddingTop: Layout.spacing.xl,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
   },
   celebrationContent: {
     alignItems: "center",
     justifyContent: "center",
-    gap: Layout.spacing.lg,
+    gap: 6,
   },
-  lowScoreContent: {
+  burstWrap: {
     alignItems: "center",
     justifyContent: "center",
-    gap: Layout.spacing.lg,
+    width: 70,
+    height: 70,
+    marginBottom: 4,
   },
-  resultIconWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  congratsImageWrap: {
-    width: 168,
-    height: 168,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  congratsImage: {
-    width: "100%",
-    height: "100%",
-  },
-  feedbackStamp: {
+  burstGlow: {
     position: "absolute",
-    right: -4,
-    bottom: -4,
-    width: 62,
-    height: 62,
-  },
-  lowScoreStamp: {
-    width: 84,
-    height: 84,
-  },
-  lowScoreIconWrap: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
-    backgroundColor: "#FFF0F3",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#FFB7C4",
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    opacity: 0.25,
   },
   studentResultTitle: {
-    fontSize: 58,
-    lineHeight: 68,
-    fontFamily: Layout.fonts.extrabold,
+    fontSize: 30,
+    lineHeight: 38,
+    fontFamily: "DMSans_900Black",
+    letterSpacing: -0.5,
     textAlign: "center",
   },
-  studentResultTitleSinhala: {
-    marginTop: -8,
-    fontSize: 34,
-    lineHeight: 42,
-    fontFamily: Layout.fonts.extrabold,
+  // What was just practised ("Letter A" / "cat"), in the avatar colour —
+  // where Concept names the concept.
+  practisedLabel: {
+    fontSize: 20,
+    fontFamily: "DMSans_800ExtraBold",
     textAlign: "center",
-    opacity: 0.82,
   },
-  studentResultTitleCompact: {
-    fontSize: 38,
-    lineHeight: 46,
+  encouragement: {
+    fontSize: 14,
+    fontFamily: "DMSans_600SemiBold",
+    opacity: 0.6,
+    textAlign: "center",
+    marginTop: 8,
+    paddingHorizontal: 8,
   },
-  studentResultTitleSinhalaCompact: {
-    marginTop: -4,
-    fontSize: 26,
-    lineHeight: 34,
+  fallingStar: {
+    position: "absolute",
+    fontSize: 22,
   },
   lowScoreTitle: {
     color: Colors.status.error,
@@ -1018,22 +1099,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   studentActions: {
-    width: "100%",
     flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
-  },
-  studentActionsCompact: {
-    flexDirection: "column",
-  },
-  confettiLayer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  confettiPiece: {
-    position: "absolute",
-    width: 10,
-    height: 18,
-    borderRadius: 3,
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 20,
+    marginTop: 20,
   },
   leftPanel: {
     flex: 1,
@@ -1161,38 +1231,46 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textTransform: "lowercase",
   },
+  // ── Actions: Concept's raised 3D button (ConceptImageScreen fwdBtn) ──────
+  // Try Again: the quieter white version, outlined in the theme colour.
   tryAgainBtn: {
-    backgroundColor: "#F5F7FA",
-    borderRadius: 22,
-    height: 46,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderBottomWidth: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
   tryAgainText: {
-    color: "#37475F",
     fontSize: 17,
-    fontFamily: Layout.fonts.bold,
+    fontFamily: "DMSans_800ExtraBold",
   },
-  nextWordBtnWrap: {
-    borderRadius: 24,
-    height: 50,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.9)",
-    overflow: "hidden",
-    ...Layout.shadow.md,
-  },
+  // Next Letter / Next Word: the main action, in the avatar's button colour.
   nextWordBtn: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
+    gap: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: "rgba(0,0,0,0.22)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
   nextWordBtnText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontFamily: Layout.fonts.extrabold,
+    fontSize: 17,
+    fontFamily: "DMSans_800ExtraBold",
   },
 });
