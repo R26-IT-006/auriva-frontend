@@ -15,6 +15,7 @@ import { Layout } from '../../constants/layout';
 import { principalApi } from '../../api/principal';
 import { useAuthStore } from '../../store/authStore';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { useThemeMode, useThemedStyles } from '../../context/ThemeModeContext';
 
 // ── palette ─────────────────────────────────────────────────────────────────
 const GREEN      = '#3EBF78';
@@ -26,14 +27,13 @@ const PURPLE_L   = '#EEEBF8';
 const CORAL      = '#D95F50';
 const CORAL_L    = '#FDECEA';
 const AMBER      = '#F0A940';
-const BODY_BG    = '#F2F5F8';
-const TEXT_DARK  = '#1A2E3B';
-const TEXT_MUTED = '#8A93A8';
 
 // ── Progress bar ─────────────────────────────────────────────────────────────
 function ProgressBar({ progress, color, accent }) {
+  const styles = useThemedStyles(makeStyles);
+  const { palette } = useThemeMode();
   const pct = `${Math.min(Math.round((progress ?? 0) * 100), 100)}%`;
-  const trackColor = accent ? 'rgba(255,255,255,0.22)' : '#E8EEF2';
+  const trackColor = accent ? 'rgba(255,255,255,0.22)' : palette.track;
   const fillColor  = accent ? 'rgba(255,255,255,0.85)' : color;
   return (
     <View style={[styles.progressTrack, { backgroundColor: trackColor }]}>
@@ -50,6 +50,7 @@ function StatCard({
   progressLabel, progressPct, progressColor,
   accent, onPress,
 }) {
+  const styles = useThemedStyles(makeStyles);
   const a = !!accent;
   const white = '#FFFFFF';
   const dim   = 'rgba(255,255,255,0.70)';
@@ -87,6 +88,7 @@ function StatCard({
 
 // ── Action tile ───────────────────────────────────────────────────────────────
 function ActionTile({ icon, iconBg, iconColor, label, sub, onPress }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <ButtonFeedback style={styles.actionTile} onPress={onPress} activeOpacity={0.82}>
       <View style={[styles.actionIcon, { backgroundColor: iconBg }]}>
@@ -100,6 +102,8 @@ function ActionTile({ icon, iconBg, iconColor, label, sub, onPress }) {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function PrincipalDashboardScreen({ navigation }) {
+  const styles = useThemedStyles(makeStyles);
+  const { palette } = useThemeMode();
   const [stats,         setStats]         = useState(null);
   const [refreshing,    setRefreshing]    = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
@@ -167,7 +171,7 @@ export default function PrincipalDashboardScreen({ navigation }) {
             <Text style={styles.dateText}>{today}</Text>
           </View>
           <ButtonFeedback style={styles.logoutBtn} onPress={() => setLogoutVisible(true)} activeOpacity={0.75}>
-            <Ionicons name="log-out-outline" size={18} color={TEXT_MUTED} />
+            <Ionicons name="log-out-outline" size={18} color={palette.muted} />
           </ButtonFeedback>
         </View>
 
@@ -280,8 +284,9 @@ export default function PrincipalDashboardScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe:          { flex: 1, backgroundColor: BODY_BG },
+// Built once per light / dark mode by useThemedStyles.
+const makeStyles = (p) => ({
+  safe:          { flex: 1, backgroundColor: p.background },
   scroll:        { flex: 1 },
   scrollContent: { flexGrow: 1, paddingBottom: 28 },
 
@@ -290,7 +295,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: p.surface,
     paddingHorizontal: 24,
     paddingBottom: 16,
   },
@@ -312,18 +317,18 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 22,
     fontFamily: 'DMSans_800ExtraBold',
-    color: TEXT_DARK,
+    color: p.text,
     lineHeight: 28,
   },
   dateText: {
     fontSize: 12,
     fontFamily: 'DMSans_400Regular',
-    color: TEXT_MUTED,
+    color: p.muted,
     marginTop: 2,
   },
   logoutBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#F2F5F8',
+    backgroundColor: p.surfaceAlt,
     alignItems: 'center', justifyContent: 'center',
     marginTop: 4,
   },
@@ -351,7 +356,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontFamily: 'DMSans_800ExtraBold',
-    color: TEXT_MUTED,
+    color: p.muted,
     letterSpacing: 1.2,
   },
   viewAll: {
@@ -370,10 +375,10 @@ const styles = StyleSheet.create({
   // ── Stat card ─────────────────────────────────────────────────────────────
   statCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: p.surface,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#1A2E3B',
+    shadowColor: p.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -401,13 +406,13 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontFamily: 'DMSans_900Black',
-    color: TEXT_DARK,
+    color: p.text,
     lineHeight: 28,
   },
   statLabel: {
     fontSize: 11,
     fontFamily: 'DMSans_400Regular',
-    color: TEXT_MUTED,
+    color: p.muted,
     marginTop: 2,
   },
   progressMeta: {
@@ -420,7 +425,7 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 10,
     fontFamily: 'DMSans_400Regular',
-    color: TEXT_MUTED,
+    color: p.muted,
   },
   progressPct: {
     fontSize: 10,
@@ -439,11 +444,11 @@ const styles = StyleSheet.create({
   // ── Action tile ───────────────────────────────────────────────────────────
   actionTile: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: p.surface,
     borderRadius: 16,
     padding: 16,
     gap: 6,
-    shadowColor: '#1A2E3B',
+    shadowColor: p.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -457,11 +462,11 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 13,
     fontFamily: 'DMSans_700Bold',
-    color: TEXT_DARK,
+    color: p.text,
   },
   actionSub: {
     fontSize: 11,
     fontFamily: 'DMSans_400Regular',
-    color: TEXT_MUTED,
+    color: p.muted,
   },
 });

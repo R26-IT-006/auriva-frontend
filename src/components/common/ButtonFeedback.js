@@ -59,11 +59,16 @@ export function ButtonFeedback({
   disabled = false,
   soundEnabled = true,
   hitSlop,
+  onPressIn,
+  onPressOut,
   ...touchableProps
 }) {
   const scale = useRef(new Animated.Value(1)).current;
 
-  function handlePressIn() {
+  // A caller's own onPressIn/onPressOut run alongside the press animation
+  // rather than replacing it — replaced, the button stayed shrunk after a tap.
+  function handlePressIn(event) {
+    onPressIn?.(event);
     Animated.spring(scale, {
       toValue: 0.97,
       useNativeDriver: true,
@@ -72,7 +77,8 @@ export function ButtonFeedback({
     }).start();
   }
 
-  function handlePressOut() {
+  function handlePressOut(event) {
+    onPressOut?.(event);
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,

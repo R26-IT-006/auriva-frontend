@@ -12,6 +12,7 @@ import {
   Pressable,
   ActivityIndicator,
   Animated,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +28,11 @@ import { useAuthStore } from '../../store/authStore';
 const GREEN       = Colors.brand;
 const GREEN_GRAD  = Colors.brandGradient;
 const GREEN_LIGHT = '#E3F5F7';
+
+// The Auriva logo (book, wordmark and tagline). Its own background is the
+// card's white to within a shade, so it sits on the card without a visible box.
+const AURIVA_LOGO = require('../../../assets/logos/Auriva_Logo.jpeg');
+const LOGO_RATIO = 1086 / 1448;   // the image's height / width
 
 export default function LoginScreen({ navigation }) {
   const slideAnim    = useRef(new Animated.Value(0)).current;
@@ -121,9 +127,13 @@ export default function LoginScreen({ navigation }) {
 
               {/* Logo */}
               <View style={styles.logoRow}>
-                <View style={styles.logoBadge}>
-                  <Text style={styles.logoLetter}>A</Text>
-                </View>
+                <Image
+                  source={AURIVA_LOGO}
+                  style={styles.logo}
+                  resizeMode="contain"
+                  accessibilityRole="image"
+                  accessibilityLabel="Auriva — Learning English, one happy step at a time"
+                />
               </View>
 
               {/* Heading */}
@@ -260,29 +270,14 @@ const styles = StyleSheet.create({
 
   // ── Logo ──────────────────────────────────────────────────────────────────
   logoRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 20,
+    // The image carries its own white margin, so the gap below is small.
+    marginTop: -12,
+    marginBottom: 4,
   },
-  logoBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: GREEN,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoLetter: {
-    color: '#FFF',
-    fontSize: 22,
-    fontFamily: 'DMSans_800ExtraBold',
-  },
-  logoText: {
-    fontSize: 24,
-    fontFamily: 'DMSans_700Bold',
-    color: '#1A1A2E',
+  logo: {
+    width: 300,
+    height: 300 * LOGO_RATIO,
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────

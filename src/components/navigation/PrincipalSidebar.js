@@ -8,6 +8,7 @@ import {
   Modal,
   StyleSheet,
   Animated,
+  Image,
 } from 'react-native';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,13 +17,24 @@ import { useAuthStore } from '../../store/authStore';
 import { SidebarContext } from '../../context/SidebarContext';
 import { SIDEBAR_WIDTH, MINI_WIDTH } from '../../constants/layout';
 
+// The Auriva logo — the app icon's artwork, on its white tile.
+const AURIVA_MARK = require('../../../assets/icon.png');
+
 const CX      = MINI_WIDTH / 2;   // 32 — x-centre of icon column
 const ICON_SZ = 20;
+// Logo size: as large as fits centred in the collapsed (64pt) rail.
+const LOGO    = 46;
 
 const NAV_ITEMS = [
   { name: 'Dashboard', label: 'Dashboard', icon: 'home',          outline: 'home-outline',          color: '#4ACA8C' },
   { name: 'Teachers',  label: 'Faculty',   icon: 'people',        outline: 'people-outline',        color: '#6AB4E8' },
   { name: 'Students',  label: 'Students',  icon: 'school',        outline: 'school-outline',        color: '#A68FE8' },
+  { name: 'Reports',   label: 'Reports',   icon: 'document-text', outline: 'document-text-outline', color: '#F0A940' },
+];
+
+// Under their own SETTINGS heading, below the main navigation.
+const SETTINGS_ITEMS = [
+  { name: 'Settings',  label: 'Theme Settings', icon: 'color-palette', outline: 'color-palette-outline', color: '#F28AB2' },
 ];
 
 // ── palette ───────────────────────────────────────────────────────────────────
@@ -33,12 +45,10 @@ const MID   = 'rgba(255,255,255,0.45)';
 const DIM   = 'rgba(255,255,255,0.18)';
 const DIV   = 'rgba(255,255,255,0.06)';
 const AMBER = '#F0A940';
-const GREEN = '#4ACA8C';
 
 export default function PrincipalSidebar({ navRef, activeRoute }) {
   const insets = useSafeAreaInsets();
   const logout = useAuthStore((s) => s.logout);
-  const user   = useAuthStore((s) => s.user);
   const { isOpen, toggle, sidebarAnim } = useContext(SidebarContext);
   const [signOutVisible, setSignOutVisible] = useState(false);
 
@@ -72,17 +82,20 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
   });
   const ls = { opacity: labelOpacity, transform: [{ translateX: labelX }] };
 
-  // User initials
-  const fullName = user?.full_name ?? 'Principal';
-  const initials = fullName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-
   return (
     <View style={[styles.sidebar, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 12 }]}>
 
       {/* ── Logo ── */}
       <View style={styles.logoRow}>
-        <ButtonFeedback onPress={toggle} activeOpacity={0.75} style={styles.logoBox}>
-          <Ionicons name={isOpen ? 'sparkles' : 'chevron-forward'} size={15} color={WHITE} />
+        {/* The logo doubles as the expand / collapse control, as the box did. */}
+        <ButtonFeedback
+          onPress={toggle}
+          activeOpacity={0.75}
+          style={styles.logoBox}
+          accessibilityRole="button"
+          accessibilityLabel={isOpen ? 'Auriva. Collapse the menu' : 'Auriva. Expand the menu'}
+        >
+          <Image source={AURIVA_MARK} style={styles.logoImage} resizeMode="cover" />
         </ButtonFeedback>
         <Animated.View style={[styles.logoText, ls]}>
           <Text style={styles.logoTitle} numberOfLines={1}>Auriva</Text>
@@ -95,20 +108,6 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
         </Animated.View>
       </View>
 
-      {/* ── User profile ── */}
-      <View style={styles.profileRow}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarInitials}>{initials}</Text>
-        </View>
-        <Animated.View style={[styles.profileInfo, ls]}>
-          <Text style={styles.profileName} numberOfLines={1}>{fullName}</Text>
-          <View style={styles.roleBadge}>
-            <View style={styles.roleDot} />
-            <Text style={styles.roleText}>Administrator</Text>
-          </View>
-        </Animated.View>
-      </View>
-
       <View style={styles.divider} />
 
       {/* ── Category label ── */}
@@ -116,19 +115,34 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
 
       {/* ── Nav items ── */}
       <View style={styles.nav}>
-        {NAV_ITEMS.map((item) => {
+        {[...NAV_ITEMS, null, ...SETTINGS_ITEMS].map((item) => {
+          if (item === null) {
+            return (
+              <Animated.Text key="settings-label" style={[styles.catLabel, styles.catLabelGroup, ls]}>
+                SETTINGS
+              </Animated.Text>
+            );
+          }
           const active = activeRoute === item.name;
           return (
-            <ButtonFeedback
+            // ButtonFeedback is a TouchableOpacity: it takes a plain style (a
+            // ({ pressed }) => style function is silently dropped, which left
+            // each row stacking icon over label) and cannot hold a ref, so the
+            // tooltip measures this wrapping View instead.
+            <View
               key={item.name}
               ref={(node) => { itemRefs.current[item.name] = node; }}
+              collapsable={false}
+            >
+            <ButtonFeedback
               onPress={() => navRef.current?.navigate(item.name)}
               onLongPress={() => showTooltip(item.name, item.label)}
               onPressOut={hideTooltip}
               onHoverIn={() => showTooltip(item.name, item.label)}
               onHoverOut={hideTooltip}
               delayLongPress={350}
-              style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && { opacity: 0.75 }]}
+              activeOpacity={0.75}
+              style={[styles.row, active && styles.rowActive]}
             >
               {/* Left accent bar */}
               <View style={[styles.accentBar, active && { backgroundColor: item.color }]} />
@@ -154,6 +168,7 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
                 </Animated.View>
               )}
             </ButtonFeedback>
+            </View>
           );
         })}
       </View>
@@ -161,23 +176,25 @@ export default function PrincipalSidebar({ navRef, activeRoute }) {
       {/* ── Bottom ── */}
       <View style={styles.divider} />
 
+      <View ref={(node) => { itemRefs.current.signOut = node; }} collapsable={false}>
       <ButtonFeedback
-        ref={(node) => { itemRefs.current.signOut = node; }}
         onPress={() => setSignOutVisible(true)}
         onLongPress={() => showTooltip('signOut', 'Sign Out')}
         onPressOut={hideTooltip}
         onHoverIn={() => showTooltip('signOut', 'Sign Out')}
         onHoverOut={hideTooltip}
         delayLongPress={350}
-        style={({ pressed }) => [styles.signOutRow, pressed && { opacity: 0.75 }]}
+        activeOpacity={0.75}
+        style={styles.signOutRow}
       >
         <View style={styles.iconSlot}>
-          <Ionicons name="log-out-outline" size={ICON_SZ} color="#F26B6B" />
+          <Ionicons name="log-out-outline" size={ICON_SZ} color="#D94848" />
         </View>
         <Animated.Text numberOfLines={1} style={[styles.signOutLabel, ls]}>
           Sign Out
         </Animated.Text>
       </ButtonFeedback>
+      </View>
 
       <ConfirmDialog
         visible={signOutVisible}
@@ -219,19 +236,21 @@ const styles = StyleSheet.create({
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: CX - 18,   // centres 36px box at CX=32
+    paddingLeft: CX - LOGO / 2,   // centres the logo on the icon column (CX=32)
     paddingRight: 12,
     gap: 10,
     marginBottom: 4,
   },
   logoBox: {
-    width: 36, height: 36, borderRadius: 11,
-    backgroundColor: '#1E9D7A',
+    width: LOGO, height: LOGO, borderRadius: 13,
+    backgroundColor: WHITE,
     alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
     flexShrink: 0,
   },
+  logoImage: { width: LOGO, height: LOGO },
   logoText: { flex: 1, overflow: 'hidden' },
-  logoTitle: { fontSize: 15, fontFamily: 'DMSans_900Black', color: WHITE, letterSpacing: 0.3 },
+  logoTitle: { fontSize: 17, fontFamily: 'DMSans_900Black', color: WHITE, letterSpacing: 0.3 },
   logoSub:   { fontSize: 9,  fontFamily: 'DMSans_600SemiBold', color: DIM, letterSpacing: 0.5, marginTop: 1 },
   toggleBtn: {
     width: 28, height: 28, borderRadius: 8,
@@ -239,31 +258,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-
-  // ── User profile ─────────────────────────────────────────────────────────
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: CX - 18,
-    paddingRight: 12,
-    gap: 10,
-    marginTop: 14,
-    marginBottom: 4,
-  },
-  avatarCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#1A4A5E',
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  avatarInitials: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: WHITE },
-  profileInfo: { flex: 1, overflow: 'hidden', gap: 3 },
-  profileName: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: WHITE },
-  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  roleDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: GREEN },
-  roleText: { fontSize: 10, fontFamily: 'DMSans_600SemiBold', color: MID },
 
   // ── Divider ───────────────────────────────────────────────────────────────
   divider: {
@@ -283,6 +277,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     overflow: 'hidden',
   },
+  // A second heading inside the list, set apart from the items above it.
+  catLabelGroup: { marginTop: 16 },
 
   // ── Nav items ─────────────────────────────────────────────────────────────
   nav: { flex: 1, gap: 2 },
@@ -327,12 +323,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: 'rgba(220,60,60,0.12)',
+    // A white button on the dark rail; the red icon and text still say 'sign out'.
+    backgroundColor: WHITE,
   },
   signOutLabel: {
     fontSize: 13,
     fontFamily: 'DMSans_700Bold',
-    color: '#F26B6B',
+    color: '#D94848',
     flexShrink: 1,
   },
 

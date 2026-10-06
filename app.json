@@ -14,7 +14,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F0F2FA"
+        "backgroundColor": "#FFFFFF"
       },
       "package": "com.auriva.app",
       "permissions": ["RECORD_AUDIO"]

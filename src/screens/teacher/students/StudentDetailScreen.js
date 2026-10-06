@@ -585,6 +585,12 @@ function WritingSummaryCard({ state, onRetry }) {
 
 export default function TeacherStudentDetailScreen({ route, navigation }) {
   const initialStudent = route.params?.student;
+  // Opened from the principal's Reports. Every progress endpoint behind this
+  // page is teacher-only (and checks the student is the caller's own), so a
+  // principal sees the profile from the record they already have, and the
+  // progress panel says where progress lives instead of failing request by
+  // request. No teacher endpoint is called in this mode.
+  const asPrincipal = route.params?.viewer === 'principal';
   const [student, setStudent] = useState(initialStudent);
   const [refreshing, setRefreshing] = useState(false);
   const [concepts, setConcepts] = useState(null);
@@ -612,7 +618,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   });
 
   const fetch = useCallback(async () => {
-    if (!initialStudent?.sid) { setRefreshing(false); return; }
+    if (!initialStudent?.sid || asPrincipal) { setRefreshing(false); return; }
     try {
       const s = await teacherApi.getStudent(initialStudent.sid);
       setStudent(s);
@@ -621,12 +627,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     } finally {
       setRefreshing(false);
     }
-  }, [initialStudent?.sid]);
+  }, [initialStudent?.sid, asPrincipal]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   const fetchConcepts = useCallback(async () => {
-    if (!initialStudent?.sid) return;
+    if (!initialStudent?.sid || asPrincipal) return;
     try {
       setConcepts(await teacherApi.getConceptSummary(initialStudent.sid));
     } catch {
@@ -634,13 +640,13 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     } finally {
       setConceptsLoading(false);
     }
-  }, [initialStudent?.sid]);
+  }, [initialStudent?.sid, asPrincipal]);
 
   // Reads word *progress*, not the trajectory model. Deriving trajectory counts
   // here would run a prediction — and possibly SHAP — for every word on every
   // visit to this screen; that work belongs in the report the link opens.
   const fetchDialogue = useCallback(async () => {
-    if (!initialStudent?.sid) return;
+    if (!initialStudent?.sid || asPrincipal) return;
     try {
       setDialogue(await dialogueApi.getLevel1Overview(initialStudent.sid));
     } catch {
@@ -648,23 +654,23 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     } finally {
       setDialogueLoading(false);
     }
-  }, [initialStudent?.sid]);
+  }, [initialStudent?.sid, asPrincipal]);
 
   // Level 2's summary comes from its own report endpoint's `totals`. Unlike
   // Level 1 there is no cheaper per-topic call covering all three topics at
   // once, and this report is plain database reads with no model behind it.
   const fetchLevel2 = useCallback(async () => {
-    if (!initialStudent?.sid) return;
+    if (!initialStudent?.sid || asPrincipal) return;
     try {
       const resp = await level2Api.getReport(initialStudent.sid);
       setLevel2(resp?.data ?? resp ?? null);
     } catch {
       setLevel2(null);
     }
-  }, [initialStudent?.sid]);
+  }, [initialStudent?.sid, asPrincipal]);
 
   const fetchNote = useCallback(async () => {
-    if (!initialStudent?.sid) return;
+    if (!initialStudent?.sid || asPrincipal) return;
     try {
       const notes = await teacherApi.getStudentNotes(initialStudent.sid);
       const newest = Array.isArray(notes) ? notes[0] : null;
@@ -672,7 +678,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     } catch {
       setLatestNote(null);
     }
-  }, [initialStudent?.sid]);
+  }, [initialStudent?.sid, asPrincipal]);
 
   // openHandwritingReport is declared as a plain function further down — it
   // needs `route.name` as the report's back target, and a second copy here
@@ -686,7 +692,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   const [pron, setPron] = useState({ status: 'loading', summary: null });
 
   const loadPronunciation = useCallback(async () => {
-    if (!initialStudent?.sid) return;
+    if (!initialStudent?.sid || asPrincipal) return;
     setPron((prev) => ({ ...prev, status: prev.summary ? 'ok' : 'loading' }));
     try {
       const rows = await teacherApi.getPronunciationResults(initialStudent.sid, PRON_RECENT_LIMIT);
@@ -699,7 +705,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     } catch {
       setPron({ status: 'error', summary: null });
     }
-  }, [initialStudent?.sid]);
+  }, [initialStudent?.sid, asPrincipal]);
 
   // The category whose summary pop-up is open, or null.
   const [openPronGroup, setOpenPronGroup] = useState(null);
@@ -771,7 +777,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   }, [activeModule, loadPronunciation]));
 
   const loadWritingSummary = useCallback(async () => {
-    if (!initialStudent?.sid) return;
+    if (!initialStudent?.sid || asPrincipal) return;
     setWritingSummary((prev) => ({ ...prev, status: 'loading' }));
     setStrokes((prev) => ({ ...prev, status: 'loading' }));
     // Independent: one failing never blanks the other.
@@ -781,7 +787,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     ]);
     setWritingSummary(summary);
     setStrokes(strokeState);
-  }, [initialStudent?.sid]);
+  }, [initialStudent?.sid, asPrincipal]);
 
   useEffect(() => { fetch(); }, [fetch]);
   useEffect(() => { fetchNote(); }, [fetchNote]);
@@ -1036,6 +1042,20 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
           flush
           style={styles.progressLift}
         >
+          {asPrincipal ? (
+            <View style={styles.principalNote}>
+              <View style={styles.principalNoteIcon}>
+                <Ionicons name="lock-closed" size={18} color={Colors.brandDeep} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.principalNoteTitle}>Progress is kept with {firstName}&apos;s teacher</Text>
+                <Text style={styles.principalNoteText}>
+                  Concept, writing, pronunciation and dialogue progress can be opened from
+                  the teacher&apos;s workspace. This view shows {firstName}&apos;s profile.
+                </Text>
+              </View>
+            </View>
+          ) : (<>
           {/* One track holding four equal tabs, rather than a scrolling row of
               chips. There are exactly four modules and there always will be until
               one ships, so the set is small enough to show whole — and a fixed
@@ -1518,6 +1538,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
               </View>
             </>
           )}
+          </>)}
         </Panel>
 
       </ScrollView>
@@ -1799,6 +1820,18 @@ const styles = StyleSheet.create({
   // Colour comes from the BACKDROP gradient this is applied to.
   safe:      { flex: 1 },
   safeInner: { flex: 1 },
+  // Principal (read-only) view: the note in place of Module Progress.
+  principalNote: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    margin: PANEL_PAD_LG, padding: 18, borderRadius: 16,
+    backgroundColor: '#E4F4EC',
+  },
+  principalNoteIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF',
+  },
+  principalNoteTitle: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  principalNoteText:  { fontSize: 13, lineHeight: 19, color: Colors.text.secondary, marginTop: 3 },
   // Dialogue breakdown: two layered fills (in progress behind, mastered over it).
   pronChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pronChip: {
