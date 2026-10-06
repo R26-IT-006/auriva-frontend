@@ -31,6 +31,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CX, CANVAS_CY, POINTER_SIZE, POINTER_HALF,
 } from '../../constants/shapeCanvasLayout';
+import { rs, rf } from '../../utils/responsive';
 
 export const SHAPE_STAGE_MODES = Object.freeze({ PRACTICE: 'practice', DEMO: 'demo' });
 
@@ -245,7 +246,7 @@ export default function ShapeAssessmentStage({
 const styles = StyleSheet.create({
   topArea: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: rs(16),
     width: '100%',
     flexShrink: 0,
   },
@@ -253,17 +254,17 @@ const styles = StyleSheet.create({
   assessBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: rs(5),
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    borderRadius: rs(20),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(5),
     alignSelf: 'center',
-    marginBottom: 8,
+    marginBottom: rs(8),
   },
 
   assessBadgeText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
     letterSpacing: 0.3,
@@ -271,14 +272,14 @@ const styles = StyleSheet.create({
 
   instructionCard: {
     backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 22,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
+    borderRadius: rs(22),
+    paddingVertical: rs(16),
+    paddingHorizontal: rs(18),
     borderLeftWidth: 4,
     width: '100%',
-    maxWidth: 520,
+    maxWidth: rs(520),
     alignSelf: 'center',
-    marginTop: 8,
+    marginTop: rs(8),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -289,36 +290,36 @@ const styles = StyleSheet.create({
   instructionInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: rs(10),
   },
 
   instructionTexts: {
     flex: 1,
-    gap: 4,
+    gap: rs(4),
   },
 
   instructionEn: {
-    fontSize: 24,
+    fontSize: rf(24),
     fontWeight: '800',
     fontFamily: 'Nunito_800ExtraBold',
     color: '#333333',
     textAlign: 'center',
-    lineHeight: 30,
+    lineHeight: rf(30),
   },
 
   instructionSi: {
-    fontSize: 19,
+    fontSize: rf(19),
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
     color: '#7B7B9E',
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: rf(26),
   },
 
   speakerBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: rs(48),
+    height: rs(48),
+    borderRadius: rs(24),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -334,11 +335,11 @@ const styles = StyleSheet.create({
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
     backgroundColor: 'rgba(248,250,255,0.96)',
-    borderRadius: 26,
+    borderRadius: rs(26),
     borderWidth: 2,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: rs(8) },
     shadowOpacity: 0.09,
     shadowRadius: 18,
     elevation: 5,
@@ -346,9 +347,9 @@ const styles = StyleSheet.create({
 
   pulseDot: {
     position: 'absolute',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
     borderWidth: 2,
   },
 

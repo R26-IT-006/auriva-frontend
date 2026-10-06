@@ -8,6 +8,7 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { dialogueApi } from '../../../api/dialogue';
 import { cat3Api } from '../../../api/cat3';
 import { LinearGradient } from 'expo-linear-gradient';
+import { rs } from '../../../utils/responsive';
 
 // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend).
 // Shared/category-agnostic, reached only from ProbeProductionScreen.js when
@@ -323,15 +324,15 @@ const styles = StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'center',
     justifyContent:    'space-between',
-    paddingHorizontal: 12,
-    paddingVertical:   12,
+    paddingHorizontal: rs(12),
+    paddingVertical:   rs(12),
   },
-  headerSide:  { width: 40, alignItems: 'center', justifyContent: 'center' },
+  headerSide:  { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -349,7 +350,7 @@ const styles = StyleSheet.create({
     justifyContent:    'center',
     paddingHorizontal: Layout.spacing.lg,
     paddingBottom:     Layout.spacing.xl,
-    gap:               8,
+    gap:               rs(8),
   },
 
   title: {
@@ -371,12 +372,12 @@ const styles = StyleSheet.create({
     gap:            Layout.spacing.sm,
   },
   imageCard: {
-    width:        104,
+    width:        rs(104),
     borderRadius: Layout.radius.lg,
     overflow:     'hidden',
     ...Layout.shadow.sm,
   },
-  cardImage: { width: '100%', height: 104 },
+  cardImage: { width: '100%', height: rs(104) },
   cardCaption: {
     fontSize:          Layout.fontSize.xs,
     fontFamily: 'DMSans_600SemiBold',

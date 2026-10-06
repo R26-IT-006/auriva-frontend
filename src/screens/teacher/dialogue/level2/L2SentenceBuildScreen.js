@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { rs, rf } from '../../../../utils/responsive';
 
 // Fisher-Yates shuffle (pure, no mutation of original)
 function shuffle(arr) {
@@ -253,9 +254,9 @@ const styles = StyleSheet.create({
   root: { flex: 1, overflow: 'hidden' },
 
   // Decorative background shapes (same as the other module screens).
-  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
-  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
-  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+  blob: { position: 'absolute', borderRadius: rs(999), opacity: 0.08 },
+  blobTopRight:   { width: rs(220), height: rs(220), top: rs(-60), right: rs(-60) },
+  blobBottomLeft: { width: rs(260), height: rs(260), bottom: rs(-80), left: rs(-80) },
 
   header: {
     paddingHorizontal: Layout.spacing.lg,
@@ -265,95 +266,95 @@ const styles = StyleSheet.create({
   },
   stepBadge: { alignItems: 'center' },
   stepLabel: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1.2, textTransform: 'uppercase' },
-  progressTrack: { height: 6, width: '80%', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
+  progressTrack: { height: rs(6), width: '80%', borderRadius: rs(3), overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: rs(3) },
 
   body: { flex: 1, justifyContent: 'center', paddingHorizontal: Layout.spacing.lg },
 
   card: {
     width: '100%',
-    maxWidth: 760,
+    maxWidth: rs(760),
     alignSelf: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
-    paddingHorizontal: 32,
-    paddingTop: 26,
-    paddingBottom: 30,
-    gap: 18,
+    paddingHorizontal: rs(32),
+    paddingTop: rs(26),
+    paddingBottom: rs(30),
+    gap: rs(18),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 6,
   },
 
-  instruction: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center' },
+  instruction: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold', textAlign: 'center' },
 
   slotsZone: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     borderWidth: 2,
     borderStyle: 'dashed',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    paddingVertical: rs(20),
+    paddingHorizontal: rs(16),
   },
-  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
+  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(12), justifyContent: 'center' },
   slot: {
-    borderRadius: 14, borderWidth: 2,
-    minHeight: 58, minWidth: 90,
-    paddingHorizontal: 16,
+    borderRadius: rs(14), borderWidth: 2,
+    minHeight: rs(58), minWidth: rs(90),
+    paddingHorizontal: rs(16),
     alignItems: 'center', justifyContent: 'center',
   },
   slotEmpty: { borderStyle: 'dashed', backgroundColor: '#FFFFFF' },
   slotFilled: { backgroundColor: '#FFFFFF', borderBottomWidth: 5 },
   slotWrong: { borderColor: '#EF4444', backgroundColor: '#FEE2E2' },
-  slotNumber: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold' },
-  slotText: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold' },
+  slotNumber: { fontSize: rf(18), fontFamily: 'DMSans_800ExtraBold' },
+  slotText: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold' },
 
-  trayLabel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: 0.6, marginTop: 4 },
-  trayLabelText: { fontSize: 14, fontFamily: 'DMSans_600SemiBold' },
+  trayLabel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rs(6), opacity: 0.6, marginTop: rs(4) },
+  trayLabelText: { fontSize: rf(14), fontFamily: 'DMSans_600SemiBold' },
 
   tray: {
-    minHeight: 64,
+    minHeight: rs(64),
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
+    gap: rs(14),
     justifyContent: 'center',
     alignItems: 'center',
   },
   // Raised 3D word tiles, like the buttons in the other modules.
   tile: {
-    minHeight: 58,
-    minWidth: 90,
-    paddingHorizontal: 20,
-    borderRadius: 14,
+    minHeight: rs(58),
+    minWidth: rs(90),
+    paddingHorizontal: rs(20),
+    borderRadius: rs(14),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 4,
   },
-  tileText: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold' },
-  tilePlaceholder: { width: 90, height: 58 }, // ghost spacer
+  tileText: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold' },
+  tilePlaceholder: { width: rs(90), height: rs(58) }, // ghost spacer
 
   footer: { paddingHorizontal: Layout.spacing.xl, paddingBottom: Layout.spacing.xl, alignItems: 'center' },
   // Raised 3D button, like the ones used in the other modules.
   confirmBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    minWidth: 240, paddingHorizontal: 40, paddingVertical: 16,
-    borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rs(10),
+    minWidth: rs(240), paddingHorizontal: rs(40), paddingVertical: rs(16),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 6,
   },
   confirmBtnDisabled: { opacity: 0.4 },
-  confirmText: { fontSize: 20, fontFamily: 'DMSans_800ExtraBold' },
+  confirmText: { fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold' },
 });

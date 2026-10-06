@@ -31,6 +31,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 // Pure date helpers live in utils/reportPeriod.js so they stay dependency-free
 // and unit-testable without an RN environment.
 import { parseDateOnly, formatDateOnly, clampDate } from '../../../utils/reportPeriod';
+import { rs, rf } from '../../../utils/responsive';
 
 const ACCENT = '#6366F1';
 
@@ -92,13 +93,13 @@ export default function ReportDateField({
 
 const styles = StyleSheet.create({
   field: { flex: 1 },
-  label: { fontSize: 11, color: '#5A5F7A', marginBottom: 4, fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
+  label: { fontSize: rf(11), color: '#5A5F7A', marginBottom: rs(4), fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
   input: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1, borderColor: '#E2E6F0', borderRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#E2E6F0', borderRadius: rs(10),
+    paddingHorizontal: rs(10), paddingVertical: rs(10), backgroundColor: '#FFFFFF',
   },
   inputDisabled: { backgroundColor: '#F5F6FA', borderColor: '#EDEFF5' },
-  value: { fontSize: 13, color: '#1A1A2E' },
+  value: { fontSize: rf(13), color: '#1A1A2E' },
   placeholder: { color: '#B8BCC8' },
 });

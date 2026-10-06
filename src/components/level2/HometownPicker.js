@@ -2,6 +2,7 @@ import { useWindowDimensions, View, Text, TouchableOpacity, StyleSheet } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
 import { SRI_LANKA_DISTRICTS } from '../../data/sriLankaDistricts';
+import { rs } from '../../utils/responsive';
 
 /**
  * Step 1 implementation: scrollable grid of the 25 district names as large
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     paddingVertical: Layout.spacing.sm,
     paddingHorizontal: Layout.spacing.xs,
-    minHeight: 56,
+    minHeight: rs(56),
   },
   cardText: { fontSize: Layout.fontSize.xs, fontWeight: '700', textAlign: 'center' },
 });

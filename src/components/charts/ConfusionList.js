@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 /** apple_pie / passion-fruit → Apple Pie / Passion Fruit */
 export function formatConceptLabel(key) {
@@ -61,7 +62,7 @@ export function ConfusionList({ items = [], max = 6 }) {
 
 const styles = StyleSheet.create({
   list: { gap: Layout.spacing.md },
-  row:  { gap: 5 },
+  row:  { gap: rs(5) },
 
   pairLine: { flexDirection: 'row', alignItems: 'center' },
   correct: {
@@ -70,7 +71,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     maxWidth: '34%',
   },
-  arrow:   { marginHorizontal: 5 },
+  arrow:   { marginHorizontal: rs(5) },
   selected: {
     fontSize: Layout.fontSize.sm,
     fontFamily: 'DMSans_600SemiBold',
@@ -78,13 +79,13 @@ const styles = StyleSheet.create({
     maxWidth: '34%',
   },
   tierChip: {
-    marginLeft: 6,
-    paddingHorizontal: 6,
+    marginLeft: rs(6),
+    paddingHorizontal: rs(6),
     paddingVertical: 1,
     borderRadius: Layout.radius.sm,
     backgroundColor: Colors.surfaceAlt,
   },
-  tierChipText: { fontSize: 10, color: Colors.text.muted, fontFamily: 'DMSans_700Bold' },
+  tierChipText: { fontSize: rf(10), color: Colors.text.muted, fontFamily: 'DMSans_700Bold' },
   count: {
     marginLeft: 'auto',
     fontSize: Layout.fontSize.xs,
@@ -92,9 +93,9 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_700Bold',
   },
 
-  track: { height: 6, borderRadius: 3, backgroundColor: Colors.borderLight, overflow: 'hidden' },
-  fill:  { height: '100%', borderRadius: 3, backgroundColor: Colors.status.error, opacity: 0.75 },
+  track: { height: rs(6), borderRadius: rs(3), backgroundColor: Colors.borderLight, overflow: 'hidden' },
+  fill:  { height: '100%', borderRadius: rs(3), backgroundColor: Colors.status.error, opacity: 0.75 },
 
-  emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: Layout.spacing.sm },
+  emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: rs(8), paddingVertical: Layout.spacing.sm },
   empty:     { fontSize: Layout.fontSize.sm, color: Colors.text.secondary },
 });

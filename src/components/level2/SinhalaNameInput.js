@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { singlishToUnicode } from 'sinhala-unicode-coverter';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 /**
  * Shared suggest-then-confirm component for any proper noun that needs a
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
   label: { fontSize: Layout.fontSize.sm, fontWeight: '700', opacity: 0.8 },
   input: {
     width: '100%',
-    maxWidth: 260,
+    maxWidth: rs(260),
     fontSize: Layout.fontSize.lg,
     fontWeight: '700',
     textAlign: 'center',
@@ -79,5 +80,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.md,
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
-  note: { fontSize: Layout.fontSize.xs, fontWeight: '500', opacity: 0.6, textAlign: 'center', maxWidth: 280 },
+  note: { fontSize: Layout.fontSize.xs, fontWeight: '500', opacity: 0.6, textAlign: 'center', maxWidth: rs(280) },
 });

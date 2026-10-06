@@ -1,5 +1,6 @@
 import { View, Text, Modal, TouchableOpacity, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * FlowOverviewModal.js
@@ -128,62 +129,62 @@ const NODE = 40;
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
   card: {
-    width: '90%', maxWidth: 820, maxHeight: '92%',
-    borderRadius: 28, borderWidth: 3,
-    paddingHorizontal: 26, paddingTop: 20, paddingBottom: 22, gap: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
+    width: '90%', maxWidth: rs(820), maxHeight: '92%',
+    borderRadius: rs(28), borderWidth: 3,
+    paddingHorizontal: rs(26), paddingTop: rs(20), paddingBottom: rs(22), gap: rs(14),
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(4) }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4,
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: rs(10), flexShrink: 1 },
   titleIcon: {
-    width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 5, elevation: 3,
+    width: rs(34), height: rs(34), borderRadius: rs(17), alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(3) }, shadowOpacity: 0.15, shadowRadius: 5, elevation: 3,
   },
-  title: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', letterSpacing: -0.3 },
-  subtitle: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', opacity: 0.6 },
-  closeBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold', letterSpacing: -0.3 },
+  subtitle: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', opacity: 0.6 },
+  closeBtn: { width: rs(40), height: rs(40), borderRadius: rs(20), alignItems: 'center', justifyContent: 'center' },
 
   // flexShrink lets the list fit inside the card's maxHeight and scroll.
   scroll: { flexShrink: 1 },
-  list: { paddingBottom: 4 },
+  list: { paddingBottom: rs(4) },
 
-  stageRow: { flexDirection: 'row', gap: 14 },
+  stageRow: { flexDirection: 'row', gap: rs(14) },
   rail: { width: NODE, alignItems: 'center' },
   node: {
     width: NODE, height: NODE, borderRadius: NODE / 2, alignItems: 'center', justifyContent: 'center',
     borderWidth: 3, borderColor: '#FFFFFF',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
   },
-  connector: { flex: 1, width: 3, borderRadius: 2, marginVertical: 2, opacity: 0.6 },
+  connector: { flex: 1, width: rs(3), borderRadius: 2, marginVertical: 2, opacity: 0.6 },
 
   stageCard: {
-    flex: 1, marginBottom: 14,
-    backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 2,
-    paddingHorizontal: 16, paddingVertical: 12, gap: 4,
+    flex: 1, marginBottom: rs(14),
+    backgroundColor: '#FFFFFF', borderRadius: rs(20), borderWidth: 2,
+    paddingHorizontal: rs(16), paddingVertical: rs(12), gap: rs(4),
   },
-  stageTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stageNum: { fontSize: 11, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1 },
-  tierPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  tierPillText: { fontSize: 11, fontFamily: 'DMSans_800ExtraBold' },
-  stageTitle: { fontSize: 19, fontFamily: 'DMSans_800ExtraBold' },
-  stageSubtitle: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', opacity: 0.6, marginBottom: 2 },
+  stageTop: { flexDirection: 'row', alignItems: 'center', gap: rs(8) },
+  stageNum: { fontSize: rf(11), fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1 },
+  tierPill: { borderRadius: rs(999), paddingHorizontal: rs(8), paddingVertical: 2 },
+  tierPillText: { fontSize: rf(11), fontFamily: 'DMSans_800ExtraBold' },
+  stageTitle: { fontSize: rf(19), fontFamily: 'DMSans_800ExtraBold' },
+  stageSubtitle: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', opacity: 0.6, marginBottom: 2 },
 
-  stepsRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginVertical: 4 },
-  stepItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  stepChip: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#FFFFFF' },
-  stepChipText: { fontSize: 12, fontFamily: 'DMSans_700Bold' },
+  stepsRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: rs(6), marginVertical: rs(4) },
+  stepItem: { flexDirection: 'row', alignItems: 'center', gap: rs(6) },
+  stepChip: { borderWidth: 1.5, borderRadius: rs(999), paddingHorizontal: rs(10), paddingVertical: rs(4), backgroundColor: '#FFFFFF' },
+  stepChipText: { fontSize: rf(12), fontFamily: 'DMSans_700Bold' },
 
-  body: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', lineHeight: 20, opacity: 0.85 },
+  body: { fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', lineHeight: rf(20), opacity: 0.85 },
   strong: { fontFamily: 'DMSans_800ExtraBold' },
 
   supportBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 6,
-    backgroundColor: '#FEF3C7', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'flex-start', gap: rs(6), marginTop: rs(6),
+    backgroundColor: '#FEF3C7', borderRadius: rs(12), paddingHorizontal: rs(10), paddingVertical: rs(8),
   },
-  supportText: { flex: 1, fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: '#78350F', lineHeight: 18 },
+  supportText: { flex: 1, fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: '#78350F', lineHeight: rf(18) },
   noteBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 6,
-    backgroundColor: '#F1F5F9', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'flex-start', gap: rs(6), marginTop: rs(6),
+    backgroundColor: '#F1F5F9', borderRadius: rs(12), paddingHorizontal: rs(10), paddingVertical: rs(8),
   },
-  noteText: { flex: 1, fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: '#334155', lineHeight: 18 },
+  noteText: { flex: 1, fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: '#334155', lineHeight: rf(18) },
 });

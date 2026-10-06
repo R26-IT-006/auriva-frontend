@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ButtonFeedback } from './ButtonFeedback';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 const K = {
   purple:      '#8A80BC',
@@ -108,31 +109,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: rs(40),
   },
   card: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: rs(420),
     backgroundColor: '#FFF',
-    borderRadius: 28,
-    paddingVertical: 40,
-    paddingHorizontal: 32,
+    borderRadius: rs(28),
+    paddingVertical: rs(40),
+    paddingHorizontal: rs(32),
     alignItems: 'center',
-    gap: 12,
+    gap: rs(12),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: rs(12) },
     shadowOpacity: 0.15,
     shadowRadius: 32,
     elevation: 12,
   },
 
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: rs(80),
+    height: rs(80),
+    borderRadius: rs(40),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
 
   title: {
@@ -145,20 +146,20 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.md,
     color: K.subtext,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 4,
+    lineHeight: rf(22),
+    marginBottom: rs(4),
   },
 
   btnRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: rs(12),
+    marginTop: rs(8),
     width: '100%',
   },
   btn: {
     flex: 1,
-    height: 52,
-    borderRadius: 16,
+    height: rs(52),
+    borderRadius: rs(16),
     alignItems: 'center',
     justifyContent: 'center',
   },

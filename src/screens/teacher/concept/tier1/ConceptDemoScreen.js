@@ -16,6 +16,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem, getConceptItemsForCategory, getConceptQuestion, getConceptQuestionSi } from '../../../../data/conceptData';
 import { Layout } from '../../../../constants/layout';
 import HeaderPillButton from '../../../../components/common/HeaderPillButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 // The same celebration the real rounds play, so the demo rehearses exactly what
 // the child will see when they answer correctly.
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 100,
+    paddingBottom: rs(100),
   },
 
   topBar: {
@@ -245,33 +246,33 @@ const styles = StyleSheet.create({
   watchBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 20,
+    gap: rs(6),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(7),
+    borderRadius: rs(20),
     borderWidth: 1.5,
   },
-  watchEmoji: { fontSize: 15 },
+  watchEmoji: { fontSize: rf(15) },
   watchText: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
   },
 
   questionBlock: {
     alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 22,
+    marginTop: rs(6),
+    marginBottom: rs(22),
     paddingHorizontal: Layout.spacing.lg,
-    gap: 4,
+    gap: rs(4),
   },
   questionEn: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -288,13 +289,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   optionCard: {
-    borderRadius: 18,
+    borderRadius: rs(18),
     borderWidth: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: rs(8),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
@@ -307,9 +308,9 @@ const styles = StyleSheet.create({
   },
   ripple: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: rs(80),
+    height: rs(80),
+    borderRadius: rs(40),
     borderWidth: 3,
   },
   optionImage: {
@@ -319,7 +320,7 @@ const styles = StyleSheet.create({
 
   handAnchor: {
     position: 'absolute',
-    bottom: -80,
+    bottom: rs(-80),
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -329,14 +330,14 @@ const styles = StyleSheet.create({
   // place and at the same size the child will see it during play.
   feedbackGif: {
     position: 'absolute',
-    bottom: 20,
+    bottom: rs(20),
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   feedbackGifImage: {
-    width: 200,
-    height: 200,
+    width: rs(200),
+    height: rs(200),
   },
 
 });

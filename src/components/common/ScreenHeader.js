@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 export function ScreenHeader({ title, subtitle, onBack, rightAction }) {
   const insets = useSafeAreaInsets();
@@ -46,8 +47,8 @@ const styles = StyleSheet.create({
     marginTop: Layout.spacing.sm,
   },
   backBtn: {
-    width: 36,
-    height: 36,
+    width: rs(36),
+    height: rs(36),
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Layout.spacing.xs,
@@ -69,6 +70,6 @@ const styles = StyleSheet.create({
     marginLeft: Layout.spacing.xs,
   },
   rightPlaceholder: {
-    width: 36,
+    width: rs(36),
   },
 });

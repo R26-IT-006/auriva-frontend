@@ -21,6 +21,7 @@ import { dialogueApi } from '../../../../api/dialogue';
 import { clearRestartCount } from '../../../../utils/sessionRetryTracker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const WORD_LABELS = {
   hello:          'Hello',
@@ -272,20 +273,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(12),
+    gap: rs(8),
   },
   headerSide: {
-    width: 40,
+    width: rs(40),
     alignItems: 'center',
     justifyContent: 'center',
   },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -297,14 +298,14 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     flex: 1,
-    height: 8,
+    height: rs(8),
     backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 4,
+    borderRadius: rs(4),
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: rs(4),
   },
 
   // Top → bottom: word, avatar (fills the middle), Next. paddingBottom puts
@@ -314,7 +315,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Layout.spacing.lg,
     paddingTop: Layout.spacing.lg,
-    paddingBottom: 80,
+    paddingBottom: rs(80),
   },
   title: {
     fontSize: Layout.fontSize.lg,
@@ -327,13 +328,13 @@ const styles = StyleSheet.create({
   // highest-contrast element: dark heading text on the light card surface.
   wordCard: {
     maxWidth: '90%',
-    paddingHorizontal: 36,
-    paddingVertical: 10,
-    borderRadius: 24,
+    paddingHorizontal: rs(36),
+    paddingVertical: rs(10),
+    borderRadius: rs(24),
     borderWidth: 2,
   },
   wordHighlight: {
-    fontSize: 52,
+    fontSize: rf(52),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
     letterSpacing: 1,
@@ -345,14 +346,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   nextBtn: {
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nextBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 
@@ -371,8 +372,8 @@ const styles = StyleSheet.create({
   },
   settingsSheet: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: rs(24),
+    borderTopRightRadius: rs(24),
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
@@ -397,6 +398,6 @@ const styles = StyleSheet.create({
   settingsDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#EEE',
-    marginVertical: 4,
+    marginVertical: rs(4),
   },
 });

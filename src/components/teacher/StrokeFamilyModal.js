@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * One stroke family's letters, opened from a card in the Student Profile's
@@ -190,7 +191,7 @@ function LetterTile({ letter: l, fg, bg }) {
   );
 }
 
-const TILE_W = 104;
+const TILE_W = rs(104);
 
 const styles = StyleSheet.create({
   backdrop: {
@@ -202,87 +203,87 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     maxHeight: '84%',
     backgroundColor: Colors.surface,
-    borderRadius: 24,
+    borderRadius: rs(24),
     overflow: 'hidden',
   },
 
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 16 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: rs(12), paddingHorizontal: rs(20), paddingVertical: rs(16) },
   headIcon: {
-    width: 44, height: 44, borderRadius: 22,
+    width: rs(44), height: rs(44), borderRadius: rs(22),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-  title:    { fontSize: 20, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  subtitle: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', marginTop: 1 },
+  title:    { fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  subtitle: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', marginTop: 1 },
   closeBtn: {
-    width: 34, height: 34, borderRadius: 17,
+    width: rs(34), height: rs(34), borderRadius: rs(17),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
 
   scrollView: { flexShrink: 1 },
-  scroll: { padding: 20, paddingTop: 16, gap: 20 },
+  scroll: { padding: rs(20), paddingTop: rs(16), gap: rs(20) },
 
-  stats: { flexDirection: 'row', gap: 8 },
+  stats: { flexDirection: 'row', gap: rs(8) },
   stat: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 14,
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(14),
     backgroundColor: Colors.surfaceAlt,
   },
   statLabel: {
-    fontSize: 11, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary,
+    fontSize: rf(11), fontFamily: 'DMSans_700Bold', color: Colors.text.secondary,
     textTransform: 'uppercase', letterSpacing: 0.8,
   },
-  statValue: { fontSize: 20, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, marginTop: 4 },
+  statValue: { fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, marginTop: rs(4) },
 
-  section: { gap: 10 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  sectionTitle: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  countPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Layout.radius.full },
-  countText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+  section: { gap: rs(10) },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: rs(7) },
+  sectionTitle: { fontSize: rf(15), fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  countPill: { paddingHorizontal: rs(8), paddingVertical: 2, borderRadius: Layout.radius.full },
+  countText: { fontSize: rf(11), fontFamily: 'DMSans_700Bold' },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(10) },
   tile: {
     width: TILE_W,
     alignItems: 'center',
-    gap: 6,
-    padding: 8,
-    paddingBottom: 10,
-    borderRadius: 16,
+    gap: rs(6),
+    padding: rs(8),
+    paddingBottom: rs(10),
+    borderRadius: rs(16),
     borderWidth: 1,
     borderColor: Colors.borderLight,
     backgroundColor: Colors.surface,
   },
-  tileIdle: { width: 64, paddingVertical: 8, backgroundColor: Colors.surfaceAlt, borderColor: Colors.surfaceAlt },
+  tileIdle: { width: rs(64), paddingVertical: rs(8), backgroundColor: Colors.surfaceAlt, borderColor: Colors.surfaceAlt },
   glyphWrap: {
     alignSelf: 'stretch',
-    height: 56,
-    borderRadius: 12,
+    height: rs(56),
+    borderRadius: rs(12),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  glyph: { fontSize: 32, lineHeight: 38, fontFamily: 'DMSans_700Bold' },
-  glyphIdle: { fontSize: 24, lineHeight: 30, color: Colors.text.muted },
-  idleText: { fontSize: 10, color: Colors.text.muted },
+  glyph: { fontSize: rf(32), lineHeight: rf(38), fontFamily: 'DMSans_700Bold' },
+  glyphIdle: { fontSize: rf(24), lineHeight: rf(30), color: Colors.text.muted },
+  idleText: { fontSize: rf(10), color: Colors.text.muted },
 
-  scorePill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  scoreText: { fontSize: 12, fontFamily: 'DMSans_700Bold' },
-  deltaRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText: { fontSize: 10, color: Colors.text.secondary, textAlign: 'center' },
+  scorePill: { borderRadius: rs(10), paddingHorizontal: rs(8), paddingVertical: 2 },
+  scoreText: { fontSize: rf(12), fontFamily: 'DMSans_700Bold' },
+  deltaRow: { flexDirection: 'row', alignItems: 'center', gap: rs(3) },
+  metaText: { fontSize: rf(10), color: Colors.text.secondary, textAlign: 'center' },
 
   reportLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 14,
+    gap: rs(6),
+    paddingVertical: rs(12),
+    borderRadius: rs(14),
     backgroundColor: '#E4F4EC',
   },
-  reportLinkText: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: Colors.brandDeep },
+  reportLinkText: { fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: Colors.brandDeep },
 });

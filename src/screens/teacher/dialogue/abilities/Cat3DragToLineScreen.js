@@ -19,6 +19,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 // Scene videos for the DragToLine screen — Drag_Activity.mp4 per word folder
 const CAT3_SCENE = {
@@ -442,13 +443,13 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
 
   headerWrap: {},
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
-  headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: rs(12), paddingVertical: rs(12), gap: rs(8) },
+  headerSide:    { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -458,8 +459,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
-  progressFill:  { height: '100%', borderRadius: 4 },
+  progressTrack: { flex: 1, height: rs(8), backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: rs(4), overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: rs(4) },
 
   row: {
     flex:              1,
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
     ...Layout.shadow.md,
   },
   sceneImg:    { width: '100%', height: '100%' },
-  wordFallback: { fontSize: 56, fontFamily: 'DMSans_900Black' },
+  wordFallback: { fontSize: rf(56), fontFamily: 'DMSans_900Black' },
 
   rightPanel: { flex: 9, flexDirection: 'column', justifyContent: 'center', gap: Layout.spacing.lg },
 
@@ -488,9 +489,9 @@ const styles = StyleSheet.create({
     paddingVertical:   Layout.spacing.lg,
     ...Layout.shadow.sm,
   },
-  promptText: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', lineHeight: 32 },
+  promptText: { fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', lineHeight: rf(32) },
   blank:      { textDecorationLine: 'underline' },
-  promptSub:  { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.6, marginTop: 4 },
+  promptSub:  { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.6, marginTop: rs(4) },
 
   dropZone: {
     borderWidth:    2.5,
@@ -500,18 +501,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.md,
     alignItems:     'center',
     justifyContent: 'center',
-    minHeight:      80,
+    minHeight:      rs(80),
   },
   dropZonePlaceholder: { fontSize: Layout.fontSize.sm, color: 'rgba(0,0,0,0.35)', fontFamily: 'DMSans_600SemiBold' },
   dropZoneFilled:      { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', color: '#22C55E' },
 
   cardsRow:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, flexWrap: 'wrap' },
-  dragHint:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dragHint:  { flexDirection: 'row', alignItems: 'center', gap: rs(4) },
   dragHintText: { fontSize: Layout.fontSize.sm, opacity: 0.5, fontFamily: 'DMSans_600SemiBold' },
   cardsArea: { flexDirection: 'row', gap: Layout.spacing.md, flexWrap: 'wrap', flex: 1 },
 
   wordCard: {
-    paddingVertical:   14,
+    paddingVertical:   rs(14),
     paddingHorizontal: Layout.spacing.xl,
     borderRadius:      Layout.radius.xl,
     borderWidth:       2,
@@ -520,7 +521,7 @@ const styles = StyleSheet.create({
   },
   wordCardText: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold' },
 
-  feedbackBanner: { position: 'absolute', bottom: 60, left: 0, right: 0, alignItems: 'center', zIndex: 60 },
+  feedbackBanner: { position: 'absolute', bottom: rs(60), left: 0, right: 0, alignItems: 'center', zIndex: 60 },
   feedbackText: {
     backgroundColor: 'rgba(255,77,109,0.9)',
     color: '#FFF',
@@ -533,7 +534,7 @@ const styles = StyleSheet.create({
   },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  settingsSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
+  settingsSheet: { backgroundColor: '#FFF', borderTopLeftRadius: rs(24), borderTopRightRadius: rs(24), padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
   settingsTitle:  { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },

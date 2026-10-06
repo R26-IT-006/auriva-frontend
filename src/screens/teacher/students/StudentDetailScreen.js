@@ -49,6 +49,7 @@ import {
   TOTAL_UPPERCASE as TOTAL_UPPERCASE_FORMS,
 } from '../../../utils/writingModuleSummary';
 import { fetchStrokeBreakdown } from '../../../utils/writingStrokeBreakdown';
+import { rs, rf } from '../../../utils/responsive';
 
 
 // Same tinted pairs the teacher dashboard uses for its section panels, so a
@@ -1612,8 +1613,8 @@ const styles = StyleSheet.create({
   // grid's two 108pt rows.
   ringCard: {
     flexGrow: 1,
-    flexBasis: 260,
-    minWidth: 220,
+    flexBasis: rs(260),
+    minWidth: rs(220),
     paddingVertical: Layout.spacing.xl,
     paddingHorizontal: Layout.spacing.lg,
     alignItems: 'center',
@@ -1629,8 +1630,8 @@ const styles = StyleSheet.create({
     // 130, not 140. On a portrait phone the grid is ~292 wide, so two cards plus
     // the 16 gap have 138 each — a 140 floor tipped them onto separate rows and
     // turned the 2x2 into a stack of four.
-    minWidth: 130,
-    height: 108,
+    minWidth: rs(130),
+    height: rs(108),
     justifyContent: 'center',
     paddingHorizontal: Layout.spacing.lg,
     borderRadius: Layout.radius.xl,
@@ -1643,14 +1644,14 @@ const styles = StyleSheet.create({
   // At `secondary` they reach 5.90:1 and still read as captions, because size and
   // case were doing that work already.
   progressStatLabel: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: Colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  progressStatRow:   { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8 },
-  progressStatValue: { fontSize: 30, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  progressStatRow:   { flexDirection: 'row', alignItems: 'baseline', gap: rs(6), marginTop: rs(8) },
+  progressStatValue: { fontSize: rf(30), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
   progressStatOf:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary },
 
   // Margins rather than relying on conceptBody's gap alone: the breakdown is a
@@ -1659,7 +1660,7 @@ const styles = StyleSheet.create({
   breakdownHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: rs(8),
     marginTop: Layout.spacing.md,
     marginBottom: 0,
   },
@@ -1675,9 +1676,9 @@ const styles = StyleSheet.create({
   reportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    gap: rs(8),
+    paddingVertical: rs(12),
+    paddingHorizontal: rs(20),
     borderRadius: Layout.radius.full,
     overflow: 'hidden',
   },
@@ -1689,7 +1690,7 @@ const styles = StyleSheet.create({
   // Colour comes from the gradient at the call site; the shadow takes the brand
   // teal so the card does not cast the app's default blue over a green surface.
   idCard: {
-    borderRadius: 28,
+    borderRadius: rs(28),
     padding: Layout.spacing.lg,
     marginBottom: Layout.spacing.lg,
     ...Layout.shadow.md,
@@ -1701,17 +1702,17 @@ const styles = StyleSheet.create({
   // greying it.
   idScrim: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 28,
+    borderRadius: rs(28),
     backgroundColor: 'rgba(11,42,40,0.40)',
   },
   idBody: { flexDirection: 'row', gap: Layout.spacing.lg, flexWrap: 'wrap' },
 
-  idLeft:  { minWidth: 200, justifyContent: 'flex-start' },
-  idRight: { flex: 1, minWidth: 260, gap: 12 },
+  idLeft:  { minWidth: rs(200), justifyContent: 'flex-start' },
+  idRight: { flex: 1, minWidth: rs(260), gap: rs(12) },
 
   idAvatarWrap: { alignSelf: 'flex-start' },
   idAvatar: {
-    borderRadius: 26,
+    borderRadius: rs(26),
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.28)',
   },
@@ -1723,44 +1724,44 @@ const styles = StyleSheet.create({
   // avatar hues are greens that would sink into it without a break.
   idAvatarBadge: {
     position: 'absolute',
-    right: -4, bottom: -4,
-    width: 32, height: 32, borderRadius: 16,
+    right: rs(-4), bottom: rs(-4),
+    width: rs(32), height: rs(32), borderRadius: rs(16),
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 3,
     borderColor: '#FFFFFF',
   },
 
   idName: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
     marginTop: Layout.spacing.md,
   },
-  idChips: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' },
+  idChips: { flexDirection: 'row', alignItems: 'center', gap: rs(10), marginTop: rs(10), flexWrap: 'wrap' },
   idChip: {
-    paddingVertical: 5,
-    paddingHorizontal: 11,
+    paddingVertical: rs(5),
+    paddingHorizontal: rs(11),
     borderRadius: Layout.radius.full,
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
   idChipText: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: 'rgba(255,255,255,0.95)',
     letterSpacing: 0.5,
   },
-  idDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.45)' },
+  idDot: { width: rs(4), height: rs(4), borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.45)' },
   idAge: { fontSize: Layout.fontSize.sm, color: 'rgba(255,255,255,0.90)' },
 
   // Wraps, and the tiles are allowed to be narrow. Two 160px minimums in a
   // non-wrapping row needed 328pt in a column that is 294 on a portrait phone,
   // so the second tile ran off the card.
-  idFactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  idFactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(12) },
   idFact: {
     flexGrow: 1,
     flexBasis: '46%',
-    minWidth: 130,
+    minWidth: rs(130),
     flexDirection: 'row',
     alignItems: 'center',
     gap: Layout.spacing.sm,
@@ -1774,12 +1775,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.16)',
   },
   idFactIcon: {
-    width: 38, height: 38, borderRadius: 13,
+    width: rs(38), height: rs(38), borderRadius: rs(13),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.20)',
   },
   idFactLabel: {
-    fontSize: 10,
+    fontSize: rf(10),
     fontFamily: 'DMSans_700Bold',
     color: 'rgba(255,255,255,0.90)',
     textTransform: 'uppercase',
@@ -1789,7 +1790,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.md,
     fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
-    marginTop: 3,
+    marginTop: rs(3),
   },
 
   // Same surface as the fact tiles either side of it, for the same reason.
@@ -1803,17 +1804,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.16)',
   },
   idNoteBadge: {
-    width: 38, height: 38, borderRadius: 13,
+    width: rs(38), height: rs(38), borderRadius: rs(13),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.20)',
   },
-  idNoteQuote: { fontSize: 20, lineHeight: 26, color: 'rgba(255,255,255,0.9)', fontFamily: 'DMSans_800ExtraBold' },
+  idNoteQuote: { fontSize: rf(20), lineHeight: rf(26), color: 'rgba(255,255,255,0.9)', fontFamily: 'DMSans_800ExtraBold' },
   idNoteText: {
     fontSize: Layout.fontSize.sm,
     fontStyle: 'italic',
     color: 'rgba(255,255,255,0.95)',
-    lineHeight: 20,
-    marginTop: 3,
+    lineHeight: rf(20),
+    marginTop: rs(3),
   },
 
 
@@ -1822,70 +1823,70 @@ const styles = StyleSheet.create({
   safeInner: { flex: 1 },
   // Principal (read-only) view: the note in place of Module Progress.
   principalNote: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
-    margin: PANEL_PAD_LG, padding: 18, borderRadius: 16,
+    flexDirection: 'row', alignItems: 'flex-start', gap: rs(14),
+    margin: PANEL_PAD_LG, padding: rs(18), borderRadius: rs(16),
     backgroundColor: '#E4F4EC',
   },
   principalNoteIcon: {
-    width: 36, height: 36, borderRadius: 18,
+    width: rs(36), height: rs(36), borderRadius: rs(18),
     alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF',
   },
-  principalNoteTitle: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  principalNoteText:  { fontSize: 13, lineHeight: 19, color: Colors.text.secondary, marginTop: 3 },
+  principalNoteTitle: { fontSize: rf(15), fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  principalNoteText:  { fontSize: rf(13), lineHeight: rf(19), color: Colors.text.secondary, marginTop: rs(3) },
   // Dialogue breakdown: two layered fills (in progress behind, mastered over it).
-  pronChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pronChips: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(8) },
   pronChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingVertical: 5, paddingLeft: 10, paddingRight: 6,
-    borderRadius: 14, backgroundColor: '#FDF4E3',
+    flexDirection: 'row', alignItems: 'center', gap: rs(6),
+    paddingVertical: rs(5), paddingLeft: rs(10), paddingRight: rs(6),
+    borderRadius: rs(14), backgroundColor: '#FDF4E3',
   },
-  pronChipText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  pronChipText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
   pronChipScore: {
-    fontSize: 11, fontFamily: 'DMSans_700Bold', color: '#8A5D06',
-    backgroundColor: '#FFFFFF', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, overflow: 'hidden',
+    fontSize: rf(11), fontFamily: 'DMSans_700Bold', color: '#8A5D06',
+    backgroundColor: '#FFFFFF', borderRadius: rs(8), paddingHorizontal: rs(6), paddingVertical: 1, overflow: 'hidden',
   },
-  pronReportError: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: '#DC2626', textAlign: 'right', marginTop: 6 },
+  pronReportError: { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', color: '#DC2626', textAlign: 'right', marginTop: rs(6) },
   reportFooterEnd: { justifyContent: 'flex-end' },
   // Several actions in one footer: right-aligned, wrapping onto a second line
   // on a narrow screen rather than squeezing.
-  footerWrap: { flexWrap: 'wrap', gap: 10 },
-  strokeWrap: { gap: 10, marginBottom: 12 },
-  strokeEmpty: { fontSize: 12, color: Colors.text.muted },
-  strokeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  footerWrap: { flexWrap: 'wrap', gap: rs(10) },
+  strokeWrap: { gap: rs(10), marginBottom: rs(12) },
+  strokeEmpty: { fontSize: rf(12), color: Colors.text.muted },
+  strokeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(8) },
   strokeCard: {
     flexGrow: 1,
-    gap: 9,
-    padding: 12,
-    borderRadius: 16,
+    gap: rs(9),
+    padding: rs(12),
+    borderRadius: rs(16),
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
-  strokeHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  strokeHead: { flexDirection: 'row', alignItems: 'center', gap: rs(10) },
   strokeFace: {
-    width: 36, height: 36, borderRadius: 18,
+    width: rs(36), height: rs(36), borderRadius: rs(18),
     alignItems: 'center', justifyContent: 'center',
   },
-  strokeLabel: { fontSize: 13, lineHeight: 17, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  strokeSample: { fontSize: 11, color: Colors.text.muted, letterSpacing: 1, marginTop: 1 },
-  strokeTrack: { height: 6, borderRadius: 3, backgroundColor: Colors.surfaceAlt, overflow: 'hidden' },
-  strokeFill: { height: '100%', borderRadius: 3 },
+  strokeLabel: { fontSize: rf(13), lineHeight: rf(17), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  strokeSample: { fontSize: rf(11), color: Colors.text.muted, letterSpacing: 1, marginTop: 1 },
+  strokeTrack: { height: rs(6), borderRadius: rs(3), backgroundColor: Colors.surfaceAlt, overflow: 'hidden' },
+  strokeFill: { height: '100%', borderRadius: rs(3) },
   strokeFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  strokeCount: { fontSize: 12 },
+  strokeCount: { fontSize: rf(12) },
   strokeCountNum: { fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
   strokeCountOf: { fontFamily: 'DMSans_400Regular', color: Colors.text.secondary },
-  strokePill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  strokePillText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
-  strokeDelta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  strokeDeltaText: { fontSize: 11, color: Colors.text.secondary },
+  strokePill: { borderRadius: rs(10), paddingHorizontal: rs(8), paddingVertical: 2 },
+  strokePillText: { fontSize: rf(11), fontFamily: 'DMSans_700Bold' },
+  strokeDelta: { flexDirection: 'row', alignItems: 'center', gap: rs(4) },
+  strokeDeltaText: { fontSize: rf(11), color: Colors.text.secondary },
   breakdownIcon: {
-    width: 26, height: 26, borderRadius: 13,
+    width: rs(26), height: rs(26), borderRadius: rs(13),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#E4F4EC',
   },
   breakdownHint: {
     marginLeft: 'auto',
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_400Regular',
     color: Colors.text.muted,
   },
@@ -1894,14 +1895,14 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: rs(12),
     paddingHorizontal: Layout.spacing.lg,
-    paddingTop: 28,
-    paddingBottom: 8,
+    paddingTop: rs(28),
+    paddingBottom: rs(8),
   },
   topTitle: {
     flex: 1,
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
     letterSpacing: -0.3,
@@ -1939,9 +1940,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   panelIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
+    width: rs(30),
+    height: rs(30),
+    borderRadius: rs(10),
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1970,7 +1971,7 @@ const styles = StyleSheet.create({
     paddingBottom: Layout.spacing.lg,
     borderBottomWidth: 0,
   },
-  panelIconLg: { width: 52, height: 52, borderRadius: 16 },
+  panelIconLg: { width: rs(52), height: rs(52), borderRadius: rs(16) },
   panelTitleLg: {
     fontSize: Layout.fontSize.xxl,
     color: Colors.text.primary,
@@ -1982,9 +1983,9 @@ const styles = StyleSheet.create({
   panelActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    gap: rs(7),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(16),
     borderRadius: Layout.radius.full,
     borderWidth: 1,
   },
@@ -1997,9 +1998,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: PANEL_PAD,
   },
   infoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: rs(32),
+    height: rs(32),
+    borderRadius: rs(16),
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Layout.spacing.md,
@@ -2009,7 +2010,7 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: Layout.fontSize.sm, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
   // Indented to clear the icon column (pad 16 + icon 32 + gap 16), so the rule
   // separates the text, not the whole row.
-  divider: { height: 1, backgroundColor: Colors.divider, marginLeft: 64 },
+  divider: { height: 1, backgroundColor: Colors.divider, marginLeft: rs(64) },
 
   // ── Module selector ───────────────────────────────────────────────────────
   // A single recessed track with the four tabs inside it. The track is what makes
@@ -2017,8 +2018,8 @@ const styles = StyleSheet.create({
   // have no fill or border of their own, so the group has to supply the edge.
   tabBar: {
     flexDirection: 'row',
-    gap: 4,
-    padding: 5,
+    gap: rs(4),
+    padding: rs(5),
     marginHorizontal: PANEL_PAD_LG,
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surfaceAlt,
@@ -2030,9 +2031,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    paddingVertical: 13,
-    paddingHorizontal: 6,
+    gap: rs(7),
+    paddingVertical: rs(13),
+    paddingHorizontal: rs(6),
     borderRadius: Layout.radius.md,
   },
   // Fill comes from the gradient child; this carries only the lift that separates
@@ -2057,7 +2058,7 @@ const styles = StyleSheet.create({
   // Both sit in the same box the stat row would occupy, so switching to a module
   // that has not shipped does not collapse the panel to a third of its height.
   conceptLoading: {
-    minHeight: 232,
+    minHeight: rs(232),
     margin: PANEL_PAD_LG,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2065,7 +2066,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceAlt,
   },
   conceptEmpty: {
-    minHeight: 232,
+    minHeight: rs(232),
     margin: PANEL_PAD_LG,
     paddingHorizontal: Layout.spacing.xl,
     alignItems: 'center',
@@ -2079,7 +2080,7 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: Layout.fontSize.md * 1.55,
-    maxWidth: 380,
+    maxWidth: rs(380),
   },
   retryText: {
     fontSize: Layout.fontSize.sm,
@@ -2101,8 +2102,8 @@ const styles = StyleSheet.create({
   },
   statGrid: {
     flexGrow: 1.5,
-    flexBasis: 340,
-    minWidth: 280,
+    flexBasis: rs(340),
+    minWidth: rs(280),
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: CARD_GAP,
@@ -2113,7 +2114,7 @@ const styles = StyleSheet.create({
   // heading weight: these divide a panel that already has a title, so competing
   // with `panelTitleLg` would give the section two headings of equal rank.
   levelHeading: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: Colors.text.secondary,
     textTransform: 'uppercase',
@@ -2131,7 +2132,7 @@ const styles = StyleSheet.create({
   // Level 2's four tiles on one line. With no ring beside them they have the
   // full panel width; minWidth lets them fall back to two per row on a phone
   // rather than squeezing four unreadably narrow tiles.
-  progressStatQuarter: { flexBasis: '22%', minWidth: 120 },
+  progressStatQuarter: { flexBasis: '22%', minWidth: rs(120) },
   // Label left, figure right — a three-row list of counts, which reads faster as
   // rows than as three more tiles competing with the four above.
 
@@ -2145,9 +2146,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.divider,
   },
-  lastWorked: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  lastWorked: { flexDirection: 'row', alignItems: 'center', gap: rs(7) },
   lastWorkedLabel: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: Colors.text.secondary,
     textTransform: 'uppercase',
@@ -2161,7 +2162,7 @@ const styles = StyleSheet.create({
 
   revisit: { gap: Layout.spacing.sm },
   revisitLabel: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: Colors.text.secondary,
     textTransform: 'uppercase',
@@ -2188,57 +2189,57 @@ const styles = StyleSheet.create({
   // Compact by design: the whole card sits inside the Module Progress area
   // without turning it into the full report. No fixed heights and no nested
   // ScrollView — the Student Profile already owns scrolling.
-  wsCard: { marginBottom: 12, overflow: 'hidden' },
-  wsLoading: { paddingVertical: 28, alignItems: 'center' },
-  wsUnavailable: { paddingVertical: 24, paddingHorizontal: 18, alignItems: 'center', gap: 7 },
-  wsUnavailableText: { fontSize: 12.5, color: Colors.text.muted, textAlign: 'center' },
-  wsRetryText: { fontSize: 12.5, fontWeight: '600', color: Colors.text.link },
-  wsReportText: { fontSize: 13.5, fontWeight: '600', color: Colors.text.link },
+  wsCard: { marginBottom: rs(12), overflow: 'hidden' },
+  wsLoading: { paddingVertical: rs(28), alignItems: 'center' },
+  wsUnavailable: { paddingVertical: rs(24), paddingHorizontal: rs(18), alignItems: 'center', gap: rs(7) },
+  wsUnavailableText: { fontSize: rf(12.5), color: Colors.text.muted, textAlign: 'center' },
+  wsRetryText: { fontSize: rf(12.5), fontWeight: '600', color: Colors.text.link },
+  wsReportText: { fontSize: rf(13.5), fontWeight: '600', color: Colors.text.link },
 
   wsHeadline: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12,
+    paddingHorizontal: rs(14), paddingTop: rs(14), paddingBottom: rs(12),
   },
-  wsHeadlineLabel: { fontSize: 12, color: Colors.text.muted, marginBottom: 2 },
-  wsHeadlineValue: { fontSize: 26, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
-  wsHeadlineTotal: { fontSize: 15, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.muted },
+  wsHeadlineLabel: { fontSize: rf(12), color: Colors.text.muted, marginBottom: 2 },
+  wsHeadlineValue: { fontSize: rf(26), fontWeight: '700', fontFamily: 'Nunito_700Bold', color: Colors.text.primary },
+  wsHeadlineTotal: { fontSize: rf(15), fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.muted },
   wsPercentPill: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+    paddingHorizontal: rs(12), paddingVertical: rs(6), borderRadius: rs(999),
     backgroundColor: 'rgba(99,102,241,0.10)',
   },
-  wsPercentText: { fontSize: 15, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#6366F1' },
+  wsPercentText: { fontSize: rf(15), fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#6366F1' },
 
   wsBody: {},
-  wsBodyWide: { flexDirection: 'row', alignItems: 'center', gap: 18, paddingRight: 14 },
-  wsHeadlineWide: { paddingRight: 0, flexShrink: 0, minWidth: 190 },
-  wsRows: { paddingHorizontal: 14, gap: 10 },
+  wsBodyWide: { flexDirection: 'row', alignItems: 'center', gap: rs(18), paddingRight: rs(14) },
+  wsHeadlineWide: { paddingRight: 0, flexShrink: 0, minWidth: rs(190) },
+  wsRows: { paddingHorizontal: rs(14), gap: rs(10) },
   wsRowsWide: { flex: 1, paddingLeft: 0 },
-  wsRow: { gap: 5 },
+  wsRow: { gap: rs(5) },
   wsRowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  wsRowLabel: { fontSize: 12.5, color: Colors.text.secondary },
-  wsRowValue: { fontSize: 12.5, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
+  wsRowLabel: { fontSize: rf(12.5), color: Colors.text.secondary },
+  wsRowValue: { fontSize: rf(12.5), fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary },
   wsBarTrack: {
-    height: 6, borderRadius: 3, backgroundColor: 'rgba(99,102,241,0.12)', overflow: 'hidden',
+    height: rs(6), borderRadius: rs(3), backgroundColor: 'rgba(99,102,241,0.12)', overflow: 'hidden',
   },
-  wsBarFill: { height: '100%', borderRadius: 3, backgroundColor: '#6366F1' },
+  wsBarFill: { height: '100%', borderRadius: rs(3), backgroundColor: '#6366F1' },
 
   wsDivider: {
     height: StyleSheet.hairlineWidth, backgroundColor: Colors.border ?? 'rgba(0,0,0,0.08)',
-    marginTop: 14, marginHorizontal: 14,
+    marginTop: rs(14), marginHorizontal: rs(14),
   },
-  wsStatusGrid: { paddingHorizontal: 14, paddingTop: 12, gap: 10 },
-  wsStatus: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  wsStatusGrid: { paddingHorizontal: rs(14), paddingTop: rs(12), gap: rs(10) },
+  wsStatus: { flexDirection: 'row', alignItems: 'flex-start', gap: rs(9) },
   wsStatusText: { flex: 1 },
-  wsStatusLabel: { fontSize: 11.5, color: Colors.text.muted },
-  wsStatusValue: { fontSize: 13, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary, marginTop: 1 },
+  wsStatusLabel: { fontSize: rf(11.5), color: Colors.text.muted },
+  wsStatusValue: { fontSize: rf(13), fontWeight: '600', fontFamily: 'Nunito_600SemiBold', color: Colors.text.primary, marginTop: 1 },
   wsStatusValueMuted: { color: Colors.text.secondary, fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
   wsLockedHint: {
-    fontSize: 11.5, color: Colors.text.muted, marginTop: -4, marginLeft: 23, lineHeight: 16,
+    fontSize: rf(11.5), color: Colors.text.muted, marginTop: rs(-4), marginLeft: rs(23), lineHeight: rf(16),
   },
 
   wsReportBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    marginTop: 14, paddingVertical: 13,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rs(6),
+    marginTop: rs(14), paddingVertical: rs(13),
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.border ?? 'rgba(0,0,0,0.08)',
   },

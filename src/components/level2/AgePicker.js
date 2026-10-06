@@ -1,5 +1,6 @@
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 const AGES = [5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -39,6 +40,6 @@ export default function AgePicker({ age, onSelect, theme, playInstruction }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: Layout.spacing.md, paddingHorizontal: Layout.spacing.sm, paddingVertical: Layout.spacing.sm },
-  card: { width: 64, height: 64, borderRadius: Layout.radius.full, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', ...Layout.shadow.sm },
+  card: { width: rs(64), height: rs(64), borderRadius: Layout.radius.full, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', ...Layout.shadow.sm },
   num: { fontSize: Layout.fontSize.xxxl, fontWeight: '800' },
 });

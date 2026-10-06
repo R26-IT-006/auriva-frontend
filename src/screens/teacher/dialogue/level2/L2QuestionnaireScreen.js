@@ -14,6 +14,7 @@ import AgePicker from '../../../../components/level2/AgePicker';
 import HometownPicker from '../../../../components/level2/HometownPicker';
 import SinhalaNameInput from '../../../../components/level2/SinhalaNameInput';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const ALL_ACTIVITIES = ['Singing', 'Dancing', 'Art', 'Cricket', 'Games', 'Reading'];
 const ACTIVITY_ICONS = { Singing: 'musical-notes-outline', Dancing: 'body-outline', Art: 'color-palette-outline', Cricket: 'baseball-outline', Games: 'game-controller-outline', Reading: 'book-outline' };
@@ -267,69 +268,69 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
 
   // Decorative background shapes (same as the other module screens).
-  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
-  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
-  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+  blob: { position: 'absolute', borderRadius: rs(999), opacity: 0.08 },
+  blobTopRight:   { width: rs(220), height: rs(220), top: rs(-60), right: rs(-60) },
+  blobBottomLeft: { width: rs(260), height: rs(260), bottom: rs(-80), left: rs(-80) },
 
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.sm },
   // Concept's round translucent header button.
   iconBtn: {
-    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    width: rs(44), height: rs(44), borderRadius: rs(22), alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2,
   },
   stepPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: 999,
-    paddingHorizontal: 16, paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'center', gap: rs(12),
+    backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: rs(999),
+    paddingHorizontal: rs(16), paddingVertical: rs(8),
   },
-  dots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  dotActive: { width: 26 },
-  stepText: { fontSize: 13, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
+  dots: { flexDirection: 'row', alignItems: 'center', gap: rs(6) },
+  dot: { width: rs(10), height: rs(10), borderRadius: rs(5) },
+  dotActive: { width: rs(26) },
+  stepText: { fontSize: rf(13), fontFamily: 'DMSans_700Bold', opacity: 0.7 },
 
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md },
   card: {
-    width: '100%', maxWidth: 620, alignSelf: 'center',
-    backgroundColor: '#FFFFFF', borderRadius: 28, borderWidth: 3,
-    paddingHorizontal: 32, paddingTop: 28, paddingBottom: 30,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 6,
+    width: '100%', maxWidth: rs(620), alignSelf: 'center',
+    backgroundColor: '#FFFFFF', borderRadius: rs(28), borderWidth: 3,
+    paddingHorizontal: rs(32), paddingTop: rs(28), paddingBottom: rs(30),
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(6) }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 6,
   },
-  childText: { fontSize: 30, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', letterSpacing: -0.3 },
-  teacherCaption: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', opacity: 0.55, textAlign: 'center', marginTop: 4 },
-  cardBody: { marginTop: 24, gap: Layout.spacing.lg },
+  childText: { fontSize: rf(30), fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', letterSpacing: -0.3 },
+  teacherCaption: { fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', opacity: 0.55, textAlign: 'center', marginTop: rs(4) },
+  cardBody: { marginTop: rs(24), gap: Layout.spacing.lg },
 
   // Raised 3D choice tiles, like the buttons used in the other modules.
   choiceBtn: {
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 2, borderBottomWidth: 5,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
+    backgroundColor: '#FFFFFF', borderRadius: rs(18), borderWidth: 2, borderBottomWidth: 5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(3) }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
   },
-  genderRow: { flexDirection: 'row', gap: 20, justifyContent: 'center' },
-  genderBtn: { flex: 1, maxWidth: 190, gap: 8, paddingVertical: 22 },
-  genderLabel: { fontSize: 20, fontFamily: 'DMSans_800ExtraBold' },
-  actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center' },
-  actCard: { gap: 6, paddingVertical: 14, width: 150 },
-  actLabel: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
+  genderRow: { flexDirection: 'row', gap: rs(20), justifyContent: 'center' },
+  genderBtn: { flex: 1, maxWidth: rs(190), gap: rs(8), paddingVertical: rs(22) },
+  genderLabel: { fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold' },
+  actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(14), justifyContent: 'center' },
+  actCard: { gap: rs(6), paddingVertical: rs(14), width: rs(150) },
+  actLabel: { fontSize: rf(16), fontFamily: 'DMSans_800ExtraBold' },
 
   review: { alignItems: 'center', gap: Layout.spacing.md },
-  summary: { fontSize: 20, fontFamily: 'DMSans_700Bold', textAlign: 'center', lineHeight: 28 },
-  reviewMeta: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', opacity: 0.6, textAlign: 'center' },
+  summary: { fontSize: rf(20), fontFamily: 'DMSans_700Bold', textAlign: 'center', lineHeight: rf(28) },
+  reviewMeta: { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', opacity: 0.6, textAlign: 'center' },
   replayBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 2, borderBottomWidth: 4,
-    paddingHorizontal: 20, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: rs(8),
+    backgroundColor: '#FFFFFF', borderRadius: rs(16), borderWidth: 2, borderBottomWidth: 4,
+    paddingHorizontal: rs(20), paddingVertical: rs(10),
   },
-  replayText: { fontSize: 15, fontFamily: 'DMSans_800ExtraBold' },
+  replayText: { fontSize: rf(15), fontFamily: 'DMSans_800ExtraBold' },
 
   footerRow: { alignItems: 'center', paddingHorizontal: Layout.spacing.lg, paddingBottom: Layout.spacing.lg, paddingTop: Layout.spacing.sm },
   // Raised 3D button, like the ones used in the other modules.
   footerBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    minWidth: 280, paddingHorizontal: 40, paddingVertical: 16,
-    borderRadius: 16, borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
+    minWidth: rs(280), paddingHorizontal: rs(40), paddingVertical: rs(16),
+    borderRadius: rs(16), borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(4) }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
   },
-  footerBtnText: { fontSize: 19, fontFamily: 'DMSans_800ExtraBold' },
+  footerBtnText: { fontSize: rf(19), fontFamily: 'DMSans_800ExtraBold' },
   disabledBtn: { opacity: 0.4 },
 });

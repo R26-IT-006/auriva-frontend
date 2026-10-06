@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { rs, rf } from '../utils/responsive';
 
 const ToastContext = createContext(null);
 
@@ -91,17 +92,17 @@ export function useToast() {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    right: 16,
+    right: rs(16),
     zIndex: 9999,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    gap: 10,
-    maxWidth: 300,
+    borderRadius: rs(14),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(14),
+    gap: rs(10),
+    maxWidth: rs(300),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.28,
     shadowRadius: 14,
     elevation: 12,
@@ -111,21 +112,21 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   title: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#FFFFFF',
     letterSpacing: 0.1,
   },
   message: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: 'rgba(255,255,255,0.78)',
     fontFamily: 'DMSans_600SemiBold',
-    lineHeight: 16,
+    lineHeight: rf(16),
   },
   iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

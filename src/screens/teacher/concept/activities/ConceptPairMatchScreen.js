@@ -16,6 +16,7 @@ import { buildPairMatchGame, MAX_PAIRS, MIN_PAIRS, getPairableItems } from '../.
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const PROMPT_EN = 'Match each photo to its picture!';
 const PROMPT_SI = 'ඡායාරූපයට ගැළපෙන චිත්‍රය සොයමු!';
@@ -297,31 +298,31 @@ export default function ConceptPairMatchScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  safe: { flex: 1, paddingVertical: 10 },
-  centered: { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 40 },
+  safe: { flex: 1, paddingVertical: rs(10) },
+  centered: { alignItems: 'center', justifyContent: 'center', gap: rs(16), paddingHorizontal: rs(40) },
 
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: rs(12),
     paddingHorizontal: Layout.spacing.md,
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   pill: {
     flexShrink: 1,
-    marginTop: 22,
-    paddingHorizontal: 28,
-    paddingVertical: 10,
-    borderRadius: 24,
+    marginTop: rs(22),
+    paddingHorizontal: rs(28),
+    paddingVertical: rs(10),
+    borderRadius: rs(24),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -329,12 +330,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   pillText: {
-    fontSize: 21,
+    fontSize: rf(21),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
   },
   pillTextSi: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -345,35 +346,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: rs(8),
     marginTop: 2,
-    marginBottom: 10,
+    marginBottom: rs(10),
   },
   progressDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: rs(10),
+    height: rs(10),
+    borderRadius: rs(5),
   },
   progress: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.6,
-    marginLeft: 4,
+    marginLeft: rs(4),
   },
 
   emptyText: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: rf(24),
   },
   backBtn: {
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingHorizontal: rs(30),
+    paddingVertical: rs(12),
+    borderRadius: rs(24),
   },
   backBtnText: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

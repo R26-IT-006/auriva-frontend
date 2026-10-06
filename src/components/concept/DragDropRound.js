@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * "Drag the <concept> into the box." The Tier 2 drag-drop format.
@@ -149,18 +150,18 @@ export default function DragDropRound({ round, concept, options, theme, locked, 
 const styles = StyleSheet.create({
   // gap widened from 20: the whole stack is centred, so it lifts the question
   // away from the drop zone below it.
-  root: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 44 },
+  root: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', gap: rs(44) },
 
   question: {
-    fontSize: 24,
+    fontSize: rf(24),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: rs(24),
   },
 
   dropZone: {
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
@@ -172,12 +173,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   optionCard: {
-    borderRadius: 24,
+    borderRadius: rs(24),
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.12,
     shadowRadius: 10,
     elevation: 4,

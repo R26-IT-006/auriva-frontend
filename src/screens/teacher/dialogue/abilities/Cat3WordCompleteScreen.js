@@ -14,6 +14,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 import { LinearGradient } from 'expo-linear-gradient';
+import { rs, rf } from '../../../../utils/responsive';
 
 export default function Cat3WordCompleteScreen({ route, navigation }) {
   const {
@@ -211,25 +212,25 @@ const styles = StyleSheet.create({
 
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.xl, gap: Layout.spacing.lg },
 
-  stars: { fontSize: 48, letterSpacing: 4 },
+  stars: { fontSize: rf(48), letterSpacing: 4 },
 
   card: { width: '100%', borderRadius: Layout.radius.xl, padding: Layout.spacing.xl, alignItems: 'center', gap: Layout.spacing.md, ...Layout.shadow.lg },
-  iconCircle: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  iconCircle: { width: rs(68), height: rs(68), borderRadius: rs(34), alignItems: 'center', justifyContent: 'center', marginBottom: rs(4) },
   heading:    { fontSize: Layout.fontSize.xxl, fontFamily: 'DMSans_900Black', textAlign: 'center' },
-  subtext:    { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', textAlign: 'center', opacity: 0.75, lineHeight: 26 },
+  subtext:    { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', textAlign: 'center', opacity: 0.75, lineHeight: rf(26) },
   wordAccent: { fontFamily: 'DMSans_900Black', opacity: 1 },
-  masteredNote: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.55, marginTop: 4 },
+  masteredNote: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.55, marginTop: rs(4) },
 
   buttonsWrap: { width: '100%', gap: Layout.spacing.md },
   primaryBtn:  {
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
   secondaryBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, borderWidth: 2 },

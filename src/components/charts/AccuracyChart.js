@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 const PASS_BAR = 2 / 3;
 
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
     gap: Layout.spacing.lg,
     marginTop: 2,
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: rs(7) },
   legendText: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary },
 
   empty: {

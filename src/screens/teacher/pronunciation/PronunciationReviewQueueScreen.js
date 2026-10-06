@@ -29,6 +29,7 @@ import { Layout } from "../../../constants/layout";
 import TeacherTopBar from "../../../components/teacher/TeacherTopBar";
 import { useToast } from "../../../context/ToastContext";
 import { formatDateTime, getScoreColor } from "./pronunciationHistory.js";
+import { rs, rf } from "../../../utils/responsive";
 
 const QUEUE_LIMIT = 50;
 
@@ -436,7 +437,7 @@ const styles = StyleSheet.create({
   subtitle: {
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.sm,
-    lineHeight: 19,
+    lineHeight: rf(19),
   },
   list: {
     padding: Layout.spacing.lg,
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     flex: 1,
-    minHeight: 220,
+    minHeight: rs(220),
     marginHorizontal: Layout.spacing.lg,
     borderWidth: 1,
     borderColor: Colors.borderLight,
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
     fontFamily: Layout.fonts.bold,
   },
   emptyCopy: {
-    marginTop: 4,
+    marginTop: rs(4),
     textAlign: "center",
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.sm,
@@ -492,9 +493,9 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   scoreCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: rs(56),
+    height: rs(56),
+    borderRadius: rs(28),
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
@@ -512,19 +513,19 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: rs(4),
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    borderRadius: rs(12),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(4),
   },
   priorityBadge: {
     borderColor: Colors.primary,
     backgroundColor: `${Colors.primary}12`,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: Layout.fonts.semibold,
     color: Colors.text.secondary,
     textTransform: "capitalize",
@@ -536,7 +537,7 @@ const styles = StyleSheet.create({
   reasonText: {
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.xs,
-    lineHeight: 17,
+    lineHeight: rf(17),
   },
   cardFooter: {
     marginTop: Layout.spacing.md,
@@ -551,9 +552,9 @@ const styles = StyleSheet.create({
   reviewButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    height: 38,
-    borderRadius: 19,
+    gap: rs(6),
+    height: rs(38),
+    borderRadius: rs(19),
     paddingHorizontal: Layout.spacing.md,
     backgroundColor: Colors.primary,
   },
@@ -573,7 +574,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "88%",
-    maxWidth: 420,
+    maxWidth: rs(420),
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surface,
     padding: Layout.spacing.lg,
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   modalSubtitle: {
-    marginTop: 4,
+    marginTop: rs(4),
     fontSize: Layout.fontSize.sm,
     fontFamily: Layout.fonts.semibold,
     color: Colors.text.secondary,
@@ -596,20 +597,20 @@ const styles = StyleSheet.create({
     marginTop: Layout.spacing.md,
     fontSize: Layout.fontSize.xs,
     color: Colors.text.secondary,
-    lineHeight: 17,
+    lineHeight: rf(17),
     textAlign: "center",
   },
   audioRow: {
     marginTop: Layout.spacing.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: rs(8),
     alignSelf: "center",
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    borderRadius: 20,
+    borderRadius: rs(20),
     paddingHorizontal: Layout.spacing.md,
-    paddingVertical: 8,
+    paddingVertical: rs(8),
   },
   audioRowText: {
     color: Colors.primary,
@@ -622,7 +623,7 @@ const styles = StyleSheet.create({
   },
   scoreInput: {
     marginTop: Layout.spacing.lg,
-    height: 56,
+    height: rs(56),
     borderRadius: Layout.radius.md,
     borderWidth: 1,
     borderColor: Colors.borderLight,
@@ -639,7 +640,7 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    height: 50,
+    height: rs(50),
     borderRadius: Layout.radius.md,
     alignItems: "center",
     justifyContent: "center",

@@ -14,13 +14,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 // The card is sized against the window rather than given fixed dimensions, so a
 // tall drawing on a small phone still leaves the header and the button on screen.
-const MAX_CARD_WIDTH  = 400;
+const MAX_CARD_WIDTH  = rs(400);
 const SIDE_MARGIN     = Layout.spacing.lg * 2;
 const IMAGE_HEIGHT_PCT = 0.42;
-const IMAGE_MAX_HEIGHT = 340;
+const IMAGE_MAX_HEIGHT = rs(340);
 
 /**
  * A closer look at one drawing, as a dialog over the report.
@@ -198,9 +199,9 @@ const styles = StyleSheet.create({
     color: Colors.text.muted,
   },
   closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: rs(30),
+    height: rs(30),
+    borderRadius: rs(15),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.surfaceAlt,
@@ -217,7 +218,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: rs(6),
   },
   overlayText: {
     fontSize: Layout.fontSize.xs,

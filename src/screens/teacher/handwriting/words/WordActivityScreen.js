@@ -62,7 +62,12 @@ const INCOMPLETE_WORD_FEEDBACK = Object.freeze({
   note: 'Finish every letter',
 });
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+// Landscape sides, whatever the orientation when the app started (this module
+// is evaluated once, possibly in portrait at sign-in). On a tablet launched in
+// landscape these equal the window's width and height, so nothing changes there.
+const _win = Dimensions.get('window');
+const SCREEN_W = Math.max(_win.width, _win.height);
+const SCREEN_H = Math.min(_win.width, _win.height);
 
 // The exercise card is capped at 820 wide and centred, so each side of the
 // screen keeps a free strip. Feedback slides into the right-hand one so it

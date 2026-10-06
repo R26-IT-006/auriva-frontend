@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { rs } from "../../../utils/responsive";
 
 // Darkens a "#RRGGBB" theme color by `amount` (0-1) so a single avatar-theme
 // button color can become a 2-stop gradient — the same lighter-to-darker
@@ -280,8 +281,8 @@ export function SelectionCheck({ selected = false, theme, size = 26, style }) {
 const styles = StyleSheet.create({
   selectionCheck: {
     position: "absolute",
-    top: 8,
-    right: 8,
+    top: rs(8),
+    right: rs(8),
     alignItems: "center",
     justifyContent: "center",
     // White ring so the badge holds its edge over any artwork panel colour.

@@ -21,6 +21,7 @@ import { dialogueApi } from '../../../../api/dialogue'; // RC-PROMPT: shared wor
 import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const PROGRESS_FRACTION = 0.70;
 
@@ -607,13 +608,13 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
 
   headerWrap: {},
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
-  headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: rs(12), paddingVertical: rs(12), gap: rs(8) },
+  headerSide:    { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -624,8 +625,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   levelLabel:    { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
-  progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
-  progressFill:  { height: '100%', borderRadius: 4 },
+  progressTrack: { flex: 1, height: rs(8), backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: rs(4), overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: rs(4) },
 
   content: {
     flex:              1,
@@ -638,7 +639,7 @@ const styles = StyleSheet.create({
   title: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_600SemiBold', textAlign: 'center', marginBottom: Layout.spacing.lg },
 
   wordTile: {
-    minWidth:     200,
+    minWidth:     rs(200),
     borderRadius: Layout.radius.xl,
     padding:      Layout.spacing.xl,
     alignItems:   'center',
@@ -647,7 +648,7 @@ const styles = StyleSheet.create({
     borderColor:  'transparent',
     ...Layout.shadow.md,
   },
-  speakerCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  speakerCircle: { width: rs(64), height: rs(64), borderRadius: rs(32), alignItems: 'center', justifyContent: 'center' },
   wordText:      { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_900Black', textAlign: 'center' },
   wordTextCue: {
     fontFamily: 'DMSans_900Black',
@@ -655,14 +656,14 @@ const styles = StyleSheet.create({
     color: '#E05C2A',   // warm orange — contrasts with theme.button on all avatar themes
   },
 
-  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Layout.spacing.sm, opacity: 0.55 },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: rs(6), marginTop: Layout.spacing.sm, opacity: 0.55 },
   hintText: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_600SemiBold' },
 
   bottomRow: { width: '100%', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: Layout.spacing.sm },
 
-  recordSection: { flex: 1, alignItems: 'center', gap: 8, paddingBottom: Layout.spacing.md },
+  recordSection: { flex: 1, alignItems: 'center', gap: rs(8), paddingBottom: Layout.spacing.md },
   recordBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: rs(8),
     paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md,
     borderRadius: Layout.radius.full, ...Layout.shadow.md,
   },
@@ -672,24 +673,24 @@ const styles = StyleSheet.create({
   recordBtnText:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#FFF' },
   tapSpeak:        { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold', letterSpacing: 1, opacity: 0.45 },
 
-  avatarWrap:  { alignItems: 'center', width: 130 },
+  avatarWrap:  { alignItems: 'center', width: rs(130) },
   speechBubble: {
     borderRadius: Layout.radius.lg, paddingHorizontal: Layout.spacing.sm, paddingVertical: Layout.spacing.sm,
-    maxWidth: 140, marginBottom: 6, position: 'relative', ...Layout.shadow.sm,
+    maxWidth: rs(140), marginBottom: rs(6), position: 'relative', ...Layout.shadow.sm,
   },
-  speechText:  { fontSize: 12, fontFamily: 'DMSans_600SemiBold', textAlign: 'center' },
-  bubbleTail:  { position: 'absolute', bottom: -7, left: '50%', marginLeft: -7, width: 0, height: 0, borderLeftWidth: 7, borderRightWidth: 7, borderTopWidth: 7, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
-  avatarMedia: { width: 115, height: 135 },
+  speechText:  { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', textAlign: 'center' },
+  bubbleTail:  { position: 'absolute', bottom: rs(-7), left: '50%', marginLeft: rs(-7), width: 0, height: 0, borderLeftWidth: 7, borderRightWidth: 7, borderTopWidth: 7, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
+  avatarMedia: { width: rs(115), height: rs(135) },
 
   nextBtn:     {
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -699,12 +700,12 @@ const styles = StyleSheet.create({
     marginBottom: Layout.spacing.sm,
   },
   nextBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
+  settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: rs(24), borderTopRightRadius: rs(24), padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
   settingsTitle:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },

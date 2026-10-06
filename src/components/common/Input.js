@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ButtonFeedback } from './ButtonFeedback';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 export function Input({
   label,
@@ -109,7 +110,7 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    height: 52,
+    height: rs(52),
     ...Layout.shadow.sm,
   },
   inputWrapperFocused: {
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
   error: {
     fontSize: Layout.fontSize.xs,
     color: Colors.status.error,
-    marginTop: 4,
-    marginLeft: 4,
+    marginTop: rs(4),
+    marginLeft: rs(4),
   },
 });

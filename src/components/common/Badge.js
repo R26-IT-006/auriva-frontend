@@ -2,6 +2,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 export function Badge({ label, variant = 'info', style }) {
   const variants = {
@@ -22,8 +23,8 @@ export function Badge({ label, variant = 'info', style }) {
 
 const styles = StyleSheet.create({
   badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(3),
     borderRadius: Layout.radius.full,
     alignSelf: 'flex-start',
   },

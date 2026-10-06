@@ -13,6 +13,7 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getConceptItem, categoryHasVideo } from '../../../data/conceptData';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
+import { rs, rf } from '../../../utils/responsive';
 
 const AVATAR_CONGRATS_IMAGES = {
   boba:     require('../../../../assets/avatar-images/BobaCongratulations.png'),
@@ -337,7 +338,7 @@ export default function ConceptCongratulationsScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   safe:      { flex: 1 },
-  safeInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
+  safeInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: rs(20) },
 
   stack: {
     alignItems: 'center',
@@ -345,22 +346,22 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 220,
-    height: 220,
-    marginBottom: -75,
+    width: rs(220),
+    height: rs(220),
+    marginBottom: rs(-75),
     zIndex: 10,
   },
 
   card: {
     width: '100%',
-    borderRadius: 28,
+    borderRadius: rs(28),
     alignItems: 'center',
-    paddingTop: 90,
-    paddingBottom: 28,
-    paddingHorizontal: 24,
-    gap: 6,
+    paddingTop: rs(90),
+    paddingBottom: rs(28),
+    paddingHorizontal: rs(24),
+    gap: rs(6),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: rs(8) },
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 8,
@@ -369,26 +370,26 @@ const styles = StyleSheet.create({
   burstWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
   burstGlow: {
     position: 'absolute',
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: rs(70),
+    height: rs(70),
+    borderRadius: rs(35),
     opacity: 0.25,
   },
   burst: {
-    fontSize: 44,
+    fontSize: rf(44),
   },
 
   heading: {
-    fontSize: 30,
+    fontSize: rf(30),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.5,
   },
   conceptName: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontFamily: 'DMSans_800ExtraBold',
   },
 
@@ -396,71 +397,71 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.8,
-    borderRadius: 32,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    gap: 5,
-    marginTop: 10,
+    borderRadius: rs(32),
+    paddingHorizontal: rs(18),
+    paddingVertical: rs(9),
+    gap: rs(5),
+    marginTop: rs(10),
   },
   pillStar: {
-    fontSize: 20,
+    fontSize: rf(20),
   },
   pillCount: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
-    marginLeft: 4,
+    marginLeft: rs(4),
   },
   pillLabel: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.65,
   },
 
   encouragement: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 8,
+    marginTop: rs(8),
+    paddingHorizontal: rs(8),
   },
 
   btnStack: {
     alignItems: 'center',
-    gap: 10,
+    gap: rs(10),
   },
 
   autoTrack: {
-    width: 120,
-    height: 5,
-    borderRadius: 3,
+    width: rs(120),
+    height: rs(5),
+    borderRadius: rs(3),
     backgroundColor: 'rgba(0,0,0,0.1)',
     overflow: 'hidden',
   },
   autoFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: rs(3),
   },
 
   continueBtn: {
-    paddingHorizontal: 44,
-    paddingVertical: 16,
-    borderRadius: 36,
+    paddingHorizontal: rs(44),
+    paddingVertical: rs(16),
+    borderRadius: rs(36),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 6,
   },
   continueBtnText: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_800ExtraBold',
   },
 
   fallingStar: {
     position: 'absolute',
-    fontSize: 22,
+    fontSize: rf(22),
   },
 });

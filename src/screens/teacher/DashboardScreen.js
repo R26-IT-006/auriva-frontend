@@ -22,6 +22,7 @@ import { teacherApi } from '../../api/teacher';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../context/ToastContext';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { rs, rf } from '../../utils/responsive';
 
 const BACKGROUND_REFRESH_INTERVAL_MS = 60 * 1000;
 // Page chrome — the full-page spinner and the pull-to-refresh tint. This used to be
@@ -71,9 +72,9 @@ const SECTION = {
   digest:       { icon: 'sparkles-outline',    ...TINTS.rose },
 };
 
-const PANEL_PAD    = 20;
+const PANEL_PAD    = rs(20);
 const PANEL_BORDER = 1;
-const GRID_GAP     = 14;
+const GRID_GAP     = rs(14);
 // Notes and the calendar share a row above this and stack below it. The calendar
 // needs ~330pt before its day cells start crowding and the notes list wants about
 // as much for its chips and composer, so two of them plus the gap is the floor.
@@ -132,7 +133,7 @@ function buildMonthGrid(monthDate) {
 // The avatar tile carries the colour itself now — Avatar picks a saturated hue
 // from the child's name and prints white initials on it — so the pale halo ring
 // that used to sit behind it has no job left. Its palette is gone with it.
-const AVATAR_TILE = 84;
+const AVATAR_TILE = rs(84);
 
 function StudentCard({ student, width, onPress }) {
   const age = ageFrom(student.dateOfBirth);
@@ -1134,17 +1135,17 @@ const styles = StyleSheet.create({
   // vertical space and push the controls to the bottom of the screen.
   headerLeftGrow: { flex: 1 },
   headerName: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_900Black',
     color: '#16281F',
     letterSpacing: -0.4,
   },
   headerSub: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: '#4A7A60',
   },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: rs(10) },
   // Stacked, the controls own the full width: the one navigation action goes to
   // one end and the account menu to the other, rather than huddling on the left.
   headerRightStacked: { justifyContent: 'space-between' },
@@ -1156,16 +1157,16 @@ const styles = StyleSheet.create({
   workspaceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 22,
+    gap: rs(8),
+    height: rs(44),
+    paddingHorizontal: rs(18),
+    borderRadius: rs(22),
     backgroundColor: 'rgba(255,255,255,0.85)',
     borderWidth: 1,
     borderColor: '#C9DCD4',
   },
   workspaceBtnText: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
     color: '#2A5A48',
   },
@@ -1174,7 +1175,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    height: 44,
+    height: rs(44),
   },
 
   // ── Layout ────────────────────────────────────────────────────────────────
@@ -1192,17 +1193,17 @@ const styles = StyleSheet.create({
   // Shadow here, not on `panel` — a view with overflow:hidden clips its own
   // shadow on iOS, so the shadow has to live one level up from the clipping view.
   panelShadowWrap: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
   },
   panel: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: rs(20),
     overflow: 'hidden',
     borderWidth: PANEL_BORDER,
     borderColor: '#EDF1EF',
@@ -1214,40 +1215,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Layout.spacing.sm + 2,
     paddingHorizontal: PANEL_PAD,
-    paddingTop: 18,
+    paddingTop: rs(18),
     paddingBottom: 2,
   },
   panelBody: {
     padding: PANEL_PAD,
-    paddingTop: 16,
+    paddingTop: rs(16),
   },
   panelIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(11),
     alignItems: 'center',
     justifyContent: 'center',
   },
   panelTitleWrap: { flex: 1 },
   panelTitle: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
   },
   // Drops back in weight and opacity — it dates the panel, it does not compete
   // with the title for it.
   panelSubtitle: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
     opacity: 0.85,
     marginTop: 1,
   },
   panelEmptyText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
-    lineHeight: 20,
+    lineHeight: rf(20),
     paddingVertical: Layout.spacing.sm,
   },
 
@@ -1257,33 +1258,33 @@ const styles = StyleSheet.create({
   // 58/42 — the left column carries prose and needs the room; the right is short
   // lines that read fine narrow.
   digestMain: { flex: 58 },
-  digestSide: { flex: 42, gap: 7 },
-  digestSideStacked: { gap: 7 },
+  digestSide: { flex: 42, gap: rs(7) },
+  digestSideStacked: { gap: rs(7) },
   digestDivider: {
     width: 1,
     alignSelf: 'stretch',
     backgroundColor: '#E4EFEB',
     marginHorizontal: Layout.spacing.md,
   },
-  digestSideHead: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
+  digestSideHead: { flexDirection: 'row', alignItems: 'center', gap: rs(5), marginBottom: 2 },
 
   // A plain sentence now, not a filled box: with the details folded away there is
   // no list under it to set it apart from.
   digestHeadline: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_600SemiBold',
     color: '#1A3D2E',
-    lineHeight: 24,
+    lineHeight: rf(24),
   },
   digestToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 4,
+    gap: rs(4),
     marginTop: Layout.spacing.sm + 2,
   },
   digestToggleText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_700Bold',
     color: TINTS.rose.fg,
   },
@@ -1298,28 +1299,28 @@ const styles = StyleSheet.create({
   digestWatchRow: {
     borderLeftWidth: 3,
     paddingLeft: Layout.spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: rs(3),
   },
   digestGroupTitle: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: '#8AA79D',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginBottom: 6,
+    marginBottom: rs(6),
   },
   digestRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 5,
+    marginBottom: rs(5),
   },
-  digestDot: { marginTop: 7, marginRight: 8 },
+  digestDot: { marginTop: rs(7), marginRight: rs(8) },
   digestText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: '#3F5C52',
-    lineHeight: 19,
+    lineHeight: rf(19),
   },
   // Shown, not hidden: the teacher should see what the summary does not know.
   digestCaveat: {
@@ -1327,10 +1328,10 @@ const styles = StyleSheet.create({
     paddingTop: Layout.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: '#E4EFEB',
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_400Regular',
     color: '#8AA79D',
-    lineHeight: 16,
+    lineHeight: rf(16),
     fontStyle: 'italic',
   },
   digestRefresh: { marginLeft: Layout.spacing.sm },
@@ -1341,19 +1342,19 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   digestLoadingText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
   },
   pillBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(6),
+    borderRadius: rs(20),
     borderWidth: 1,
     borderColor: CHROME,
   },
   pillBtnText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_700Bold',
     color: CHROME,
   },
@@ -1365,34 +1366,34 @@ const styles = StyleSheet.create({
   // around five avatars. A tinted plate is enough to group a child's tile, and
   // it leaves the panel as the only raised surface in this section.
   studentCardShadowWrap: {
-    borderRadius: 18,
+    borderRadius: rs(18),
   },
   studentCard: {
     backgroundColor: '#F4F7F6',
-    borderRadius: 18,
-    paddingTop: 18,
-    paddingBottom: 16,
-    paddingHorizontal: 10,
+    borderRadius: rs(18),
+    paddingTop: rs(18),
+    paddingBottom: rs(16),
+    paddingHorizontal: rs(10),
     alignItems: 'center',
-    gap: 4,
+    gap: rs(4),
     overflow: 'hidden',
   },
   // Soft tinted wash behind the avatar, fading into the card's white body — gives
   // each card its own bit of color without the halo ring having to carry it alone.
-  studentAvatarWrap: { marginBottom: 12 },
+  studentAvatarWrap: { marginBottom: rs(12) },
   // A rounded square, not a circle. Squares of the same size tile a row evenly and
   // read as a set; the radius is a little under a third of the side, which is what
   // keeps it a square with soft corners rather than drifting back toward a circle.
   studentAvatarTile: {
-    borderRadius: 26,
+    borderRadius: rs(26),
     overflow: 'hidden',
   },
   studentName: {
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: rf(15),
+    lineHeight: rf(20),
     // One line now that it is a first name, so the card no longer reserves height
     // for a second that most children never used.
-    height: 20,
+    height: rs(20),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
     textAlign: 'center',
@@ -1400,7 +1401,7 @@ const styles = StyleSheet.create({
   // Sentence case like every other secondary line on the page. It was the one
   // tracked, all-caps label here, which made it read as a heading.
   studentAge: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
   },
@@ -1409,43 +1410,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    marginTop: 10,
-    paddingVertical: 5,
-    paddingLeft: 12,
-    paddingRight: 8,
-    borderRadius: 14,
+    marginTop: rs(10),
+    paddingVertical: rs(5),
+    paddingLeft: rs(12),
+    paddingRight: rs(8),
+    borderRadius: rs(14),
     backgroundColor: '#FFFFFF',
   },
   studentOpenText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_700Bold',
     color: SECTION.students.fg,
   },
 
   // ── Calendar ──────────────────────────────────────────────────────────────
-  calNav: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  calNav: { flexDirection: 'row', alignItems: 'center', gap: rs(6) },
   calMonth: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     color: '#1A3D2E',
   },
   calTodayBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(4),
+    borderRadius: rs(12),
     borderWidth: 1,
     borderColor: SECTION.calendar.fg,
     marginRight: 2,
   },
   calTodayText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_700Bold',
     color: SECTION.calendar.fg,
   },
   calArrow: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: rs(26),
+    height: rs(26),
+    borderRadius: rs(13),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F4F7F5',
@@ -1454,16 +1455,16 @@ const styles = StyleSheet.create({
   calWeekday: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: '#6B8A80',
-    paddingBottom: 6,
+    paddingBottom: rs(6),
   },
   calCell: { flex: 1, alignItems: 'center' },
   calDay: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: rs(30),
+    height: rs(30),
+    borderRadius: rs(15),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1471,15 +1472,15 @@ const styles = StyleSheet.create({
   calDaySelected: { backgroundColor: SECTION.calendar.bg, borderWidth: 1.5, borderColor: SECTION.calendar.fg },
   calDaySelectedText: { color: '#1A3D2E', fontFamily: 'DMSans_700Bold' },
   calDayText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_600SemiBold',
     color: '#1A3D2E',
   },
   calDayOutsideText: { color: '#C6D2CC' },
   calDayTodayText: { color: '#FFFFFF', fontFamily: 'DMSans_700Bold' },
   // Fixed-height slot so a dot appearing never nudges the row below it.
-  calDotSlot: { height: 8, justifyContent: 'center' },
-  calDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#52C07C' },
+  calDotSlot: { height: rs(8), justifyContent: 'center' },
+  calDot: { width: rs(5), height: rs(5), borderRadius: rs(3), backgroundColor: '#52C07C' },
 
   // ── Selected-day sessions ─────────────────────────────────────────────────
   daySessions: {
@@ -1489,41 +1490,41 @@ const styles = StyleSheet.create({
     borderTopColor: '#EDF1EF',
   },
   daySessionsHeading: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
     color: '#1A3D2E',
-    marginBottom: 10,
+    marginBottom: rs(10),
   },
   slot: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    marginBottom: 10,
+    gap: rs(12),
+    borderRadius: rs(14),
+    paddingVertical: rs(13),
+    paddingHorizontal: rs(16),
+    marginBottom: rs(10),
   },
   // Tint and the status dot carry "running"; no edge stripe, which shifted this
   // row's text 3pt right of the rows around it.
   slotLive: { backgroundColor: TINTS.green.bg },
   slotDone: { backgroundColor: '#F5F8F7' },
   slotTime: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_600SemiBold',
     color: '#6B8A80',
-    width: 62,
+    width: rs(62),
   },
-  slotStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  slotLiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: TINTS.green.fg },
+  slotStatusRow: { flexDirection: 'row', alignItems: 'center', gap: rs(5) },
+  slotLiveDot: { width: rs(6), height: rs(6), borderRadius: rs(3), backgroundColor: TINTS.green.fg },
   slotSubLive: { color: TINTS.green.fg, fontFamily: 'DMSans_700Bold' },
   slotBody: { flex: 1, gap: 1 },
   slotTitle: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_700Bold',
     color: '#1A3D2E',
   },
   slotSub: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
   },
@@ -1531,20 +1532,20 @@ const styles = StyleSheet.create({
   // ── Notes ─────────────────────────────────────────────────────────────────
   // flexGrow 0: a horizontal ScrollView otherwise grows to fill the panel when the
   // panel is stretched to match the calendar, pushing the composer to the bottom.
-  notesChipScroll: { flexGrow: 0, marginBottom: 16 },
-  notesChipRow: { flexDirection: 'row', gap: 8 },
+  notesChipScroll: { flexGrow: 0, marginBottom: rs(16) },
+  notesChipRow: { flexDirection: 'row', gap: rs(8) },
   notesChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(6),
+    borderRadius: rs(16),
     backgroundColor: '#F4F7F5',
     borderWidth: 1,
     borderColor: '#EDF1EF',
-    maxWidth: 140,
+    maxWidth: rs(140),
   },
   notesChipActive: { backgroundColor: SECTION.notes.fg, borderColor: SECTION.notes.fg },
   notesChipText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_600SemiBold',
     color: '#4A7A60',
   },
@@ -1552,27 +1553,27 @@ const styles = StyleSheet.create({
   notesComposer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 8,
-    marginBottom: 16,
+    gap: rs(8),
+    marginBottom: rs(16),
   },
   notesInput: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    borderRadius: 12,
+    minHeight: rs(40),
+    maxHeight: rs(100),
+    borderRadius: rs(12),
     borderWidth: 1,
     borderColor: '#EDF1EF',
     backgroundColor: '#F9FBFA',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 13,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(9),
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: '#1A3D2E',
   },
   notesAddBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(12),
     backgroundColor: SECTION.notes.fg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1581,58 +1582,58 @@ const styles = StyleSheet.create({
   noteRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
+    gap: rs(10),
+    borderRadius: rs(14),
+    padding: rs(14),
+    marginBottom: rs(10),
     backgroundColor: '#F9FBFA',
     borderWidth: 1,
     borderColor: '#EDF1EF',
   },
-  noteBody: { flex: 1, gap: 3 },
+  noteBody: { flex: 1, gap: rs(3) },
   noteDeleteBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    width: rs(30),
+    height: rs(30),
+    borderRadius: rs(8),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: CORAL_L,
   },
   noteText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: '#1A3D2E',
-    lineHeight: 19,
+    lineHeight: rf(19),
   },
   noteMeta: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
   },
 
   // ── Empty state ───────────────────────────────────────────────────────────
-  empty: { alignItems: 'center', paddingVertical: 22, paddingHorizontal: 16 },
+  empty: { alignItems: 'center', paddingVertical: rs(22), paddingHorizontal: rs(16) },
   emptyIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: rs(50),
+    height: rs(50),
+    borderRadius: rs(25),
     backgroundColor: '#D6F0F4',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: rs(10),
   },
   emptyTitle: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
     color: '#1A3D2E',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
   emptySub: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_400Regular',
     color: '#6B8A80',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: rf(18),
   },
 
 });

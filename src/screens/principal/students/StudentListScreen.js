@@ -16,6 +16,7 @@ import { Avatar } from '../../../components/common/Avatar';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { principalApi } from '../../../api/principal';
+import { rs, rf } from '../../../utils/responsive';
 
 // ── palette (matches dashboard + teacher list) ────────────────────────────────
 const DARK      = '#0F2F3E';
@@ -360,45 +361,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: SURFACE,
-    paddingHorizontal: 24,
-    paddingBottom: 14,
+    paddingHorizontal: rs(24),
+    paddingBottom: rs(14),
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: rs(10),
   },
   sectionBar: {
-    width: 3, height: 20, borderRadius: 2,
+    width: rs(3), height: rs(20), borderRadius: 2,
     backgroundColor: PURPLE,
   },
   pageTitle: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
     color: TEXT,
   },
   countBadge: {
     backgroundColor: PURPLE_L,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    borderRadius: rs(20),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(3),
   },
   countText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_700Bold',
     color: PURPLE,
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: rs(6),
     backgroundColor: DARK,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: rs(10),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(10),
   },
   addBtnText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_700Bold',
     color: SURFACE,
   },
@@ -406,8 +407,8 @@ const styles = StyleSheet.create({
   // ── Filter bar ────────────────────────────────────────────────────────────
   filterBar: {
     backgroundColor: SURFACE,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: rs(20),
+    paddingVertical: rs(10),
     borderTopWidth: 1,
     borderTopColor: BORDER,
     borderBottomWidth: 1,
@@ -417,16 +418,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: BODY_BG,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 6,
+    borderRadius: rs(10),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(8),
+    gap: rs(6),
     borderWidth: 1,
     borderColor: BORDER,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: TEXT,
     paddingVertical: 0,
@@ -436,8 +437,8 @@ const styles = StyleSheet.create({
   tableWrap: {
     flex: 1,
     backgroundColor: SURFACE,
-    margin: 16,
-    borderRadius: 16,
+    margin: rs(16),
+    borderRadius: rs(16),
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: BORDER,
@@ -451,11 +452,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: TABLE_HDR,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(13),
   },
   headerCell: {
-    fontSize: 10,
+    fontSize: rf(10),
     fontFamily: 'DMSans_700Bold',
     color: 'rgba(255,255,255,0.70)',
     letterSpacing: 0.8,
@@ -465,8 +466,8 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(11),
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
     backgroundColor: SURFACE,
@@ -475,36 +476,36 @@ const styles = StyleSheet.create({
   cell: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 8,
+    paddingRight: rs(8),
   },
 
   // ── Cell content ──────────────────────────────────────────────────────────
   codePill: {
     backgroundColor: PURPLE_L,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    borderRadius: rs(6),
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(3),
   },
   codeText: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: PURPLE,
     letterSpacing: 0.3,
   },
   nameText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_700Bold',
     color: TEXT,
   },
   mutedText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_400Regular',
     color: MUTED,
   },
   // The empty counterpart of `mutedText` — same cell, same ternary. Italic
   // rather than a new colour: it marks an absence, not a warning state.
   unassignedText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_400Regular',
     color: MUTED,
     fontStyle: 'italic',
@@ -512,9 +513,9 @@ const styles = StyleSheet.create({
 
   // ── Action buttons ────────────────────────────────────────────────────────
   actionBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    width: rs(30),
+    height: rs(30),
+    borderRadius: rs(8),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -524,31 +525,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(10),
     borderTopWidth: 1,
     borderTopColor: BORDER,
   },
   pageInfo: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: MUTED,
   },
-  pageControls: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pageControls: { flexDirection: 'row', alignItems: 'center', gap: rs(4) },
   pageArrow: {
-    width: 28, height: 28, borderRadius: 8,
+    width: rs(28), height: rs(28), borderRadius: rs(8),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: BODY_BG,
     borderWidth: 1, borderColor: BORDER,
   },
   pageBtn: {
-    width: 28, height: 28, borderRadius: 8,
+    width: rs(28), height: rs(28), borderRadius: rs(8),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: BODY_BG,
     borderWidth: 1, borderColor: BORDER,
   },
   pageBtnActive:    { backgroundColor: DARK, borderColor: DARK },
-  pageBtnTxt:       { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: MUTED },
+  pageBtnTxt:       { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', color: MUTED },
   pageBtnTxtActive: { color: SURFACE },
-  pageEllipsis:     { fontSize: 12, color: MUTED, paddingHorizontal: 2 },
+  pageEllipsis:     { fontSize: rf(12), color: MUTED, paddingHorizontal: 2 },
 });

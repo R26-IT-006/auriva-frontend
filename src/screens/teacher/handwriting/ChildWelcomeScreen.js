@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { rs, rf } from '../../../utils/responsive';
 
 const AVATAR_MAP = {
   boba:     require('../../../../assets/avatar-images/Boba.png'),
@@ -69,59 +70,59 @@ const styles = StyleSheet.create({
 
   card: {
     flex: 1,
-    marginHorizontal: 24,
-    marginVertical: 40,
-    borderRadius: 24,
+    marginHorizontal: rs(24),
+    marginVertical: rs(40),
+    borderRadius: rs(24),
     backgroundColor: '#FFFFFF',
-    padding: 32,
+    padding: rs(32),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
   },
 
   heading: {
-    fontSize: 32,
+    fontSize: rf(32),
     fontWeight: '900',
     fontFamily: 'Nunito_900Black',
-    marginBottom: 32,
+    marginBottom: rs(32),
   },
 
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    gap: rs(12),
+    marginBottom: rs(16),
   },
   nameText: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
   },
   avatarThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(22),
   },
 
   subtitle: {
-    fontSize: 16,
+    fontSize: rf(16),
     color: '#666666',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 48,
+    lineHeight: rf(24),
+    marginBottom: rs(48),
   },
 
   startButton: {
-    paddingHorizontal: 48,
-    paddingVertical: 16,
-    borderRadius: 50,
+    paddingHorizontal: rs(48),
+    paddingVertical: rs(16),
+    borderRadius: rs(50),
   },
   startText: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
   },

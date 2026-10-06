@@ -21,6 +21,7 @@ import {
 } from '../../../../data/conceptData';
 import { Layout } from '../../../../constants/layout';
 import HeaderPillButton from '../../../../components/common/HeaderPillButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 // The same celebration the real rounds play, so the demo rehearses exactly what
 // the child will see when they answer correctly.
@@ -244,32 +245,32 @@ const styles = StyleSheet.create({
   watchBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 20,
+    gap: rs(6),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(7),
+    borderRadius: rs(20),
     borderWidth: 1.5,
   },
-  watchEmoji: { fontSize: 15 },
+  watchEmoji: { fontSize: rf(15) },
   watchText: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
   },
 
   questionBlock: {
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: rs(6),
     paddingHorizontal: Layout.spacing.lg,
-    gap: 4,
+    gap: rs(4),
   },
   questionEn: {
-    fontSize: 28,
+    fontSize: rf(28),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -279,44 +280,44 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     width: '100%',
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    paddingBottom: 130,
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(20),
+    paddingBottom: rs(130),
   },
   imageContainer: {
     flex: 1,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingLeft: 130,
+    paddingLeft: rs(130),
   },
   labelsContainer: {
-    width: 320,
+    width: rs(320),
     justifyContent: 'center',
-    gap: 24,
-    marginRight: 60,
+    gap: rs(24),
+    marginRight: rs(60),
   },
   labelPill: {
-    paddingHorizontal: 28,
-    paddingVertical: 20,
-    borderRadius: 28,
+    paddingHorizontal: rs(28),
+    paddingVertical: rs(20),
+    borderRadius: rs(28),
     borderWidth: 3,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: rs(5) },
     shadowOpacity: 0.14,
     shadowRadius: 10,
     elevation: 4,
   },
   labelText: {
-    fontSize: 27,
+    fontSize: rf(27),
     fontFamily: 'DMSans_900Black',
     letterSpacing: 0.2,
   },
   ripple: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: rs(80),
+    height: rs(80),
+    borderRadius: rs(40),
     borderWidth: 3,
   },
 
@@ -326,7 +327,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: '50%',
-    marginTop: -20,
+    marginTop: rs(-20),
     alignItems: 'center',
   },
 
@@ -334,13 +335,13 @@ const styles = StyleSheet.create({
   // place and at the same size the child will see it during play.
   feedbackGif: {
     position: 'absolute',
-    bottom: 20,
+    bottom: rs(20),
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   feedbackGifImage: {
-    width: 200,
-    height: 200,
+    width: rs(200),
+    height: rs(200),
   },
 });

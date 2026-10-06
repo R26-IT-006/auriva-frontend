@@ -26,6 +26,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Polyline, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
+import { rs, rf } from '../../../utils/responsive';
 
 const AXIS = '#CBD5E1';
 const GRID = '#E8EBF3';
@@ -221,17 +222,17 @@ export function ProgressBarRow({ label, value, total, color = '#6366F1' }) {
 
 const styles = StyleSheet.create({
   empty: {
-    paddingVertical: 18, paddingHorizontal: 12, alignItems: 'center',
-    backgroundColor: '#F8FAFC', borderRadius: 10,
+    paddingVertical: rs(18), paddingHorizontal: rs(12), alignItems: 'center',
+    backgroundColor: '#F8FAFC', borderRadius: rs(10),
   },
-  emptyText: { fontSize: 12.5, color: TEXT_3, textAlign: 'center', lineHeight: 18 },
-  axisNote: { fontSize: 10, color: TEXT_3, marginTop: 4, textAlign: 'center' },
+  emptyText: { fontSize: rf(12.5), color: TEXT_3, textAlign: 'center', lineHeight: rf(18) },
+  axisNote: { fontSize: rf(10), color: TEXT_3, marginTop: rs(4), textAlign: 'center' },
 
-  progressRow: { marginBottom: 12 },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 },
-  progressLabel: { fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F172A' },
-  progressValue: { fontSize: 13, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_2 },
-  progressTrack: { height: 10, borderRadius: 5, backgroundColor: '#EDF0F7', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 5 },
-  progressPct: { fontSize: 10.5, color: TEXT_3, marginTop: 3, textAlign: 'right' },
+  progressRow: { marginBottom: rs(12) },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: rs(5) },
+  progressLabel: { fontSize: rf(13), fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F172A' },
+  progressValue: { fontSize: rf(13), fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_2 },
+  progressTrack: { height: rs(10), borderRadius: rs(5), backgroundColor: '#EDF0F7', overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: rs(5) },
+  progressPct: { fontSize: rf(10.5), color: TEXT_3, marginTop: rs(3), textAlign: 'right' },
 });

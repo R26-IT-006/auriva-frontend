@@ -1,6 +1,7 @@
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * Decorated identity chip — displays an already-entered name inside the
@@ -49,12 +50,12 @@ export default function BadgeNameInput({ name, onChangeName, theme }) {
 }
 
 const styles = StyleSheet.create({
-  badgeWrap: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', position: 'relative', paddingBottom: 14 },
-  ribbonTab: { position: 'absolute', bottom: 0, width: 22, height: 34, borderRadius: 4 },
+  badgeWrap: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', position: 'relative', paddingBottom: rs(14) },
+  ribbonTab: { position: 'absolute', bottom: 0, width: rs(22), height: rs(34), borderRadius: rs(4) },
   // Anchored to the centre (not a % of the wrap), so the tabs always hang
   // just under the badge however wide the surrounding container is.
-  ribbonTabLeft: { left: '50%', marginLeft: -30, transform: [{ rotate: '-8deg' }] },
-  ribbonTabRight: { right: '50%', marginRight: -30, transform: [{ rotate: '8deg' }] },
+  ribbonTabLeft: { left: '50%', marginLeft: rs(-30), transform: [{ rotate: '-8deg' }] },
+  ribbonTabRight: { right: '50%', marginRight: rs(-30), transform: [{ rotate: '8deg' }] },
   badgeFrame: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -63,10 +64,10 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.full,
     paddingHorizontal: Layout.spacing.lg,
     paddingVertical: Layout.spacing.md,
-    minWidth: 280,
+    minWidth: rs(280),
     justifyContent: 'center',
     ...Layout.shadow.md,
   },
-  badgeName: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold' },
-  badgeInput: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold', minWidth: 180, textAlign: 'center', paddingVertical: 0 },
+  badgeName: { fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold' },
+  badgeInput: { fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold', minWidth: rs(180), textAlign: 'center', paddingVertical: 0 },
 });

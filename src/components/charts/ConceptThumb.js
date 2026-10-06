@@ -4,6 +4,7 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { getConceptItem } from '../../data/conceptData';
 import { formatConceptLabel } from './ConfusionList';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * A concept, shown the way the child meets it.
@@ -60,7 +61,7 @@ export function conceptLabel(categoryKey, conceptKey) {
 }
 
 const styles = StyleSheet.create({
-  withLabel: { alignItems: 'center', gap: 3 },
+  withLabel: { alignItems: 'center', gap: rs(3) },
   box: {
     backgroundColor: Colors.surfaceAlt,
     alignItems: 'center',
@@ -73,7 +74,7 @@ const styles = StyleSheet.create({
   box_tricky: { backgroundColor: '#FDF3E0', borderColor: '#F0DBB0' },
 
   label: {
-    fontSize: 9,
+    fontSize: rf(9),
     textAlign: 'center',
     color: Colors.text.secondary,
     fontFamily: 'DMSans_600SemiBold',

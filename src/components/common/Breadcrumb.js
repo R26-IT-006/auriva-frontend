@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 const K = {
   purple:     '#8A80BC',
@@ -91,12 +92,12 @@ const styles = StyleSheet.create({
   trailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 32,
+    minHeight: rs(32),
   },
   backBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: rs(28),
+    height: rs(28),
+    borderRadius: rs(8),
     backgroundColor: K.purpleLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   separator: {
-    marginHorizontal: 3,
+    marginHorizontal: rs(3),
   },
   crumbText: {
     fontSize: Layout.fontSize.xs,
@@ -139,6 +140,6 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xl,
     fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
-    marginTop: 4,
+    marginTop: rs(4),
   },
 });

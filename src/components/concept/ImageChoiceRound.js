@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { getConceptQuestion, getConceptQuestionSi } from '../../data/conceptData';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * "Can you find a <concept>?" — tap the matching picture.
@@ -117,18 +118,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // Question and cards are centred as one block, so a wider gap lifts the
     // question and settles the cards, rather than moving the pair together.
-    marginBottom: 60,
+    marginBottom: rs(60),
     paddingHorizontal: Layout.spacing.lg,
-    gap: 4,
+    gap: rs(4),
   },
   questionEn: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -140,11 +141,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    borderRadius: 32,
+    borderRadius: rs(32),
     borderWidth: 3.5,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 5,
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: rs(8),
   },
   cardImage: { width: '100%', height: '100%' },
 });

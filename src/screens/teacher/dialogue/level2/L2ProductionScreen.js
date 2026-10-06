@@ -12,6 +12,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
 import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
+import { rs, rf } from '../../../../utils/responsive';
 
 const P = { IDLE: 'idle', PLAYING: 'playing', PROCESSING: 'processing', DONE: 'done' };
 
@@ -217,38 +218,38 @@ export default function L2ProductionScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
-  header: { paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center', gap: 8 },
+  header: { paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md, alignItems: 'center', gap: rs(8) },
   headerTitle: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_900Black', textAlign: 'center' },
   headerSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginTop: 2 },
-  progressTrack: { width: '100%', height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 4 },
+  progressTrack: { width: '100%', height: rs(8), backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: rs(4), overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: rs(4) },
   // Capped + centred so the cards don't stretch edge to edge on a tablet.
-  scroll: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.md, gap: Layout.spacing.md },
-  avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  bubble: { flex: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, ...Layout.shadow.sm, position: 'relative' },
+  scroll: { width: '100%', maxWidth: rs(720), alignSelf: 'center', paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.md, gap: Layout.spacing.md },
+  avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: rs(8) },
+  bubble: { flex: 1, borderRadius: rs(16), paddingHorizontal: rs(16), paddingVertical: rs(10), ...Layout.shadow.sm, position: 'relative' },
   bubbleText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
   bubbleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.7, marginTop: 2 },
-  bubbleTail: { position: 'absolute', right: -10, bottom: 12, width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
-  avatar: { width: 90, height: 110 },
-  textCard: { borderRadius: Layout.radius.xl, borderWidth: 2, padding: Layout.spacing.lg, gap: 8, ...Layout.shadow.sm },
+  bubbleTail: { position: 'absolute', right: rs(-10), bottom: rs(12), width: 0, height: 0, borderTopWidth: 8, borderTopColor: 'transparent', borderBottomWidth: 8, borderBottomColor: 'transparent', borderLeftWidth: 10 },
+  avatar: { width: rs(90), height: rs(110) },
+  textCard: { borderRadius: Layout.radius.xl, borderWidth: 2, padding: Layout.spacing.lg, gap: rs(8), ...Layout.shadow.sm },
   textLabel: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
-  targetText: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_700Bold', lineHeight: 28 },
-  promptCard: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Layout.radius.lg, padding: Layout.spacing.md },
+  targetText: { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_700Bold', lineHeight: rf(28) },
+  promptCard: { flexDirection: 'row', alignItems: 'center', gap: rs(8), borderRadius: Layout.radius.lg, padding: Layout.spacing.md },
   promptText: { flex: 1, fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', opacity: 0.75 },
-  listenBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderRadius: Layout.radius.full, paddingHorizontal: Layout.spacing.md, paddingVertical: 8, alignSelf: 'center' },
+  listenBtn: { flexDirection: 'row', alignItems: 'center', gap: rs(8), borderWidth: 1.5, borderRadius: Layout.radius.full, paddingHorizontal: Layout.spacing.md, paddingVertical: rs(8), alignSelf: 'center' },
   listenBtnText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
   micArea: { alignItems: 'center', gap: Layout.spacing.sm },
-  micBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', ...Layout.shadow.sm },
+  micBtn: { width: rs(72), height: rs(72), borderRadius: rs(36), alignItems: 'center', justifyContent: 'center', ...Layout.shadow.sm },
   micNote: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold' },
   nextBtn: {
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -257,7 +258,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   nextText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

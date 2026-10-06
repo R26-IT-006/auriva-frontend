@@ -17,6 +17,7 @@ import { Input } from '../../components/common/Input';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { authApi } from '../../api/auth';
+import { rs, rf } from '../../utils/responsive';
 
 const TEAL       = '#3A9BA8';
 const TEAL_GRAD  = ['#4AABB8', '#52C07C'];
@@ -145,13 +146,13 @@ const styles = StyleSheet.create({
   // ── Card ─────────────────────────────────────────────────────────────────
   card: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    paddingHorizontal: 36,
-    paddingVertical: 40,
+    borderRadius: rs(28),
+    paddingHorizontal: rs(36),
+    paddingVertical: rs(40),
     shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.10,
     shadowRadius: 24,
     elevation: 8,
@@ -162,71 +163,71 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    marginBottom: 24,
+    gap: rs(10),
+    marginBottom: rs(24),
   },
   logoBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(12),
     backgroundColor: TEAL,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoLetter: {
     color: '#FFF',
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
   },
   logoText: {
-    fontSize: 24,
+    fontSize: rf(24),
     fontFamily: 'DMSans_700Bold',
     color: '#1A1A2E',
   },
 
   // ── Icon circle ───────────────────────────────────────────────────────────
   iconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: rs(68),
+    height: rs(68),
+    borderRadius: rs(34),
     backgroundColor: TEAL_LIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: rs(20),
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────
   cardTitle: {
-    fontSize: 28,
+    fontSize: rf(28),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: rs(8),
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
+    lineHeight: rf(22),
+    marginBottom: rs(28),
   },
 
   // ── Send OTP button ───────────────────────────────────────────────────────
   btn: {
-    borderRadius: 14,
+    borderRadius: rs(14),
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: rs(8),
   },
   btnGradient: {
-    height: 54,
+    height: rs(54),
     alignItems: 'center',
     justifyContent: 'center',
   },
   btnText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.4,
   },
@@ -236,20 +237,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginTop: 20,
+    gap: rs(6),
+    marginTop: rs(20),
   },
   backBtnText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     color: TEAL,
   },
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
-    marginTop: 20,
+    marginTop: rs(20),
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: rf(10),
     letterSpacing: 1.8,
     color: Colors.text.muted,
     fontFamily: 'DMSans_600SemiBold',

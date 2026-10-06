@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
+import { rs, rf } from '../../../../utils/responsive';
 
 const AVATAR_MAP = {
   boba:     require('../../../../../assets/avatar-images/Boba.png'),
@@ -128,12 +129,12 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.md, paddingHorizontal: Layout.spacing.xl },
-  avatar: { width: 180, height: 200 },
-  heading: { fontSize: Layout.fontSize.xxl, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', lineHeight: 32 },
+  avatar: { width: rs(180), height: rs(200) },
+  heading: { fontSize: Layout.fontSize.xxl, fontFamily: 'DMSans_800ExtraBold', textAlign: 'center', lineHeight: rf(32) },
   sub: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', opacity: 0.6 },
   subSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', opacity: 0.55, textAlign: 'center' },
-  dotsRow: { flexDirection: 'row', gap: 10, marginTop: Layout.spacing.sm },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  retryBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, marginTop: Layout.spacing.md },
+  dotsRow: { flexDirection: 'row', gap: rs(10), marginTop: Layout.spacing.sm },
+  dot: { width: rs(12), height: rs(12), borderRadius: rs(6) },
+  retryBtn: { flexDirection: 'row', alignItems: 'center', gap: rs(8), paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, marginTop: Layout.spacing.md },
   retryText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
 });

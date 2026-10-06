@@ -12,6 +12,7 @@ import { cat3Api } from '../../../api/cat3';
 import { useGuardedRecorder } from '../../../utils/useGuardedRecorder';
 import { DIALOGUE_WORD_ASSETS } from '../../../data/dialogueAssets';
 import { LinearGradient } from 'expo-linear-gradient';
+import { rs, rf } from '../../../utils/responsive';
 
 // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend).
 // Shared/category-agnostic, same precedent as AnimatedWordScreen.js/
@@ -262,15 +263,15 @@ const styles = StyleSheet.create({
     flexDirection:     'row',
     alignItems:        'center',
     justifyContent:    'space-between',
-    paddingHorizontal: 12,
-    paddingVertical:   12,
+    paddingHorizontal: rs(12),
+    paddingVertical:   rs(12),
   },
-  headerSide:  { width: 40, alignItems: 'center', justifyContent: 'center' },
+  headerSide:  { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.lg,
     paddingTop:        Layout.spacing.md,
     paddingBottom:     Layout.spacing.lg,
-    gap:               16,
+    gap:               rs(16),
   },
 
   imageWrap: {
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
   },
   image: { width: '100%', height: '100%' },
 
-  wordText: { fontSize: 32, fontFamily: 'DMSans_900Black', textAlign: 'center' },
+  wordText: { fontSize: rf(32), fontFamily: 'DMSans_900Black', textAlign: 'center' },
 
   speechBubble: {
     borderRadius:      Layout.radius.lg,
@@ -313,7 +314,7 @@ const styles = StyleSheet.create({
   replayBtn: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               8,
+    gap:               rs(8),
     paddingHorizontal: Layout.spacing.lg,
     paddingVertical:   Layout.spacing.sm,
     borderRadius:      Layout.radius.full,
@@ -326,7 +327,7 @@ const styles = StyleSheet.create({
   recordBtn: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               8,
+    gap:               rs(8),
     paddingHorizontal: Layout.spacing.xl,
     paddingVertical:   Layout.spacing.md,
     borderRadius:      Layout.radius.full,

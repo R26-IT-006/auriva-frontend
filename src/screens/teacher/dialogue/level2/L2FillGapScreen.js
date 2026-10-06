@@ -21,6 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { rs, rf } from '../../../../utils/responsive';
 
 // Sentence emojis matching L2SentencePathScreen STOPS
 const SENTENCE_EMOJIS = { 1: '👤', 2: '🎂', 3: '🏠', 4: '⭐', 5: '🎨' };
@@ -296,9 +297,9 @@ const styles = StyleSheet.create({
   root: { flex: 1, overflow: 'hidden' },
 
   // Decorative background shapes (same as the other module screens).
-  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
-  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
-  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+  blob: { position: 'absolute', borderRadius: rs(999), opacity: 0.08 },
+  blobTopRight:   { width: rs(220), height: rs(220), top: rs(-60), right: rs(-60) },
+  blobBottomLeft: { width: rs(260), height: rs(260), bottom: rs(-80), left: rs(-80) },
 
   header: {
     paddingHorizontal: Layout.spacing.lg,
@@ -308,31 +309,31 @@ const styles = StyleSheet.create({
   },
   stepBadge: { alignItems: 'center' },
   stepLabel: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1.2, textTransform: 'uppercase' },
-  progressTrack: { height: 6, width: '80%', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
+  progressTrack: { height: rs(6), width: '80%', borderRadius: rs(3), overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: rs(3) },
 
   body: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: Layout.spacing.xl, paddingBottom: Layout.spacing.lg,
   },
 
-  emojiLarge: { fontSize: 60, marginBottom: -18, zIndex: 2 },
+  emojiLarge: { fontSize: rf(60), marginBottom: rs(-18), zIndex: 2 },
   // Sits on the top edge of the card, like the avatar on the completion screens.
-  characterImg: { width: 190, height: 220, marginBottom: -34, zIndex: 2 },
+  characterImg: { width: rs(190), height: rs(220), marginBottom: rs(-34), zIndex: 2 },
 
   card: {
     width: '100%',
-    maxWidth: 680,
+    maxWidth: rs(680),
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
-    paddingHorizontal: 32,
-    paddingTop: 44,
-    paddingBottom: 30,
-    gap: 20,
+    paddingHorizontal: rs(32),
+    paddingTop: rs(44),
+    paddingBottom: rs(30),
+    gap: rs(20),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 6,
@@ -343,45 +344,45 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: rs(12),
   },
   sentenceText: {
-    fontSize: 30,
+    fontSize: rf(30),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
   },
   blankBox: {
-    minWidth: 130,
-    height: 56,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    minWidth: rs(130),
+    height: rs(56),
+    paddingHorizontal: rs(16),
+    borderRadius: rs(14),
     borderWidth: 2.5,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
   blankBoxFilled: { borderStyle: 'solid', backgroundColor: '#DCFCE7' },
-  blankText: { fontSize: 28, fontFamily: 'DMSans_900Black' },
+  blankText: { fontSize: rf(28), fontFamily: 'DMSans_900Black' },
 
   hintPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: rs(6),
     opacity: 0.65,
   },
-  instruction: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', textAlign: 'center' },
+  instruction: { fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', textAlign: 'center' },
 
-  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 },
+  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: rs(16) },
   // Raised 3D answer tiles, like the buttons in the other modules.
   option: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderBottomWidth: 5,
-    paddingVertical: 16, paddingHorizontal: 26,
-    minWidth: 140,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 4,
+    borderRadius: rs(16), borderWidth: 2, borderBottomWidth: 5,
+    paddingVertical: rs(16), paddingHorizontal: rs(26),
+    minWidth: rs(140),
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(3) }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 4,
   },
   optionCorrect: { backgroundColor: '#DCFCE7', borderColor: '#22C55E' },
   optionWrong:   { backgroundColor: '#FEE2E2', borderColor: '#EF4444' },
-  optionText: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold' },
+  optionText: { fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold' },
 });

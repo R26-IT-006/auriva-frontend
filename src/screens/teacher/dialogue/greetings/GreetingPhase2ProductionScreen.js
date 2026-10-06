@@ -20,6 +20,7 @@ import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 import { LinearGradient } from 'expo-linear-gradient';
 import ProductionStage from '../../../../components/dialogue/ProductionStage';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs } from '../../../../utils/responsive';
 
 const PROGRESS_FRACTION = 0.85;
 
@@ -616,15 +617,15 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(12),
+    gap: rs(8),
   },
   // Concept's round translucent header button.
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -637,24 +638,24 @@ const styles = StyleSheet.create({
   levelLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
   progressTrack: {
     flex: 1,
-    height: 8,
+    height: rs(8),
     backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 4,
+    borderRadius: rs(4),
     overflow: 'hidden',
   },
-  progressFill: { height: '100%', borderRadius: 4 },
+  progressFill: { height: '100%', borderRadius: rs(4) },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   settingsSheet: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: rs(24),
+    borderTopRightRadius: rs(24),
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
   settingsTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
-  settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: 4 },
+  settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: rs(4) },
 
 });

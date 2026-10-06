@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ButtonFeedback } from './ButtonFeedback';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 const K = {
   purple:     '#8A80BC',
@@ -19,7 +20,7 @@ const K = {
 };
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const ITEM_H = 44;
+const ITEM_H = rs(44);
 const VISIBLE = 5; // rows shown
 
 function range(start, end) {
@@ -87,11 +88,11 @@ const col = StyleSheet.create({
   highlight: {
     position: 'absolute',
     top: ITEM_H * 2,
-    left: 4,
-    right: 4,
+    left: rs(4),
+    right: rs(4),
     height: ITEM_H,
     backgroundColor: K.purpleLight,
-    borderRadius: 10,
+    borderRadius: rs(10),
     zIndex: 0,
   },
   fade: {
@@ -277,7 +278,7 @@ export default function DatePickerField({
 }
 
 const styles = StyleSheet.create({
-  wrapper: { gap: 4 },
+  wrapper: { gap: rs(4) },
 
   label: {
     fontSize: Layout.fontSize.sm,
@@ -292,12 +293,12 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    height: 52,
+    height: rs(52),
     paddingHorizontal: Layout.spacing.md,
     gap: Layout.spacing.sm,
   },
   iconBox: {
-    width: 28, height: 28, borderRadius: 8,
+    width: rs(28), height: rs(28), borderRadius: rs(8),
     backgroundColor: K.purpleLight,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -314,7 +315,7 @@ const styles = StyleSheet.create({
   error: {
     fontSize: Layout.fontSize.xs,
     color: Colors.status.error,
-    marginLeft: 4,
+    marginLeft: rs(4),
   },
 
   // Modal
@@ -325,13 +326,13 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: rs(28),
+    borderTopRightRadius: rs(28),
     overflow: 'hidden',
     paddingBottom: Layout.spacing.xl,
   },
   sheetBanner: {
-    height: 6,
+    height: rs(6),
     backgroundColor: K.banner,
   },
   sheetTitleRow: {
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
   },
   sheetIconBox: {
-    width: 30, height: 30, borderRadius: 9,
+    width: rs(30), height: rs(30), borderRadius: rs(9),
     backgroundColor: K.purpleLight,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -358,7 +359,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: Layout.spacing.lg,
     paddingTop: Layout.spacing.md,
-    paddingBottom: 4,
+    paddingBottom: rs(4),
   },
   colLabel: {
     flex: 1,
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
   wheels: {
     flexDirection: 'row',
     paddingHorizontal: Layout.spacing.lg,
-    gap: 4,
+    gap: rs(4),
   },
   wheelDivider: {
     width: 1,
@@ -385,8 +386,8 @@ const styles = StyleSheet.create({
     marginHorizontal: Layout.spacing.lg,
     marginTop: Layout.spacing.md,
     backgroundColor: K.purple,
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: rs(14),
+    paddingVertical: rs(14),
     alignItems: 'center',
   },
   doneBtnText: {

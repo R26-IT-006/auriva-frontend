@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 // Shared by the concept report and the teacher dashboard. Both render a generated
 // summary of figures shown elsewhere on the same screen, and both must survive the
@@ -112,10 +113,10 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: rs(4),
     backgroundColor: Colors.status.infoLight,
     paddingHorizontal: Layout.spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: rs(3),
     borderRadius: Layout.radius.full,
   },
   badgeText: {
@@ -127,7 +128,7 @@ const styles = StyleSheet.create({
   headline: {
     fontFamily: Layout.fonts.semibold,
     fontSize: Layout.fontSize.md,
-    lineHeight: 21,
+    lineHeight: rf(21),
     color: Colors.text.primary,
   },
   group: { marginTop: Layout.spacing.md },
@@ -142,22 +143,22 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 5,
+    marginBottom: rs(5),
   },
-  rowIcon: { marginTop: 2, marginRight: 6 },
+  rowIcon: { marginTop: 2, marginRight: rs(6) },
   bullet: {
-    width: 4,
-    height: 4,
+    width: rs(4),
+    height: rs(4),
     borderRadius: 2,
-    marginTop: 7,
-    marginRight: 8,
-    marginLeft: 4,
+    marginTop: rs(7),
+    marginRight: rs(8),
+    marginLeft: rs(4),
   },
   rowText: {
     flex: 1,
     fontFamily: Layout.fonts.regular,
     fontSize: Layout.fontSize.sm,
-    lineHeight: 19,
+    lineHeight: rf(19),
   },
   caveat: {
     marginTop: Layout.spacing.md,
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.divider,
     fontFamily: Layout.fonts.regular,
     fontSize: Layout.fontSize.xs,
-    lineHeight: 16,
+    lineHeight: rf(16),
     color: Colors.text.muted,
     fontStyle: 'italic',
   },

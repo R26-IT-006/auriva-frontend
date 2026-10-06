@@ -45,6 +45,7 @@ import {
   buildActivityPreview, buildActivityPreviewAccessibilityLabel,
 } from '../../constants/activityPreviewPolicy';
 import { scaleStrokeToPreview, toPolylinePoints } from '../../utils/activityPreviewGeometry';
+import { rs, rf } from '../../utils/responsive';
 
 // ── Visual language (Step 3 spec §8) ────────────────────────────────────
 // Light dashed guide stroke for the family movement example — matches the
@@ -56,7 +57,7 @@ import { scaleStrokeToPreview, toPolylinePoints } from '../../utils/activityPrev
 const FAMILY_GUIDE_COLOR = '#B8C8E8';
 const LETTER_GUIDE_COLOR = '#0D9488';
 
-const FAMILY_PREVIEW_HEIGHT = 90;
+const FAMILY_PREVIEW_HEIGHT = rs(90);
 const LETTER_CELL = { width: 50, height: 60, padding: 8 };
 const LETTER_DOT_RADIUS = 2.5;
 
@@ -177,14 +178,14 @@ export default function ActivityPreview({ family, caseType, focusLetters }) {
 }
 
 const ap = StyleSheet.create({
-  container: { gap: 10 },
+  container: { gap: rs(10) },
   familyPreviewContainer: {
-    backgroundColor: '#FFFFFF', borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10,
+    backgroundColor: '#FFFFFF', borderRadius: rs(10), paddingVertical: rs(6), paddingHorizontal: rs(10),
   },
-  focusPreviewRow: { flexDirection: 'row', gap: 8 },
+  focusPreviewRow: { flexDirection: 'row', gap: rs(8) },
   letterCell: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 10, paddingVertical: 4,
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: rs(10), paddingVertical: rs(4),
   },
-  letterLabel: { fontSize: 11, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F766E', marginTop: 2 },
-  hiddenFocusText: { fontSize: 11, color: '#64748B', fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
+  letterLabel: { fontSize: rf(11), fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#0F766E', marginTop: 2 },
+  hiddenFocusText: { fontSize: rf(11), color: '#64748B', fontWeight: '500', fontFamily: 'Nunito_600SemiBold' },
 });

@@ -39,6 +39,7 @@ import {
   WRITING_CHECK_REQUIRED_COUNT,
 } from '../../../utils/writingCheck';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import { rs, rf } from '../../../utils/responsive';
 
 /** A calm, discrete progress row — no animation, no percentage. */
 function ProgressDots({ captured, total }) {
@@ -260,21 +261,21 @@ export default function WritingCheckScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   fill:      { flex: 1 },
-  topBar:    { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 8 },
-  backBtn:   { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+  topBar:    { flexDirection: 'row', paddingHorizontal: rs(16), paddingTop: rs(8) },
+  backBtn:   { width: rs(40), height: rs(40), borderRadius: rs(20), alignItems: 'center', justifyContent: 'center',
                backgroundColor: 'rgba(255,255,255,0.4)' },
-  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
-  title:     { fontSize: 30, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#1E293B', textAlign: 'center' },
-  subtitle:  { fontSize: 17, color: '#475569', textAlign: 'center' },
-  countText: { fontSize: 15, color: '#475569', fontVariant: ['tabular-nums'] },
-  dotRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 7, justifyContent: 'center', maxWidth: 420 },
-  dot:       { width: 13, height: 13, borderRadius: 7 },
+  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: rs(14), paddingHorizontal: rs(32) },
+  title:     { fontSize: rf(30), fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#1E293B', textAlign: 'center' },
+  subtitle:  { fontSize: rf(17), color: '#475569', textAlign: 'center' },
+  countText: { fontSize: rf(15), color: '#475569', fontVariant: ['tabular-nums'] },
+  dotRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: rs(7), justifyContent: 'center', maxWidth: rs(420) },
+  dot:       { width: rs(13), height: rs(13), borderRadius: rs(7) },
   dotFilled: { backgroundColor: '#6366F1' },
   dotEmpty:  { backgroundColor: 'rgba(100,116,139,0.22)' },
-  errorRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  secondaryBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 28, marginTop: 6,
+  errorRow:  { flexDirection: 'row', alignItems: 'center', gap: rs(12) },
+  secondaryBtn: { paddingHorizontal: rs(28), paddingVertical: rs(14), borderRadius: rs(28), marginTop: rs(6),
                   backgroundColor: 'rgba(255,255,255,0.55)' },
-  secondaryBtnText: { fontSize: 18, fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#475569' },
-  startBtn:  { paddingHorizontal: 40, paddingVertical: 14, borderRadius: 28, marginTop: 6 },
-  startBtnText: { fontSize: 18, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  secondaryBtnText: { fontSize: rf(18), fontWeight: '700', fontFamily: 'Nunito_700Bold', color: '#475569' },
+  startBtn:  { paddingHorizontal: rs(40), paddingVertical: rs(14), borderRadius: rs(28), marginTop: rs(6) },
+  startBtnText: { fontSize: rf(18), fontWeight: '700', fontFamily: 'Nunito_700Bold' },
 });

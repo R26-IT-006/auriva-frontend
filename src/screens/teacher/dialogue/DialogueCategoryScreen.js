@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import { rs, rf } from '../../../utils/responsive';
 
 const CATEGORIES = [
   {
@@ -180,20 +181,20 @@ const styles = StyleSheet.create({
   // ── Decorative background shapes ──────────────────────────────────────────
   blob: {
     position: 'absolute',
-    borderRadius: 999,
+    borderRadius: rs(999),
     opacity: 0.08,
   },
   blobTopRight: {
-    width: 220,
-    height: 220,
-    top: -60,
-    right: -60,
+    width: rs(220),
+    height: rs(220),
+    top: rs(-60),
+    right: rs(-60),
   },
   blobBottomLeft: {
-    width: 260,
-    height: 260,
-    bottom: -80,
-    left: -80,
+    width: rs(260),
+    height: rs(260),
+    bottom: rs(-80),
+    left: rs(-80),
   },
 
   topBar: {
@@ -204,8 +205,8 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -217,28 +218,28 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 70,
+    gap: rs(10),
+    marginTop: rs(70),
   },
   titleIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 5,
     elevation: 3,
   },
   title: {
-    fontSize: 32,
+    fontSize: rf(32),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
@@ -253,17 +254,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: Layout.spacing.md,
     // Extra bottom padding lifts the vertically-centred grid a little higher.
-    paddingBottom: 100,
+    paddingBottom: rs(100),
   },
   card: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     borderWidth: 2,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    padding: rs(12),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
@@ -271,13 +272,13 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '70%',
     height: '58%',
-    marginBottom: 8,
+    marginBottom: rs(8),
   },
   cardLabel: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: rf(18),
     color: '#1A1A1A',
   },
 });

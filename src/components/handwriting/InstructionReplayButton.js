@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { rs } from '../../utils/responsive';
 
 export default function InstructionReplayButton({ onPress, color, backgroundColor, style }) {
   if (!onPress) return null;
@@ -20,9 +21,9 @@ export default function InstructionReplayButton({ onPress, color, backgroundColo
 
 const styles = StyleSheet.create({
   button: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

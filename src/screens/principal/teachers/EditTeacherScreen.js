@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { principalApi } from '../../../api/principal';
 import { validateEmail } from '../../../utils/validation';
 import { useToast } from '../../../context/ToastContext';
+import { rs, rf } from '../../../utils/responsive';
 
 // ── palette ───────────────────────────────────────────────────────────────────
 const DARK    = '#0F2F3E';
@@ -273,120 +274,120 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: SURFACE,
-    paddingHorizontal: 16, paddingBottom: 12,
+    paddingHorizontal: rs(16), paddingBottom: rs(12),
     borderBottomWidth: 1, borderBottomColor: BORDER,
-    gap: 10,
+    gap: rs(10),
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 10,
+    width: rs(36), height: rs(36), borderRadius: rs(10),
     backgroundColor: BODY_BG,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  breadcrumb: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  breadcrumbParent: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: MUTED },
-  breadcrumbCurrent: { fontSize: 14, fontFamily: 'DMSans_800ExtraBold', color: TEXT },
+  breadcrumb: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: rs(4) },
+  breadcrumbParent: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: MUTED },
+  breadcrumbCurrent: { fontSize: rf(14), fontFamily: 'DMSans_800ExtraBold', color: TEXT },
 
   // ── Layout ────────────────────────────────────────────────────────────────
-  scroll: { padding: 20, paddingBottom: 32, alignItems: 'center' },
-  layout: { gap: 14, width: '100%', maxWidth: 680 },
+  scroll: { padding: rs(20), paddingBottom: rs(32), alignItems: 'center' },
+  layout: { gap: rs(14), width: '100%', maxWidth: rs(680) },
 
   // ── Photo strip ───────────────────────────────────────────────────────────
   photoStrip: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: SURFACE, borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', gap: rs(14),
+    backgroundColor: SURFACE, borderRadius: rs(16),
     borderWidth: 1, borderColor: BORDER,
-    padding: 16,
+    padding: rs(16),
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
   photoWrap: { position: 'relative', flexShrink: 0 },
   photoImg: {
-    width: 64, height: 64, borderRadius: 32,
+    width: rs(64), height: rs(64), borderRadius: rs(32),
     borderWidth: 2, borderColor: BORDER,
   },
   photoEmpty: {
-    width: 64, height: 64, borderRadius: 32,
+    width: rs(64), height: rs(64), borderRadius: rs(32),
     backgroundColor: DARK,
     alignItems: 'center', justifyContent: 'center',
   },
   photoCameraBtn: {
     position: 'absolute', bottom: 0, right: 0,
-    width: 22, height: 22, borderRadius: 11,
+    width: rs(22), height: rs(22), borderRadius: rs(11),
     backgroundColor: BLUE,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: SURFACE,
   },
-  photoMeta: { flex: 1, gap: 5 },
-  photoName: { fontSize: 15, fontFamily: 'DMSans_800ExtraBold', color: TEXT },
+  photoMeta: { flex: 1, gap: rs(5) },
+  photoName: { fontSize: rf(15), fontFamily: 'DMSans_800ExtraBold', color: TEXT },
   photoCodePill: {
     alignSelf: 'flex-start',
-    backgroundColor: BLUE_L, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 3,
+    backgroundColor: BLUE_L, borderRadius: rs(20),
+    paddingHorizontal: rs(10), paddingVertical: rs(3),
   },
-  photoCodeText: { fontSize: 10, fontFamily: 'DMSans_700Bold', color: BLUE, letterSpacing: 0.3 },
+  photoCodeText: { fontSize: rf(10), fontFamily: 'DMSans_700Bold', color: BLUE, letterSpacing: 0.3 },
   photoStatusTag: {
     alignSelf: 'flex-start',
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3,
+    flexDirection: 'row', alignItems: 'center', gap: rs(5),
+    borderRadius: rs(20), paddingHorizontal: rs(9), paddingVertical: rs(3),
     borderWidth: 1,
   },
-  photoStatusDot: { width: 6, height: 6, borderRadius: 3 },
-  photoStatusText: { fontSize: 10, fontFamily: 'DMSans_700Bold' },
+  photoStatusDot: { width: rs(6), height: rs(6), borderRadius: rs(3) },
+  photoStatusText: { fontSize: rf(10), fontFamily: 'DMSans_700Bold' },
   changePhotoBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: BLUE_L, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8, flexShrink: 0,
+    flexDirection: 'row', alignItems: 'center', gap: rs(5),
+    backgroundColor: BLUE_L, borderRadius: rs(8),
+    paddingHorizontal: rs(12), paddingVertical: rs(8), flexShrink: 0,
   },
-  changePhotoBtnText: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: BLUE },
+  changePhotoBtnText: { fontSize: rf(12), fontFamily: 'DMSans_700Bold', color: BLUE },
 
   // ── Section cards ─────────────────────────────────────────────────────────
   card: {
-    backgroundColor: SURFACE, borderRadius: 16,
+    backgroundColor: SURFACE, borderRadius: rs(16),
     borderWidth: 1, borderColor: BORDER, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
   cardHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 13,
+    flexDirection: 'row', alignItems: 'center', gap: rs(10),
+    paddingHorizontal: rs(16), paddingVertical: rs(13),
   },
-  cardIconBox: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: TEXT },
+  cardIconBox: { width: rs(30), height: rs(30), borderRadius: rs(8), alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: TEXT },
   cardDivider: { height: 1, backgroundColor: BORDER },
-  cardBody: { padding: 16, gap: 12 },
+  cardBody: { padding: rs(16), gap: rs(12) },
 
   // ── Fields ────────────────────────────────────────────────────────────────
-  fieldRow: { gap: 6 },
-  fieldLabel: { fontSize: 11, fontFamily: 'DMSans_700Bold', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.5 },
+  fieldRow: { gap: rs(6) },
+  fieldLabel: { fontSize: rf(11), fontFamily: 'DMSans_700Bold', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.5 },
   fieldRequired: { color: CORAL },
-  fieldError: { fontSize: 11, fontFamily: 'DMSans_400Regular', color: CORAL },
-  fieldDivider: { height: 1, backgroundColor: BORDER, marginHorizontal: -16, marginVertical: 2 },
+  fieldError: { fontSize: rf(11), fontFamily: 'DMSans_400Regular', color: CORAL },
+  fieldDivider: { height: 1, backgroundColor: BORDER, marginHorizontal: rs(-16), marginVertical: 2 },
 
   styledInput: {
-    backgroundColor: BODY_BG, borderRadius: 10,
+    backgroundColor: BODY_BG, borderRadius: rs(10),
     borderWidth: 1, borderColor: BORDER,
-    paddingHorizontal: 12, paddingVertical: 11,
-    fontSize: 13, fontFamily: 'DMSans_400Regular', color: TEXT,
+    paddingHorizontal: rs(12), paddingVertical: rs(11),
+    fontSize: rf(13), fontFamily: 'DMSans_400Regular', color: TEXT,
   },
   styledInputError: { borderColor: CORAL },
   readOnlyInput: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: rs(8),
     backgroundColor: '#F8F9FB',
   },
-  readOnlyText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: MUTED },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  readOnlyText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: MUTED },
+  statusDot: { width: rs(8), height: rs(8), borderRadius: rs(4) },
 
   // ── Action buttons ────────────────────────────────────────────────────────
-  actionRow: { flexDirection: 'row', gap: 10 },
+  actionRow: { flexDirection: 'row', gap: rs(10) },
   saveBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, height: 42, borderRadius: 12, backgroundColor: GREEN,
+    gap: rs(6), height: rs(42), borderRadius: rs(12), backgroundColor: GREEN,
   },
-  saveBtnText: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: SURFACE },
+  saveBtnText: { fontSize: rf(14), fontFamily: 'DMSans_700Bold', color: SURFACE },
   cancelBtn: {
-    flex: 1, height: 42, borderRadius: 12,
+    flex: 1, height: rs(42), borderRadius: rs(12),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: SURFACE, borderWidth: 1.5, borderColor: '#C5CDD8',
   },
-  cancelBtnText: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: TEXT },
+  cancelBtnText: { fontSize: rf(14), fontFamily: 'DMSans_700Bold', color: TEXT },
 });

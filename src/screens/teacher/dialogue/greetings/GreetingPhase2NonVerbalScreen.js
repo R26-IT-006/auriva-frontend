@@ -20,6 +20,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs } from '../../../../utils/responsive';
 
 const PROGRESS_FRACTION = 0.90;
 
@@ -429,12 +430,12 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
     gap: Layout.spacing.sm,
   },
-  headerSide: { width: 32, alignItems: 'center' },
+  headerSide: { width: rs(32), alignItems: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -447,12 +448,12 @@ const styles = StyleSheet.create({
   levelLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
   progressTrack: {
     flex: 1,
-    height: 6,
+    height: rs(6),
     backgroundColor: 'rgba(0,0,0,0.12)',
     borderRadius: Layout.radius.full,
     overflow: 'hidden',
   },
-  progressFill: { height: 6, borderRadius: Layout.radius.full },
+  progressFill: { height: rs(6), borderRadius: Layout.radius.full },
 
   body: { flex: 1 },
   safe: { flex: 1 },
@@ -485,10 +486,10 @@ const styles = StyleSheet.create({
   cardImage:   { width: '100%', height: '100%' },
   correctBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: rs(6),
+    right: rs(6),
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: rs(12),
   },
   cardCaption: {
     fontSize: Layout.fontSize.xs,
@@ -499,13 +500,13 @@ const styles = StyleSheet.create({
   },
 
   avatarRow: { flexDirection: 'column', alignItems: 'flex-end', marginTop: Layout.spacing.md },
-  bubbleWrap: { width: 145, alignItems: 'center', alignSelf: 'flex-end', marginBottom: 2 },
+  bubbleWrap: { width: rs(145), alignItems: 'center', alignSelf: 'flex-end', marginBottom: 2 },
   speechBubble: {
     backgroundColor: '#FFFFFF',
     borderRadius: Layout.radius.lg,
     paddingHorizontal: Layout.spacing.md,
     paddingVertical: Layout.spacing.sm,
-    maxWidth: 180,
+    maxWidth: rs(180),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.10,
@@ -524,7 +525,7 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   },
-  avatarImg: { width: 145, height: 170 },
+  avatarImg: { width: rs(145), height: rs(170) },
 
   settingsOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -533,13 +534,13 @@ const styles = StyleSheet.create({
   },
   settingsSheet: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: rs(24),
+    borderTopRightRadius: rs(24),
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
   settingsTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
-  settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: 4 },
+  settingsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: rs(4) },
 });

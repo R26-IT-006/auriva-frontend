@@ -18,6 +18,7 @@ import { getConceptItem, getConceptQuestion, getConceptQuestionSi } from '../../
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
 import ResultGifFeedback from '../../../../components/feedback/ResultGifFeedback';
+import { rs, rf } from '../../../../utils/responsive';
 
 
 function shuffle(arr) {
@@ -291,31 +292,31 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
   roundBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(7),
+    borderRadius: rs(20),
     borderWidth: 1.5,
   },
   roundText: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
   },
 
   roundDots: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
+    gap: rs(8),
+    marginTop: rs(4),
   },
   roundDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: rs(10),
+    height: rs(10),
+    borderRadius: rs(5),
   },
 
   body: {
@@ -323,25 +324,25 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 60,
+    paddingBottom: rs(60),
   },
 
   questionBlock: {
     alignItems: 'center',
     // Opens the gap to the cards: the pair is centred as one block, so a bigger
     // gap lifts the question and drops the cards by about half of it each.
-    marginBottom: 72,
+    marginBottom: rs(72),
     paddingHorizontal: Layout.spacing.lg,
-    gap: 4,
+    gap: rs(4),
   },
   questionEn: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -353,11 +354,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    borderRadius: 36,
+    borderRadius: rs(36),
     borderWidth: 3.5,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 4,
@@ -377,7 +378,7 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: rs(10),
   },
   cardImage: {
     width: '100%',

@@ -9,6 +9,7 @@ import { level2Api } from '../../../../api/level2';
 import { useToast } from '../../../../context/ToastContext';
 import DrawingCanvas from '../../../../components/level2/DrawingCanvas';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 /**
  * TASK-07's shared instruction-audio player isn't wired up yet.
@@ -120,26 +121,26 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.sm },
   // Concept's round translucent header button.
   iconBtn: {
-    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    width: rs(44), height: rs(44), borderRadius: rs(22), alignItems: 'center', justifyContent: 'center',
     alignSelf: 'flex-start',   // stays in the corner while the title sits lower
     backgroundColor: 'rgba(255,255,255,0.7)',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: rs(10), marginTop: rs(16) },
   titleIconCircle: {
-    width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 5, elevation: 3,
+    width: rs(30), height: rs(30), borderRadius: rs(15), alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(3) }, shadowOpacity: 0.15, shadowRadius: 5, elevation: 3,
   },
-  title: { fontSize: 28, fontFamily: 'DMSans_800ExtraBold', letterSpacing: -0.3 },
+  title: { fontSize: rf(28), fontFamily: 'DMSans_800ExtraBold', letterSpacing: -0.3 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // Extra side / top / bottom room keeps the canvas a little smaller and centred.
-  body: { flex: 1, paddingHorizontal: 64, paddingTop: 12, paddingBottom: 28, gap: Layout.spacing.sm },
+  body: { flex: 1, paddingHorizontal: rs(64), paddingTop: rs(12), paddingBottom: rs(28), gap: Layout.spacing.sm },
   // Raised 3D button, like the ones used in the other modules.
   saveBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 52, borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rs(8),
+    height: rs(52), borderRadius: rs(16),
     borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(4) }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
   },
-  saveBtnText: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold' },
+  saveBtnText: { fontSize: rf(18), fontFamily: 'DMSans_800ExtraBold' },
 });

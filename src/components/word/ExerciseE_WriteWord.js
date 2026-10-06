@@ -40,7 +40,11 @@ const CANVAS_BORDER_WIDTH = 2;
 // coordinates (locationX/Y are already canvas-relative), and the submitted
 // payload below — one transform, one coordinate system, matching
 // WordWritingScreen's own module-level sizing.
-const { width: SCREEN_W } = Dimensions.get('window');
+// Landscape sides, whatever the orientation when the app started (this module
+// is evaluated once, possibly in portrait at sign-in). On a tablet launched in
+// landscape these equal the window's width and height, so nothing changes there.
+const _win = Dimensions.get('window');
+const SCREEN_W = Math.max(_win.width, _win.height);
 const { width: CANVAS_W, height: CANVAS_H } = computeExerciseECanvasSize(SCREEN_W);
 const LINE_1 = Math.round(CANVAS_H * 0.10);
 const LINE_2 = Math.round(CANVAS_H * 0.37);

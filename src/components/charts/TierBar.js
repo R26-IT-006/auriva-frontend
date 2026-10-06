@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { ROUND } from '../../constants/teacherWording';
+import { rs } from '../../utils/responsive';
 
 // A sequential ramp — ONE hue, stepped by lightness — not three separate colours.
 //
@@ -77,7 +78,7 @@ export function TierLegend() {
 const styles = StyleSheet.create({
   row:   { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
   label: {
-    width: 104,
+    width: rs(104),
     fontSize: Layout.fontSize.xs,
     color: Colors.text.secondary,
     fontFamily: 'DMSans_600SemiBold',
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   },
   fill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
   right: {
-    minWidth: 44,
+    minWidth: rs(44),
     textAlign: 'right',
     fontSize: Layout.fontSize.xs,
     color: Colors.text.muted,
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
   },
 
   legend:     { flexDirection: 'row', gap: Layout.spacing.md, marginTop: Layout.spacing.sm },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  dot:        { width: 8, height: 8, borderRadius: 4 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: rs(5) },
+  dot:        { width: rs(8), height: rs(8), borderRadius: rs(4) },
   legendText: { fontSize: Layout.fontSize.xs, color: Colors.text.muted },
 });

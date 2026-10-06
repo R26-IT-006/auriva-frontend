@@ -16,6 +16,7 @@ import { level2Api } from '../../../../api/level2';
 import { useToast } from '../../../../context/ToastContext';
 import PortraitView from '../../../../components/level2/PortraitView';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 // Book-cover style topic images. Self-Introduction's cover isn't generated
 // yet — it falls back to the coral gradient + icon below until it is.
@@ -329,9 +330,9 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1, overflow: 'hidden' },
   // Decorative background shapes (same as the other module screens).
-  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
-  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
-  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+  blob: { position: 'absolute', borderRadius: rs(999), opacity: 0.08 },
+  blobTopRight:   { width: rs(220), height: rs(220), top: rs(-60), right: rs(-60) },
+  blobBottomLeft: { width: rs(260), height: rs(260), bottom: rs(-80), left: rs(-80) },
   safe: { flex: 1 },
 
   topBar: {
@@ -348,9 +349,9 @@ const styles = StyleSheet.create({
   },
   // Concept's round translucent header button.
   iconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(22),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -363,28 +364,28 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 36,
+    gap: rs(10),
+    marginTop: rs(36),
   },
   titleIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 5,
     elevation: 3,
   },
   title: {
-    fontSize: 34,
+    fontSize: rf(34),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
@@ -392,12 +393,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.lg,
   },
 
-  pathArea: { flex: 1, position: 'relative', marginTop: 28 },
+  pathArea: { flex: 1, position: 'relative', marginTop: rs(28) },
 
   node: { position: 'absolute' },
   card: {
-    flex: 1, borderRadius: 20, borderWidth: 2, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.14, shadowRadius: 10, elevation: 5,
+    flex: 1, borderRadius: rs(20), borderWidth: 2, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(4) }, shadowOpacity: 0.14, shadowRadius: 10, elevation: 5,
   },
   thumb: { height: '62%', position: 'relative' },
   thumbImage: { width: '100%', height: '100%' },
@@ -405,20 +406,20 @@ const styles = StyleSheet.create({
   lockedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(120,120,120,0.35)' },
 
   statusBadge: {
-    position: 'absolute', top: 8, right: 8,
-    width: 30, height: 30, borderRadius: 15,
+    position: 'absolute', top: rs(8), right: rs(8),
+    width: rs(30), height: rs(30), borderRadius: rs(15),
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2.5, borderColor: '#FFF',
   },
   portraitPreview: {
-    position: 'absolute', bottom: 8, left: 8,
-    width: 32, height: 32, borderRadius: 16, overflow: 'hidden',
+    position: 'absolute', bottom: rs(8), left: rs(8),
+    width: rs(32), height: rs(32), borderRadius: rs(16), overflow: 'hidden',
     borderWidth: 2, borderColor: '#FFF', backgroundColor: '#FFF',
   },
 
-  labelWrap: { flex: 1, padding: 8, justifyContent: 'center', alignItems: 'center' },
-  topicLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', lineHeight: 16, textAlign: 'center' },
+  labelWrap: { flex: 1, padding: rs(8), justifyContent: 'center', alignItems: 'center' },
+  topicLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', lineHeight: rf(16), textAlign: 'center' },
   topicSub: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_600SemiBold', marginTop: 2, textAlign: 'center' },
 
-  loadingSpinner: { position: 'absolute', bottom: 24, alignSelf: 'center' },
+  loadingSpinner: { position: 'absolute', bottom: rs(24), alignSelf: 'center' },
 });

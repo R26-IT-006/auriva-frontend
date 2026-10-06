@@ -19,12 +19,13 @@ import { teacherApi } from '../../../api/teacher';
 import { useToast } from '../../../context/ToastContext';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { getInitials } from '../../../utils/formatters';
+import { rs, rf } from '../../../utils/responsive';
 
 const COLS     = 3;
-const H_PAD    = 40;
-const CARD_GAP = 24;
+const H_PAD    = rs(40);
+const CARD_GAP = rs(24);
 // Upper bound so a one- or two-student roster doesn't stretch cards across the tablet.
-const MAX_CARD = 230;
+const MAX_CARD = rs(230);
 
 function StudentCard({ student, cardSize, onPress }) {
   const theme      = getAvatarTheme(student.avatar_key);
@@ -249,14 +250,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: H_PAD,
-    paddingTop: 20,
-    paddingBottom: 12,
-    gap: 14,
+    paddingTop: rs(20),
+    paddingBottom: rs(12),
+    gap: rs(14),
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: rs(38),
+    height: rs(38),
+    borderRadius: rs(19),
     backgroundColor: 'rgba(255,255,255,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -270,34 +271,34 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'DMSans_900Black',
-    fontSize: 24,
+    fontSize: rf(24),
     color: '#1A3D2E',
   },
   subtitle: {
     fontFamily: 'DMSans_400Regular',
-    fontSize: 13,
+    fontSize: rf(13),
     color: '#4A7A60',
   },
 
   // ── List ──────────────────────────────────────────────────────────────────
   list: {
-    paddingTop: 16,
-    paddingBottom: 36,
+    paddingTop: rs(16),
+    paddingBottom: rs(36),
   },
 
   // ── Card ──────────────────────────────────────────────────────────────────
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: rs(24),
     // Hairline in the student's own colour: enough definition to separate the card
     // from the gradient background without competing with the avatar.
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 14,
+    gap: rs(14),
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.10,
     shadowRadius: 14,
     elevation: 5,
@@ -310,8 +311,8 @@ const styles = StyleSheet.create({
     height: '45%',
     // Was 21 against a 24 card radius, which left a visible seam at the top
     // corners. overflow:'hidden' on the card clips the rest.
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: rs(24),
+    borderTopRightRadius: rs(24),
   },
 
   // ── Avatar ────────────────────────────────────────────────────────────────
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.16,
     shadowRadius: 8,
     elevation: 4,
@@ -349,7 +350,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_700Bold',
     color: '#1A2E26',
     textAlign: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: rs(10),
     // lineHeight is set alongside fontSize at render time — both scale with the
     // card, and a fixed value here clipped the glyphs once the card grew. The
     // card's own gap handles the space above, so no marginTop on top of it.
@@ -360,28 +361,28 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    gap: 14,
+    paddingHorizontal: rs(32),
+    gap: rs(14),
   },
   emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: rs(80),
+    height: rs(80),
+    borderRadius: rs(40),
     backgroundColor: 'rgba(255,255,255,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyTitle: {
     fontFamily: 'DMSans_800ExtraBold',
-    fontSize: 18,
+    fontSize: rf(18),
     color: '#1A3D2E',
   },
   emptySub: {
     fontFamily: 'DMSans_400Regular',
-    fontSize: 14,
+    fontSize: rf(14),
     color: '#2A5A48',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: rf(22),
     opacity: 0.8,
   },
 });

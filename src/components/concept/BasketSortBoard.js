@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLOR_HEX, labelInkFor } from '../../data/conceptConclusions';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * "Put each one in the basket of its colour." The conclusion-activity board.
@@ -293,8 +294,8 @@ const styles = StyleSheet.create({
     // Gap and bottom padding move together: the wider gap lifts the pictures off
     // the baskets, and the matching padding shifts the centred pair back up so
     // the baskets stay put while the pictures rise.
-    gap: 78,
-    paddingBottom: 52,
+    gap: rs(78),
+    paddingBottom: rs(52),
   },
 
   basketRow: {
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   basket: {
-    borderRadius: 22,
+    borderRadius: rs(22),
     borderWidth: 4,
     borderStyle: 'dashed',
     backgroundColor: 'rgba(255,255,255,0.55)',
@@ -313,38 +314,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    gap: rs(6),
+    paddingVertical: rs(6),
+    paddingHorizontal: rs(8),
   },
   basketSwatch: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: rs(18),
+    height: rs(18),
+    borderRadius: rs(9),
   },
   basketLabel: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_800ExtraBold',
   },
   basketBody: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 6,
+    padding: rs(6),
   },
   basketContents: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: rs(4),
   },
   basketThumb: {
-    width: 40,
-    height: 40,
+    width: rs(40),
+    height: rs(40),
   },
   basketOverflow: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_800ExtraBold',
   },
 
@@ -355,13 +356,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
+    padding: rs(8),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.12,
     shadowRadius: 10,
     elevation: 4,

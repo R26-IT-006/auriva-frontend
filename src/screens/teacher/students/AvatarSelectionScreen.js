@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { teacherApi } from '../../../api/teacher';
 import { Layout } from '../../../constants/layout';
+import { rs, rf } from '../../../utils/responsive';
 
 const AVATARS = [
   {
@@ -197,7 +198,7 @@ export default function AvatarSelectionScreen({ navigation, route }) {
   );
 }
 
-const CARD_SIZE = 88;
+const CARD_SIZE = rs(88);
 const TEAL_GRAD = ['#4AABB8', '#52C07C'];
 
 const styles = StyleSheet.create({
@@ -219,9 +220,9 @@ const styles = StyleSheet.create({
     paddingBottom: Layout.spacing.sm,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     backgroundColor: 'rgba(18,34,30,0.32)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.30)',
@@ -233,9 +234,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(18,34,30,0.32)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.30)',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    borderRadius: rs(20),
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(6),
   },
   studentLabel: {
     fontSize: Layout.fontSize.sm,
@@ -266,9 +267,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(18,34,30,0.32)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.30)',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    borderRadius: rs(20),
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(6),
   },
   hintText: {
     fontSize: Layout.fontSize.sm,
@@ -286,9 +287,9 @@ const styles = StyleSheet.create({
   },
   dock: {
     alignItems: 'center',
-    gap: 10,
-    padding: 10,
-    borderRadius: 34,
+    gap: rs(10),
+    padding: rs(10),
+    borderRadius: rs(34),
     backgroundColor: 'rgba(18,34,30,0.32)',
   },
 
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
   avatarCard: {
     width: CARD_SIZE,
     height: CARD_SIZE,
-    borderRadius: 24,
+    borderRadius: rs(24),
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.86)',
     backgroundColor: 'rgba(255,255,255,0.86)',
@@ -317,11 +318,11 @@ const styles = StyleSheet.create({
   },
   checkBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    top: rs(-5),
+    right: rs(-5),
+    width: rs(22),
+    height: rs(22),
+    borderRadius: rs(11),
     backgroundColor: '#4AABB8',
     borderWidth: 2,
     borderColor: '#FFFFFF',
@@ -332,11 +333,11 @@ const styles = StyleSheet.create({
   // ── Confirm button ─────────────────────────────────────────
   confirmWrap: {
     alignSelf: 'stretch',
-    borderRadius: 22,
+    borderRadius: rs(22),
     overflow: 'hidden',
   },
   confirmBtn: {
-    paddingVertical: 17,
+    paddingVertical: rs(17),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -345,7 +346,7 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     color: '#FFF',
-    fontSize: 19,
+    fontSize: rf(19),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
     letterSpacing: 0.2,

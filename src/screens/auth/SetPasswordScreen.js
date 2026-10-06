@@ -18,6 +18,7 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { useAuthStore } from '../../store/authStore';
 import { validatePassword } from '../../utils/validation';
+import { rs, rf } from '../../utils/responsive';
 
 const TEAL       = '#3A9BA8';
 const TEAL_GRAD  = ['#4AABB8', '#52C07C'];
@@ -174,13 +175,13 @@ const styles = StyleSheet.create({
   // ── Card ─────────────────────────────────────────────────────────────────
   card: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    paddingHorizontal: 32,
-    paddingVertical: 36,
+    borderRadius: rs(28),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(36),
     shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.10,
     shadowRadius: 24,
     elevation: 8,
@@ -188,62 +189,62 @@ const styles = StyleSheet.create({
 
   // ── Icon circle ───────────────────────────────────────────────────────────
   iconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: rs(68),
+    height: rs(68),
+    borderRadius: rs(34),
     backgroundColor: TEAL_LIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: rs(20),
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────
   cardTitle: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: rs(24),
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
+    lineHeight: rf(22),
+    marginBottom: rs(24),
   },
 
   // ── Requirements ──────────────────────────────────────────────────────────
   requirements: {
     backgroundColor: '#F7F9FC',
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 4,
-    marginBottom: 16,
+    borderRadius: rs(12),
+    padding: rs(14),
+    marginTop: rs(4),
+    marginBottom: rs(16),
     borderWidth: 1,
     borderColor: '#E8ECF4',
   },
   reqTitle: {
-    fontSize: 10,
+    fontSize: rf(10),
     fontFamily: 'DMSans_700Bold',
     color: '#9B9FB0',
     letterSpacing: 1.2,
-    marginBottom: 10,
+    marginBottom: rs(10),
   },
   reqRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: rs(6),
   },
   reqDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: rs(22),
+    height: rs(22),
+    borderRadius: rs(11),
     borderWidth: 1.5,
     borderColor: '#C8CDD8',
-    marginRight: 12,
+    marginRight: rs(12),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -252,7 +253,7 @@ const styles = StyleSheet.create({
     borderColor: '#52C07C',
   },
   reqText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
   },
@@ -263,36 +264,36 @@ const styles = StyleSheet.create({
 
   // ── Update button ─────────────────────────────────────────────────────────
   btn: {
-    borderRadius: 14,
+    borderRadius: rs(14),
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: rs(8),
   },
   btnGradient: {
-    height: 54,
+    height: rs(54),
     alignItems: 'center',
     justifyContent: 'center',
   },
   btnText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.4,
   },
 
   // ── Footer note ───────────────────────────────────────────────────────────
   footerNote: {
-    fontSize: 11,
+    fontSize: rf(11),
     color: '#9B9FB0',
     textAlign: 'center',
-    lineHeight: 18,
-    marginTop: 16,
+    lineHeight: rf(18),
+    marginTop: rs(16),
   },
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
-    marginTop: 20,
+    marginTop: rs(20),
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: rf(10),
     letterSpacing: 1.8,
     color: Colors.text.muted,
     fontFamily: 'DMSans_600SemiBold',

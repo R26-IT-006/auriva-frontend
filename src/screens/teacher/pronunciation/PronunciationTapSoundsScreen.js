@@ -35,6 +35,7 @@ import { useExitSessionGuard } from "./useExitSessionGuard.js";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 import HeaderPillButton from '../../../components/common/HeaderPillButton';
+import { rs, rf } from '../../../utils/responsive';
 
 // Local Fisher-Yates, matching PronunciationListenChooseScreen's shuffle —
 // duplicating a 4-line helper here rather than importing across two
@@ -435,9 +436,9 @@ const styles = StyleSheet.create({
   },
   // ConceptCategoriesScreen iconBtn.
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -453,7 +454,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.lg,
     paddingTop: Layout.spacing.sm,
     paddingBottom: Layout.spacing.xl,
-    maxWidth: 820,
+    maxWidth: rs(820),
     width: "100%",
     alignSelf: "center",
     alignItems: "center",
@@ -463,8 +464,8 @@ const styles = StyleSheet.create({
   },
   // Same heading sizes as the Listen / Speak steps.
   title: {
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: rf(34),
+    lineHeight: rf(40),
     fontFamily: Layout.fonts.extrabold,
     letterSpacing: -0.3,
     textAlign: "center",
@@ -472,8 +473,8 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 2,
     // Wider gap so the panel sits a little lower under the heading.
-    marginBottom: 56,
-    fontSize: 15,
+    marginBottom: rs(56),
+    fontSize: rf(15),
     fontFamily: Layout.fonts.semibold,
     opacity: 0.6,
     textAlign: "center",
@@ -483,34 +484,34 @@ const styles = StyleSheet.create({
   // round corners, soft shadow.
   panel: {
     width: "100%",
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
-    padding: 24,
-    gap: 22,
+    padding: rs(24),
+    gap: rs(22),
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 4,
   },
   panelCompact: {
-    padding: 16,
-    gap: 18,
+    padding: rs(16),
+    gap: rs(18),
   },
 
   // Concept's raised 3D button (ConceptImageScreen fwdBtn), Hear Sounds size.
   playBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(24),
+    paddingVertical: rs(12),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: "rgba(0,0,0,0.22)",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -520,7 +521,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   playBtnText: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: "DMSans_800ExtraBold",
   },
 
@@ -529,16 +530,16 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: rs(8),
   },
   slot: {
     // Sized so a 6-part word ("jellyfish") still assembles on one line at
     // phone width rather than wrapping into a 5+1 that reads as two words.
-    minWidth: 48,
-    minHeight: 56,
-    paddingHorizontal: 6,
-    paddingVertical: 8,
-    borderRadius: 14,
+    minWidth: rs(48),
+    minHeight: rs(56),
+    paddingHorizontal: rs(6),
+    paddingVertical: rs(8),
+    borderRadius: rs(14),
     borderWidth: 2,
     borderColor: "#DCE4EF",
     backgroundColor: "#FFFFFF",
@@ -555,8 +556,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.status.successLight,
   },
   slotText: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: rf(22),
+    lineHeight: rf(28),
     fontFamily: Layout.fonts.extrabold,
     color: "#3A4A61",
   },
@@ -571,15 +572,15 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "center",
-    gap: 14,
+    gap: rs(14),
   },
   // Raised tile (darker bottom edge, as the 3D buttons) — these are tapped.
   soundChip: {
-    minWidth: 96,
-    minHeight: 96,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 20,
+    minWidth: rs(96),
+    minHeight: rs(96),
+    paddingHorizontal: rs(18),
+    paddingVertical: rs(12),
+    borderRadius: rs(20),
     backgroundColor: "#FFFFFF",
     borderWidth: 2,
     borderBottomWidth: 5,
@@ -587,7 +588,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
@@ -602,8 +603,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.status.success,
   },
   soundChipText: {
-    fontSize: 36,
-    lineHeight: 44,
+    fontSize: rf(36),
+    lineHeight: rf(44),
     fontFamily: Layout.fonts.extrabold,
     color: "#3A4A61",
   },
@@ -612,11 +613,11 @@ const styles = StyleSheet.create({
   },
   soundChipBadge: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: rs(6),
+    right: rs(6),
+    width: rs(20),
+    height: rs(20),
+    borderRadius: rs(10),
     backgroundColor: Colors.status.success,
     alignItems: "center",
     justifyContent: "center",
@@ -626,10 +627,10 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: rs(10),
+    borderRadius: rs(16),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(12),
   },
   feedbackBarNeutral: {
     backgroundColor: "#F0F4F8",
@@ -649,14 +650,14 @@ const styles = StyleSheet.create({
     marginTop: Layout.spacing.xl,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: "rgba(0,0,0,0.22)",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -665,7 +666,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   continueText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: "DMSans_800ExtraBold",
   },
 });

@@ -30,6 +30,7 @@ import React from 'react';
 import { View, Text, Modal, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
+import { rs, rf } from '../../../utils/responsive';
 
 const ACCENT = '#6366F1';
 const TEXT_1 = '#0F172A';
@@ -168,39 +169,39 @@ export default function ReportPreviewModal({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 18, paddingTop: 18, paddingBottom: 10,
+    flexDirection: 'row', alignItems: 'center', gap: rs(12),
+    paddingHorizontal: rs(18), paddingTop: rs(18), paddingBottom: rs(10),
   },
-  title: { fontSize: 17, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
-  subtitle: { fontSize: 11.5, color: TEXT_3, marginTop: 2 },
+  title: { fontSize: rf(17), fontWeight: '800', fontFamily: 'Nunito_800ExtraBold', color: TEXT_1 },
+  subtitle: { fontSize: rf(11.5), color: TEXT_3, marginTop: 2 },
   closeBtn: {
-    width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
+    width: rs(38), height: rs(38), borderRadius: rs(19), alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#F1F2FB',
   },
   hint: {
-    fontSize: 12, color: TEXT_2, lineHeight: 17,
-    paddingHorizontal: 18, paddingBottom: 10,
+    fontSize: rf(12), color: TEXT_2, lineHeight: rf(17),
+    paddingHorizontal: rs(18), paddingBottom: rs(10),
   },
   viewer: {
-    flex: 1, marginHorizontal: 14, borderRadius: 12, overflow: 'hidden',
+    flex: 1, marginHorizontal: rs(14), borderRadius: rs(12), overflow: 'hidden',
     borderWidth: 1, borderColor: '#E2E6F0', backgroundColor: '#FFFFFF',
   },
   webview: { flex: 1, backgroundColor: '#FFFFFF' },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24 },
-  message: { fontSize: 12, color: '#DC2626', paddingHorizontal: 18, paddingTop: 10 },
-  notice: { fontSize: 12, color: '#15803D', paddingHorizontal: 18, paddingTop: 10 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: rs(24) },
+  message: { fontSize: rf(12), color: '#DC2626', paddingHorizontal: rs(18), paddingTop: rs(10) },
+  notice: { fontSize: rf(12), color: '#15803D', paddingHorizontal: rs(18), paddingTop: rs(10) },
   footer: {
-    flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingVertical: 14,
+    flexDirection: 'row', gap: rs(10), paddingHorizontal: rs(14), paddingVertical: rs(14),
   },
   btn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderRadius: 12, paddingVertical: 13,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rs(8),
+    borderRadius: rs(12), paddingVertical: rs(13),
   },
   secondaryBtn: { backgroundColor: '#F1F2FB', borderWidth: 1, borderColor: '#E2E6F0' },
-  secondaryBtnText: { color: TEXT_2, fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  secondaryBtnText: { color: TEXT_2, fontSize: rf(13), fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   downloadBtn: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: ACCENT },
-  downloadBtnText: { color: ACCENT, fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  downloadBtnText: { color: ACCENT, fontSize: rf(13), fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   primaryBtn: { backgroundColor: ACCENT },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  primaryBtnText: { color: '#FFFFFF', fontSize: rf(13), fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   btnDisabled: { opacity: 0.7 },
 });

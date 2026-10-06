@@ -41,7 +41,12 @@ const CANVAS_BORDER_WIDTH = 2;
 // screen at once, for one action. One instruction, one future recording.
 const PRE_WRITING_INSTRUCTION = CHILD_INSTRUCTIONS[INSTRUCTION_KEYS.FOLLOW_PATH];
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// Landscape sides, whatever the orientation when the app started (this module
+// is evaluated once, possibly in portrait at sign-in). On a tablet launched in
+// landscape these equal the window's width and height, so nothing changes there.
+const _win = Dimensions.get('window');
+const SCREEN_WIDTH  = Math.max(_win.width, _win.height);
+const SCREEN_HEIGHT = Math.min(_win.width, _win.height);
 
 // Same canvas scale as ShapeAssessmentScreen — preWritingActivities.js
 // geometry was authored against this size.

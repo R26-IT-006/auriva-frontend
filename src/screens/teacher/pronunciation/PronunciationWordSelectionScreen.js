@@ -20,12 +20,13 @@ import {
 import { getStudentIdentifier } from "./studentIdentity.js";
 import { IMAGE_STYLES } from "./wordImageStyles.js";
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import { rs, rf } from '../../../utils/responsive';
 
 // Alphabet page spacing: side padding and the gap between letter tiles.
 const ALPHA_PAD = Layout.spacing.xl;
-const ALPHA_GAP = 16;
+const ALPHA_GAP = rs(16);
 // Gap between the word picture cards.
-const WORD_GAP = 20;
+const WORD_GAP = rs(20);
 
 // Alphabet mode: one big pastel tile per letter (the letter's own colour from
 // ALPHABET_BANK). Same press bounce as the Concept/Dialogue cards, plus this
@@ -430,20 +431,20 @@ const styles = StyleSheet.create({
   // ── Alphabet page (Concept-style; see PronunciationSessionSetupScreen) ───
   alphaBlob: {
     position: "absolute",
-    borderRadius: 999,
+    borderRadius: rs(999),
     opacity: 0.08,
   },
   alphaBlobTopRight: {
-    width: 220,
-    height: 220,
-    top: -60,
-    right: -60,
+    width: rs(220),
+    height: rs(220),
+    top: rs(-60),
+    right: rs(-60),
   },
   alphaBlobBottomLeft: {
-    width: 260,
-    height: 260,
-    bottom: -80,
-    left: -80,
+    width: rs(260),
+    height: rs(260),
+    bottom: rs(-80),
+    left: rs(-80),
   },
   alphaTopBar: {
     flexDirection: "row",
@@ -453,9 +454,9 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   alphaIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -465,34 +466,34 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   alphaIconBtnSpacer: {
-    width: 40,
-    height: 40,
+    width: rs(40),
+    height: rs(40),
   },
   alphaTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginTop: 70,
+    gap: rs(10),
+    marginTop: rs(70),
   },
   alphaTitleIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 5,
     elevation: 3,
   },
   alphaTitle: {
-    fontSize: 34,
+    fontSize: rf(34),
     fontFamily: "DMSans_800ExtraBold",
     letterSpacing: -0.3,
   },
   alphaSubtitle: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: "DMSans_600SemiBold",
     opacity: 0.6,
     textAlign: "center",
@@ -505,7 +506,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   alphaGrid: {
-    marginTop: 64,
+    marginTop: rs(64),
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
@@ -515,7 +516,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -528,7 +529,7 @@ const styles = StyleSheet.create({
   // the same so the grid reads as one calm set.
   // ── Word page: picture cards (Concept category-card style) ──────────────
   wordPicGrid: {
-    marginTop: 64,
+    marginTop: rs(64),
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
@@ -544,24 +545,24 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 22,
+    gap: rs(8),
+    paddingHorizontal: rs(20),
+    paddingVertical: rs(10),
+    borderRadius: rs(22),
     borderWidth: 2,
     backgroundColor: "rgba(255,255,255,0.7)",
   },
   moreToggleText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: "DMSans_800ExtraBold",
   },
   wordPicCard: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     borderWidth: 3,
-    padding: 8,
+    padding: rs(8),
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -569,7 +570,7 @@ const styles = StyleSheet.create({
   // The picture sits in a rounded frame tinted with the word's own colour.
   wordPicFrame: {
     width: "100%",
-    borderRadius: 14,
+    borderRadius: rs(14),
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
@@ -579,20 +580,20 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   wordPicLabel: {
-    marginTop: 8,
+    marginTop: rs(8),
     marginBottom: 2,
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: "DMSans_800ExtraBold",
     color: "#1A1A1A",
     textAlign: "center",
   },
   letterDoneBadge: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    top: rs(6),
+    right: rs(6),
+    width: rs(22),
+    height: rs(22),
+    borderRadius: rs(11),
     backgroundColor: Colors.status.success,
     alignItems: "center",
     justifyContent: "center",

@@ -26,7 +26,11 @@ import HeaderPillButton from '../../../../components/common/HeaderPillButton';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
-const { width: SCREEN_W } = Dimensions.get('window');
+// Landscape sides, whatever the orientation when the app started (this module
+// is evaluated once, possibly in portrait at sign-in). On a tablet launched in
+// landscape these equal the window's width and height, so nothing changes there.
+const _win = Dimensions.get('window');
+const SCREEN_W = Math.max(_win.width, _win.height);
 const IS_TABLET  = SCREEN_W >= 768;
 // Smaller tiles: more per row (was 4 / 3). Everything inside a tile — letter,
 // stars, corner circle — scales from CARD_SIZE, so it all shrinks together.

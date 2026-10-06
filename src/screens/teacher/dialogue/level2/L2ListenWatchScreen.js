@@ -22,6 +22,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { rs, rf } from '../../../../utils/responsive';
 
 // Emoji keyed by sentence index (matches L2SentencePathScreen STOPS)
 const SENTENCE_EMOJIS = { 1: '👤', 2: '🎂', 3: '🏠', 4: '⭐', 5: '🎨' };
@@ -214,49 +215,49 @@ const styles = StyleSheet.create({
   },
   stepBadge: { alignItems: 'center' },
   stepLabel: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_800ExtraBold', letterSpacing: 1.2, textTransform: 'uppercase' },
-  progressTrack: { height: 6, width: '80%', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
+  progressTrack: { height: rs(6), width: '80%', borderRadius: rs(3), overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: rs(3) },
 
   body: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: Layout.spacing.xl, paddingTop: Layout.spacing.lg },
 
   emojiWrap: {
-    width: 100, height: 100, borderRadius: 50,
+    width: rs(100), height: rs(100), borderRadius: rs(50),
     backgroundColor: 'rgba(255,255,255,0.4)',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: Layout.spacing.sm,
     ...Layout.shadow.md,
   },
-  emojiLarge: { fontSize: 52 },
-  characterImg: { width: 260, height: 300, marginBottom: Layout.spacing.sm },
+  emojiLarge: { fontSize: rf(52) },
+  characterImg: { width: rs(260), height: rs(300), marginBottom: Layout.spacing.sm },
 
   bubble: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     borderWidth: 2,
     padding: Layout.spacing.lg,
     width: '100%',
-    maxWidth: 620,
+    maxWidth: rs(620),
     alignSelf: 'center',
-    minHeight: 80,
+    minHeight: rs(80),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Layout.spacing.lg,
     ...Layout.shadow.sm,
   },
-  wordsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4 },
-  word: { fontSize: Layout.fontSize.xl ?? 24, fontFamily: 'DMSans_700Bold', lineHeight: 36 },
+  wordsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: rs(4) },
+  word: { fontSize: Layout.fontSize.xl ?? 24, fontFamily: 'DMSans_700Bold', lineHeight: rf(36) },
 
   instruction: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold', opacity: 0.7, textAlign: 'center' },
 
   footer: { paddingHorizontal: Layout.spacing.xl, paddingBottom: Layout.spacing.xl, alignItems: 'center' },
   nextBtn: {
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
   },
   nextBtnDisabled: { opacity: 0.6 },
   nextText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

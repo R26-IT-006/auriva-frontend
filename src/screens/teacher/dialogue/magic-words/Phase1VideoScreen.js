@@ -21,6 +21,7 @@ import { dialogueApi } from '../../../../api/dialogue';
 import { DIALOGUE_WORD_ASSETS } from '../../../../data/dialogueAssets';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const WORD_LABELS = {
   thank_you:     'Thank You',
@@ -429,20 +430,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(12),
+    gap: rs(8),
   },
   headerSide: {
-    width: 40,
+    width: rs(40),
     alignItems: 'center',
     justifyContent: 'center',
   },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -454,14 +455,14 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     flex: 1,
-    height: 8,
+    height: rs(8),
     backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 4,
+    borderRadius: rs(4),
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: rs(4),
   },
 
   /* Body */
@@ -471,7 +472,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.lg,
     paddingTop: Layout.spacing.md,
     paddingBottom: Layout.spacing.lg,
-    gap: 20,
+    gap: rs(20),
   },
 
   captionBox: {
@@ -485,7 +486,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.lg,
     fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: rf(26),
   },
 
   videoContainer: {
@@ -509,25 +510,25 @@ const styles = StyleSheet.create({
   },
   overlayIcon: {
     backgroundColor: 'rgba(0,0,0,0.25)',
-    borderRadius: 50,
+    borderRadius: rs(50),
   },
 
   /* Dots */
   dots: {
     flexDirection: 'row',
-    gap: 8,
+    gap: rs(8),
     alignItems: 'center',
   },
   dot: {
-    borderRadius: 10,
+    borderRadius: rs(10),
   },
   dotActive: {
-    width: 20,
-    height: 8,
+    width: rs(20),
+    height: rs(8),
   },
   dotInactive: {
-    width: 8,
-    height: 8,
+    width: rs(8),
+    height: rs(8),
     opacity: 0.35,
   },
 
@@ -543,14 +544,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nextBtn: {
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -561,7 +562,7 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   nextBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
   watchHint: {
@@ -578,8 +579,8 @@ const styles = StyleSheet.create({
   },
   settingsSheet: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: rs(24),
+    borderTopRightRadius: rs(24),
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
@@ -604,6 +605,6 @@ const styles = StyleSheet.create({
   settingsDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#EEE',
-    marginVertical: 4,
+    marginVertical: rs(4),
   },
 });

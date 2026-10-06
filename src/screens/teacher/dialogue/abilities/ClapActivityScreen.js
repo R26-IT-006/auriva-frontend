@@ -12,6 +12,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const SAMAN_VIDEO = require('../../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4');
 
@@ -113,19 +114,19 @@ const styles = StyleSheet.create({
   header: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingHorizontal: 12,
-    paddingVertical:   12,
+    paddingHorizontal: rs(12),
+    paddingVertical:   rs(12),
   },
   headerSide: {
-    width:          40,
+    width:          rs(40),
     alignItems:     'center',
     justifyContent: 'center',
   },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex:       1,
-    fontSize:   17,
+    fontSize:   rf(17),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign:  'center',
   },
@@ -151,10 +152,10 @@ const styles = StyleSheet.create({
   },
 
   prompt: {
-    fontSize:           22,
+    fontSize:           rf(22),
     fontFamily: 'DMSans_700Bold',
     textAlign:          'center',
-    lineHeight:         32,
+    lineHeight:         rf(32),
     textDecorationLine: 'underline',
   },
 
@@ -168,8 +169,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatar: {
-    width:  220,
-    height: 320,
+    width:  rs(220),
+    height: rs(320),
   },
 
   footer: {
@@ -179,20 +180,20 @@ const styles = StyleSheet.create({
   nextBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
   },
   nextBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

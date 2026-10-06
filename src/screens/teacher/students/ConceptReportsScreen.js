@@ -21,6 +21,7 @@ import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
 import { shareReportPdf, downloadReportPdf } from '../../../utils/reportPdf';
 import { duration, firstNameOf } from '../../../constants/teacherWording';
+import { rs, rf } from '../../../utils/responsive';
 
 // This screen's greens. Deeper than Colors.brandDeep because the button is a
 // large solid field rather than a line of text — white on it clears 5.8:1, and
@@ -642,14 +643,14 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: rs(12),
     paddingHorizontal: Layout.spacing.lg,
-    paddingTop: 28,
-    paddingBottom: 8,
+    paddingTop: rs(28),
+    paddingBottom: rs(8),
   },
   topTitle: {
     flex: 1,
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
     letterSpacing: -0.3,
@@ -659,38 +660,38 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.lg,
     // Clears the fixed bar at the bottom, so the last report is not sitting
     // underneath the button that makes new ones.
-    paddingBottom: 130,
-    gap: 16,
+    paddingBottom: rs(130),
+    gap: rs(16),
   },
   explain: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Layout.spacing.md,
     padding: Layout.spacing.md,
-    borderRadius: 22,
+    borderRadius: rs(22),
     backgroundColor: GREEN_TINT,
     // Clips the decoration to the card, so the leaf and books fade off its edge
     // instead of overhanging the page.
     overflow: 'hidden',
   },
   explainIcon: {
-    width: 52, height: 52, borderRadius: 26,
+    width: rs(52), height: rs(52), borderRadius: rs(26),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
   // Stops short of the decoration rather than running under it.
-  explainText:  { flex: 1, paddingRight: 52, gap: 3 },
-  explainTitle: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  explainBody:  { fontSize: 13, lineHeight: 19, color: Colors.text.secondary },
+  explainText:  { flex: 1, paddingRight: rs(52), gap: rs(3) },
+  explainTitle: { fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  explainBody:  { fontSize: rf(13), lineHeight: rf(19), color: Colors.text.secondary },
   explainArt: {
     position: 'absolute',
     right: Layout.spacing.md,
     bottom: Layout.spacing.sm,
   },
-  explainLeaf: { position: 'absolute', left: -14, bottom: 16 },
+  explainLeaf: { position: 'absolute', left: rs(-14), bottom: rs(16) },
 
   pageHead: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
     letterSpacing: -0.3,
@@ -699,7 +700,7 @@ const styles = StyleSheet.create({
 
   group:     { gap: Layout.spacing.sm },
   groupHead: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
@@ -711,10 +712,10 @@ const styles = StyleSheet.create({
   row: {
     padding: 0,
     overflow: 'hidden',
-    borderRadius: 22,
+    borderRadius: rs(22),
     borderWidth: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.07,
     shadowRadius: 10,
     elevation: 3,
@@ -722,41 +723,41 @@ const styles = StyleSheet.create({
   rowMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 18,
-    paddingHorizontal: 22,
-    paddingVertical: 20,
+    gap: rs(18),
+    paddingHorizontal: rs(22),
+    paddingVertical: rs(20),
   },
   rowIcon: {
-    width: 44, height: 44, borderRadius: 22,
+    width: rs(44), height: rs(44), borderRadius: rs(22),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: GREEN_TINT,
   },
   rowText:  { flex: 1, gap: 2 },
-  rowTitle: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  rowTitle: { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
   // secondary, not muted. This line carries the dates the whole report covers,
   // and the muted token measures 2.63:1 on white — under the 3:1 floor even for
   // large text, let alone at 12px.
-  rowSub:   { fontSize: 12, color: Colors.text.secondary },
+  rowSub:   { fontSize: rf(12), color: Colors.text.secondary },
 
-  chips:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
+  chips:    { flexDirection: 'row', flexWrap: 'wrap', gap: rs(6), marginTop: rs(7) },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    gap: rs(5),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(5),
     borderRadius: Layout.radius.full,
   },
-  chipText: { fontSize: 12, fontFamily: 'DMSans_600SemiBold' },
+  chipText: { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold' },
 
   // On its own rule, so the two actions read as belonging to the card rather than
   // floating over the figures above them.
   rowFoot: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
+    gap: rs(10),
+    paddingHorizontal: rs(22),
+    paddingVertical: rs(14),
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
   },
@@ -764,51 +765,51 @@ const styles = StyleSheet.create({
   footBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-    borderRadius: 999,
+    gap: rs(7),
+    paddingVertical: rs(9),
+    paddingHorizontal: rs(16),
+    borderRadius: rs(999),
     backgroundColor: GREEN_TINT,
   },
   footBtnDelete: { backgroundColor: '#FDECEC' },
   // Dimmed only while the OTHER action is working. The one being pressed keeps
   // its full weight and shows a spinner, so it stays obvious which was tapped.
   footBtnOff:  { opacity: 0.4 },
-  footBtnText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: GREEN_DEEP },
+  footBtnText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: GREEN_DEEP },
 
-  empty:      { alignItems: 'center', gap: 6, paddingVertical: Layout.spacing.xl, borderRadius: 22 },
-  emptyTitle: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  emptyBody:  { fontSize: 13, color: Colors.text.secondary, textAlign: 'center', maxWidth: 300 },
+  empty:      { alignItems: 'center', gap: rs(6), paddingVertical: Layout.spacing.xl, borderRadius: rs(22) },
+  emptyTitle: { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  emptyBody:  { fontSize: rf(13), color: Colors.text.secondary, textAlign: 'center', maxWidth: rs(300) },
 
   errorCard: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  errorText: { flex: 1, fontSize: 13, color: Colors.text.secondary },
+  errorText: { flex: 1, fontSize: rf(13), color: Colors.text.secondary },
 
   bar: {
     position: 'absolute',
     left: 0, right: 0, bottom: 0,
     padding: Layout.spacing.lg,
     paddingTop: Layout.spacing.md,
-    paddingBottom: 44,
+    paddingBottom: rs(44),
   },
   newBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 9,
+    gap: rs(9),
     paddingVertical: Layout.spacing.md,
-    borderRadius: 16,
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     backgroundColor: GREEN_DEEP,
     ...Layout.shadow.md,
   },
   newBtnPlus: {
-    width: 24, height: 24, borderRadius: 12,
+    width: rs(24), height: rs(24), borderRadius: rs(12),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.22)',
   },
   newBtnOff:  { opacity: 0.4 },
-  newBtnText: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
+  newBtnText: { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
 
   sheetBackdrop: {
     flex: 1,
@@ -820,36 +821,36 @@ const styles = StyleSheet.create({
   // A centred pop-up card rather than a sheet from the bottom.
   sheet: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     maxHeight: '80%',
     backgroundColor: Colors.surface,
-    borderRadius: 28,
-    padding: 22,
+    borderRadius: rs(28),
+    padding: rs(22),
     gap: Layout.spacing.md,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: rs(8) },
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 10,
   },
   sheetHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: rs(10) },
   sheetIcon: {
-    width: 36, height: 36, borderRadius: 18,
+    width: rs(36), height: rs(36), borderRadius: rs(18),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: GREEN_TINT,
   },
   sheetClose: {
-    width: 38, height: 38, borderRadius: 19,
+    width: rs(38), height: rs(38), borderRadius: rs(19),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: GREEN_TINT,
   },
-  sheetTitle: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  sheetTitle: { fontSize: rf(18), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
 
   tabs: {
     flexDirection: 'row',
-    gap: 6,
-    padding: 4,
+    gap: rs(6),
+    padding: rs(4),
     borderRadius: Layout.radius.full,
     backgroundColor: Colors.surfaceAlt,
   },
@@ -860,59 +861,59 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.full,
   },
   tabOn:     { backgroundColor: GREEN_DEEP },
-  tabText:   { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+  tabText:   { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
   tabTextOn: { color: '#FFFFFF' },
 
   sheetList:      { flexGrow: 0, flexShrink: 1 },
 
   // ── Delete pop-up ─────────────────────────────────────────────────────────
-  delCard: { maxWidth: 440, alignItems: 'center', paddingTop: 26 },
+  delCard: { maxWidth: rs(440), alignItems: 'center', paddingTop: rs(26) },
   delIcon: {
-    width: 60, height: 60, borderRadius: 30,
+    width: rs(60), height: rs(60), borderRadius: rs(30),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FDECEC',
   },
-  delTitle: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, textAlign: 'center' },
-  delBody:  { fontSize: 13, lineHeight: 19, color: Colors.text.secondary, textAlign: 'center' },
+  delTitle: { fontSize: rf(18), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, textAlign: 'center' },
+  delBody:  { fontSize: rf(13), lineHeight: rf(19), color: Colors.text.secondary, textAlign: 'center' },
   delName:  { fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
   delError: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', alignItems: 'center', gap: rs(6),
     alignSelf: 'stretch',
-    backgroundColor: '#FDECEC', borderRadius: 12,
-    paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: '#FDECEC', borderRadius: rs(12),
+    paddingHorizontal: rs(12), paddingVertical: rs(8),
   },
-  delErrorText: { flex: 1, fontSize: 12, color: RED },
-  delActions: { flexDirection: 'row', gap: 12, alignSelf: 'stretch', marginTop: 4 },
+  delErrorText: { flex: 1, fontSize: rf(12), color: RED },
+  delActions: { flexDirection: 'row', gap: rs(12), alignSelf: 'stretch', marginTop: rs(4) },
   delBtn: {
     flex: 1,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    paddingVertical: 13,
-    borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rs(7),
+    paddingVertical: rs(13),
+    borderRadius: rs(16),
   },
   // Safe choice: white, outlined.
   delKeep: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: Colors.border },
-  delKeepText: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  delKeepText: { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
   // Destructive choice: red, raised like the app's other primary buttons.
   delConfirm: {
     backgroundColor: RED,
     borderBottomWidth: 4,
     borderBottomColor: 'rgba(0,0,0,0.22)',
   },
-  delConfirmText: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
-  sheetListInner: { gap: 6, paddingVertical: 2 },
-  sheetEmpty:     { fontSize: 13, color: Colors.text.muted, paddingVertical: Layout.spacing.md },
+  delConfirmText: { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
+  sheetListInner: { gap: rs(6), paddingVertical: 2 },
+  sheetEmpty:     { fontSize: rf(13), color: Colors.text.muted, paddingVertical: Layout.spacing.md },
 
   period: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Layout.spacing.md,
     padding: Layout.spacing.md,
-    borderRadius: 18,
+    borderRadius: rs(18),
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
-  periodTitle: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  periodSub:   { fontSize: 12, color: Colors.text.muted, marginTop: 1 },
+  periodTitle: { fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  periodSub:   { fontSize: rf(12), color: Colors.text.muted, marginTop: 1 },
 
-  sheetNote: { fontSize: 12, color: Colors.text.muted, lineHeight: 17 },
+  sheetNote: { fontSize: rf(12), color: Colors.text.muted, lineHeight: rf(17) },
 });

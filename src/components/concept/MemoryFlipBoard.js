@@ -7,6 +7,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { rs } from '../../utils/responsive';
 
 /**
  * Memory board — a grid of face-down cards the child turns over two at a time.
@@ -147,20 +148,20 @@ const styles = StyleSheet.create({
   },
   half: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 22,
+    borderRadius: rs(22),
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     backfaceVisibility: 'hidden',
     shadowColor: '#1A2E3B',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 3,
   },
   faceHalf: {
-    padding: 8,
+    padding: rs(8),
   },
   image: {
     width: '76%',
@@ -168,11 +169,11 @@ const styles = StyleSheet.create({
   },
   tick: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    top: rs(6),
+    right: rs(6),
+    width: rs(22),
+    height: rs(22),
+    borderRadius: rs(11),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,

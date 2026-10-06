@@ -27,6 +27,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { Layout } from '../../../../constants/layout';
 import ResultGifFeedback from '../../../../components/feedback/ResultGifFeedback';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 // The spoken form of the naming question above the options. One recording for
 // the activity, not per concept — the question never names the fruit, so the
@@ -383,75 +384,75 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   questionSi: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
-    marginBottom: 8,
-    paddingHorizontal: 24,
+    marginBottom: rs(8),
+    paddingHorizontal: rs(24),
   },
   question: {
-    fontSize: 27,
+    fontSize: rf(27),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 8,
-    paddingHorizontal: 24,
+    marginTop: rs(4),
+    marginBottom: rs(8),
+    paddingHorizontal: rs(24),
   },
 
   attemptRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-    marginBottom: 16,
+    gap: rs(10),
+    marginTop: rs(4),
+    marginBottom: rs(16),
   },
   attemptDot: {
-    width: 12, height: 12,
-    borderRadius: 6,
+    width: rs(12), height: rs(12),
+    borderRadius: rs(6),
   },
 
   contentRow: {
     flex: 1,
     flexDirection: 'row',
     width: '100%',
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    paddingBottom: 130,
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(20),
+    paddingBottom: rs(130),
   },
   imageContainer: {
     flex: 1,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingLeft: 130,
+    paddingLeft: rs(130),
   },
   labelsContainer: {
-    width: 320,
+    width: rs(320),
     justifyContent: 'center',
-    gap: 24,
-    marginRight: 60,
+    gap: rs(24),
+    marginRight: rs(60),
   },
   labelPill: {
-    paddingHorizontal: 28,
-    paddingVertical: 20,
-    borderRadius: 28,
+    paddingHorizontal: rs(28),
+    paddingVertical: rs(20),
+    borderRadius: rs(28),
     borderWidth: 3,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: rs(5) },
     shadowOpacity: 0.14,
     shadowRadius: 10,
     elevation: 5,
   },
   labelText: {
-    fontSize: 27,
+    fontSize: rf(27),
     fontFamily: 'DMSans_900Black',
     letterSpacing: 0.2,
   },

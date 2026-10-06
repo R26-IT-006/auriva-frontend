@@ -19,6 +19,7 @@ import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { evaluationApi } from '../../../../api/evaluation';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 // Mirrors the backend's live EVAL_UNLOCK_THRESHOLD (evaluationService.js, DEC-04) —
 // the task file text says "master 4 words to unlock", but the already-approved
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
     paddingBottom: Layout.spacing.xs,
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: rs(40), height: rs(40), borderRadius: rs(20),
     alignItems: 'center', justifyContent: 'center',
   },
   colorfulTitleRow: {
@@ -325,14 +326,14 @@ const styles = StyleSheet.create({
   },
 
   subheading: {
-    fontSize: 20, fontFamily: 'DMSans_600SemiBold',
+    fontSize: rf(20), fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center', opacity: 0.85,
-    marginTop: 4, marginBottom: Layout.spacing.xl + AVATAR_OVERLAP - 20,
+    marginTop: rs(4), marginBottom: Layout.spacing.xl + AVATAR_OVERLAP - 20,
     paddingHorizontal: Layout.spacing.lg,
   },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorText: { color: '#FF4D6D', fontFamily: 'DMSans_600SemiBold', textAlign: 'center', paddingHorizontal: 32 },
+  errorText: { color: '#FF4D6D', fontFamily: 'DMSans_600SemiBold', textAlign: 'center', paddingHorizontal: rs(32) },
 
   cardsRow: {
     flex: 1,
@@ -349,48 +350,48 @@ const styles = StyleSheet.create({
   avatarWrap: { alignItems: 'center', zIndex: 2, elevation: 12 },
   card: {
     width: '100%',
-    minHeight: 235,
-    borderRadius: 26,
+    minHeight: rs(235),
+    borderRadius: rs(26),
     paddingHorizontal: Layout.spacing.lg,
     paddingBottom: Layout.spacing.lg,
     overflow: 'hidden',
     zIndex: 1,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: rs(10) },
     shadowOpacity: 0.35,
     shadowRadius: 18,
     elevation: 8,
   },
   circleTopRight: {
-    position: 'absolute', top: -30, right: -20,
-    width: 100, height: 100, borderRadius: 50,
+    position: 'absolute', top: rs(-30), right: rs(-20),
+    width: rs(100), height: rs(100), borderRadius: rs(50),
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
   circleBottomLeft: {
-    position: 'absolute', bottom: -18, left: -18,
-    width: 70, height: 70, borderRadius: 35,
+    position: 'absolute', bottom: rs(-18), left: rs(-18),
+    width: rs(70), height: rs(70), borderRadius: rs(35),
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
 
   cardTextWrap: { zIndex: 1 },
   cardTitle: {
-    fontSize: 20, fontFamily: 'DMSans_900Black', color: '#FFF',
+    fontSize: rf(20), fontFamily: 'DMSans_900Black', color: '#FFF',
     textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6,
   },
   cardSub: {
-    fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: 'rgba(255,255,255,0.9)', marginTop: 4,
+    fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', color: 'rgba(255,255,255,0.9)', marginTop: rs(4),
   },
 
   statusPill: {
     zIndex: 1,
     alignSelf: 'flex-end',
-    marginTop: 14,
+    marginTop: rs(14),
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: rs(5),
     backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: 100,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    borderRadius: rs(100),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(7),
   },
-  statusPillText: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: '#FFF' },
+  statusPillText: { fontSize: rf(12), fontFamily: 'DMSans_700Bold', color: '#FFF' },
 });

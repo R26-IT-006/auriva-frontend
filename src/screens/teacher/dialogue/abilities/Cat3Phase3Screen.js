@@ -18,6 +18,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 // Scene videos for Phase 3 — same Phase1And3.mp4 as Phase 1, per word folder
 const CAT3_CONTEXT_CORRECT = {
@@ -436,13 +437,13 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
 
   headerWrap: {},
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
-  headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: rs(12), paddingVertical: rs(12), gap: rs(8) },
+  headerSide:    { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -453,8 +454,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   levelLabel:    { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
-  progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
-  progressFill:  { height: '100%', borderRadius: 4 },
+  progressTrack: { flex: 1, height: rs(8), backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: rs(4), overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: rs(4) },
 
   content: {
     flex:              1,
@@ -465,20 +466,20 @@ const styles = StyleSheet.create({
   },
 
   title:    { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_700Bold', textAlign: 'center' },
-  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.6, marginTop: 4, marginBottom: Layout.spacing.lg },
+  subtitle: { fontSize: Layout.fontSize.sm, textAlign: 'center', opacity: 0.6, marginTop: rs(4), marginBottom: Layout.spacing.lg },
 
   sceneWrap: {
     width:        '85%',
     flex:         1,
-    minHeight:    150,
-    maxHeight:    320,
+    minHeight:    rs(150),
+    maxHeight:    rs(320),
     borderRadius: Layout.radius.xl,
     overflow:     'hidden',
     marginBottom: Layout.spacing.xl,
     ...Layout.shadow.md,
   },
   sceneImg:    { width: '100%', height: '100%' },
-  wordFallback: { fontSize: 52, fontFamily: 'DMSans_900Black' },
+  wordFallback: { fontSize: rf(52), fontFamily: 'DMSans_900Black' },
 
   tilesWrap: {
     width:          '100%',
@@ -491,20 +492,20 @@ const styles = StyleSheet.create({
   tile: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               8,
+    gap:               rs(8),
     paddingVertical:   Layout.spacing.md,
     paddingHorizontal: Layout.spacing.xl,
     borderRadius:      Layout.radius.xl,
     borderWidth:       2,
     borderColor:       'transparent',
-    minWidth:          100,
+    minWidth:          rs(100),
     ...Layout.shadow.md,
   },
   tileCorrect: { borderColor: '#22C55E', borderWidth: 2.5 },
   tileWrong:   { borderColor: '#FF4D6D', opacity: 0.7 },
   tileText:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold' },
 
-  feedbackBanner: { position: 'absolute', bottom: 60, left: 0, right: 0, alignItems: 'center', zIndex: 60 },
+  feedbackBanner: { position: 'absolute', bottom: rs(60), left: 0, right: 0, alignItems: 'center', zIndex: 60 },
   feedbackText: {
     backgroundColor: 'rgba(255,77,109,0.9)', color: '#FFF',
     fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold',
@@ -513,7 +514,7 @@ const styles = StyleSheet.create({
   },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
+  settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: rs(24), borderTopRightRadius: rs(24), padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
   settingsTitle:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
@@ -528,9 +529,9 @@ const styles = StyleSheet.create({
   hearAgainButton: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               6,
+    gap:               rs(6),
     paddingHorizontal: Layout.spacing.md,
-    paddingVertical:   8,
+    paddingVertical:   rs(8),
     borderRadius:      Layout.radius.full,
     borderWidth:       1.5,
   },
@@ -538,9 +539,9 @@ const styles = StyleSheet.create({
   confirmButton: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               6,
+    gap:               rs(6),
     paddingHorizontal: Layout.spacing.lg,
-    paddingVertical:   8,
+    paddingVertical:   rs(8),
     borderRadius:      Layout.radius.full,
   },
   confirmButtonText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },

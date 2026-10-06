@@ -3,6 +3,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { scoreColor, formatPct } from '../../utils/scoreColor';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * Donut gauge for a 0-1 ratio.
@@ -77,12 +78,12 @@ const styles = StyleSheet.create({
   // sit on. The percentage above it is what carries the emphasis, not the
   // caption's faintness.
   label:  {
-    fontSize: 10,
+    fontSize: rf(10),
     color: Colors.text.secondary,
     fontFamily: 'DMSans_700Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.9,
-    marginTop: 3,
+    marginTop: rs(3),
   },
   sublabel: {
     fontSize: Layout.fontSize.xs,

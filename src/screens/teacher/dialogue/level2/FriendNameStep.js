@@ -29,6 +29,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../../../constants/layout';
 import { level2Api } from '../../../../api/level2';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { rs, rf } from '../../../../utils/responsive';
 
 const PERSONALITY_OPTIONS = ['kind', 'funny', 'smart', 'brave', 'caring', 'creative'];
 const AGE_OPTIONS    = [5, 6, 7, 8, 9, 10, 11, 12];
@@ -190,54 +191,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: Layout.spacing.lg,
   },
-  kvWrap: { width: '100%', maxWidth: 680 },
+  kvWrap: { width: '100%', maxWidth: rs(680) },
   sheet: {
     backgroundColor: '#FFF',
-    borderRadius: 28,
+    borderRadius: rs(28),
     maxHeight: '92%',
-    paddingBottom: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
+    paddingBottom: rs(16),
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(10) }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
   },
-  scroll: { paddingHorizontal: 28, paddingTop: 24, paddingBottom: Layout.spacing.xl, gap: 10 },
+  scroll: { paddingHorizontal: rs(28), paddingTop: rs(24), paddingBottom: Layout.spacing.xl, gap: rs(10) },
 
   header: { alignItems: 'center', marginBottom: Layout.spacing.sm, position: 'relative' },
-  closeBtn: { position: 'absolute', top: 0, right: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  headerEmoji: { fontSize: 40, marginBottom: 4 },
-  title: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', textAlign: 'center' },
+  closeBtn: { position: 'absolute', top: 0, right: 0, width: rs(40), height: rs(40), borderRadius: rs(20), backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  headerEmoji: { fontSize: rf(40), marginBottom: rs(4) },
+  title: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', textAlign: 'center' },
   titleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', color: '#666', textAlign: 'center', marginTop: 2 },
 
-  label: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', marginTop: Layout.spacing.md },
-  labelSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', color: '#888', marginBottom: 4 },
+  label: { fontSize: rf(16), fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', marginTop: Layout.spacing.md },
+  labelSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', color: '#888', marginBottom: rs(4) },
   required: { color: '#EF4444' },
   optional: { fontWeight: '400', color: '#888' },
 
   textInput: {
-    borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 16,
-    paddingHorizontal: Layout.spacing.md, paddingVertical: 12,
-    fontSize: 18, fontFamily: 'DMSans_700Bold', color: '#1A1A2E',
+    borderWidth: 2, borderColor: '#E2E8F0', borderRadius: rs(16),
+    paddingHorizontal: Layout.spacing.md, paddingVertical: rs(12),
+    fontSize: rf(18), fontFamily: 'DMSans_700Bold', color: '#1A1A2E',
   },
 
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(10), marginTop: rs(4) },
   // Raised 3D choice chips, like the buttons in the other modules.
   chip: {
-    paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14,
+    paddingHorizontal: rs(22), paddingVertical: rs(13), borderRadius: rs(14),
     borderWidth: 2, borderBottomWidth: 4, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF',
   },
-  chipSm: { paddingHorizontal: 12, paddingVertical: 8 },
-  chipText: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: '#475569' },
+  chipSm: { paddingHorizontal: rs(12), paddingVertical: rs(8) },
+  chipText: { fontSize: rf(15), fontFamily: 'DMSans_700Bold', color: '#475569' },
 
-  errorText: { color: '#EF4444', fontSize: Layout.fontSize.sm, fontWeight: '600', marginTop: 4 },
+  errorText: { color: '#EF4444', fontSize: Layout.fontSize.sm, fontWeight: '600', marginTop: rs(4) },
 
   // Raised 3D button, like the ones used in the other modules.
   saveBtn: {
-    alignSelf: 'center', minWidth: 260,
-    borderRadius: 16,
-    paddingVertical: 16, paddingHorizontal: 40, alignItems: 'center',
+    alignSelf: 'center', minWidth: rs(260),
+    borderRadius: rs(16),
+    paddingVertical: rs(16), paddingHorizontal: rs(40), alignItems: 'center',
     borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)',
     marginTop: Layout.spacing.lg,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(4) }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
   },
   // Faded (not greyed) until ready — same as the other screens' buttons.
   saveBtnDisabled: { opacity: 0.4 },
-  saveBtnText: { fontSize: 17, fontFamily: 'DMSans_800ExtraBold', color: '#FFF' },
+  saveBtnText: { fontSize: rf(17), fontFamily: 'DMSans_800ExtraBold', color: '#FFF' },
 });

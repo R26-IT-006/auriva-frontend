@@ -12,6 +12,7 @@ import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../api/dialogue';
 import { clearRestartCount } from '../../../utils/sessionRetryTracker';
 import Phase1CompleteCelebration from '../../../components/feedback/Phase1CompleteCelebration';
+import { rs, rf } from '../../../utils/responsive';
 
 function getCategoryStartScreen(category) {
   switch (category) {
@@ -141,9 +142,9 @@ export default function WordCompleteScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   // Concept's round translucent header button.
   exitBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(22),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -157,19 +158,19 @@ const styles = StyleSheet.create({
   buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
+    gap: rs(16),
   },
   // Raised 3D buttons, like the ones used in the other modules.
   primaryBtn: {
-    minWidth: 180,
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 15,
-    borderRadius: 16,
+    minWidth: rs(180),
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(15),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 6,
@@ -178,29 +179,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryBtnText: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_800ExtraBold',
   },
   secondaryBtn: {
-    minWidth: 180,
+    minWidth: rs(180),
     flexDirection:  'row',
     alignItems:     'center',
     justifyContent: 'center',
-    gap:            8,
+    gap:            rs(8),
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 28,
-    paddingVertical: 13,
-    borderRadius:   16,
+    paddingHorizontal: rs(28),
+    paddingVertical: rs(13),
+    borderRadius:   rs(16),
     borderWidth:    2,
     borderBottomWidth: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   secondaryBtnText: {
-    fontSize:   18,
+    fontSize:   rf(18),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

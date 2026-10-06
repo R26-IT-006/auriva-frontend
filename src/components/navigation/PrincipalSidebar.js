@@ -16,12 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { SidebarContext } from '../../context/SidebarContext';
 import { SIDEBAR_WIDTH, MINI_WIDTH } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 // The Auriva logo — the app icon's artwork, on its white tile.
 const AURIVA_MARK = require('../../../assets/icon.png');
 
 const CX      = MINI_WIDTH / 2;   // 32 — x-centre of icon column
-const ICON_SZ = 20;
+const ICON_SZ = rs(20);
 // Logo size: as large as fits centred in the collapsed (64pt) rail.
 const LOGO    = 46;
 
@@ -237,12 +238,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: CX - LOGO / 2,   // centres the logo on the icon column (CX=32)
-    paddingRight: 12,
-    gap: 10,
-    marginBottom: 4,
+    paddingRight: rs(12),
+    gap: rs(10),
+    marginBottom: rs(4),
   },
   logoBox: {
-    width: LOGO, height: LOGO, borderRadius: 13,
+    width: LOGO, height: LOGO, borderRadius: rs(13),
     backgroundColor: WHITE,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
@@ -250,10 +251,10 @@ const styles = StyleSheet.create({
   },
   logoImage: { width: LOGO, height: LOGO },
   logoText: { flex: 1, overflow: 'hidden' },
-  logoTitle: { fontSize: 17, fontFamily: 'DMSans_900Black', color: WHITE, letterSpacing: 0.3 },
-  logoSub:   { fontSize: 9,  fontFamily: 'DMSans_600SemiBold', color: DIM, letterSpacing: 0.5, marginTop: 1 },
+  logoTitle: { fontSize: rf(17), fontFamily: 'DMSans_900Black', color: WHITE, letterSpacing: 0.3 },
+  logoSub:   { fontSize: rf(9),  fontFamily: 'DMSans_600SemiBold', color: DIM, letterSpacing: 0.5, marginTop: 1 },
   toggleBtn: {
-    width: 28, height: 28, borderRadius: 8,
+    width: rs(28), height: rs(28), borderRadius: rs(8),
     backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
@@ -263,71 +264,71 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: DIV,
-    marginHorizontal: 14,
-    marginVertical: 14,
+    marginHorizontal: rs(14),
+    marginVertical: rs(14),
   },
 
   // ── Category label ────────────────────────────────────────────────────────
   catLabel: {
-    fontSize: 9,
+    fontSize: rf(9),
     fontFamily: 'DMSans_700Bold',
     color: AMBER,
     letterSpacing: 1.3,
     paddingLeft: CX - 18 + 4,   // slight indent past icon left edge
-    marginBottom: 6,
+    marginBottom: rs(6),
     overflow: 'hidden',
   },
   // A second heading inside the list, set apart from the items above it.
-  catLabelGroup: { marginTop: 16 },
+  catLabelGroup: { marginTop: rs(16) },
 
   // ── Nav items ─────────────────────────────────────────────────────────────
   nav: { flex: 1, gap: 2 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 10,
-    borderRadius: 12,
+    marginHorizontal: rs(10),
+    borderRadius: rs(12),
     overflow: 'hidden',
     position: 'relative',
   },
   rowActive: { backgroundColor: 'rgba(255,255,255,0.06)' },
   accentBar: {
     position: 'absolute',
-    left: 0, top: 8, bottom: 8,
-    width: 3,
+    left: 0, top: rs(8), bottom: rs(8),
+    width: rs(3),
     borderRadius: 2,
     backgroundColor: 'transparent',
   },
   iconSlot: {
     width: MINI_WIDTH - 20,   // 44px
-    height: 44,
+    height: rs(44),
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
+    borderRadius: rs(10),
     flexShrink: 0,
   },
   rowLabel: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     color: MID,
     flex: 1,
     flexShrink: 1,
   },
-  activeDot: { paddingRight: 14, overflow: 'hidden' },
-  activeDotInner: { width: 6, height: 6, borderRadius: 3 },
+  activeDot: { paddingRight: rs(14), overflow: 'hidden' },
+  activeDotInner: { width: rs(6), height: rs(6), borderRadius: rs(3) },
 
   // ── Sign out ──────────────────────────────────────────────────────────────
   signOutRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 10,
-    borderRadius: 12,
+    marginHorizontal: rs(10),
+    borderRadius: rs(12),
     overflow: 'hidden',
     // A white button on the dark rail; the red icon and text still say 'sign out'.
     backgroundColor: WHITE,
   },
   signOutLabel: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_700Bold',
     color: '#D94848',
     flexShrink: 1,
@@ -340,9 +341,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#12303F',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(7),
+    borderRadius: rs(8),
     shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -351,13 +352,13 @@ const styles = StyleSheet.create({
   },
   tooltipArrow: {
     position: 'absolute',
-    left: -4,
-    width: 8, height: 8,
+    left: rs(-4),
+    width: rs(8), height: rs(8),
     backgroundColor: '#12303F',
     transform: [{ rotate: '45deg' }],
   },
   tooltipText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
   },

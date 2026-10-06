@@ -7,6 +7,7 @@ import { ButtonFeedback } from "../../../components/common/ButtonFeedback";
 import { Layout } from "../../../constants/layout";
 import { DEFAULT_THEME } from "../../../constants/avatarThemes";
 import { ThemedGradientFill } from "./pronunciationDesignKit.js";
+import { rs, rf } from "../../../utils/responsive";
 
 // The session flow used to surface every message through `Alert.alert`, which
 // renders the platform's own dialog — a plain black box on iOS dark mode, with
@@ -190,24 +191,24 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    maxWidth: 440,
+    maxWidth: rs(440),
     backgroundColor: "#FFFFFF",
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 2,
     paddingVertical: Layout.spacing.xl,
     paddingHorizontal: Layout.spacing.lg,
     alignItems: "center",
     gap: Layout.spacing.sm,
     shadowColor: "#1A2030",
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: rs(12) },
     shadowOpacity: 0.18,
     shadowRadius: 28,
     elevation: 14,
   },
   iconCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: rs(76),
+    height: rs(76),
+    borderRadius: rs(38),
     alignItems: "center",
     justifyContent: "center",
     marginBottom: Layout.spacing.xs,
@@ -222,7 +223,7 @@ const styles = StyleSheet.create({
     fontFamily: Layout.fonts.regular,
     color: "#5A6472",
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: rf(22),
   },
 
   comparison: {
@@ -234,7 +235,7 @@ const styles = StyleSheet.create({
   },
   chip: {
     flexShrink: 1,
-    minWidth: 104,
+    minWidth: rs(104),
     borderRadius: Layout.radius.lg,
     paddingVertical: Layout.spacing.sm,
     paddingHorizontal: Layout.spacing.md,
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   actionFill: {
-    height: 54,
+    height: rs(54),
     alignItems: "center",
     justifyContent: "center",
   },

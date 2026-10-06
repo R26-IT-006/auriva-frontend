@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { principalApi } from '../../../api/principal';
 import { formatDate } from '../../../utils/formatters';
 import { useToast } from '../../../context/ToastContext';
+import { rs, rf } from '../../../utils/responsive';
 
 // ── palette ───────────────────────────────────────────────────────────────────
 const DARK     = '#0F2F3E';
@@ -291,178 +292,178 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: SURFACE,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: rs(16),
+    paddingBottom: rs(12),
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
-    gap: 10,
+    gap: rs(10),
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 10,
+    width: rs(36), height: rs(36), borderRadius: rs(10),
     backgroundColor: BODY_BG,
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
   breadcrumb: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: rs(4),
   },
   breadcrumbParent: {
-    fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: MUTED,
+    fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', color: MUTED,
   },
   breadcrumbCurrent: {
-    flex: 1, fontSize: 15, fontFamily: 'DMSans_800ExtraBold', color: TEXT,
+    flex: 1, fontSize: rf(15), fontFamily: 'DMSans_800ExtraBold', color: TEXT,
   },
 
   // ── Scroll ────────────────────────────────────────────────────────────────
-  scroll: { padding: 16, gap: 14, paddingBottom: 24 },
+  scroll: { padding: rs(16), gap: rs(14), paddingBottom: rs(24) },
 
   // ── Hero ──────────────────────────────────────────────────────────────────
   hero: {
     backgroundColor: DARK,
-    borderRadius: 20,
+    borderRadius: rs(20),
     overflow: 'hidden',
   },
   heroBtnRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: rs(8),
     position: 'absolute',
-    top: 14, right: 14,
+    top: rs(14), right: rs(14),
     zIndex: 10,
   },
   heroEditBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', alignItems: 'center', gap: rs(6),
     backgroundColor: '#1E88E5',
-    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: rs(10), paddingHorizontal: rs(14), paddingVertical: rs(8),
   },
   heroDeleteBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', alignItems: 'center', gap: rs(6),
     backgroundColor: '#E53935',
-    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: rs(10), paddingHorizontal: rs(14), paddingVertical: rs(8),
   },
   heroBtnText: {
-    fontSize: 13, fontFamily: 'DMSans_700Bold', color: SURFACE,
+    fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: SURFACE,
   },
   heroInner: {
     alignItems: 'center',
-    paddingTop: 32, paddingBottom: 28, paddingHorizontal: 24,
-    gap: 10,
+    paddingTop: rs(32), paddingBottom: rs(28), paddingHorizontal: rs(24),
+    gap: rs(10),
   },
   heroName: {
-    fontSize: 22, fontFamily: 'DMSans_800ExtraBold', color: SURFACE,
-    textAlign: 'center', marginTop: 4,
+    fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold', color: SURFACE,
+    textAlign: 'center', marginTop: rs(4),
   },
   heroBadgeRow: {
-    flexDirection: 'row', gap: 8, alignItems: 'center',
+    flexDirection: 'row', gap: rs(8), alignItems: 'center',
     flexWrap: 'wrap', justifyContent: 'center',
   },
   codeTag: {
     backgroundColor: BLUE,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5,
+    borderRadius: rs(20), paddingHorizontal: rs(14), paddingVertical: rs(5),
   },
   codeTagText: {
-    fontSize: 12, fontFamily: 'DMSans_700Bold', color: SURFACE, letterSpacing: 0.5,
+    fontSize: rf(12), fontFamily: 'DMSans_700Bold', color: SURFACE, letterSpacing: 0.5,
   },
   statusTag: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
+    flexDirection: 'row', alignItems: 'center', gap: rs(5),
+    borderRadius: rs(20), paddingHorizontal: rs(12), paddingVertical: rs(5),
     borderWidth: 1,
   },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusTagText: { fontSize: 12, fontFamily: 'DMSans_700Bold' },
+  statusDot: { width: rs(6), height: rs(6), borderRadius: rs(3) },
+  statusTagText: { fontSize: rf(12), fontFamily: 'DMSans_700Bold' },
 
   // ── Two column ────────────────────────────────────────────────────────────
   twoCol: {
-    flexDirection: 'row', gap: 14, alignItems: 'flex-start',
+    flexDirection: 'row', gap: rs(14), alignItems: 'flex-start',
   },
 
   // ── Cards ─────────────────────────────────────────────────────────────────
   card: {
     backgroundColor: SURFACE,
-    borderRadius: 16, borderWidth: 1, borderColor: BORDER,
+    borderRadius: rs(16), borderWidth: 1, borderColor: BORDER,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
   cardHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', gap: rs(10),
+    paddingHorizontal: rs(16), paddingVertical: rs(14),
   },
   cardHeaderIcon: {
-    width: 30, height: 30, borderRadius: 8,
+    width: rs(30), height: rs(30), borderRadius: rs(8),
     alignItems: 'center', justifyContent: 'center',
   },
-  cardTitle: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: TEXT },
+  cardTitle: { fontSize: rf(14), fontFamily: 'DMSans_700Bold', color: TEXT },
   cardDivider: { height: 1, backgroundColor: BORDER },
 
   // ── Info rows ─────────────────────────────────────────────────────────────
   infoRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
+    flexDirection: 'row', alignItems: 'center', gap: rs(12),
+    paddingHorizontal: rs(16), paddingVertical: rs(13),
   },
   infoIconBox: {
-    width: 32, height: 32, borderRadius: 9,
+    width: rs(32), height: rs(32), borderRadius: rs(9),
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   infoText: { flex: 1 },
   infoLabel: {
-    fontSize: 10, fontFamily: 'DMSans_600SemiBold', color: MUTED,
+    fontSize: rf(10), fontFamily: 'DMSans_600SemiBold', color: MUTED,
     letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 2,
   },
-  infoValue: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: TEXT },
-  rowDivider: { height: 1, backgroundColor: BORDER, marginLeft: 60 },
+  infoValue: { fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: TEXT },
+  rowDivider: { height: 1, backgroundColor: BORDER, marginLeft: rs(60) },
 
   // ── Capacity ──────────────────────────────────────────────────────────────
-  capacitySection: { padding: 16 },
+  capacitySection: { padding: rs(16) },
   capacityLabelRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: rs(8),
   },
-  capacityLabel: { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.4 },
-  capacityCountRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  capDot: { width: 8, height: 8, borderRadius: 4 },
-  capacityCount: { fontSize: 12, fontFamily: 'DMSans_800ExtraBold', marginLeft: 2 },
+  capacityLabel: { fontSize: rf(11), fontFamily: 'DMSans_600SemiBold', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.4 },
+  capacityCountRow: { flexDirection: 'row', alignItems: 'center', gap: rs(4) },
+  capDot: { width: rs(8), height: rs(8), borderRadius: rs(4) },
+  capacityCount: { fontSize: rf(12), fontFamily: 'DMSans_800ExtraBold', marginLeft: 2 },
   capacityTrack: {
-    height: 8, backgroundColor: BORDER, borderRadius: 4, overflow: 'hidden',
+    height: rs(8), backgroundColor: BORDER, borderRadius: rs(4), overflow: 'hidden',
   },
-  capacityFill: { height: '100%', borderRadius: 4 },
+  capacityFill: { height: '100%', borderRadius: rs(4) },
 
   // ── Students list ─────────────────────────────────────────────────────────
-  studentsList: { paddingHorizontal: 16, paddingVertical: 8 },
+  studentsList: { paddingHorizontal: rs(16), paddingVertical: rs(8) },
   studentRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: rs(12),
+    paddingVertical: rs(10),
   },
   studentRowEmpty: { opacity: 0.45 },
   studentInfo: { flex: 1 },
-  studentName: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: TEXT },
-  studentMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
+  studentName: { fontSize: rf(14), fontFamily: 'DMSans_700Bold', color: TEXT },
+  studentMeta: { flexDirection: 'row', alignItems: 'center', gap: rs(6), marginTop: rs(3) },
   studentCodePill: {
-    backgroundColor: PURPLE_L, borderRadius: 6,
-    paddingHorizontal: 7, paddingVertical: 2,
+    backgroundColor: PURPLE_L, borderRadius: rs(6),
+    paddingHorizontal: rs(7), paddingVertical: 2,
   },
-  studentCodeText: { fontSize: 10, fontFamily: 'DMSans_700Bold', color: PURPLE },
+  studentCodeText: { fontSize: rf(10), fontFamily: 'DMSans_700Bold', color: PURPLE },
   studentStatusBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: GREEN_L, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2,
+    flexDirection: 'row', alignItems: 'center', gap: rs(4),
+    backgroundColor: GREEN_L, borderRadius: rs(6), paddingHorizontal: rs(7), paddingVertical: 2,
   },
-  studentStatusDot: { width: 5, height: 5, borderRadius: 3 },
-  studentStatusText: { fontSize: 10, fontFamily: 'DMSans_700Bold' },
+  studentStatusDot: { width: rs(5), height: rs(5), borderRadius: rs(3) },
+  studentStatusText: { fontSize: rf(10), fontFamily: 'DMSans_700Bold' },
   studentDivider: { height: 1, backgroundColor: BORDER },
   emptySlotIcon: {
-    width: 40, height: 40, borderRadius: 20,
+    width: rs(40), height: rs(40), borderRadius: rs(20),
     backgroundColor: BODY_BG, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed',
   },
-  emptySlotText: { fontSize: 13, fontFamily: 'DMSans_400Regular', color: MUTED, fontStyle: 'italic' },
+  emptySlotText: { fontSize: rf(13), fontFamily: 'DMSans_400Regular', color: MUTED, fontStyle: 'italic' },
 
   emptyStudents: {
-    alignItems: 'center', gap: 6, padding: 28,
+    alignItems: 'center', gap: rs(6), padding: rs(28),
   },
   emptyStudentsIcon: {
-    width: 54, height: 54, borderRadius: 27,
-    backgroundColor: BODY_BG, alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    width: rs(54), height: rs(54), borderRadius: rs(27),
+    backgroundColor: BODY_BG, alignItems: 'center', justifyContent: 'center', marginBottom: rs(4),
   },
-  emptyStudentsTitle: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: TEXT },
-  emptyStudentsSub: { fontSize: 12, fontFamily: 'DMSans_400Regular', color: MUTED, textAlign: 'center' },
+  emptyStudentsTitle: { fontSize: rf(14), fontFamily: 'DMSans_700Bold', color: TEXT },
+  emptyStudentsSub: { fontSize: rf(12), fontFamily: 'DMSans_400Regular', color: MUTED, textAlign: 'center' },
 });

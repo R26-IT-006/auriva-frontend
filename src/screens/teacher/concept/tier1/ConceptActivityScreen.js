@@ -24,6 +24,7 @@ import NameChoiceRound  from '../../../../components/concept/NameChoiceRound';
 import DragDropRound    from '../../../../components/concept/DragDropRound';
 import ResultGifFeedback from '../../../../components/feedback/ResultGifFeedback';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 
 const FEEDBACK_MS = 1200;
@@ -347,31 +348,31 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
   roundBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(7),
+    borderRadius: rs(20),
     borderWidth: 1.5,
   },
   roundText: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
   },
 
   roundDots: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
+    gap: rs(8),
+    marginTop: rs(4),
   },
   roundDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: rs(10),
+    height: rs(10),
+    borderRadius: rs(5),
   },
 
   body: {
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 40,
+    paddingBottom: rs(40),
   },
 
   // ── Intro overlay ──────────────────────────────────────────────────────────
@@ -388,51 +389,51 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
+    padding: rs(32),
   },
   introCard: {
     width: '100%',
-    maxWidth: 420,
-    borderRadius: 28,
+    maxWidth: rs(420),
+    borderRadius: rs(28),
     borderWidth: 3,
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 28,
-    gap: 10,
+    paddingVertical: rs(32),
+    paddingHorizontal: rs(28),
+    gap: rs(10),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: rs(10) },
     shadowOpacity: 0.2,
     shadowRadius: 24,
     elevation: 10,
   },
   introIconCircle: {
-    width: 60, height: 60,
-    borderRadius: 30,
+    width: rs(60), height: rs(60),
+    borderRadius: rs(30),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
   introTitle: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
   },
   introSub: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.7,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: rs(8),
   },
   introBtn: {
-    paddingHorizontal: 44,
-    paddingVertical: 14,
-    borderRadius: 30,
+    paddingHorizontal: rs(44),
+    paddingVertical: rs(14),
+    borderRadius: rs(30),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
   },
   introBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 

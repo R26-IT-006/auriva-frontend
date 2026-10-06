@@ -21,6 +21,7 @@ import ConceptSummaryModal from '../../../components/concept/ConceptSummaryModal
 import ConceptFlowModal from '../../../components/concept/ConceptFlowModal';
 import HeaderPillButton from '../../../components/common/HeaderPillButton';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import { rs, rf } from '../../../utils/responsive';
 
 // Derived from the catalogue rather than listed here, so the grid can never offer a
 // category that has no concepts behind it.
@@ -217,20 +218,20 @@ const styles = StyleSheet.create({
   // ── Decorative background shapes ──────────────────────────────────────────
   blob: {
     position: 'absolute',
-    borderRadius: 999,
+    borderRadius: rs(999),
     opacity: 0.08,
   },
   blobTopRight: {
-    width: 220,
-    height: 220,
-    top: -60,
-    right: -60,
+    width: rs(220),
+    height: rs(220),
+    top: rs(-60),
+    right: rs(-60),
   },
   blobBottomLeft: {
-    width: 260,
-    height: 260,
-    bottom: -80,
-    left: -80,
+    width: rs(260),
+    height: rs(260),
+    bottom: rs(-80),
+    left: rs(-80),
   },
 
   topBar: {
@@ -241,8 +242,8 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -258,33 +259,33 @@ const styles = StyleSheet.create({
   },
   topBtnGroup: {
     justifyContent: 'flex-end',
-    gap: 10,
+    gap: rs(10),
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 70,
+    gap: rs(10),
+    marginTop: rs(70),
   },
   titleIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 5,
     elevation: 3,
   },
   title: {
-    fontSize: 34,
+    fontSize: rf(34),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
@@ -297,14 +298,14 @@ const styles = StyleSheet.create({
     paddingBottom: Layout.spacing.md,
   },
   card: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     borderWidth: 2,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    padding: rs(12),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
@@ -314,13 +315,13 @@ const styles = StyleSheet.create({
     height: '58%',
     // Drops the label further below the artwork — the content block is centred,
     // so the gap opens downward as much as upward.
-    marginBottom: 16,
+    marginBottom: rs(16),
   },
   cardLabel: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    lineHeight: 21,
+    lineHeight: rf(21),
     color: '#1A1A1A',
   },
 
@@ -335,20 +336,20 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingBottom: 10,
+    paddingBottom: rs(10),
     backgroundColor: 'rgba(240,240,240,0.45)',
   },
   comingSoonPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: rs(4),
     backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    borderRadius: rs(10),
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(3),
   },
   comingSoonText: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: '#8A8A8A',
   },

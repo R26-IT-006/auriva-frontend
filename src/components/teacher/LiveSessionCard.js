@@ -25,6 +25,7 @@ import { Layout } from '../../constants/layout';
 import { fetchLiveSessionSnapshot } from '../../api/liveSession';
 import { describeLiveSession } from '../../utils/liveSessionSnapshot';
 import { LIVE_SESSION_POLL_MS } from '../../constants/liveSessionPolicy';
+import { rs, rf } from '../../utils/responsive';
 
 const CONNECTION_DOT = Object.freeze({
   live:       Colors.status.success,
@@ -156,39 +157,39 @@ const styles = StyleSheet.create({
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: rs(8),
   },
   loadingText: {
-    fontSize: 13,
+    fontSize: rf(13),
     color: Colors.text.secondary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: rs(10),
   },
   iconWrap: {
-    width: 26, height: 26, borderRadius: 13,
+    width: rs(26), height: rs(26), borderRadius: rs(13),
     backgroundColor: Colors.surfaceAlt,
     alignItems: 'center', justifyContent: 'center',
-    marginRight: 8,
+    marginRight: rs(8),
   },
   title: {
     flex: 1,
-    fontSize: 14,
+    fontSize: rf(14),
     fontWeight: '700',
     color: Colors.text.primary,
   },
   connectionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: rs(5),
   },
   dot: {
-    width: 7, height: 7, borderRadius: 3.5,
+    width: rs(7), height: rs(7), borderRadius: rs(3.5),
   },
   connectionText: {
-    fontSize: 11.5,
+    fontSize: rf(11.5),
     fontWeight: '600',
     color: Colors.text.secondary,
   },
@@ -196,14 +197,14 @@ const styles = StyleSheet.create({
   // no card padding, no empty vertical space.
   compactRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 9, paddingHorizontal: 4, marginBottom: 8,
+    paddingVertical: rs(9), paddingHorizontal: rs(4), marginBottom: rs(8),
   },
-  compactLeft:  { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  compactRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  compactLabel: { fontSize: 12.5, color: Colors.text.secondary },
-  compactValue: { fontSize: 12.5, fontWeight: '600', color: Colors.text.muted },
+  compactLeft:  { flexDirection: 'row', alignItems: 'center', gap: rs(7) },
+  compactRight: { flexDirection: 'row', alignItems: 'center', gap: rs(6) },
+  compactLabel: { fontSize: rf(12.5), color: Colors.text.secondary },
+  compactValue: { fontSize: rf(12.5), fontWeight: '600', color: Colors.text.muted },
   notActiveText: {
-    fontSize: 13,
+    fontSize: rf(13),
     color: Colors.text.muted,
   },
   statsBlock: {
@@ -212,14 +213,14 @@ const styles = StyleSheet.create({
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 3,
+    paddingVertical: rs(3),
   },
   statLabel: {
-    fontSize: 12.5,
+    fontSize: rf(12.5),
     color: Colors.text.secondary,
   },
   statValue: {
-    fontSize: 12.5,
+    fontSize: rf(12.5),
     fontWeight: '600',
     color: Colors.text.primary,
     maxWidth: '60%',

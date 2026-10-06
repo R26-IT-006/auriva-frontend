@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { useToast } from '../../../context/ToastContext';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import { rs, rf } from '../../../utils/responsive';
 
 // ── Assets ────────────────────────────────────────────────────────────────────
 const AVATAR_VIDEOS = {
@@ -386,11 +387,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: rs(20),
+    paddingVertical: rs(10),
   },
   iconBtn: {
-    width: 50, height: 50, borderRadius: 25,
+    width: rs(50), height: rs(50), borderRadius: rs(25),
     backgroundColor: '#FFFFFF',
     // borderColor is set per button — accent for back, red for sign out.
     borderWidth: 1.5,
@@ -400,17 +401,17 @@ const styles = StyleSheet.create({
   },
   // Sits a little below the two icon buttons it shares the row with, rather than
   // centred against them.
-  greeting: { alignItems: 'center', gap: 5, marginTop: 28 },
+  greeting: { alignItems: 'center', gap: rs(5), marginTop: rs(28) },
   greetingText: {
-    fontSize: 27, fontFamily: 'DMSans_900Black', color: '#1A2E3B',
+    fontSize: rf(27), fontFamily: 'DMSans_900Black', color: '#1A2E3B',
   },
   // ── Hub ───────────────────────────────────────────────────────────────────
-  hubArea: { flex: 1, marginHorizontal: 16, marginBottom: 12 },
+  hubArea: { flex: 1, marginHorizontal: rs(16), marginBottom: rs(12) },
 
   hubPress: { alignItems: 'center', justifyContent: 'center' },
   playBadge: {
     position: 'absolute',
-    width: 34, height: 34, borderRadius: 17,
+    width: rs(34), height: rs(34), borderRadius: rs(17),
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 3, borderColor: '#FFFFFF',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     borderWidth: HUB_BORDER,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.12, shadowRadius: 14, elevation: 6,
   },
 
@@ -442,7 +443,7 @@ const styles = StyleSheet.create({
   cardPress: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#1A2E3B', shadowOffset: { width: 0, height: 6 },
+    shadowColor: '#1A2E3B', shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.13, shadowRadius: 16, elevation: 5,
   },
   card: {
@@ -450,8 +451,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2.5,
     alignItems: 'center', justifyContent: 'center',
-    gap: 9,
-    paddingHorizontal: 12, paddingVertical: 12,
+    gap: rs(9),
+    paddingHorizontal: rs(12), paddingVertical: rs(12),
   },
   iconPlate: {
     alignItems: 'center', justifyContent: 'center',

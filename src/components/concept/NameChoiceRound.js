@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * "What is this called?" — picture on the left, name buttons on the right.
@@ -107,12 +108,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, width: '100%', alignItems: 'center' },
 
   question: {
-    fontSize: 24,
+    fontSize: rf(24),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 24,
+    marginBottom: rs(12),
+    paddingHorizontal: rs(24),
   },
 
   contentRow: {
@@ -128,24 +129,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   labelsContainer: {
-    width: 300,
+    width: rs(300),
     justifyContent: 'center',
-    gap: 16,
+    gap: rs(16),
   },
   labelPill: {
-    paddingHorizontal: 28,
-    paddingVertical: 18,
-    borderRadius: 28,
+    paddingHorizontal: rs(28),
+    paddingVertical: rs(18),
+    borderRadius: rs(28),
     borderWidth: 3,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: rs(5) },
     shadowOpacity: 0.14,
     shadowRadius: 10,
     elevation: 5,
   },
   labelText: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_900Black',
     letterSpacing: 0.2,
   },

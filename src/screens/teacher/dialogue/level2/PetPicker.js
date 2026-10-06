@@ -29,6 +29,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../../../constants/layout';
 import { level2Api } from '../../../../api/level2';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
+import { rs, rf } from '../../../../utils/responsive';
 
 const PETS = [
   { key: 'cat',    emoji: '🐱', label: 'Cat' },
@@ -148,67 +149,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: Layout.spacing.lg,
   },
-  kvWrap: { width: '100%', maxWidth: 780 },
+  kvWrap: { width: '100%', maxWidth: rs(780) },
   sheet: {
     backgroundColor: '#FFF',
-    borderRadius: 28,
+    borderRadius: rs(28),
     maxHeight: '92%',
-    paddingBottom: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
+    paddingBottom: rs(16),
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(10) }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
   },
-  scroll: { paddingHorizontal: 36, paddingTop: 48, paddingBottom: 52, gap: 18 },
+  scroll: { paddingHorizontal: rs(36), paddingTop: rs(48), paddingBottom: rs(52), gap: rs(18) },
 
   header: { alignItems: 'center', marginBottom: Layout.spacing.sm, position: 'relative' },
-  closeBtn: { position: 'absolute', top: 0, right: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  headerEmoji: { fontSize: 40, marginBottom: 4 },
-  title: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', textAlign: 'center' },
+  closeBtn: { position: 'absolute', top: 0, right: 0, width: rs(40), height: rs(40), borderRadius: rs(20), backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  headerEmoji: { fontSize: rf(40), marginBottom: rs(4) },
+  title: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', textAlign: 'center' },
   titleSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', color: '#666', textAlign: 'center', marginTop: 2 },
 
-  label: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', marginTop: Layout.spacing.md },
-  labelSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', color: '#888', marginBottom: 4 },
+  label: { fontSize: rf(16), fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E', marginTop: Layout.spacing.md },
+  labelSinhala: { fontSize: Layout.fontSize.xs, fontWeight: '500', color: '#888', marginBottom: rs(4) },
   required: { color: '#EF4444' },
   optional: { fontWeight: '400', color: '#888' },
 
   // All six pets on one line; each tile takes an equal share of the row.
   petGrid: {
-    flexDirection: 'row', flexWrap: 'nowrap', gap: 8,
-    justifyContent: 'center', marginTop: 4,
+    flexDirection: 'row', flexWrap: 'nowrap', gap: rs(8),
+    justifyContent: 'center', marginTop: rs(4),
   },
   // Raised 3D choice tiles, like the buttons in the other modules.
   petCard: {
-    flex: 1, maxWidth: 116, alignItems: 'center', gap: 6,
-    paddingVertical: 26, paddingHorizontal: 4,
-    borderRadius: 20, borderWidth: 2.5, borderBottomWidth: 5, borderColor: '#E2E8F0',
+    flex: 1, maxWidth: rs(116), alignItems: 'center', gap: rs(6),
+    paddingVertical: rs(26), paddingHorizontal: rs(4),
+    borderRadius: rs(20), borderWidth: 2.5, borderBottomWidth: 5, borderColor: '#E2E8F0',
     backgroundColor: '#FFFFFF', position: 'relative',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
-  petEmoji: { fontSize: 40 },
-  petLabel: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: '#475569' },
+  petEmoji: { fontSize: rf(40) },
+  petLabel: { fontSize: rf(15), fontFamily: 'DMSans_700Bold', color: '#475569' },
   checkBadge: {
-    position: 'absolute', top: 6, right: 6,
-    width: 20, height: 20, borderRadius: 10,
+    position: 'absolute', top: rs(6), right: rs(6),
+    width: rs(20), height: rs(20), borderRadius: rs(10),
     borderWidth: 2, borderColor: '#FFF',
     alignItems: 'center', justifyContent: 'center',
   },
 
   textInput: {
-    borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 16,
-    paddingHorizontal: Layout.spacing.md, paddingVertical: 12,
-    fontSize: 18, fontFamily: 'DMSans_700Bold', color: '#1A1A2E',
+    borderWidth: 2, borderColor: '#E2E8F0', borderRadius: rs(16),
+    paddingHorizontal: Layout.spacing.md, paddingVertical: rs(12),
+    fontSize: rf(18), fontFamily: 'DMSans_700Bold', color: '#1A1A2E',
   },
 
-  errorText: { color: '#EF4444', fontSize: Layout.fontSize.sm, fontWeight: '600', marginTop: 4 },
+  errorText: { color: '#EF4444', fontSize: Layout.fontSize.sm, fontWeight: '600', marginTop: rs(4) },
 
   // Raised 3D button, like the ones used in the other modules.
   saveBtn: {
-    alignSelf: 'center', minWidth: 260,
-    borderRadius: 16,
-    paddingVertical: 16, paddingHorizontal: 40, alignItems: 'center',
+    alignSelf: 'center', minWidth: rs(260),
+    borderRadius: rs(16),
+    paddingVertical: rs(16), paddingHorizontal: rs(40), alignItems: 'center',
     borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)',
     marginTop: Layout.spacing.lg,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(4) }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 6,
   },
   // Faded (not greyed) until ready — same as the other screens' buttons.
   saveBtnDisabled: { opacity: 0.4 },
-  saveBtnText: { fontSize: 17, fontFamily: 'DMSans_800ExtraBold', color: '#FFF' },
+  saveBtnText: { fontSize: rf(17), fontFamily: 'DMSans_800ExtraBold', color: '#FFF' },
 });

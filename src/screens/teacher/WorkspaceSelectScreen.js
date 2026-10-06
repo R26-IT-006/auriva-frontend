@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
 import { useAuthStore } from '../../store/authStore';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { rs, rf } from '../../utils/responsive';
 
 const WORKSPACES = [
   {
@@ -125,14 +126,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    minHeight: 44,          // 44dp is the smallest comfortable tap target
+    gap: rs(6),
+    minHeight: rs(44),          // 44dp is the smallest comfortable tap target
     backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 22,
+    borderRadius: rs(22),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.9)',
     paddingHorizontal: Layout.spacing.md,
-    paddingVertical: 10,
+    paddingVertical: rs(10),
     shadowColor: '#0F6E56',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
@@ -154,15 +155,15 @@ const styles = StyleSheet.create({
   },
   titleWrap: {
     alignItems: 'center',
-    gap: 8,
+    gap: rs(8),
   },
   title: {
-    fontSize: 36,
+    fontSize: rf(36),
     fontFamily: 'DMSans_900Black',
     color: '#1A3028',
     textAlign: 'center',
     letterSpacing: 0,
-    lineHeight: 46,
+    lineHeight: rf(46),
   },
   subtitle: {
     fontSize: Layout.fontSize.md,
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 1,
     borderColor: '#E8EEF0',
     paddingHorizontal: Layout.spacing.xl,
@@ -185,20 +186,20 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   iconBox: {
-    width: 110,
-    height: 110,
-    borderRadius: 26,
+    width: rs(110),
+    height: rs(110),
+    borderRadius: rs(26),
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   iconImage: {
-    width: 62,
-    height: 62,
+    width: rs(62),
+    height: rs(62),
   },
   textWrap: {
     flex: 1,
-    gap: 6,
+    gap: rs(6),
   },
   cardLabel: {
     fontSize: Layout.fontSize.xl,
@@ -210,19 +211,19 @@ const styles = StyleSheet.create({
     color: '#6B8A80',
   },
   chevronCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
     backgroundColor: 'rgba(200,228,220,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   bottomIndicator: {
     position: 'absolute',
-    bottom: 20,
+    bottom: rs(20),
     alignSelf: 'center',
-    width: 60,
-    height: 4,
+    width: rs(60),
+    height: rs(4),
     borderRadius: 2,
     backgroundColor: 'rgba(0,0,0,0.15)',
   },

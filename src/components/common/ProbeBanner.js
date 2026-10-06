@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 // Rule 5 — periodic production probe (TASK-37 backend, TASK-39 frontend).
 // Small, dismissible, non-blocking check-in invitation. Purely presentational:
@@ -43,7 +44,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:                8,
+    gap:                rs(8),
     borderRadius:       Layout.radius.lg,
     paddingVertical:    Layout.spacing.sm,
     paddingHorizontal:  Layout.spacing.md,

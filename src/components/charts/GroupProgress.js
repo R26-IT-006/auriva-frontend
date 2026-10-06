@@ -17,6 +17,7 @@ import { Layout } from '../../constants/layout';
 // actually got.
 export const DEPTH = ['#BFE3CE', '#57B183', '#1B6E45'];
 import { ROUND } from '../../constants/teacherWording';
+import { rs, rf } from '../../utils/responsive';
 
 // A face per group. The icon names the subject rather than the app — a paw for
 // animals, a palette for colours — so a teacher finds the row they want by shape
@@ -177,28 +178,28 @@ function LegendDot({ color, label }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 14 },
+  wrap: { gap: rs(14) },
 
   row:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
   face: {
-    width: 44, height: 44, borderRadius: 22,
+    width: rs(44), height: rs(44), borderRadius: rs(22),
     alignItems: 'center', justifyContent: 'center',
   },
   label: {
     flex: 1,
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
   },
   value: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_600SemiBold',
   },
   // The group's own pastel (set inline) behind the figure.
   valuePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 999,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(5),
+    borderRadius: rs(999),
     marginLeft: Layout.spacing.sm,
   },
 
@@ -210,13 +211,13 @@ const styles = StyleSheet.create({
   trackInset: { paddingLeft: 44 + Layout.spacing.sm },
   track: {
     flexDirection: 'row',
-    height: 7,
-    borderRadius: 4,
+    height: rs(7),
+    borderRadius: rs(4),
     backgroundColor: Colors.surfaceAlt,
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: rs(8),
   },
-  seg: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 4 },
+  seg: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: rs(4) },
   segOver: { borderRightWidth: 2, borderRightColor: Colors.surface },
 
   // Indented past the face, so the concepts read as belonging to the group whose
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
     marginTop: Layout.spacing.sm,
     marginLeft: 44 + Layout.spacing.sm,
     paddingLeft: Layout.spacing.sm,
-    gap: 4,
+    gap: rs(4),
     borderLeftWidth: 3,
     borderLeftColor: Colors.borderLight,
   },
@@ -233,12 +234,12 @@ const styles = StyleSheet.create({
   moreBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
-    borderRadius: 999,
+    paddingVertical: rs(13),
+    borderRadius: rs(999),
     backgroundColor: Colors.surfaceAlt,
   },
   moreText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.secondary,
   },
@@ -247,13 +248,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Layout.spacing.md,
-    rowGap: 6,
+    rowGap: rs(6),
     paddingLeft: 44 + Layout.spacing.sm,
     paddingTop: Layout.spacing.xs,
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot:  { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 12, color: Colors.text.secondary, fontFamily: 'DMSans_600SemiBold' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: rs(6) },
+  legendDot:  { width: rs(10), height: rs(10), borderRadius: rs(5) },
+  legendText: { fontSize: rf(12), color: Colors.text.secondary, fontFamily: 'DMSans_600SemiBold' },
 
-  empty: { fontSize: 12, color: Colors.text.muted },
+  empty: { fontSize: rf(12), color: Colors.text.muted },
 });

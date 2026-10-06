@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 // TEMPORARY: the gate is switched off app-wide. While false, opening the gate
 // immediately counts as a correct code — every caller's onSuccess runs as if
@@ -175,15 +176,15 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 32,
-    paddingBottom: 24,
-    paddingHorizontal: 28,
+    borderRadius: rs(32),
+    paddingBottom: rs(24),
+    paddingHorizontal: rs(28),
     // Clears the close button so it never crowds the centred prompt.
-    paddingTop: 52,
+    paddingTop: rs(52),
     width: '100%',
-    maxWidth: 400,
+    maxWidth: rs(400),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: rs(12) },
     shadowOpacity: 0.18,
     shadowRadius: 28,
     elevation: 16,
@@ -191,11 +192,11 @@ const styles = StyleSheet.create({
 
   closeBtn: {
     position: 'absolute',
-    top: 14,
-    right: 14,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    top: rs(14),
+    right: rs(14),
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
     backgroundColor: '#F2F5F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -205,29 +206,29 @@ const styles = StyleSheet.create({
   prompt: {
     fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: rf(13),
     color: '#999',
-    marginBottom: 6,
+    marginBottom: rs(6),
   },
   codeWords: {
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
-    fontSize: 18,
+    fontSize: rf(18),
     color: ACCENT,
     letterSpacing: 0.3,
-    marginBottom: 24,
+    marginBottom: rs(24),
   },
 
   boxes: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
-    marginBottom: 28,
+    gap: rs(12),
+    marginBottom: rs(28),
   },
   box: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
+    width: rs(56),
+    height: rs(56),
+    borderRadius: rs(14),
     borderWidth: 2,
     borderColor: '#E0E0E0',
     borderStyle: 'dashed',
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
   },
   boxText: {
     fontFamily: 'DMSans_800ExtraBold',
-    fontSize: 22,
+    fontSize: rf(22),
     color: '#222',
   },
 
@@ -258,14 +259,14 @@ const styles = StyleSheet.create({
   },
   padCell: {
     width: '33.33%',
-    paddingVertical: 8,
+    paddingVertical: rs(8),
     alignItems: 'center',
     justifyContent: 'center',
   },
   digitBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: rs(64),
+    height: rs(64),
+    borderRadius: rs(32),
     backgroundColor: '#F4F4F4',
     alignItems: 'center',
     justifyContent: 'center',
@@ -277,13 +278,13 @@ const styles = StyleSheet.create({
   },
   padDigit: {
     fontFamily: 'DMSans_700Bold',
-    fontSize: 26,
+    fontSize: rf(26),
     color: '#222',
   },
   delBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: rs(64),
+    height: rs(64),
+    borderRadius: rs(32),
     backgroundColor: '#FFF0F3',
     alignItems: 'center',
     justifyContent: 'center',

@@ -7,6 +7,7 @@ import { Layout } from '../../constants/layout';
 import { getConceptItemsForCategory, categoryHasVideo } from '../../data/conceptData';
 import { conceptApi } from '../../api/concept';
 import { ROUND } from '../../constants/teacherWording';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * One category's concepts, each with where the child has reached.
@@ -182,37 +183,37 @@ const styles = StyleSheet.create({
     // The accent rides the top edge, so the state of a card is readable down a
     // column of them without reading any of the pills.
     borderTopWidth: 3,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingVertical: rs(8),
+    paddingHorizontal: rs(6),
     alignItems: 'center',
-    gap: 5,
+    gap: rs(5),
   },
-  priorityBadge: { position: 'absolute', top: 4, right: 5 },
+  priorityBadge: { position: 'absolute', top: rs(4), right: rs(5) },
 
   cardImageBox: {
-    width: 40, height: 40,
+    width: rs(40), height: rs(40),
     alignItems: 'center', justifyContent: 'center',
   },
   cardImage: { width: '100%', height: '100%' },
 
   cardName: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: Colors.text.primary,
     textAlign: 'center',
   },
 
-  pillRow: { flexDirection: 'row', gap: 3, flexWrap: 'wrap', justifyContent: 'center' },
+  pillRow: { flexDirection: 'row', gap: rs(3), flexWrap: 'wrap', justifyContent: 'center' },
   tierPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    paddingHorizontal: 4,
+    paddingHorizontal: rs(4),
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: rs(6),
     borderWidth: 1,
   },
-  tierPillLabel: { fontSize: 8, fontFamily: 'DMSans_700Bold' },
+  tierPillLabel: { fontSize: rf(8), fontFamily: 'DMSans_700Bold' },
 
   legend: {
     flexDirection: 'row',
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     gap: Layout.spacing.md,
     marginTop: Layout.spacing.md,
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendPill: { paddingHorizontal: 4, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
-  legendText: { fontSize: 10, color: Colors.text.secondary },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: rs(5) },
+  legendPill: { paddingHorizontal: rs(4), paddingVertical: 2, borderRadius: rs(6), borderWidth: 1 },
+  legendText: { fontSize: rf(10), color: Colors.text.secondary },
 });

@@ -17,7 +17,14 @@
 
 import { Dimensions } from 'react-native';
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+// Landscape sides, whatever the orientation at launch. These canvases are only
+// ever shown on landscape-locked screens, but this module is evaluated once when
+// the app starts — possibly in portrait, at sign-in — which used to give the
+// canvas portrait width and height. On a tablet launched in landscape these are
+// exactly the window's width and height, so the geometry there is unchanged.
+const _win = Dimensions.get('window');
+const SCREEN_W = Math.max(_win.width, _win.height);
+const SCREEN_H = Math.min(_win.width, _win.height);
 
 export const WORD_SCREEN_W = SCREEN_W;
 export const WORD_SCREEN_H = SCREEN_H;

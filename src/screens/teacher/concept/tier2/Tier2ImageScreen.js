@@ -17,6 +17,7 @@ import { conceptApi } from '../../../../api/concept';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { Layout } from '../../../../constants/layout';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 function LetterBubble({ char, index, color }) {
   const scale = useRef(new Animated.Value(0)).current;
@@ -250,45 +251,45 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   labelSi: {
-    fontSize: 25,
+    fontSize: rf(25),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.7,
     textAlign: 'center',
-    marginBottom: 22,
+    marginBottom: rs(22),
   },
   letterRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
+    gap: rs(10),
+    marginTop: rs(8),
     // Was 30 — the Sinhala label now carries the gap down to the image.
-    marginBottom: 10,
+    marginBottom: rs(10),
     flexWrap: 'wrap',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: rs(16),
   },
   letterBubble: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: rs(72),
+    height: rs(72),
+    borderRadius: rs(36),
     borderWidth: 3,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 4,
   },
   letterText: {
-    fontSize: 32,
+    fontSize: rf(32),
     fontFamily: 'DMSans_900Black',
   },
 
@@ -302,43 +303,43 @@ const styles = StyleSheet.create({
   },
   ripple: {
     position: 'absolute',
-    width: 100, height: 100,
-    borderRadius: 50,
+    width: rs(100), height: rs(100),
+    borderRadius: rs(50),
     borderWidth: 4,
   },
 
   tapDots: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 24,
+    gap: rs(10),
+    marginTop: rs(24),
   },
   tapDot: {
-    width: 10, height: 10,
-    borderRadius: 5,
+    width: rs(10), height: rs(10),
+    borderRadius: rs(5),
   },
 
   fwdBtnWrap: {
     position: 'absolute',
-    bottom: 36,
+    bottom: rs(36),
     alignSelf: 'center',
   },
   fwdBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
   },
   fwdBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

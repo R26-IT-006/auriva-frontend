@@ -5,6 +5,7 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { ROUND } from '../../constants/teacherWording';
 import { DEPTH, GROUP_FACE, FALLBACK_FACE } from './GroupProgress';
+import { rs, rf } from '../../utils/responsive';
 
 const INITIAL_GROUPS = 6;
 
@@ -180,43 +181,43 @@ const styles = StyleSheet.create({
   card: {
     flexGrow: 1,
     flexBasis: '31%',
-    gap: 10,
-    padding: 12,
-    borderRadius: 16,
+    gap: rs(10),
+    padding: rs(12),
+    borderRadius: rs(16),
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
 
-  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: rs(10) },
   face: {
-    width: 36, height: 36, borderRadius: 18,
+    width: rs(36), height: rs(36), borderRadius: rs(18),
     alignItems: 'center', justifyContent: 'center',
   },
   label: {
     flex: 1,
-    minHeight: 34,
-    fontSize: 13,
-    lineHeight: 17,
+    minHeight: rs(34),
+    fontSize: rf(13),
+    lineHeight: rf(17),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
   },
 
   cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  count:    { fontSize: 12 },
+  count:    { fontSize: rf(12) },
   countNum: { fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
   countOf:  { fontFamily: 'DMSans_400Regular', color: Colors.text.secondary },
-  pctPill:  { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  pctText:  { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+  pctPill:  { borderRadius: rs(10), paddingHorizontal: rs(8), paddingVertical: 2 },
+  pctText:  { fontSize: rf(11), fontFamily: 'DMSans_700Bold' },
 
   track: {
     flexDirection: 'row',
-    height: 6,
-    borderRadius: 3,
+    height: rs(6),
+    borderRadius: rs(3),
     backgroundColor: Colors.surfaceAlt,
     overflow: 'hidden',
   },
-  seg:     { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3 },
+  seg:     { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: rs(3) },
   segOver: { borderRightWidth: 2, borderRightColor: Colors.surface },
 
   moreBtn: {
@@ -234,10 +235,10 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
 
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.md, rowGap: 6 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot:  { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 11, color: Colors.text.secondary, fontFamily: 'DMSans_600SemiBold' },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.md, rowGap: rs(6) },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: rs(6) },
+  legendDot:  { width: rs(10), height: rs(10), borderRadius: rs(5) },
+  legendText: { fontSize: rf(11), color: Colors.text.secondary, fontFamily: 'DMSans_600SemiBold' },
 
-  empty: { fontSize: 12, color: Colors.text.muted },
+  empty: { fontSize: rf(12), color: Colors.text.muted },
 });

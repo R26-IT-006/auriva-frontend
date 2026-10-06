@@ -18,6 +18,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { rs, rf } from '../../utils/responsive';
 
 // Severity → bar colour (calm ASD-friendly palette, no flashing)
 const SEVERITY_COLORS = {
@@ -134,31 +135,31 @@ export default function ContributionChart({ contributions, accentColor }) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 10,
+    gap: rs(10),
   },
 
   legend: {
     flexDirection: 'row',
-    gap: 14,
-    marginBottom: 4,
+    gap: rs(14),
+    marginBottom: rs(4),
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendDot:  { width: 8, height: 8, borderRadius: 4 },
-  legendLabel:{ fontSize: 10, color: '#888', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: rs(4) },
+  legendDot:  { width: rs(8), height: rs(8), borderRadius: rs(4) },
+  legendLabel:{ fontSize: rf(10), color: '#888', fontWeight: '600', fontFamily: 'Nunito_600SemiBold' },
 
   barRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: rs(8),
     flexWrap: 'wrap',
   },
   labelWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: 130,
+    width: rs(130),
   },
   featureLabel: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: '#333',
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
@@ -166,52 +167,52 @@ const styles = StyleSheet.create({
   },
   track: {
     flex: 1,
-    height: 10,
-    borderRadius: 5,
+    height: rs(10),
+    borderRadius: rs(5),
     backgroundColor: '#EEEEEE',
     overflow: 'hidden',
-    minWidth: 60,
+    minWidth: rs(60),
   },
   fill: {
-    height: 10,
-    borderRadius: 5,
+    height: rs(10),
+    borderRadius: rs(5),
   },
   pctText: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontWeight: '800',
     fontFamily: 'Nunito_800ExtraBold',
-    minWidth: 34,
+    minWidth: rs(34),
     textAlign: 'right',
   },
   severityDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: rs(7),
+    height: rs(7),
+    borderRadius: rs(4),
   },
 
   hintBubble: {
     width: '100%',
     backgroundColor: '#F9F9F9',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: rs(8),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(6),
     borderLeftWidth: 3,
     borderLeftColor: '#BDBDBD',
     marginTop: 2,
   },
   hintText: {
-    fontSize: 11,
+    fontSize: rf(11),
     color: '#666',
-    lineHeight: 16,
+    lineHeight: rf(16),
   },
 
-  empty: { paddingVertical: 8 },
-  emptyText: { fontSize: 12, color: '#BDBDBD', textAlign: 'center' },
+  empty: { paddingVertical: rs(8) },
+  emptyText: { fontSize: rf(12), color: '#BDBDBD', textAlign: 'center' },
 
   footNote: {
-    fontSize: 10,
+    fontSize: rf(10),
     color: '#BDBDBD',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: rs(4),
   },
 });

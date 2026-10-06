@@ -22,6 +22,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { Layout } from '../../../../constants/layout';
 import ResultGifFeedback from '../../../../components/feedback/ResultGifFeedback';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 
 function OptionCard({ option, cardW, cardH, imgSize, locked, isCorrect, isWrong, cardSurface, cardOutline, onPress }) {
@@ -385,27 +386,27 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   questionBlock: {
     alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 6,
+    marginTop: rs(6),
+    marginBottom: rs(6),
     paddingHorizontal: Layout.spacing.lg,
-    gap: 4,
+    gap: rs(4),
   },
   questionEn: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   questionSi: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -413,14 +414,14 @@ const styles = StyleSheet.create({
 
   attemptRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-    marginBottom: 20,
+    gap: rs(10),
+    marginTop: rs(10),
+    marginBottom: rs(20),
   },
   attemptDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: rs(12),
+    height: rs(12),
+    borderRadius: rs(6),
   },
 
   optionsContainer: {
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 24,
+    paddingTop: rs(24),
   },
   optionsRow: {
     flexDirection: 'row',
@@ -436,11 +437,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   optionCard: {
-    borderRadius: 36,
+    borderRadius: rs(36),
     borderWidth: 3.5,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 5,
@@ -460,7 +461,7 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: rs(8),
   },
   optionImage: {
     width: '100%',

@@ -6,6 +6,7 @@ import { Layout } from '../../constants/layout';
 import { getConceptItem } from '../../data/conceptData';
 import { formatConceptLabel } from './ConfusionList';
 import { duration } from '../../constants/teacherWording';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * What happened on each day, grouped by category within the day.
@@ -261,7 +262,7 @@ function tileParts(iso) {
 }
 
 const styles = StyleSheet.create({
-  list: { padding: 12, gap: Layout.spacing.sm },
+  list: { padding: rs(12), gap: Layout.spacing.sm },
 
   // ── Date picker ───────────────────────────────────────────────────────────
   // The strip bleeds through the list's own padding and puts it back inside the
@@ -274,36 +275,36 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tile: {
-    width: 68,
+    width: rs(68),
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingVertical: rs(12),
+    borderRadius: rs(20),
     backgroundColor: Colors.surface,
     borderWidth: 1.5,
     borderColor: Colors.border,
   },
   // The chosen day lifts a little, in the accent colour (set inline).
   tileActive: {
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.28,
     shadowRadius: 6,
     elevation: 4,
   },
   tileTop: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   tileNum: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
-    lineHeight: 28,
+    lineHeight: rf(28),
   },
   tileMonth: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
   },
@@ -311,10 +312,10 @@ const styles = StyleSheet.create({
   // Always laid out, coloured in only when the day has drawings — reserving the
   // space keeps every tile the same height whether or not it has any.
   tileDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 5,
+    width: rs(6),
+    height: rs(6),
+    borderRadius: rs(3),
+    marginTop: rs(5),
     backgroundColor: 'transparent',
   },
   tileDotOn:       { backgroundColor: Colors.text.muted },
@@ -325,11 +326,11 @@ const styles = StyleSheet.create({
   // page makes — it read as a panel that had been dropped in from somewhere else.
   // The rule above it is enough to separate it from the date strip.
   card: {
-    paddingTop: 12,
+    paddingTop: rs(12),
     marginTop: 2,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
-    gap: 12,
+    gap: rs(12),
   },
   cardHead: {
     flexDirection: 'row',
@@ -337,39 +338,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Layout.spacing.sm,
   },
-  date: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary, letterSpacing: -0.2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  date: { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary, letterSpacing: -0.2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: rs(8) },
   metaPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: rs(5),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(6),
     borderRadius: Layout.radius.full,
     backgroundColor: Colors.surfaceAlt,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: Colors.text.secondary,
     fontFamily: 'DMSans_600SemiBold',
   },
 
-  catBlock: { gap: 6 },
+  catBlock: { gap: rs(6) },
   catLabel: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  chipRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: rs(8) },
 
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 7,
-    paddingHorizontal: 13,
+    gap: rs(6),
+    paddingVertical: rs(7),
+    paddingHorizontal: rs(13),
     borderRadius: Layout.radius.full,
     borderWidth: 1.5,
   },
@@ -380,58 +381,58 @@ const styles = StyleSheet.create({
   chip_tricky:  { backgroundColor: '#FDF3E0',         borderColor: '#F0DBB0' },
   chip_neutral: { backgroundColor: Colors.surfaceAlt, borderColor: Colors.borderLight },
 
-  chipText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', maxWidth: 160 },
+  chipText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', maxWidth: rs(160) },
   chipText_good:    { color: Colors.text.primary },
   chipText_tricky:  { color: '#8A5D06' },
   chipText_neutral: { color: Colors.text.muted },
 
   // The whole of the green: a 15px badge instead of a chip-wide wash.
   doneBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: rs(18),
+    height: rs(18),
+    borderRadius: rs(9),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#3FAE6F',
   },
 
   artBlock: {
-    gap: 7,
+    gap: rs(7),
     marginTop: 2,
     paddingTop: Layout.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: Colors.divider,
   },
   artLabel: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  artRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  artThumbWrap: { borderRadius: 20, ...Layout.shadow.sm },
+  artRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: rs(10) },
+  artThumbWrap: { borderRadius: rs(20), ...Layout.shadow.sm },
   artThumb: {
     // Up from 58: at that size a coloured-in drawing was a smudge, and the whole
     // point of showing it is that a teacher can tell what they are looking at.
-    width: 92, height: 92,
-    borderRadius: 20,
+    width: rs(92), height: rs(92),
+    borderRadius: rs(20),
     backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
   artExpand: {
     position: 'absolute',
-    right: 4,
-    bottom: 4,
-    width: 19,
-    height: 19,
-    borderRadius: 10,
+    right: rs(4),
+    bottom: rs(4),
+    width: rs(19),
+    height: rs(19),
+    borderRadius: rs(10),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(16,20,34,0.55)',
   },
 
-  emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: Layout.spacing.md },
-  empty:     { fontSize: 12, color: Colors.text.secondary },
+  emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: rs(8), padding: Layout.spacing.md },
+  empty:     { fontSize: rf(12), color: Colors.text.secondary },
 });

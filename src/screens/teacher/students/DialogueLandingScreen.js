@@ -20,6 +20,7 @@ import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 import FlowOverviewModal from '../../../components/common/FlowOverviewModal';
 import HeaderPillButton from '../../../components/common/HeaderPillButton';
 import { buildDialogueFlow } from '../../../data/dialogueFlow';
+import { rs, rf } from '../../../utils/responsive';
 
 // "How it works" stages — static, so built once.
 const DIALOGUE_FLOW = buildDialogueFlow();
@@ -186,20 +187,20 @@ const styles = StyleSheet.create({
   // ── Decorative background shapes ──────────────────────────────────────────
   blob: {
     position: 'absolute',
-    borderRadius: 999,
+    borderRadius: rs(999),
     opacity: 0.08,
   },
   blobTopRight: {
-    width: 220,
-    height: 220,
-    top: -60,
-    right: -60,
+    width: rs(220),
+    height: rs(220),
+    top: rs(-60),
+    right: rs(-60),
   },
   blobBottomLeft: {
-    width: 260,
-    height: 260,
-    bottom: -80,
-    left: -80,
+    width: rs(260),
+    height: rs(260),
+    bottom: rs(-80),
+    left: rs(-80),
   },
 
   topBar: {
@@ -217,12 +218,12 @@ const styles = StyleSheet.create({
   },
   topBtnGroup: {
     justifyContent: 'flex-end',
-    gap: 10,
+    gap: rs(10),
   },
   iconBtn: {
-    width:  40,
-    height: 40,
-    borderRadius: 20,
+    width:  rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -238,34 +239,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Layout.spacing.lg,
     // Extra bottom padding lifts the vertically-centred cards a little higher.
-    paddingBottom: 120,
+    paddingBottom: rs(120),
   },
 
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 70,
+    gap: rs(10),
+    marginTop: rs(70),
   },
   titleIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 5,
     elevation: 3,
   },
   title: {
-    fontSize: 34,
+    fontSize: rf(34),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
@@ -278,14 +279,14 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: rs(20),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 4,
@@ -293,20 +294,20 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '62%',
     height: '50%',
-    marginBottom: 16,
+    marginBottom: rs(16),
   },
   cardLabel: {
-    fontSize: 24,
+    fontSize: rf(24),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
     color: '#1A1A1A',
   },
   cardSubtitle: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center',
-    lineHeight: 19,
+    lineHeight: rf(19),
     color: '#4A4A4A',
-    marginTop: 4,
+    marginTop: rs(4),
   },
 });

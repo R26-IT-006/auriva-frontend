@@ -30,6 +30,7 @@ import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 import FlowOverviewModal from "../../../components/common/FlowOverviewModal";
 import HeaderPillButton from "../../../components/common/HeaderPillButton";
 import { buildPronunciationFlow } from "../../../data/pronunciationFlow";
+import { rs, rf } from '../../../utils/responsive';
 
 // "How it works" stages — static, so built once.
 const PRONUNCIATION_FLOW = buildPronunciationFlow();
@@ -37,7 +38,7 @@ const PRONUNCIATION_FLOW = buildPronunciationFlow();
 // Grid spacing, as ConceptCategoriesScreen: wider between columns than rows.
 const H_PAD = Layout.spacing.xl;
 // Space between the two mode boxes, as DialogueLandingScreen's GAP.
-const MODE_GAP = 48;
+const MODE_GAP = rs(48);
 
 // The category dialog shows the same pictures as Concept Learning's category
 // cards (src/data/conceptData.js); Daily Actions has no Concept counterpart,
@@ -50,7 +51,7 @@ const DIALOG_CATEGORY_IMAGES = {
   "daily-actions": require("../../../../assets/pronunciation-mode/training.png"),
 };
 // Gap between the category cards in the dialog.
-const ROW_GAP = 22;
+const ROW_GAP = rs(22);
 
 // Shown left to right in this order: Alphabet first, then Words.
 const PRONUNCIATION_MODE_OPTIONS = [
@@ -536,20 +537,20 @@ const styles = StyleSheet.create({
   // ── Decorative background shapes (ConceptCategoriesScreen) ───────────────
   blob: {
     position: "absolute",
-    borderRadius: 999,
+    borderRadius: rs(999),
     opacity: 0.08,
   },
   blobTopRight: {
-    width: 220,
-    height: 220,
-    top: -60,
-    right: -60,
+    width: rs(220),
+    height: rs(220),
+    top: rs(-60),
+    right: rs(-60),
   },
   blobBottomLeft: {
-    width: 260,
-    height: 260,
-    bottom: -80,
-    left: -80,
+    width: rs(260),
+    height: rs(260),
+    bottom: rs(-80),
+    left: rs(-80),
   },
 
   // ── Header (ConceptCategoriesScreen) ─────────────────────────────────────
@@ -568,12 +569,12 @@ const styles = StyleSheet.create({
   },
   topBtnGroup: {
     justifyContent: "flex-end",
-    gap: 10,
+    gap: rs(10),
   },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -585,28 +586,28 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginTop: 70,
+    gap: rs(10),
+    marginTop: rs(70),
   },
   titleIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 5,
     elevation: 3,
   },
   title: {
-    fontSize: 34,
+    fontSize: rf(34),
     fontFamily: "DMSans_800ExtraBold",
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: "DMSans_600SemiBold",
     opacity: 0.6,
     textAlign: "center",
@@ -616,19 +617,19 @@ const styles = StyleSheet.create({
 
   // Space above the mode boxes, below the step indicator.
   modeRow: {
-    marginTop: 80,
+    marginTop: rs(80),
   },
 
   // ── Mode boxes (DialogueLandingScreen card / cardImage / cardLabel / cardSubtitle)
   modeCard: {
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: rs(20),
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 4,
@@ -636,10 +637,10 @@ const styles = StyleSheet.create({
   modeCardImage: {
     width: "62%",
     height: "50%",
-    marginBottom: 16,
+    marginBottom: rs(16),
   },
   modeCardLabel: {
-    fontSize: 24,
+    fontSize: rf(24),
     fontFamily: "DMSans_800ExtraBold",
     textAlign: "center",
     color: "#1A1A1A",
@@ -652,14 +653,14 @@ const styles = StyleSheet.create({
 
   // ── Cards (ConceptCategoriesScreen CategoryCard) ─────────────────────────
   card: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     borderWidth: 2,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
+    padding: rs(12),
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
@@ -670,19 +671,19 @@ const styles = StyleSheet.create({
   cardImage: {
     width: "70%",
     height: "58%",
-    marginBottom: 16,
+    marginBottom: rs(16),
   },
   cardIconWrap: {
     height: "58%",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: rs(16),
   },
   cardLabel: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: "DMSans_800ExtraBold",
     textAlign: "center",
-    lineHeight: 21,
+    lineHeight: rf(21),
     color: "#1A1A1A",
   },
 
@@ -696,15 +697,15 @@ const styles = StyleSheet.create({
   },
   settingsCard: {
     width: "100%",
-    maxWidth: 560,
+    maxWidth: rs(560),
     borderWidth: 2,
-    borderRadius: 24,
+    borderRadius: rs(24),
     backgroundColor: "#FFFFFF",
     paddingHorizontal: Layout.spacing.lg,
     paddingTop: Layout.spacing.md,
     paddingBottom: Layout.spacing.lg,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: rs(12) },
     shadowOpacity: 0.18,
     shadowRadius: 28,
     elevation: 16,
@@ -712,7 +713,7 @@ const styles = StyleSheet.create({
   settingsHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: rs(8),
     paddingVertical: Layout.spacing.sm,
     marginBottom: Layout.spacing.xs,
   },
@@ -725,13 +726,13 @@ const styles = StyleSheet.create({
   // a row of category cards (width is set inline from the screen size).
   pickerCard: {
     borderWidth: 2,
-    borderRadius: 24,
+    borderRadius: rs(24),
     backgroundColor: "#FFFFFF",
     paddingHorizontal: Layout.spacing.lg,
     paddingTop: Layout.spacing.md,
     paddingBottom: Layout.spacing.xl,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: rs(12) },
     shadowOpacity: 0.18,
     shadowRadius: 28,
     elevation: 16,
@@ -740,9 +741,9 @@ const styles = StyleSheet.create({
     marginTop: Layout.spacing.sm,
   },
   modalClose: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: rs(32),
+    height: rs(32),
+    borderRadius: rs(16),
     backgroundColor: "#F2F5F6",
     alignItems: "center",
     justifyContent: "center",
@@ -750,14 +751,14 @@ const styles = StyleSheet.create({
   modalDone: {
     alignSelf: "center",
     marginTop: Layout.spacing.md,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(12),
+    borderRadius: rs(16),
     borderBottomWidth: 4,
     borderBottomColor: "rgba(0,0,0,0.22)",
   },
   modalDoneText: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: "DMSans_800ExtraBold",
   },
   settingRow: {
@@ -770,9 +771,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   settingIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: rs(38),
+    height: rs(38),
+    borderRadius: rs(19),
     backgroundColor: "#F3F5F8",
     alignItems: "center",
     justifyContent: "center",
@@ -790,6 +791,6 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.xs,
     fontFamily: Layout.fonts.regular,
     color: Colors.text.secondary,
-    lineHeight: 16,
+    lineHeight: rf(16),
   },
 });

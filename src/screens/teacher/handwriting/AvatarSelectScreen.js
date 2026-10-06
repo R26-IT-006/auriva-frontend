@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEMES, getTheme } from '../../../constants/handwritingThemes';
+import { rs, rf } from '../../../utils/responsive';
 
 export default function AvatarSelectScreen({ route, navigation }) {
   const { student } = route.params;
@@ -107,21 +108,21 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
+    paddingHorizontal: rs(24),
+    paddingTop: rs(24),
+    paddingBottom: rs(16),
     alignItems: 'center',
   },
   heading: {
-    fontSize: 30,
+    fontSize: rf(30),
     fontWeight: '800',
     fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: rs(6),
     letterSpacing: 0.3,
   },
   subtitle: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
     textAlign: 'center',
@@ -133,19 +134,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 24,
-    gap: 16,
+    paddingHorizontal: rs(16),
+    paddingTop: rs(8),
+    paddingBottom: rs(24),
+    gap: rs(16),
   },
   card: {
-    width: 140,
-    minHeight: 140,
-    borderRadius: 20,
+    width: rs(140),
+    minHeight: rs(140),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 12,
+    paddingVertical: rs(20),
+    paddingHorizontal: rs(12),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -153,21 +154,21 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   circle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: rs(80),
+    height: rs(80),
+    borderRadius: rs(40),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: rs(12),
   },
   circleInitial: {
-    fontSize: 32,
+    fontSize: rf(32),
     fontWeight: '800',
     fontFamily: 'Nunito_800ExtraBold',
     color: '#FFFFFF',
   },
   avatarName: {
-    fontSize: 16,
+    fontSize: rf(16),
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
@@ -175,23 +176,23 @@ const styles = StyleSheet.create({
 
   // Footer
   footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 8,
+    paddingHorizontal: rs(24),
+    paddingBottom: rs(24),
+    paddingTop: rs(8),
   },
   startButton: {
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: rs(16),
+    paddingVertical: rs(18),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 4,
   },
   startText: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontWeight: '800',
     fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 0.5,

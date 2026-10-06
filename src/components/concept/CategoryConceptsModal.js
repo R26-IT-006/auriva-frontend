@@ -16,11 +16,12 @@ import { Layout } from '../../constants/layout';
 import { conceptApi } from '../../api/concept';
 import { getConceptItem, getConceptItemsForCategory } from '../../data/conceptData';
 import { GROUP_FACE, FALLBACK_FACE } from '../charts/GroupProgress';
+import { rs, rf } from '../../utils/responsive';
 
-const GRID_GAP = 10;
+const GRID_GAP = rs(10);
 // Four across when the dialog is wide enough for ~110pt cards, fewer otherwise.
-const MIN_CARD = 110;
-const SCROLL_PAD = 20;
+const MIN_CARD = rs(110);
+const SCROLL_PAD = rs(20);
 
 /**
  * Everything inside one group, as the pictures the child actually sees.
@@ -286,29 +287,29 @@ const styles = StyleSheet.create({
   // small card, and only a group of twenty-one should reach for the height.
   dialog: {
     width: '100%',
-    maxWidth: 580,
+    maxWidth: rs(580),
     maxHeight: '84%',
     backgroundColor: Colors.surface,
-    borderRadius: 24,
+    borderRadius: rs(24),
     overflow: 'hidden',
   },
 
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    gap: rs(12),
+    paddingHorizontal: rs(20),
+    paddingVertical: rs(16),
   },
   headIcon: {
-    width: 44, height: 44, borderRadius: 22,
+    width: rs(44), height: rs(44), borderRadius: rs(22),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-  title:    { fontSize: 20, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  subtitle: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', marginTop: 1 },
+  title:    { fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  subtitle: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', marginTop: 1 },
   closeBtn: {
-    width: 34, height: 34, borderRadius: 17,
+    width: rs(34), height: rs(34), borderRadius: rs(17),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
@@ -320,56 +321,56 @@ const styles = StyleSheet.create({
   // flexShrink lets the list scroll inside the capped dialog instead of pushing
   // past it.
   scrollView: { flexShrink: 1 },
-  scroll:  { padding: SCROLL_PAD, paddingTop: 16, gap: 22 },
-  section: { gap: 10 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  sectionTitle: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  scroll:  { padding: SCROLL_PAD, paddingTop: rs(16), gap: rs(22) },
+  section: { gap: rs(10) },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: rs(7) },
+  sectionTitle: { fontSize: rf(15), fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
   countPill: {
-    paddingHorizontal: 8, paddingVertical: 2,
+    paddingHorizontal: rs(8), paddingVertical: 2,
     borderRadius: Layout.radius.full,
   },
-  countText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+  countText: { fontSize: rf(11), fontFamily: 'DMSans_700Bold' },
   hintBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 10,
+    gap: rs(6),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(7),
+    borderRadius: rs(10),
     backgroundColor: Colors.surfaceAlt,
   },
   sectionHint: {
     flex: 1,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: rf(11),
+    lineHeight: rf(16),
     color: Colors.text.secondary,
   },
 
   // Top padding leaves room for the "Next" tags that sit on the first row's edge.
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, paddingTop: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, paddingTop: rs(8) },
   card: {
-    padding: 8,
-    paddingBottom: 10,
-    gap: 6,
+    padding: rs(8),
+    paddingBottom: rs(10),
+    gap: rs(6),
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: rs(16),
     borderColor: Colors.borderLight,
     backgroundColor: Colors.surface,
   },
 
   thumbWrap: {
     width: '100%',
-    borderRadius: 12,
-    padding: 6,
+    borderRadius: rs(12),
+    padding: rs(6),
     backgroundColor: '#F6F8F9',
   },
   thumbWrapLearned: { backgroundColor: '#EEF7F1' },
-  thumb: { width: '100%', height: 70 },
+  thumb: { width: '100%', height: rs(70) },
   doneBadge: {
     position: 'absolute',
-    right: 4, top: 4,
-    width: 20, height: 20, borderRadius: 10,
+    right: rs(4), top: rs(4),
+    width: rs(20), height: rs(20), borderRadius: rs(10),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#3FAE6F',
     borderWidth: 2,
@@ -377,14 +378,14 @@ const styles = StyleSheet.create({
   },
 
   cardLabel: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
     textAlign: 'center',
   },
   nextWrap: {
     position: 'absolute',
-    top: -9,
+    top: rs(-9),
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -393,27 +394,27 @@ const styles = StyleSheet.create({
   nextPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
+    gap: rs(3),
+    paddingHorizontal: rs(8),
     paddingVertical: 2,
     borderRadius: Layout.radius.full,
   },
-  nextText: { fontSize: 9, fontFamily: 'DMSans_700Bold', color: '#FFFFFF', letterSpacing: 0.4 },
+  nextText: { fontSize: rf(9), fontFamily: 'DMSans_700Bold', color: '#FFFFFF', letterSpacing: 0.4 },
 
   mixRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 3,
+    gap: rs(3),
     alignSelf: 'stretch',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: rs(6),
+    paddingVertical: rs(3),
+    borderRadius: rs(8),
     backgroundColor: '#FDF4E3',
   },
   mixText: {
     flex: 1,
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: rf(10),
+    lineHeight: rf(13),
     color: '#8A5D06',
     fontFamily: 'DMSans_600SemiBold',
   },

@@ -1,4 +1,5 @@
 import { Dimensions } from 'react-native';
+import { rs, rf } from '../utils/responsive';
 
 const { width, height } = Dimensions.get('window');
 
@@ -6,31 +7,34 @@ export const Layout = {
   window: { width, height },
   isSmallDevice: width < 375,
 
+  // Sized for the 1280 × 800 design tablet and scaled to this device — see
+  // utils/responsive.js. On the design tablet these are exactly the numbers
+  // written here.
   spacing: {
-    xs: 4,
-    sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+    xs: rs(4),
+    sm: rs(8),
+    md: rs(16),
+    lg: rs(24),
+    xl: rs(32),
+    xxl: rs(48),
   },
 
   radius: {
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 24,
+    sm: rs(8),
+    md: rs(12),
+    lg: rs(16),
+    xl: rs(24),
     full: 9999,
   },
 
   fontSize: {
-    xs: 11,
-    sm: 13,
-    md: 15,
-    lg: 17,
-    xl: 20,
-    xxl: 24,
-    xxxl: 30,
+    xs: rf(11),
+    sm: rf(13),
+    md: rf(15),
+    lg: rf(17),
+    xl: rf(20),
+    xxl: rf(24),
+    xxxl: rf(30),
   },
 
   fontWeight: {

@@ -34,6 +34,7 @@ import {
   countOf, seconds, duration, tries, firstNameOf, overviewSentence, difficultyWord, GAME_NAME,
   ACTION,
 } from '../../../constants/teacherWording';
+import { rs, rf } from '../../../utils/responsive';
 
 const TIER_LABEL = ROUND_BY_STATUS_KEY;
 
@@ -1474,15 +1475,15 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: rs(12),
     paddingHorizontal: Layout.spacing.lg,
     // Extra room above, so the heading (and the page under it) sits lower.
-    paddingTop: 28,
-    paddingBottom: 8,
+    paddingTop: rs(28),
+    paddingBottom: rs(8),
   },
   topTitle: {
     flex: 1,
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
     letterSpacing: -0.3,
@@ -1496,7 +1497,7 @@ const styles = StyleSheet.create({
   // More air above a heading than below it, so each one reads as opening the block
   // under it rather than floating between two. Headings sit on the page backdrop
   // rather than inside a card, so they need the separation to hold their own.
-  section: { marginTop: 20 },
+  section: { marginTop: rs(20) },
 
   // The paired row. Main is the wider of the two — it holds a chart, which needs
   // the room; the side column holds short labelled rows that survive being narrow.
@@ -1511,7 +1512,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Layout.spacing.lg,
     alignItems: 'stretch',
-    marginTop: 20,
+    marginTop: rs(20),
   },
   // How-they-work takes the larger share now. It carries a chart, a paragraph and
   // four figures; the list beside it is two cards that were never using the 61% it
@@ -1531,25 +1532,25 @@ const styles = StyleSheet.create({
     marginBottom: Layout.spacing.sm,
   },
   sectionIcon: {
-    width: 34, height: 34, borderRadius: 11,
+    width: rs(34), height: rs(34), borderRadius: rs(11),
     alignItems: 'center', justifyContent: 'center',
   },
   sectionIconSolid: {
-    width: 40, height: 40, borderRadius: 20,
+    width: rs(40), height: rs(40), borderRadius: rs(20),
     alignItems: 'center', justifyContent: 'center',
   },
   // Larger title, for the sections that carry the solid icon.
-  sectionTitleLg: { fontSize: 18 },
+  sectionTitleLg: { fontSize: rf(18) },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_900Black',
     color: Colors.text.primary,
     letterSpacing: -0.4,
   },
-  sectionSub:   { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
+  sectionSub:   { fontSize: rf(12), color: Colors.text.secondary, marginTop: 2 },
   // Darker than the subtitle: when a section is closed this line IS the content,
   // so it should not read as secondary to a heading nobody can act on.
-  sectionSummary: { fontSize: 12, color: Colors.text.secondary, marginTop: 2, fontFamily: 'DMSans_600SemiBold' },
+  sectionSummary: { fontSize: rf(12), color: Colors.text.secondary, marginTop: 2, fontFamily: 'DMSans_600SemiBold' },
   sectionChevron: { marginLeft: 2 },
 
   workRow: {
@@ -1567,12 +1568,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.borderLight,
     marginVertical: Layout.spacing.md,
   },
-  viewAll: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: '#8FA9BC' },
+  viewAll: { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', color: '#8FA9BC' },
   viewAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: rs(6),
     paddingVertical: Layout.spacing.md,
     marginHorizontal: Layout.spacing.md,
     marginBottom: Layout.spacing.md,
@@ -1589,7 +1590,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '100%',
-    maxWidth: 680,
+    maxWidth: rs(680),
     // Capped so the sheet never grows past the screen on a long list — the body
     // scrolls inside it instead of the whole card running off the bottom.
     maxHeight: '85%',
@@ -1606,8 +1607,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
-  modalTitle: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  modalSub:   { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
+  modalTitle: { fontSize: rf(18), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  modalSub:   { fontSize: rf(12), color: Colors.text.secondary, marginTop: 2 },
   modalBody:  { padding: Layout.spacing.lg, gap: Layout.spacing.md },
 
   // ── "What to work on" pop-up ────────────────────────────────────────────────
@@ -1615,13 +1616,13 @@ const styles = StyleSheet.create({
   // icon in the header and numbered cards. The generic modal styles above stay as
   // they are — the game-details pop-up still uses them.
   insightsModalCard: {
-    maxWidth: 620,
+    maxWidth: rs(620),
     maxHeight: '80%',
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
     borderColor: '#CDEBD8',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 8,
@@ -1629,39 +1630,39 @@ const styles = StyleSheet.create({
   insightsModalHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 10,
+    gap: rs(12),
+    paddingHorizontal: rs(20),
+    paddingTop: rs(18),
+    paddingBottom: rs(10),
   },
-  insightsModalTitle: { fontSize: 18, fontFamily: 'DMSans_900Black', color: Colors.text.primary, letterSpacing: -0.4 },
+  insightsModalTitle: { fontSize: rf(18), fontFamily: 'DMSans_900Black', color: Colors.text.primary, letterSpacing: -0.4 },
   insightsModalClose: {
-    width: 40, height: 40, borderRadius: 20,
+    width: rs(40), height: rs(40), borderRadius: rs(20),
     backgroundColor: '#E4F4EC',
     alignItems: 'center', justifyContent: 'center',
   },
   // flexShrink lets the list fit inside the card's maxHeight and scroll.
   insightsModalScroll: { flexShrink: 1 },
-  insightsModalBody: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 20, gap: 10 },
+  insightsModalBody: { paddingHorizontal: rs(20), paddingTop: rs(4), paddingBottom: rs(20), gap: rs(10) },
   workRowLarge: {
-    padding: 12,
-    borderRadius: 18,
+    padding: rs(12),
+    borderRadius: rs(18),
     borderWidth: 1.5,
     borderColor: '#CDEBD8',
-    gap: 12,
+    gap: rs(12),
   },
   rankBadgeInline: {
-    width: 26, height: 26, borderRadius: 13,
+    width: rs(26), height: rs(26), borderRadius: rs(13),
     backgroundColor: BRAND,
     alignItems: 'center', justifyContent: 'center',
   },
-  rankBadgeInlineText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
-  strugglingNameLarge: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  strugglingMetaLarge: { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
+  rankBadgeInlineText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
+  strugglingNameLarge: { fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  strugglingMetaLarge: { fontSize: rf(12), color: Colors.text.secondary, marginTop: 2 },
 
   // Narrower than the insights sheet: this holds one game's worth of pictures,
   // and at 680 they spread into a thin band across the top of an empty box.
-  gameModalCard: { maxWidth: 520 },
+  gameModalCard: { maxWidth: rs(520) },
 
   gameResult: {
     alignItems: 'center',
@@ -1669,8 +1670,8 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surfaceAlt,
   },
-  gameResultValue: { fontSize: 24, fontFamily: 'DMSans_600SemiBold' },
-  gameResultLabel: { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
+  gameResultValue: { fontSize: rf(24), fontFamily: 'DMSans_600SemiBold' },
+  gameResultLabel: { fontSize: rf(12), color: Colors.text.secondary, marginTop: 2 },
 
   gameConcepts: {
     flexDirection: 'row',
@@ -1680,7 +1681,7 @@ const styles = StyleSheet.create({
   },
 
   padded:  { padding: Layout.spacing.md },
-  muted:   { fontSize: 12, color: Colors.text.muted },
+  muted:   { fontSize: rf(12), color: Colors.text.muted },
 
   overview:      { flexDirection: 'row', alignItems: 'stretch' },
   // Three equal tiles that stay on one line. They wrapped before, so on a narrow
@@ -1716,64 +1717,64 @@ const styles = StyleSheet.create({
   // Summary card: white, rounded, soft shadow.
   statCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: rs(22),
     borderWidth: 1.5,
     borderColor: Colors.borderLight,
     overflow: 'hidden',
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: rs(20),
+    paddingBottom: rs(16),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.07,
     shadowRadius: 10,
     elevation: 3,
   },
-  statTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, alignSelf: 'stretch' },
-  statBarSlot: { alignSelf: 'stretch', height: 8, marginTop: 8, marginBottom: 2 },
-  statBarTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  statBarFill: { height: '100%', borderRadius: 4 },
+  statTop: { flexDirection: 'row', alignItems: 'center', gap: rs(10), marginBottom: rs(14), alignSelf: 'stretch' },
+  statBarSlot: { alignSelf: 'stretch', height: rs(8), marginTop: rs(8), marginBottom: 2 },
+  statBarTrack: { height: rs(8), borderRadius: rs(4), overflow: 'hidden' },
+  statBarFill: { height: '100%', borderRadius: rs(4) },
 
   statBadge: {
-    width: 44, height: 44, borderRadius: 22,
+    width: rs(44), height: rs(44), borderRadius: rs(22),
     alignItems: 'center', justifyContent: 'center',
   },
   statBody: { alignSelf: 'stretch', gap: 0 },
 
   statTileLabel: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_600SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: rs(6) },
   statTileValue: {
-    fontSize: 32,
+    fontSize: rf(32),
     fontFamily: 'DMSans_600SemiBold',
     letterSpacing: -1,
     color: Colors.text.primary,
   },
-  statTileOf:   { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: Colors.text.muted },
-  statTileNote: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', marginTop: 8 },
+  statTileOf:   { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: Colors.text.muted },
+  statTileNote: { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', marginTop: rs(8) },
 
   // The glance sentence. Separated from the stats by a hairline rather than a gap:
   // it is a reading OF those numbers, not a separate fact alongside them.
-  aiRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  aiRow: { flexDirection: 'row', alignItems: 'center', gap: rs(5), marginTop: rs(4) },
   aiTag: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.7,
   },
 
-  strengthRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  strengthRow: { flexDirection: 'row', alignItems: 'flex-start', gap: rs(8) },
   strengthBadge: {
-    width: 20, height: 20, borderRadius: 7,
+    width: rs(20), height: rs(20), borderRadius: rs(7),
     alignItems: 'center', justifyContent: 'center',
     marginTop: 1,
   },
-  strengthText: { flex: 1, fontSize: 13, color: Colors.text.secondary, lineHeight: 18 },
+  strengthText: { flex: 1, fontSize: rf(13), color: Colors.text.secondary, lineHeight: rf(18) },
 
   // A quiet slate band, not a warning colour. This states which period is on
   // screen; it is orientation, not an alert about the child.
@@ -1787,44 +1788,44 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     backgroundColor: '#E7ECF1',
   },
-  frozenTitle: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: '#2F3B47' },
-  frozenSub:   { fontSize: 12, color: '#5E6B7A', marginTop: 1 },
+  frozenTitle: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: '#2F3B47' },
+  frozenSub:   { fontSize: rf(12), color: '#5E6B7A', marginTop: 1 },
 
   caveat: {
     marginTop: Layout.spacing.lg,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: rf(12),
+    lineHeight: rf(16),
     color: Colors.text.muted,
     fontStyle: 'italic',
     textAlign: 'center',
   },
 
-  mixUpList: { padding: 12, gap: 10 },
+  mixUpList: { padding: rs(12), gap: rs(10) },
   // Kept as a full-width wrapper rather than dropped: the section is a column of
   // its own now, and a card that sized to its content would leave the second one
   // a different width from the first.
   pairFull: { width: '100%' },
 
-  statCell:      { minWidth: 76, flexGrow: 1 },
+  statCell:      { minWidth: rs(76), flexGrow: 1 },
   statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  statCellLabel: { fontSize: 12, color: Colors.text.muted, marginTop: 1 },
+  statCellLabel: { fontSize: rf(12), color: Colors.text.muted, marginTop: 1 },
 
 
   // The Progress trend card: rounded, soft shadow, theme-tinted outline (the
   // colour is set inline from the theme).
   // No outline: the card is set apart by its shadow alone.
   trendCard: {
-    borderRadius: 22,
+    borderRadius: rs(22),
     borderWidth: 0,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.07,
     shadowRadius: 10,
     elevation: 3,
   },
   trendIcon: {
-    width: 40, height: 40, borderRadius: 20,
+    width: rs(40), height: rs(40), borderRadius: rs(20),
     alignItems: 'center', justifyContent: 'center',
   },
   trendHead: {
@@ -1838,39 +1839,39 @@ const styles = StyleSheet.create({
   // started is finished. No box or tint behind it — it sits straight on the card.
   trendHighlight: {
     marginHorizontal: Layout.spacing.md,
-    marginBottom: 12,
-    gap: 10,
+    marginBottom: rs(12),
+    gap: rs(10),
   },
-  trendHighlightText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', lineHeight: 21 },
-  trendHlRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  trendHlTrack: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
-  trendHlFill: { height: '100%', borderRadius: 3 },
-  trendHlPct: { fontSize: 12, fontFamily: 'DMSans_600SemiBold' },
+  trendHighlightText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', lineHeight: rf(21) },
+  trendHlRow: { flexDirection: 'row', alignItems: 'center', gap: rs(12) },
+  trendHlTrack: { flex: 1, height: rs(6), borderRadius: rs(3), overflow: 'hidden' },
+  trendHlFill: { height: '100%', borderRadius: rs(3) },
+  trendHlPct: { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold' },
   // The chart's own white panel, inset from the card edge.
   trendChartPanel: {
     marginHorizontal: Layout.spacing.md,
-    marginBottom: 12,
-    padding: 8,
-    borderRadius: 18,
+    marginBottom: rs(12),
+    padding: rs(8),
+    borderRadius: rs(18),
     borderWidth: 1,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
   },
-  insightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 4 },
+  insightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: rs(8), marginTop: rs(4) },
   insightTick: { marginTop: 2 },
-  trendTitle: { fontSize: 18, fontFamily: 'DMSans_900Black', color: Colors.text.primary, letterSpacing: -0.4 },
-  trendSub:   { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
+  trendTitle: { fontSize: rf(18), fontFamily: 'DMSans_900Black', color: Colors.text.primary, letterSpacing: -0.4 },
+  trendSub:   { fontSize: rf(12), color: Colors.text.secondary, marginTop: 2 },
 
   datePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 7,
-    paddingHorizontal: 13,
+    gap: rs(6),
+    paddingVertical: rs(7),
+    paddingHorizontal: rs(13),
     borderRadius: Layout.radius.full,
     backgroundColor: Colors.surfaceAlt,
   },
-  datePillText: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+  datePillText: { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
 
   // No tinted box behind the insights: they sit straight on the card, lined up
   // with the chart panel above.
@@ -1878,50 +1879,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Layout.spacing.sm + 2,
     marginHorizontal: Layout.spacing.md,
-    marginBottom: 12,
+    marginBottom: rs(12),
   },
   insightsIcon: {
-    width: 36, height: 36, borderRadius: 18,
+    width: rs(36), height: rs(36), borderRadius: rs(18),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#F6EFD6',
   },
-  insightsTitle: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary, marginBottom: 2 },
-  insightsText:  { flex: 1, fontSize: 13, color: Colors.text.secondary, lineHeight: 21 },
-  groupChartWrap: { padding: 12 },
+  insightsTitle: { fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary, marginBottom: 2 },
+  insightsText:  { flex: 1, fontSize: rf(13), color: Colors.text.secondary, lineHeight: rf(21) },
+  groupChartWrap: { padding: rs(12) },
 
   // The indent rule that used to wrap these lives in GroupProgress now, since the
   // rows render inside its expanded row rather than in a list of their own.
-  conceptRow: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm + 2, paddingVertical: 5 },
-  conceptName: { flex: 1, fontSize: 13, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
-  pills:       { flexDirection: 'row', gap: 5 },
-  tierPill:    { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  conceptScore:{ width: 52, textAlign: 'right', fontSize: 13, fontFamily: 'DMSans_600SemiBold' },
+  conceptRow: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm + 2, paddingVertical: rs(5) },
+  conceptName: { flex: 1, fontSize: rf(13), color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
+  pills:       { flexDirection: 'row', gap: rs(5) },
+  tierPill:    { width: rs(24), height: rs(24), borderRadius: rs(12), alignItems: 'center', justifyContent: 'center' },
+  conceptScore:{ width: rs(52), textAlign: 'right', fontSize: rf(13), fontFamily: 'DMSans_600SemiBold' },
 
-  strugglingName:  { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  strugglingMeta:  { fontSize: 12, color: Colors.text.muted, marginTop: 1 },
+  strugglingName:  { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  strugglingMeta:  { fontSize: rf(12), color: Colors.text.muted, marginTop: 1 },
 
   rtHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 },
   rtHeadLabel: {
-    fontSize: 12,
+    fontSize: rf(12),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  rtHeadValue: { fontSize: 22, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  rtHeadValue: { fontSize: rf(22), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
 
-  splitBarWrap:  { marginTop: Layout.spacing.sm, gap: 9 },
-  splitBarTrack: { flexDirection: 'row', height: 16, borderRadius: 8, overflow: 'hidden', backgroundColor: Colors.surfaceAlt },
+  splitBarWrap:  { marginTop: Layout.spacing.sm, gap: rs(9) },
+  splitBarTrack: { flexDirection: 'row', height: rs(16), borderRadius: rs(8), overflow: 'hidden', backgroundColor: Colors.surfaceAlt },
   splitBarSeg:   { height: '100%' },
   splitBarLegend:     { flexDirection: 'row', justifyContent: 'space-between' },
-  splitBarLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  splitBarDot:        { width: 9, height: 9, borderRadius: 5 },
-  splitBarLabel:      { fontSize: 12, fontFamily: 'DMSans_600SemiBold' },
+  splitBarLegendItem: { flexDirection: 'row', alignItems: 'center', gap: rs(5) },
+  splitBarDot:        { width: rs(9), height: rs(9), borderRadius: rs(5) },
+  splitBarLabel:      { fontSize: rf(12), fontFamily: 'DMSans_600SemiBold' },
 
   timeRow:   { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, marginTop: Layout.spacing.lg },
-  timeIcon:  { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  timeIcon:  { width: rs(40), height: rs(40), borderRadius: rs(13), alignItems: 'center', justifyContent: 'center' },
   timeLabel: { flex: 1, fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  timePct:   { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  timePct:   { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
 
   countRow: { flexDirection: 'row', gap: Layout.spacing.sm, marginTop: Layout.spacing.lg },
   countBox: {
@@ -1931,9 +1932,9 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surfaceAlt,
   },
-  countValue: { fontSize: 26, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  countValue: { fontSize: rf(26), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
   countLabel: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
@@ -1941,10 +1942,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  relearnNote: { fontSize: 12, color: Colors.text.muted, marginTop: Layout.spacing.md },
+  relearnNote: { fontSize: rf(12), color: Colors.text.muted, marginTop: Layout.spacing.md },
 
-  pips:   { flexDirection: 'row', gap: 4, alignItems: 'center', marginTop: 2 },
-  pip:    { width: 12, height: 12, borderRadius: 6 },
+  pips:   { flexDirection: 'row', gap: rs(4), alignItems: 'center', marginTop: 2 },
+  pip:    { width: rs(12), height: rs(12), borderRadius: rs(6) },
   pipOn:  { backgroundColor: '#3FAE6F' },
   pipOff: { backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border },
 
@@ -1955,7 +1956,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Layout.spacing.md,
-    padding: 12,
+    padding: rs(12),
   },
   gameCard: {
     // Just under a quarter, so four sit on one line with the gaps between them.
@@ -1963,44 +1964,44 @@ const styles = StyleSheet.create({
     // until the names break mid-word.
     flexGrow: 1,
     flexBasis: '22%',
-    minWidth: 150,
+    minWidth: rs(150),
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 22,
+    gap: rs(8),
+    paddingVertical: rs(22),
     paddingHorizontal: Layout.spacing.sm,
-    borderRadius: 22,
+    borderRadius: rs(22),
     borderWidth: 1,
     backgroundColor: '#FFFFFF',
   },
   gameFace: {
-    width: 60, height: 60, borderRadius: 30,
+    width: rs(60), height: rs(60), borderRadius: rs(30),
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
   gameName: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
     textAlign: 'center',
   },
-  gameMeta: { fontSize: 12, color: Colors.text.secondary, textAlign: 'center' },
+  gameMeta: { fontSize: rf(12), color: Colors.text.secondary, textAlign: 'center' },
 
   hint: {
     flexDirection: 'row',
-    gap: 9,
+    gap: rs(9),
     marginTop: Layout.spacing.lg,
     padding: Layout.spacing.md,
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.status.warningLight,
   },
-  hintText: { flex: 1, fontSize: 13, color: '#8A5D06', lineHeight: 19 },
+  hintText: { flex: 1, fontSize: rf(13), color: '#8A5D06', lineHeight: rf(19) },
   // The good-news variant. Same shape, green rather than amber — an encouraging
   // reading dressed in a warning colour would be read as a warning.
   hintGood:     { backgroundColor: '#E6F4EA' },
   hintTextGood: { color: '#1B5E3A' },
 
   subHeading: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
@@ -2011,7 +2012,7 @@ const styles = StyleSheet.create({
   engagementGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Layout.spacing.md },
 
   footnote: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: Colors.text.muted,
     textAlign: 'center',
     marginTop: Layout.spacing.lg,

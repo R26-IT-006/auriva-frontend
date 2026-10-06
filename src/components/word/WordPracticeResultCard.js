@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * WordPracticeResultCard.js
@@ -132,37 +133,37 @@ export default function WordPracticeResultCard({ word, statuses, theme, onContin
 const styles = StyleSheet.create({
   stack: {
     width: '72%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     alignSelf: 'center',
     alignItems: 'center',
-    gap: 20,
+    gap: rs(20),
   },
 
   // Overlaps the top of the card, as on the Concept completion screen.
   avatar: {
-    width: 200,
-    height: 200,
-    marginBottom: -88,
+    width: rs(200),
+    height: rs(200),
+    marginBottom: rs(-88),
     zIndex: 10,
   },
 
   card: {
     width: '100%',
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
     alignItems: 'center',
-    paddingTop: 76,
-    paddingBottom: 26,
-    paddingHorizontal: 24,
-    gap: 6,
+    paddingTop: rs(76),
+    paddingBottom: rs(26),
+    paddingHorizontal: rs(24),
+    gap: rs(6),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: rs(8) },
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 8,
   },
   cardNoAvatar: {
-    paddingTop: 26,
+    paddingTop: rs(26),
   },
 
   burstWrap: {
@@ -172,22 +173,22 @@ const styles = StyleSheet.create({
   },
   burstGlow: {
     position: 'absolute',
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: rs(64),
+    height: rs(64),
+    borderRadius: rs(32),
     opacity: 0.25,
   },
   burst: {
-    fontSize: 40,
+    fontSize: rf(40),
   },
 
   heading: {
-    fontSize: 30,
+    fontSize: rf(30),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.5,
   },
   word: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 3,
   },
@@ -196,50 +197,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.8,
-    borderRadius: 32,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    gap: 5,
-    marginTop: 10,
+    borderRadius: rs(32),
+    paddingHorizontal: rs(18),
+    paddingVertical: rs(9),
+    gap: rs(5),
+    marginTop: rs(10),
   },
   pillStar: {
-    fontSize: 20,
+    fontSize: rf(20),
   },
   pillCount: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
-    marginLeft: 4,
+    marginLeft: rs(4),
   },
   pillLabel: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.65,
   },
 
   encouragement: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 8,
+    marginTop: rs(8),
+    paddingHorizontal: rs(8),
   },
 
   // The Concept completion screen's raised 3D Keep Going button.
   continueBtn: {
-    paddingHorizontal: 44,
-    paddingVertical: 16,
-    borderRadius: 36,
+    paddingHorizontal: rs(44),
+    paddingVertical: rs(16),
+    borderRadius: rs(36),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 6,
   },
   continueText: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

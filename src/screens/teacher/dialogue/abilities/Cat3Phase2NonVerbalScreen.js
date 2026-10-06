@@ -19,6 +19,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { cat3Api } from '../../../../api/cat3';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs } from '../../../../utils/responsive';
 
 // Non-verbal context images — every abilities word folder has its own
 // Non_Verbal.jpg (difficulty 1 and 2 both). `correct` is the tapped word's
@@ -408,13 +409,13 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
 
   headerWrap: {},
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
-  headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: rs(12), paddingVertical: rs(12), gap: rs(8) },
+  headerSide:    { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -425,8 +426,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   levelLabel:    { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
-  progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
-  progressFill:  { height: '100%', borderRadius: 4 },
+  progressTrack: { flex: 1, height: rs(8), backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: rs(4), overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: rs(4) },
 
   content: { flex: 1, paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.lg, paddingBottom: Layout.spacing.md },
 
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
 
   imageWrap: { position: 'relative', width: '100%', aspectRatio: 4 / 3 },
   cardImage: { width: '100%', height: '100%' },
-  correctBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#FFF', borderRadius: 14 },
+  correctBadge: { position: 'absolute', top: rs(8), right: rs(8), backgroundColor: '#FFF', borderRadius: rs(14) },
 
   cardCaption: {
     fontSize:    Layout.fontSize.md,
@@ -459,13 +460,13 @@ const styles = StyleSheet.create({
   },
 
   avatarRow:  { flexDirection: 'column', alignItems: 'flex-end', marginTop: Layout.spacing.md },
-  bubbleWrap: { width: 145, alignItems: 'center', alignSelf: 'flex-end', marginBottom: 2 },
+  bubbleWrap: { width: rs(145), alignItems: 'center', alignSelf: 'flex-end', marginBottom: 2 },
   speechBubble: {
     backgroundColor:   '#FFFFFF',
     borderRadius:      Layout.radius.lg,
     paddingHorizontal: Layout.spacing.md,
     paddingVertical:   Layout.spacing.sm,
-    maxWidth:          180,
+    maxWidth:          rs(180),
     ...Layout.shadow.sm,
   },
   speechText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', textAlign: 'center' },
@@ -477,10 +478,10 @@ const styles = StyleSheet.create({
     borderLeftWidth: 8, borderRightWidth: 8, borderTopWidth: 10,
     borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#FFFFFF',
   },
-  avatarImg: { width: 145, height: 170 },
+  avatarImg: { width: rs(145), height: rs(170) },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
+  settingsSheet:   { backgroundColor: '#FFF', borderTopLeftRadius: rs(24), borderTopRightRadius: rs(24), padding: Layout.spacing.xl, paddingBottom: Layout.spacing.xxl },
   settingsTitle:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },

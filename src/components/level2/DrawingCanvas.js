@@ -3,6 +3,7 @@ import { View, PanResponder, TouchableOpacity, Text, StyleSheet, Modal } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 export const MAX_STROKES = 500;
 
@@ -324,18 +325,18 @@ export default function DrawingCanvas({ initialStrokes, onChange, disabled, tool
   );
 }
 
-const TOOL_W = 196;
+const TOOL_W = rs(196);
 
 const styles = StyleSheet.create({
   // Canvas on the left taking all remaining space; tools in a column on the right.
-  container: { flex: 1, flexDirection: 'row', gap: 16 },
+  container: { flex: 1, flexDirection: 'row', gap: rs(16) },
   canvas: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: rs(24),
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
@@ -353,33 +354,33 @@ const styles = StyleSheet.create({
   toolbar: {
     width: TOOL_W,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 8,
+    borderRadius: rs(24),
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(14),
+    gap: rs(8),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
   },
-  toolLabel: { fontSize: 12, fontFamily: 'DMSans_800ExtraBold', color: '#666', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' },
+  toolLabel: { fontSize: rf(12), fontFamily: 'DMSans_800ExtraBold', color: '#666', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' },
   // 16 colours as a 4 × 4 grid.
-  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(8), justifyContent: 'center' },
   swatch: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
     borderWidth: 3,
     borderColor: 'transparent',
   },
   swatchSelected: { borderColor: '#1A1A1A' },
   swatchDimmed: { opacity: 0.35 },
-  sizeRow: { flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  sizeRow: { flexDirection: 'row', gap: rs(8), justifyContent: 'center', alignItems: 'center', marginBottom: rs(4) },
   sizeBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: rs(48),
+    height: rs(48),
+    borderRadius: rs(14),
     borderWidth: 2,
     borderColor: '#DDD',
     alignItems: 'center',
@@ -388,11 +389,11 @@ const styles = StyleSheet.create({
   },
   sizeBtnSelected: { borderColor: '#1A1A1A' },
   // Eraser / Undo / Clear all stacked full-width.
-  actionRow: { gap: 8 },
+  actionRow: { gap: rs(8) },
   actionBtn: {
-    height: 46,
+    height: rs(46),
     paddingHorizontal: Layout.spacing.md,
-    borderRadius: 14,
+    borderRadius: rs(14),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F5F5F5',
@@ -402,32 +403,32 @@ const styles = StyleSheet.create({
   },
   actionBtnActive: { backgroundColor: '#1A1A1A', borderColor: '#1A1A1A' },
   actionBtnDisabled: { opacity: 0.4 },
-  actionBtnText: { fontSize: 15, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A1A' },
+  actionBtnText: { fontSize: rf(15), fontFamily: 'DMSans_800ExtraBold', color: '#1A1A1A' },
   actionBtnTextActive: { color: '#FFFFFF' },
 
   // "Start again?" pop-up — centred white card, 3D buttons.
   confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: Layout.spacing.lg },
   confirmCard: {
-    width: '100%', maxWidth: 420, alignItems: 'center',
-    backgroundColor: '#FFFFFF', borderRadius: 28,
-    paddingHorizontal: 28, paddingTop: 28, paddingBottom: 24, gap: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
+    width: '100%', maxWidth: rs(420), alignItems: 'center',
+    backgroundColor: '#FFFFFF', borderRadius: rs(28),
+    paddingHorizontal: rs(28), paddingTop: rs(28), paddingBottom: rs(24), gap: rs(8),
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(10) }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12,
   },
   confirmIcon: {
-    width: 60, height: 60, borderRadius: 30, backgroundColor: '#EF4444',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    width: rs(60), height: rs(60), borderRadius: rs(30), backgroundColor: '#EF4444',
+    alignItems: 'center', justifyContent: 'center', marginBottom: rs(4),
     borderBottomWidth: 4, borderBottomColor: 'rgba(0,0,0,0.18)',
   },
-  confirmTitle: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E' },
-  confirmText: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: '#666', textAlign: 'center' },
-  confirmRow: { flexDirection: 'row', gap: 14, marginTop: 14 },
+  confirmTitle: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold', color: '#1A1A2E' },
+  confirmText: { fontSize: rf(15), fontFamily: 'DMSans_600SemiBold', color: '#666', textAlign: 'center' },
+  confirmRow: { flexDirection: 'row', gap: rs(14), marginTop: rs(14) },
   confirmBtn: {
-    minWidth: 130, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 16,
+    minWidth: rs(130), paddingVertical: rs(14), paddingHorizontal: rs(24), borderRadius: rs(16),
     alignItems: 'center', justifyContent: 'center',
     borderBottomWidth: 5,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(3) }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
   confirmCancel: { backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#DDD' },
   confirmClear: { backgroundColor: '#EF4444', borderBottomColor: 'rgba(0,0,0,0.22)' },
-  confirmBtnText: { fontSize: 17, fontFamily: 'DMSans_800ExtraBold' },
+  confirmBtnText: { fontSize: rf(17), fontFamily: 'DMSans_800ExtraBold' },
 });

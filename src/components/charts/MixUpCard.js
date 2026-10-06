@@ -5,6 +5,7 @@ import { Layout } from '../../constants/layout';
 import { getConceptItem } from '../../data/conceptData';
 import { formatConceptLabel } from './ConfusionList';
 import { mixUpWhere, mixUpReason } from '../../constants/teacherWording';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * One muddled pair, shown as the two pictures the child actually sees.
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    gap: 6,
+    gap: rs(6),
   },
   // A quiet purple edge rather than a warning colour: this is information for a
   // teacher, not an alarm about a child.
@@ -136,51 +137,51 @@ const styles = StyleSheet.create({
   cardLarge: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    padding: 12,
-    borderRadius: 18,
+    gap: rs(12),
+    padding: rs(12),
+    borderRadius: rs(18),
     borderWidth: 1.5,
     borderColor: '#CDEBD8',
   },
-  bodyLarge: { gap: 6 },
+  bodyLarge: { gap: rs(6) },
   rankBadge: {
-    width: 26, height: 26, borderRadius: 13,
+    width: rs(26), height: rs(26), borderRadius: rs(13),
     backgroundColor: Colors.brandDeep,
     alignItems: 'center', justifyContent: 'center',
     marginTop: 2,
   },
-  rankText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
-  swapBadgeLarge: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E4F4EC', marginTop: 26 },
-  faceImageBoxLarge: { width: 76, height: 76, borderRadius: 20, borderColor: '#CDEBD8', borderWidth: 1.5 },
-  faceLabelLarge: { fontSize: 11, letterSpacing: 0.8, color: Colors.text.secondary },
-  quoteMarkLarge: { fontSize: 20, lineHeight: 20, color: Colors.brandDeep, opacity: 0.5 },
-  reasonLarge: { fontSize: 13, lineHeight: 19 },
+  rankText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
+  swapBadgeLarge: { width: rs(28), height: rs(28), borderRadius: rs(14), backgroundColor: '#E4F4EC', marginTop: rs(26) },
+  faceImageBoxLarge: { width: rs(76), height: rs(76), borderRadius: rs(20), borderColor: '#CDEBD8', borderWidth: 1.5 },
+  faceLabelLarge: { fontSize: rf(11), letterSpacing: 0.8, color: Colors.text.secondary },
+  quoteMarkLarge: { fontSize: rf(20), lineHeight: rf(20), color: Colors.brandDeep, opacity: 0.5 },
+  reasonLarge: { fontSize: rf(13), lineHeight: rf(19) },
   whereChip: {
     alignSelf: 'flex-start',
     backgroundColor: '#E4F4EC',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    borderRadius: rs(999),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(4),
     marginTop: 2,
   },
-  whereChipText: { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: Colors.brandDeep },
+  whereChipText: { fontSize: rf(11), fontFamily: 'DMSans_600SemiBold', color: Colors.brandDeep },
 
-  pairRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  pairRow: { flexDirection: 'row', alignItems: 'flex-start', gap: rs(6) },
 
   swapBadge: {
-    width: 28, height: 28, borderRadius: 14,
+    width: rs(28), height: rs(28), borderRadius: rs(14),
     backgroundColor: '#FBE7E2',
     alignItems: 'center', justifyContent: 'center',
-    marginTop: 24,
+    marginTop: rs(24),
   },
-  quoteMark: { fontSize: 18, lineHeight: 18, color: '#D9BDB4', fontFamily: 'DMSans_600SemiBold' },
+  quoteMark: { fontSize: rf(18), lineHeight: rf(18), color: '#D9BDB4', fontFamily: 'DMSans_600SemiBold' },
 
-  face:         { alignItems: 'center', gap: 6 },
+  face:         { alignItems: 'center', gap: rs(6) },
   // Bigger and rounder. These pictures are what the child actually works with —
   // in a learning product they are the subject of the card, not a decoration
   // beside the numbers, and at 62px in a cold grey box they read as icons.
   faceImageBox: {
-    width: 76, height: 76,
+    width: rs(76), height: rs(76),
     borderRadius: Layout.radius.xl,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -188,13 +189,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   faceImage:  { width: '78%', height: '78%' },
-  faceLabel:  { fontSize: 10, fontFamily: 'DMSans_600SemiBold', color: Colors.text.muted, letterSpacing: 0.7 },
+  faceLabel:  { fontSize: rf(10), fontFamily: 'DMSans_600SemiBold', color: Colors.text.muted, letterSpacing: 0.7 },
 
-  where: { fontSize: 11, color: Colors.text.muted, marginTop: 6 },
+  where: { fontSize: rf(11), color: Colors.text.muted, marginTop: rs(6) },
 
-  reasonWrap: { flexDirection: 'row', gap: 6, marginTop: Layout.spacing.sm },
-  reason: { flex: 1, fontSize: 13, color: Colors.text.primary, lineHeight: 18 },
+  reasonWrap: { flexDirection: 'row', gap: rs(6), marginTop: Layout.spacing.sm },
+  reason: { flex: 1, fontSize: rf(13), color: Colors.text.primary, lineHeight: rf(18) },
 
-  emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: Layout.spacing.md },
-  empty:     { fontSize: 12, color: Colors.text.secondary },
+  emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: rs(8), padding: Layout.spacing.md },
+  empty:     { fontSize: rf(12), color: Colors.text.secondary },
 });

@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../constants/backButton';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * The teacher workspace's in-page header: the round back button, the heading
@@ -40,17 +41,17 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: rs(12),
     paddingHorizontal: Layout.spacing.lg,
-    paddingTop: 28,
-    paddingBottom: 8,
+    paddingTop: rs(28),
+    paddingBottom: rs(8),
   },
   titleWrap: { flex: 1 },
   title: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
     color: Colors.text.primary,
     letterSpacing: -0.3,
   },
-  subtitle: { fontSize: 12, fontFamily: 'DMSans_400Regular', color: Colors.text.secondary, marginTop: 1 },
+  subtitle: { fontSize: rf(12), fontFamily: 'DMSans_400Regular', color: Colors.text.secondary, marginTop: 1 },
 });

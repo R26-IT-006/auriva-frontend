@@ -21,6 +21,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { evaluationApi } from '../../../../api/evaluation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const PLACEHOLDER_IMAGE = require('../../../../../assets/dialogue-images/placeholder.png');
 
@@ -464,15 +465,15 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(12),
   },
-  headerSide: { width: 40, alignItems: 'center', justifyContent: 'center' },
+  headerSide: { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
     textAlign: 'center',
   },
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
     color: '#FF4D6D',
     fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: rs(32),
   },
 
   content: {
@@ -538,12 +539,12 @@ const styles = StyleSheet.create({
   tile: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: rs(8),
     paddingVertical: Layout.spacing.md,
     paddingHorizontal: Layout.spacing.xl,
     borderRadius: Layout.radius.xl,
     borderWidth: 2,
-    minWidth: 110,
+    minWidth: rs(110),
     justifyContent: 'center',
     ...Layout.shadow.sm,
   },
@@ -555,7 +556,7 @@ const styles = StyleSheet.create({
   tileText:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold' },
 
   stars: {
-    fontSize: 48,
+    fontSize: rf(48),
     letterSpacing: 4,
     marginTop: Layout.spacing.xxl,
   },
@@ -569,9 +570,9 @@ const styles = StyleSheet.create({
     ...Layout.shadow.lg,
   },
   iconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: rs(68),
+    height: rs(68),
+    borderRadius: rs(34),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -588,14 +589,14 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -605,7 +606,7 @@ const styles = StyleSheet.create({
     marginTop: Layout.spacing.xl,
   },
   primaryBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 
@@ -613,13 +614,13 @@ const styles = StyleSheet.create({
   // ConceptActivityScreen.js's gifPopup).
   gifPopup: {
     position: 'absolute',
-    right: 24,
+    right: rs(24),
     top: 0,
     bottom: 0,
     justifyContent: 'center',
   },
   gifImage: {
-    width: 200,
-    height: 200,
+    width: rs(200),
+    height: rs(200),
   },
 });

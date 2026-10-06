@@ -19,6 +19,7 @@ import { cat3Api } from '../../../../api/cat3';
 import { dialogueApi } from '../../../../api/dialogue';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const PROGRESS_FRACTION = 0.10;
 
@@ -412,16 +413,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection:     'row',
     alignItems:        'center',
-    paddingHorizontal: 12,
-    paddingVertical:   12,
-    gap:               8,
+    paddingHorizontal: rs(12),
+    paddingVertical:   rs(12),
+    gap:               rs(8),
   },
-  headerSide:    { width: 40, alignItems: 'center', justifyContent: 'center' },
+  headerSide:    { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -432,8 +433,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   levelLabel:    { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', opacity: 0.7 },
-  progressTrack: { flex: 1, height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden' },
-  progressFill:  { height: '100%', borderRadius: 4 },
+  progressTrack: { flex: 1, height: rs(8), backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: rs(4), overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: rs(4) },
 
   content: {
     flex:              1,
@@ -447,7 +448,7 @@ const styles = StyleSheet.create({
     fontSize:   Layout.fontSize.xxl,
     fontFamily: 'DMSans_700Bold',
     textAlign:  'center',
-    lineHeight: 36,
+    lineHeight: rf(36),
   },
   subtitle: {
     fontSize:    Layout.fontSize.sm,
@@ -468,20 +469,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarImg: {
-    width:  Math.min(Layout.window.width * 0.38, 420),
-    height: Math.min(Layout.window.height * 0.58, 520),
+    // Landscape sides (this screen is landscape-locked; Layout.window is read at launch).
+    width:  Math.min(Math.max(Layout.window.width, Layout.window.height) * 0.38, rs(420)),
+    height: Math.min(Math.min(Layout.window.width, Layout.window.height) * 0.58, rs(520)),
   },
 
   wordCard: {
-    width:          240,
-    height:         200,
+    width:          rs(240),
+    height:         rs(200),
     borderRadius:   Layout.radius.xl,
     alignItems:     'center',
     justifyContent: 'center',
     ...Layout.shadow.lg,
   },
   wordCardText: {
-    fontSize:   72,
+    fontSize:   rf(72),
     fontFamily: 'DMSans_900Black',
     letterSpacing: 2,
   },
@@ -489,7 +491,7 @@ const styles = StyleSheet.create({
   hintRow: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           6,
+    gap:           rs(6),
     opacity:       0.5,
     marginBottom:  Layout.spacing.md,
   },
@@ -497,14 +499,14 @@ const styles = StyleSheet.create({
 
   footer:  { width: '100%', alignItems: 'flex-end' },
   nextBtn: {
-    gap: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 16,
+    gap: rs(8),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(16),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 5,
@@ -512,15 +514,15 @@ const styles = StyleSheet.create({
     alignItems:        'center',
   },
   nextBtnText: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
   },
 
   settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   settingsSheet: {
     backgroundColor:      '#FFF',
-    borderTopLeftRadius:  24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius:  rs(24),
+    borderTopRightRadius: rs(24),
     padding:              Layout.spacing.xl,
     paddingBottom:        Layout.spacing.xxl,
   },

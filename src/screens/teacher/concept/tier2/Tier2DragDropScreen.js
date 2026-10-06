@@ -17,6 +17,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem, getConceptItemsForCategory } from '../../../../data/conceptData';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
+import { rs, rf } from '../../../../utils/responsive';
 
 const CORRECT_GIF = require('../../../../../assets/feedback/correct.gif');
 const WRONG_GIF   = require('../../../../../assets/feedback/wrong.gif');
@@ -431,29 +432,29 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   attemptRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-    marginBottom: 16,
+    gap: rs(10),
+    marginTop: rs(4),
+    marginBottom: rs(16),
   },
   attemptDot: {
-    width: 12, height: 12,
-    borderRadius: 6,
+    width: rs(12), height: rs(12),
+    borderRadius: rs(6),
   },
 
   namePill: {
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 32,
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(14),
+    borderRadius: rs(32),
     borderWidth: 2,
-    marginBottom: 20,
+    marginBottom: rs(20),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -461,19 +462,19 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   nameText: {
-    fontSize: 28,
+    fontSize: rf(28),
     fontFamily: 'DMSans_900Black',
     letterSpacing: 1.5,
   },
 
   dropZone: {
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.35)',
-    marginBottom: 28,
+    marginBottom: rs(28),
   },
 
   cardsRow: {
@@ -483,11 +484,11 @@ const styles = StyleSheet.create({
   },
 
   optionCard: {
-    borderRadius: 36,
+    borderRadius: rs(36),
     borderWidth: 3.5,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     overflow: 'visible',
   },
   optionImage: {
@@ -502,11 +503,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    right: 20,
+    right: rs(20),
     justifyContent: 'center',
   },
   gifImage: {
-    width: 200,
-    height: 200,
+    width: rs(200),
+    height: rs(200),
   },
 });

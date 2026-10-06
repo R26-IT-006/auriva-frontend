@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * Phase1CompleteCelebration.js
@@ -125,59 +126,59 @@ const styles = StyleSheet.create({
 
   topRight: {
     position: 'absolute',
-    top: 12,
-    right: 16,
+    top: rs(12),
+    right: rs(16),
   },
 
   notePill: {
     borderWidth: 1.8,
-    borderRadius: 32,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    marginTop: 10,
+    borderRadius: rs(32),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(6),
+    marginTop: rs(10),
   },
   noteText: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
   },
 
   // Decorative background shapes (same as the other module screens).
   blob: {
     position: 'absolute',
-    borderRadius: 999,
+    borderRadius: rs(999),
     opacity: 0.08,
   },
-  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
-  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+  blobTopRight:   { width: rs(220), height: rs(220), top: rs(-60), right: rs(-60) },
+  blobBottomLeft: { width: rs(260), height: rs(260), bottom: rs(-80), left: rs(-80) },
 
   stack: {
     width: '72%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     alignSelf: 'center',
     alignItems: 'center',
-    gap: 20,
+    gap: rs(20),
   },
 
   // Overlaps the top of the card, as on the Concept completion screen.
   avatar: {
-    width: 180,
-    height: 180,
-    marginBottom: -80,
+    width: rs(180),
+    height: rs(180),
+    marginBottom: rs(-80),
     zIndex: 10,
   },
 
   card: {
     width: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
     alignItems: 'center',
-    paddingTop: 70,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    gap: 4,
+    paddingTop: rs(70),
+    paddingBottom: rs(24),
+    paddingHorizontal: rs(24),
+    gap: rs(4),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: rs(8) },
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 8,
@@ -190,45 +191,45 @@ const styles = StyleSheet.create({
   },
   burstGlow: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: rs(60),
+    height: rs(60),
+    borderRadius: rs(30),
     opacity: 0.25,
   },
-  burst: { fontSize: 36 },
+  burst: { fontSize: rf(36) },
 
   heading: {
-    fontSize: 30,
+    fontSize: rf(30),
     fontFamily: 'DMSans_900Black',
     letterSpacing: -0.5,
   },
   subtext: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.65,
     marginTop: 2,
   },
   word: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 0.5,
   },
 
   // The raised 3D button used on the other completion screens.
   continueBtn: {
-    paddingHorizontal: 44,
-    paddingVertical: 16,
-    borderRadius: 36,
+    paddingHorizontal: rs(44),
+    paddingVertical: rs(16),
+    borderRadius: rs(36),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 6,
   },
   continueText: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

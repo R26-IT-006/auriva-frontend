@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
+import { rs, rf } from '../../../../utils/responsive';
 
 const AVATAR_MAP = {
   boba:     require('../../../../../assets/avatar-images/Boba.png'),
@@ -91,18 +92,18 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
   scroll: { alignItems: 'center', paddingHorizontal: Layout.spacing.lg, paddingTop: Layout.spacing.xl, gap: Layout.spacing.md },
-  starBox: { width: 100, height: 100, alignItems: 'center', justifyContent: 'center' },
-  star: { fontSize: 72 },
-  avatar: { width: 160, height: 180 },
-  heading: { fontSize: 34, fontFamily: 'DMSans_900Black', textAlign: 'center', letterSpacing: -0.5 },
+  starBox: { width: rs(100), height: rs(100), alignItems: 'center', justifyContent: 'center' },
+  star: { fontSize: rf(72) },
+  avatar: { width: rs(160), height: rs(180) },
+  heading: { fontSize: rf(34), fontFamily: 'DMSans_900Black', textAlign: 'center', letterSpacing: -0.5 },
   sub: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_600SemiBold', textAlign: 'center', opacity: 0.65 },
   subSinhala: { fontSize: Layout.fontSize.md, fontWeight: '500', textAlign: 'center', opacity: 0.6, marginTop: -Layout.spacing.sm },
-  recapCard: { width: '100%', maxWidth: 620, borderRadius: Layout.radius.xl, borderWidth: 2, padding: Layout.spacing.lg, gap: Layout.spacing.sm, ...Layout.shadow.sm },
-  recapTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold', marginBottom: 4 },
+  recapCard: { width: '100%', maxWidth: rs(620), borderRadius: Layout.radius.xl, borderWidth: 2, padding: Layout.spacing.lg, gap: Layout.spacing.sm, ...Layout.shadow.sm },
+  recapTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold', marginBottom: rs(4) },
   recapRow: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  checkCircle: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  checkCircle: { width: rs(24), height: rs(24), borderRadius: rs(12), alignItems: 'center', justifyContent: 'center' },
   recapSentence: { flex: 1, fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold' },
-  confetti: { fontSize: 28, letterSpacing: 8 },
-  doneBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, ...Layout.shadow.md },
+  confetti: { fontSize: rf(28), letterSpacing: 8 },
+  doneBtn: { flexDirection: 'row', alignItems: 'center', gap: rs(8), paddingHorizontal: Layout.spacing.xl, paddingVertical: Layout.spacing.md, borderRadius: Layout.radius.full, ...Layout.shadow.md },
   doneText: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold' },
 });

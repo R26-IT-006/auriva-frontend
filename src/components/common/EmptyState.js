@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 export function EmptyState({ icon = 'document-outline', title, message, action }) {
   return (
@@ -26,9 +27,9 @@ const styles = StyleSheet.create({
     paddingVertical: Layout.spacing.xxl,
   },
   iconWrapper: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: rs(88),
+    height: rs(88),
+    borderRadius: rs(44),
     backgroundColor: Colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
@@ -45,7 +46,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     color: Colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: rf(20),
   },
   action: {
     marginTop: Layout.spacing.lg,

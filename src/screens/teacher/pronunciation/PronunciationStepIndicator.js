@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Colors } from "../../../constants/colors";
 import { Layout } from "../../../constants/layout";
+import { rs } from "../../../utils/responsive";
 
 function Step({ label, active, done, theme }) {
   return (
@@ -72,9 +73,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stepCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     borderWidth: 2,
     borderColor: "#98A8BC",
     backgroundColor: "transparent",
@@ -90,10 +91,10 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   stepConnector: {
-    width: 54,
-    height: 3,
+    width: rs(54),
+    height: rs(3),
     borderRadius: 2,
     backgroundColor: Colors.primary,
-    marginHorizontal: 8,
+    marginHorizontal: rs(8),
   },
 });

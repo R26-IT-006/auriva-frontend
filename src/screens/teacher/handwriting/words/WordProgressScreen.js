@@ -17,6 +17,7 @@ import { useLockLandscape } from '../../../../utils/useOrientationLock';
 import useGatedBack from '../../../../utils/useGatedBack';
 import { resolveWordImageKey, resolveWordEmoji } from '../../../../utils/wordImageResolver';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const ALPHABET  = 'abcdefghijklmnopqrstuvwxyz'.split('');
 const EXERCISES = ['A', 'B', 'C', 'D', 'E'];
@@ -31,12 +32,16 @@ const EXERCISE_LABELS = {
 
 // A–Z as a compact grid: 9 tiles a row on a tablet (6 on a phone), sized to
 // fill the width — three short rows instead of 26 tall ones.
-const { width: SCREEN_W } = Dimensions.get('window');
-const GRID_PAD  = 24;
-const GRID_GAP  = 10;
+// Landscape sides, whatever the orientation when the app started (this module
+// is evaluated once, possibly in portrait at sign-in). On a tablet launched in
+// landscape these equal the window's width and height, so nothing changes there.
+const _win = Dimensions.get('window');
+const SCREEN_W = Math.max(_win.width, _win.height);
+const GRID_PAD  = rs(24);
+const GRID_GAP  = rs(10);
 const GRID_COLS = SCREEN_W >= 900 ? 9 : 6;
 const TILE_W    = Math.floor((SCREEN_W - GRID_PAD * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS);
-const TILE_H    = 92;
+const TILE_H    = rs(92);
 
 function calcLetterScore(wordResults) {
   let correct = 0, total = 0;
@@ -454,39 +459,39 @@ const wordRowStyles = StyleSheet.create({
   card: {
     width: '48.8%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: rs(18),
     borderWidth: 1.5,
     borderColor: '#E9ECEF',
-    padding: 12,
-    gap: 10,
+    padding: rs(12),
+    gap: rs(10),
   },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  word: { flex: 1, fontSize: 18, fontFamily: 'DMSans_800ExtraBold', color: '#222222' },
+  head: { flexDirection: 'row', alignItems: 'center', gap: rs(12) },
+  word: { flex: 1, fontSize: rf(18), fontFamily: 'DMSans_800ExtraBold', color: '#222222' },
   supportTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: rs(4),
     backgroundColor: '#FFF3E0',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: rs(12),
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(4),
   },
-  supportText: { fontSize: 11, fontFamily: 'DMSans_700Bold', color: '#E65100' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  supportText: { fontSize: rf(11), fontFamily: 'DMSans_700Bold', color: '#E65100' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(6) },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    gap: rs(6),
+    borderRadius: rs(12),
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(6),
     flexBasis: '31%',
     flexGrow: 1,
   },
   stars: { flexDirection: 'row', gap: 2, alignSelf: 'flex-end' },
   chipText:   { flex: 1 },
-  chipName:   { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: '#5F6368' },
-  chipResult: { fontSize: 12, fontFamily: 'DMSans_800ExtraBold' },
+  chipName:   { fontSize: rf(11), fontFamily: 'DMSans_600SemiBold', color: '#5F6368' },
+  chipResult: { fontSize: rf(12), fontFamily: 'DMSans_800ExtraBold' },
 });
 
 function SummaryPill({ icon, value, of, label, color }) {
@@ -509,19 +514,19 @@ function SummaryPill({ icon, value, of, label, color }) {
 const pillStyles = StyleSheet.create({
   pill: {
     flex: 1,
-    minHeight: 76,
-    borderRadius: 16,
+    minHeight: rs(76),
+    borderRadius: rs(16),
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(12),
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: rs(12),
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -529,11 +534,11 @@ const pillStyles = StyleSheet.create({
   valueRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 3,
+    gap: rs(3),
   },
-  value: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', lineHeight: 28 },
-  of:    { fontSize: 12, color: '#8A8A8A', fontFamily: 'DMSans_700Bold', marginBottom: 3 },
-  label: { fontSize: 12, color: '#5F6368', fontFamily: 'DMSans_700Bold', marginTop: 3 },
+  value: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold', lineHeight: rf(28) },
+  of:    { fontSize: rf(12), color: '#8A8A8A', fontFamily: 'DMSans_700Bold', marginBottom: rs(3) },
+  label: { fontSize: rf(12), color: '#5F6368', fontFamily: 'DMSans_700Bold', marginTop: rs(3) },
 });
 
 const styles = StyleSheet.create({
@@ -541,24 +546,24 @@ const styles = StyleSheet.create({
   safe:     { flex: 1 },
 
   // ── Decorative background shapes (same as the other module screens) ─────
-  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
-  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
-  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+  blob: { position: 'absolute', borderRadius: rs(999), opacity: 0.08 },
+  blobTopRight:   { width: rs(220), height: rs(220), top: rs(-60), right: rs(-60) },
+  blobBottomLeft: { width: rs(260), height: rs(260), bottom: rs(-80), left: rs(-80) },
 
   // ── Top bar ───────────────────────────────────────────────────────────────
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: rs(16),
+    paddingTop: rs(8),
+    paddingBottom: rs(12),
   },
   sideGroup: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   // The landing pages' round, translucent white button.
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -569,26 +574,26 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   topMid: { alignItems: 'center' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: rs(10) },
   titleIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: rs(3) },
     shadowOpacity: 0.15,
     shadowRadius: 5,
     elevation: 3,
   },
   topTitle: {
-    fontSize: 30,
+    fontSize: rf(30),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: -0.3,
   },
   topStudent: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_600SemiBold',
     opacity: 0.6,
     marginTop: 2,
@@ -596,61 +601,61 @@ const styles = StyleSheet.create({
 
   scroll: {
     paddingHorizontal: GRID_PAD,
-    gap: 14,
+    gap: rs(14),
   },
 
   // ── Overview card (landing-page frame) ────────────────────────────────────
   summaryCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
-    padding: 18,
+    padding: rs(18),
     elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 10,
   },
   summaryIntro: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginBottom: 16,
+    gap: rs(14),
+    marginBottom: rs(16),
   },
   summaryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: rs(48),
+    height: rs(48),
+    borderRadius: rs(24),
     alignItems: 'center',
     justifyContent: 'center',
   },
   summaryTextBlock: { flex: 1 },
-  summaryTitle: { fontSize: 20, fontFamily: 'DMSans_800ExtraBold' },
+  summaryTitle: { fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold' },
   summarySubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: rf(13),
+    lineHeight: rf(18),
     color: '#6E7378',
     fontFamily: 'DMSans_600SemiBold',
     marginTop: 2,
   },
   accuracyBadge: {
-    minWidth: 100,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    minWidth: rs(100),
+    borderRadius: rs(18),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(10),
     alignItems: 'center',
     borderBottomWidth: 4,
     borderBottomColor: 'rgba(0,0,0,0.18)',
   },
-  accuracyValue: { fontSize: 24, fontFamily: 'DMSans_800ExtraBold', lineHeight: 28 },
-  accuracyLabel: { fontSize: 11, fontFamily: 'DMSans_700Bold', opacity: 0.9 },
-  summaryStatsRow: { flexDirection: 'row', gap: 12 },
+  accuracyValue: { fontSize: rf(24), fontFamily: 'DMSans_800ExtraBold', lineHeight: rf(28) },
+  accuracyLabel: { fontSize: rf(11), fontFamily: 'DMSans_700Bold', opacity: 0.9 },
+  summaryStatsRow: { flexDirection: 'row', gap: rs(12) },
 
   sectionTitle: {
-    fontSize: 17,
+    fontSize: rf(17),
     fontFamily: 'DMSans_800ExtraBold',
-    marginTop: 4,
-    marginLeft: 4,
+    marginTop: rs(4),
+    marginLeft: rs(4),
   },
 
   // ── A–Z grid ──────────────────────────────────────────────────────────────
@@ -662,12 +667,12 @@ const styles = StyleSheet.create({
   tile: {
     width: TILE_W,
     height: TILE_H,
-    borderRadius: 18,
+    borderRadius: rs(18),
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
+    gap: rs(4),
+    paddingHorizontal: rs(10),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -680,50 +685,50 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
   },
-  tileLetter: { fontSize: 26, fontFamily: 'DMSans_800ExtraBold', lineHeight: 30 },
-  tileScore:  { fontSize: 13, fontFamily: 'DMSans_800ExtraBold' },
-  tilePendingText: { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: '#A9AFB5' },
+  tileLetter: { fontSize: rf(26), fontFamily: 'DMSans_800ExtraBold', lineHeight: rf(30) },
+  tileScore:  { fontSize: rf(13), fontFamily: 'DMSans_800ExtraBold' },
+  tilePendingText: { fontSize: rf(11), fontFamily: 'DMSans_600SemiBold', color: '#A9AFB5' },
   tileBarBg: {
     width: '100%',
-    height: 6,
-    borderRadius: 3,
+    height: rs(6),
+    borderRadius: rs(3),
     backgroundColor: '#EEF1F4',
     overflow: 'hidden',
   },
-  tileBarFill: { height: '100%', borderRadius: 3 },
+  tileBarFill: { height: '100%', borderRadius: rs(3) },
 
   // ── By activity (inside the overview) ─────────────────────────────────────
   activitySection: {
-    marginTop: 16,
-    paddingTop: 14,
+    marginTop: rs(16),
+    paddingTop: rs(14),
     borderTopWidth: 1,
     borderTopColor: '#EEF0F2',
-    gap: 10,
+    gap: rs(10),
   },
-  activityHeading: { fontSize: 14, fontFamily: 'DMSans_800ExtraBold', color: '#3A3F45' },
-  activityRow: { flexDirection: 'row', gap: 14 },
-  activityItem: { flex: 1, gap: 6 },
-  activityTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  activityName: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: '#3A3F45', flexShrink: 1 },
+  activityHeading: { fontSize: rf(14), fontFamily: 'DMSans_800ExtraBold', color: '#3A3F45' },
+  activityRow: { flexDirection: 'row', gap: rs(14) },
+  activityItem: { flex: 1, gap: rs(6) },
+  activityTitleRow: { flexDirection: 'row', alignItems: 'center', gap: rs(4) },
+  activityName: { fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: '#3A3F45', flexShrink: 1 },
   activityBar: {
     flexDirection: 'row',
-    height: 10,
-    borderRadius: 5,
+    height: rs(10),
+    borderRadius: rs(5),
     backgroundColor: '#EEF1F4',
     overflow: 'hidden',
   },
   activityBarOwn:  { backgroundColor: '#4CAF50' },
   activityBarHelp: { backgroundColor: '#FFA726' },
-  activityCounts: { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: '#6E7378' },
+  activityCounts: { fontSize: rf(11), fontFamily: 'DMSans_600SemiBold', color: '#6E7378' },
 
   // Letter tile marker: this letter needed help somewhere.
   tileHelpMark: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    top: rs(6),
+    right: rs(6),
+    width: rs(18),
+    height: rs(18),
+    borderRadius: rs(9),
     backgroundColor: '#FFA726',
     alignItems: 'center',
     justifyContent: 'center',
@@ -733,63 +738,63 @@ const styles = StyleSheet.create({
   wordGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    padding: 14,
-    paddingTop: 4,
+    gap: rs(12),
+    padding: rs(14),
+    paddingTop: rs(4),
   },
 
   // ── Selected letter's words ───────────────────────────────────────────────
   detailCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: rs(28),
     borderWidth: 3,
     overflow: 'hidden',
     elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 10,
   },
   detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    gap: rs(12),
+    paddingHorizontal: rs(18),
+    paddingVertical: rs(14),
   },
   letterCircle: {
-    width: 48, height: 48, borderRadius: 24,
+    width: rs(48), height: rs(48), borderRadius: rs(24),
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  letterCircleText: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold' },
+  letterCircleText: { fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold' },
   letterInfo:  { flex: 1 },
-  detailTitle: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold' },
-  letterScore: { fontSize: 13, fontFamily: 'DMSans_700Bold', marginTop: 2 },
+  detailTitle: { fontSize: rf(18), fontFamily: 'DMSans_800ExtraBold' },
+  letterScore: { fontSize: rf(13), fontFamily: 'DMSans_700Bold', marginTop: 2 },
 
   legend: {
     flexDirection: 'row',
-    gap: 8,
+    gap: rs(8),
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    gap: rs(5),
+    borderRadius: rs(14),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(5),
   },
-  legendLabel: { fontSize: 11, color: '#5F6368', fontFamily: 'DMSans_700Bold' },
+  legendLabel: { fontSize: rf(11), color: '#5F6368', fontFamily: 'DMSans_700Bold' },
 
 
   emptyCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 22,
+    gap: rs(10),
+    paddingVertical: rs(22),
   },
-  emptyText: { fontSize: 15, fontFamily: 'DMSans_700Bold', opacity: 0.75 },
+  emptyText: { fontSize: rf(15), fontFamily: 'DMSans_700Bold', opacity: 0.75 },
 });

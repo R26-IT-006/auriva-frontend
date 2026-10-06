@@ -19,6 +19,7 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { authApi } from '../../api/auth';
 import { validatePassword } from '../../utils/validation';
+import { rs, rf } from '../../utils/responsive';
 
 const TEAL       = '#3A9BA8';
 const TEAL_GRAD  = ['#4AABB8', '#52C07C'];
@@ -205,13 +206,13 @@ const styles = StyleSheet.create({
   // ── Card ─────────────────────────────────────────────────────────────────
   card: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    paddingHorizontal: 32,
-    paddingVertical: 36,
+    borderRadius: rs(28),
+    paddingHorizontal: rs(32),
+    paddingVertical: rs(36),
     shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.10,
     shadowRadius: 24,
     elevation: 8,
@@ -221,58 +222,58 @@ const styles = StyleSheet.create({
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: rs(24),
   },
   backBtnText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     color: TEAL,
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────
   cardTitle: {
-    fontSize: 26,
+    fontSize: rf(26),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
-    marginBottom: 6,
+    marginBottom: rs(6),
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
-    lineHeight: 22,
-    marginBottom: 24,
+    lineHeight: rf(22),
+    marginBottom: rs(24),
   },
 
   // ── Requirements ──────────────────────────────────────────────────────────
   requirements: {
     backgroundColor: '#F7F9FC',
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 4,
-    marginBottom: 16,
+    borderRadius: rs(12),
+    padding: rs(14),
+    marginTop: rs(4),
+    marginBottom: rs(16),
     borderWidth: 1,
     borderColor: '#E8ECF4',
   },
   reqTitle: {
-    fontSize: 10,
+    fontSize: rf(10),
     fontFamily: 'DMSans_700Bold',
     color: '#9B9FB0',
     letterSpacing: 1.2,
-    marginBottom: 10,
+    marginBottom: rs(10),
   },
   reqRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: rs(6),
   },
   reqDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: rs(22),
+    height: rs(22),
+    borderRadius: rs(11),
     borderWidth: 1.5,
     borderColor: '#C8CDD8',
-    marginRight: 12,
+    marginRight: rs(12),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -281,7 +282,7 @@ const styles = StyleSheet.create({
     borderColor: '#52C07C',
   },
   reqText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
   },
@@ -292,18 +293,18 @@ const styles = StyleSheet.create({
 
   // ── Reset button ──────────────────────────────────────────────────────────
   btn: {
-    borderRadius: 14,
+    borderRadius: rs(14),
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: rs(8),
   },
   btnGradient: {
-    height: 54,
+    height: rs(54),
     alignItems: 'center',
     justifyContent: 'center',
   },
   btnText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.4,
   },
@@ -314,31 +315,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: rs(40),
   },
   successCard: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: rs(400),
     backgroundColor: '#FFF',
-    borderRadius: 28,
-    paddingVertical: 40,
-    paddingHorizontal: 32,
+    borderRadius: rs(28),
+    paddingVertical: rs(40),
+    paddingHorizontal: rs(32),
     alignItems: 'center',
-    gap: 12,
+    gap: rs(12),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: rs(12) },
     shadowOpacity: 0.15,
     shadowRadius: 32,
     elevation: 12,
   },
   successIconCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: rs(90),
+    height: rs(90),
+    borderRadius: rs(45),
     backgroundColor: '#E8F8EF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
   successTitle: {
     fontSize: Layout.fontSize.xl,
@@ -350,17 +351,17 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 4,
+    lineHeight: rf(22),
+    marginBottom: rs(4),
   },
   successBtn: {
     width: '100%',
-    borderRadius: 14,
+    borderRadius: rs(14),
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: rs(8),
   },
   successBtnGradient: {
-    height: 52,
+    height: rs(52),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -373,9 +374,9 @@ const styles = StyleSheet.create({
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
-    marginTop: 20,
+    marginTop: rs(20),
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: rf(10),
     letterSpacing: 1.8,
     color: Colors.text.muted,
     fontFamily: 'DMSans_600SemiBold',

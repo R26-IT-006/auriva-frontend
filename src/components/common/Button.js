@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs } from '../../utils/responsive';
 
 const VARIANTS = {
   primary: {
@@ -188,6 +189,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconLeft: {
-    marginRight: 7,
+    marginRight: rs(7),
   },
 });

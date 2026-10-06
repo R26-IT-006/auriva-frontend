@@ -32,6 +32,7 @@ import { Layout } from '../../../constants/layout';
 import { level2Api } from '../../../api/level2';
 import { formatDate } from '../../../utils/formatters';
 import { buildReportHtml, printReport, printTimestamp } from '../../../utils/reportPrint';
+import { rs, rf } from '../../../utils/responsive';
 
 // ---------------------------------------------------------------------------
 // Plain-language mappings (TASK-46, following TASK-45's conventions)
@@ -634,69 +635,69 @@ const styles = StyleSheet.create({
   retry:    { fontSize: Layout.fontSize.sm, color: Colors.text.link, fontFamily: 'DMSans_700Bold' },
 
   segments: {
-    flexDirection: 'row', gap: 4, padding: 4,
-    borderRadius: 14, backgroundColor: '#EEF1F5',
-    marginBottom: 20,
+    flexDirection: 'row', gap: rs(4), padding: rs(4),
+    borderRadius: rs(14), backgroundColor: '#EEF1F5',
+    marginBottom: rs(20),
   },
   segment: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: 10, paddingHorizontal: 8, borderRadius: 11,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rs(6),
+    paddingVertical: rs(10), paddingHorizontal: rs(8), borderRadius: rs(11),
   },
   segmentOn: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1,
   },
-  segmentText:   { flexShrink: 1, fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+  segmentText:   { flexShrink: 1, fontSize: rf(14), fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
   segmentTextOn: { color: Colors.text.primary },
-  segmentDot:    { width: 8, height: 8, borderRadius: 4 },
+  segmentDot:    { width: rs(8), height: rs(8), borderRadius: rs(4) },
 
-  topicPanel: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 18, marginBottom: 20 },
-  topicIcon:  { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  topicTitle: { fontSize: 16, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  topicMeta:  { fontSize: 13, color: Colors.text.secondary, marginTop: 2 },
-  topicBlock: { gap: 16 },
+  topicPanel: { flexDirection: 'row', alignItems: 'center', gap: rs(12), borderRadius: rs(16), padding: rs(18), marginBottom: rs(20) },
+  topicIcon:  { width: rs(40), height: rs(40), borderRadius: rs(20), alignItems: 'center', justifyContent: 'center' },
+  topicTitle: { fontSize: rf(16), fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  topicMeta:  { fontSize: rf(13), color: Colors.text.secondary, marginTop: 2 },
+  topicBlock: { gap: rs(16) },
 
-  statusChip:     { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Layout.radius.full },
-  statusChipText: { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  statusChip:     { paddingHorizontal: rs(12), paddingVertical: rs(5), borderRadius: Layout.radius.full },
+  statusChipText: { fontSize: rf(13), fontFamily: 'DMSans_700Bold' },
 
-  leadRow:  { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  leadText: { fontSize: 14, lineHeight: 20, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  leadRow:  { flexDirection: 'row', alignItems: 'center', gap: rs(16) },
+  leadText: { fontSize: rf(14), lineHeight: rf(20), fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
 
-  lineText:   { fontSize: 14, color: Colors.text.primary, lineHeight: 20 },
-  lineDetail: { fontSize: 11, color: Colors.text.muted, lineHeight: 16, marginTop: 1 },
+  lineText:   { fontSize: rf(14), color: Colors.text.primary, lineHeight: rf(20) },
+  lineDetail: { fontSize: rf(11), color: Colors.text.muted, lineHeight: rf(16), marginTop: 1 },
 
-  measureGrid:  { flexDirection: 'row', flexWrap: 'wrap', columnGap: 24, rowGap: 14 },
+  measureGrid:  { flexDirection: 'row', flexWrap: 'wrap', columnGap: rs(24), rowGap: rs(14) },
   measureHalf:  { flexBasis: '46%', flexGrow: 1 },
   measureFull:  { flexBasis: '100%' },
-  measure:      { gap: 6 },
-  measureHead:  { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  measureLabel: { flex: 1, fontSize: 13, color: Colors.text.primary },
-  measureValue: { fontSize: 13, fontFamily: 'DMSans_700Bold' },
-  measureTrack: { height: 6, borderRadius: 3, backgroundColor: '#EEF1F4', overflow: 'hidden' },
-  measureFill:  { height: '100%', borderRadius: 3 },
+  measure:      { gap: rs(6) },
+  measureHead:  { flexDirection: 'row', alignItems: 'baseline', gap: rs(8) },
+  measureLabel: { flex: 1, fontSize: rf(13), color: Colors.text.primary },
+  measureValue: { fontSize: rf(13), fontFamily: 'DMSans_700Bold' },
+  measureTrack: { height: rs(6), borderRadius: rs(3), backgroundColor: '#EEF1F4', overflow: 'hidden' },
+  measureFill:  { height: '100%', borderRadius: rs(3) },
 
   // TASK-47 — per-topic history
   historyToggle: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    alignSelf: 'flex-start', paddingVertical: 4,
+    flexDirection: 'row', alignItems: 'center', gap: rs(4),
+    alignSelf: 'flex-start', paddingVertical: rs(4),
   },
-  historyToggleText: { fontSize: 12, color: Colors.text.link, fontFamily: 'DMSans_600SemiBold' },
-  historyBody:    { gap: 6 },
-  historyNote:    { fontSize: 11, color: Colors.text.muted, lineHeight: 16 },
+  historyToggleText: { fontSize: rf(12), color: Colors.text.link, fontFamily: 'DMSans_600SemiBold' },
+  historyBody:    { gap: rs(6) },
+  historyNote:    { fontSize: rf(11), color: Colors.text.muted, lineHeight: rf(16) },
   historyLoading: { alignSelf: 'flex-start', paddingVertical: Layout.spacing.sm },
 
   hint: {
     flexDirection: 'row',
-    gap: 8,
+    gap: rs(8),
     marginTop: Layout.spacing.md,
-    padding: 12,
-    borderRadius: 12,
+    padding: rs(12),
+    borderRadius: rs(12),
     backgroundColor: Colors.status.warningLight,
   },
-  hintText: { flex: 1, fontSize: 12, color: '#8A5D06', lineHeight: 17 },
+  hintText: { flex: 1, fontSize: rf(12), color: '#8A5D06', lineHeight: rf(17) },
 
   footnote: {
-    fontSize: 12,
+    fontSize: rf(12),
     color: Colors.text.muted,
     textAlign: 'center',
     marginTop: Layout.spacing.lg,

@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ButtonFeedback } from "./ButtonFeedback";
 import { Colors } from "../../constants/colors";
 import { Layout } from "../../constants/layout";
+import { rf } from "../../utils/responsive";
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.sm,
-    lineHeight: 20,
+    lineHeight: rf(20),
   },
   button: {
     marginTop: Layout.spacing.md,

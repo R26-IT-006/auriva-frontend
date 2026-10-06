@@ -18,6 +18,7 @@ import DatePickerField from '../../../components/common/DatePickerField';
 import { principalApi } from '../../../api/principal';
 import { validatePhone } from '../../../utils/validation';
 import { useToast } from '../../../context/ToastContext';
+import { rs, rf } from '../../../utils/responsive';
 
 // ── palette ───────────────────────────────────────────────────────────────────
 const DARK     = '#0F2F3E';
@@ -405,38 +406,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: SURFACE,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: rs(16),
+    paddingBottom: rs(12),
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
-    gap: 10,
+    gap: rs(10),
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 10,
+    width: rs(36), height: rs(36), borderRadius: rs(10),
     backgroundColor: BODY_BG,
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
   breadcrumb: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: rs(4),
   },
   breadcrumbParent: {
-    fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: MUTED,
+    fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: MUTED,
   },
   breadcrumbCurrent: {
-    fontSize: 14, fontFamily: 'DMSans_800ExtraBold', color: TEXT,
+    fontSize: rf(14), fontFamily: 'DMSans_800ExtraBold', color: TEXT,
   },
 
   // ── Layout ────────────────────────────────────────────────────────────────
-  scroll: { padding: 16, paddingBottom: 8 },
-  layout: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
-  leftPanel: { width: 220, gap: 12 },
-  rightPanel: { flex: 1, gap: 14 },
+  scroll: { padding: rs(16), paddingBottom: rs(8) },
+  layout: { flexDirection: 'row', gap: rs(16), alignItems: 'flex-start' },
+  leftPanel: { width: rs(220), gap: rs(12) },
+  rightPanel: { flex: 1, gap: rs(14) },
 
   // ── Photo card ────────────────────────────────────────────────────────────
   photoCard: {
     backgroundColor: SURFACE,
-    borderRadius: 18,
+    borderRadius: rs(18),
     borderWidth: 1,
     borderColor: BORDER,
     overflow: 'hidden',
@@ -448,89 +449,89 @@ const styles = StyleSheet.create({
   },
   photoCardTop: {
     backgroundColor: DARK,
-    paddingTop: 28,
-    paddingBottom: 36,
+    paddingTop: rs(28),
+    paddingBottom: rs(36),
     alignItems: 'center',
   },
   photoWrap: { position: 'relative' },
   photoImg: {
-    width: 88, height: 88, borderRadius: 44,
+    width: rs(88), height: rs(88), borderRadius: rs(44),
     borderWidth: 3, borderColor: 'rgba(255,255,255,0.25)',
   },
   photoEmpty: {
-    width: 88, height: 88, borderRadius: 44,
+    width: rs(88), height: rs(88), borderRadius: rs(44),
     backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.20)',
     alignItems: 'center', justifyContent: 'center',
   },
   photoCameraBtn: {
     position: 'absolute', bottom: 2, right: 2,
-    width: 26, height: 26, borderRadius: 13,
+    width: rs(26), height: rs(26), borderRadius: rs(13),
     backgroundColor: BLUE,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: DARK,
   },
   photoCardBottom: {
     alignItems: 'center',
-    paddingTop: 14,
-    paddingBottom: 18,
-    paddingHorizontal: 12,
-    gap: 8,
-    marginTop: -24,
+    paddingTop: rs(14),
+    paddingBottom: rs(18),
+    paddingHorizontal: rs(12),
+    gap: rs(8),
+    marginTop: rs(-24),
     backgroundColor: SURFACE,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: rs(20),
+    borderTopRightRadius: rs(20),
   },
   photoName: {
-    fontSize: 15, fontFamily: 'DMSans_800ExtraBold', color: TEXT,
+    fontSize: rf(15), fontFamily: 'DMSans_800ExtraBold', color: TEXT,
     textAlign: 'center',
   },
   photoCodePill: {
     backgroundColor: PURPLE_L,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    borderRadius: rs(20),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(4),
   },
   photoCodeText: {
-    fontSize: 11, fontFamily: 'DMSans_700Bold', color: PURPLE, letterSpacing: 0.4,
+    fontSize: rf(11), fontFamily: 'DMSans_700Bold', color: PURPLE, letterSpacing: 0.4,
   },
   changePhotoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: rs(5),
     backgroundColor: BLUE_L,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    borderRadius: rs(8),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(7),
     marginTop: 2,
   },
   changePhotoBtnText: {
-    fontSize: 12, fontFamily: 'DMSans_700Bold', color: BLUE,
+    fontSize: rf(12), fontFamily: 'DMSans_700Bold', color: BLUE,
   },
 
   // ── Info chip ─────────────────────────────────────────────────────────────
   infoChip: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: rs(8),
     backgroundColor: SURFACE,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: rs(12),
+    padding: rs(12),
     borderWidth: 1,
     borderColor: BORDER,
   },
   infoChipText: {
     flex: 1,
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_400Regular',
     color: MUTED,
-    lineHeight: 16,
+    lineHeight: rf(16),
   },
 
   // ── Section card ──────────────────────────────────────────────────────────
   card: {
     backgroundColor: SURFACE,
-    borderRadius: 16,
+    borderRadius: rs(16),
     borderWidth: 1,
     borderColor: BORDER,
     overflow: 'hidden',
@@ -542,35 +543,35 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   cardAccentBar: {
-    width: 4,
+    width: rs(4),
     alignSelf: 'stretch',
   },
   cardInner: { flex: 1 },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
+    gap: rs(10),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(13),
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
   cardIconBox: {
-    width: 30, height: 30, borderRadius: 8,
+    width: rs(30), height: rs(30), borderRadius: rs(8),
     alignItems: 'center', justifyContent: 'center',
   },
   cardTitle: {
-    fontSize: 13, fontFamily: 'DMSans_700Bold', color: TEXT,
+    fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: TEXT,
   },
   cardFields: {
-    padding: 16,
-    gap: 12,
+    padding: rs(16),
+    gap: rs(12),
   },
 
   // ── Fields ────────────────────────────────────────────────────────────────
-  fieldRow: { gap: 6 },
+  fieldRow: { gap: rs(6) },
   fieldLabel: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_700Bold',
     color: MUTED,
     textTransform: 'uppercase',
@@ -578,37 +579,37 @@ const styles = StyleSheet.create({
   },
   fieldRequired: { color: CORAL },
   fieldError: {
-    fontSize: 11,
+    fontSize: rf(11),
     fontFamily: 'DMSans_400Regular',
     color: CORAL,
   },
   fieldDivider: {
     height: 1,
     backgroundColor: BORDER,
-    marginHorizontal: -16,
+    marginHorizontal: rs(-16),
     marginVertical: 2,
   },
   fieldPair: {
     flexDirection: 'row',
-    gap: 12,
+    gap: rs(12),
   },
 
   // ── Input ─────────────────────────────────────────────────────────────────
   styledInput: {
     backgroundColor: BODY_BG,
-    borderRadius: 10,
+    borderRadius: rs(10),
     borderWidth: 1,
     borderColor: BORDER,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    fontSize: 13,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(11),
+    fontSize: rf(13),
     fontFamily: 'DMSans_400Regular',
     color: TEXT,
   },
   styledInputMulti: {
-    minHeight: 78,
+    minHeight: rs(78),
     textAlignVertical: 'top',
-    paddingTop: 10,
+    paddingTop: rs(10),
   },
   styledInputError: {
     borderColor: CORAL,
@@ -620,20 +621,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 0,
-    height: 44,
+    height: rs(44),
   },
   selectText: {
-    fontSize: 13, fontFamily: 'DMSans_400Regular', color: TEXT,
+    fontSize: rf(13), fontFamily: 'DMSans_400Regular', color: TEXT,
   },
   dropdown: {
     backgroundColor: SURFACE,
-    borderRadius: 10,
+    borderRadius: rs(10),
     borderWidth: 1,
     borderColor: BORDER,
-    marginTop: 4,
+    marginTop: rs(4),
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
@@ -641,8 +642,8 @@ const styles = StyleSheet.create({
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(11),
   },
   dropdownItemBorder: {
     borderTopWidth: 1,
@@ -650,7 +651,7 @@ const styles = StyleSheet.create({
   },
   dropdownItemActive: { backgroundColor: PURPLE_L },
   dropdownText: {
-    flex: 1, fontSize: 13, fontFamily: 'DMSans_400Regular', color: TEXT,
+    flex: 1, fontSize: rf(13), fontFamily: 'DMSans_400Regular', color: TEXT,
   },
   dropdownTextActive: {
     fontFamily: 'DMSans_700Bold', color: PURPLE,
@@ -661,17 +662,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    height: 38,
-    borderRadius: 10,
+    gap: rs(6),
+    height: rs(38),
+    borderRadius: rs(10),
     backgroundColor: '#2E9E63',
   },
   saveBtnText: {
-    fontSize: 13, fontFamily: 'DMSans_700Bold', color: SURFACE,
+    fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: SURFACE,
   },
   cancelBtn: {
-    height: 36,
-    borderRadius: 10,
+    height: rs(36),
+    borderRadius: rs(10),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: BODY_BG,
@@ -679,6 +680,6 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
   },
   cancelBtnText: {
-    fontSize: 13, fontFamily: 'DMSans_700Bold', color: MUTED,
+    fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: MUTED,
   },
 });

@@ -20,6 +20,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { getConceptItem } from '../../../../data/conceptData';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
+import { rs, rf } from '../../../../utils/responsive';
 
 // One recording for every colouring page, not a per-concept line: the prompt
 // names the activity rather than the fruit, so it needs no TTS fallback the way
@@ -39,7 +40,7 @@ const COLORS = [
   { key: 'white',  hex: '#FFFFFF' },
 ];
 
-const STROKE_WIDTH = 14;
+const STROKE_WIDTH = rs(14);
 
 export default function ConceptColoringScreen({ route, navigation }) {
   const { student, category, conceptKey } = route.params;
@@ -303,14 +304,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Layout.spacing.md,
-    paddingVertical: 16,
-    gap: 14,
+    paddingVertical: rs(16),
+    gap: rs(14),
   },
 
   pill: {
-    paddingHorizontal: 28,
-    paddingVertical: 10,
-    borderRadius: 24,
+    paddingHorizontal: rs(28),
+    paddingVertical: rs(10),
+    borderRadius: rs(24),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -318,13 +319,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   pillText: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 0.5,
     textAlign: 'center',
   },
   pillTextSi: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -335,26 +336,26 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 20,
+    gap: rs(20),
   },
 
   palette: {
-    width: 64,
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    width: rs(64),
+    borderRadius: rs(20),
+    paddingVertical: rs(14),
+    paddingHorizontal: rs(8),
     alignItems: 'center',
     justifyContent: 'space-evenly',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   swatch: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: rs(38),
+    height: rs(38),
+    borderRadius: rs(19),
   },
   swatchActive: {
     borderWidth: 3,
@@ -371,12 +372,12 @@ const styles = StyleSheet.create({
   },
 
   canvasBox: {
-    borderRadius: 20,
+    borderRadius: rs(20),
     borderWidth: 3,
     overflow: 'hidden',
     backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.14,
     shadowRadius: 14,
     elevation: 8,
@@ -396,15 +397,15 @@ const styles = StyleSheet.create({
 
   toolRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: rs(12),
   },
   toolBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 16,
+    gap: rs(6),
+    paddingHorizontal: rs(18),
+    paddingVertical: rs(10),
+    borderRadius: rs(16),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -412,21 +413,21 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   toolBtnText: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: 'DMSans_700Bold',
   },
 
   continueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 44,
-    paddingVertical: 16,
-    borderRadius: 36,
+    gap: rs(8),
+    paddingHorizontal: rs(44),
+    paddingVertical: rs(16),
+    borderRadius: rs(36),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: rs(4) },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 6,
@@ -435,7 +436,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   continueBtnText: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

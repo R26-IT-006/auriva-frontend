@@ -1,5 +1,6 @@
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * HeaderPillButton.js
@@ -62,15 +63,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    minHeight: 40,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    gap: rs(6),
+    minHeight: rs(40),
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(8),
+    borderRadius: rs(20),
     borderWidth: 1.5,
   },
   label: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_700Bold',
   },
   disabled: { opacity: 0.45 },

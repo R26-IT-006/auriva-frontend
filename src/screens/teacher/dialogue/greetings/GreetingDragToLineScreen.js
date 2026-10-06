@@ -21,6 +21,7 @@ import { dialogueApi } from '../../../../api/dialogue';
 import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
@@ -720,16 +721,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(12),
+    gap: rs(8),
   },
-  headerSide: { width: 40, alignItems: 'center', justifyContent: 'center' },
+  headerSide: { width: rs(40), alignItems: 'center', justifyContent: 'center' },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
@@ -741,12 +742,12 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     flex: 1,
-    height: 8,
+    height: rs(8),
     backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 4,
+    borderRadius: rs(4),
     overflow: 'hidden',
   },
-  progressFill: { height: '100%', borderRadius: 4 },
+  progressFill: { height: '100%', borderRadius: rs(4) },
 
   body: {
     flex: 1,
@@ -793,16 +794,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.xl,
     paddingTop: Layout.spacing.xl,
     paddingBottom: Layout.spacing.lg,
-    marginTop: 20,
+    marginTop: rs(20),
     alignItems: 'center',
     ...Layout.shadow.sm,
   },
   promptBadge: {
     position: 'absolute',
-    top: -22,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    top: rs(-22),
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(22),
     borderWidth: 3,
     borderColor: '#FFFFFF',
     alignItems: 'center',
@@ -810,9 +811,9 @@ const styles = StyleSheet.create({
     ...Layout.shadow.sm,
   },
   promptText: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
-    lineHeight: 32,
+    lineHeight: rf(32),
     textAlign: 'center',
   },
 
@@ -825,12 +826,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 96,
+    minHeight: rs(96),
   },
   dropZoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: rs(10),
   },
   dropZonePlaceholder: {
     fontSize: Layout.fontSize.md,
@@ -839,7 +840,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   dropZoneFilledText: {
-    fontSize: 24,
+    fontSize: rf(24),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#16A34A',
     textAlign: 'center',
@@ -853,10 +854,10 @@ const styles = StyleSheet.create({
   dragHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: rs(6),
     backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(6),
     borderRadius: Layout.radius.full,
   },
   dragHintText: {
@@ -874,28 +875,28 @@ const styles = StyleSheet.create({
   wordCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: rs(6),
     backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
+    paddingVertical: rs(14),
     paddingHorizontal: Layout.spacing.xl,
-    borderRadius: 18,
+    borderRadius: rs(18),
     borderWidth: 2,
     borderBottomWidth: 5,
     borderColor: 'rgba(0,0,0,0.12)',
     ...Layout.shadow.md,
   },
   wordCardText: {
-    fontSize: 22,
+    fontSize: rf(22),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
   },
   wordCardIcon: {
-    fontSize: 16,
+    fontSize: rf(16),
   },
 
   feedbackBanner: {
     position: 'absolute',
-    bottom: 60,
+    bottom: rs(60),
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -915,24 +916,24 @@ const styles = StyleSheet.create({
   avatarPopup: {
     position: 'absolute',
     bottom: 0,
-    right: 20,
+    right: rs(20),
     zIndex: 100,
   },
-  avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: rs(4) },
   speechBubble: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    marginBottom: 16,
+    borderRadius: rs(16),
+    paddingHorizontal: rs(18),
+    paddingVertical: rs(10),
+    marginBottom: rs(16),
     ...Layout.shadow.md,
     position: 'relative',
   },
   speechBubbleText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold', color: '#333' },
   speechBubbleTail: {
     position: 'absolute',
-    right: -10,
-    bottom: 12,
+    right: rs(-10),
+    bottom: rs(12),
     width: 0,
     height: 0,
     borderTopWidth: 8,
@@ -942,7 +943,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 10,
     borderLeftColor: '#FFFFFF',
   },
-  avatarImage: { width: 90, height: 115 },
+  avatarImage: { width: rs(90), height: rs(115) },
 
   settingsOverlay: {
     flex: 1,
@@ -951,8 +952,8 @@ const styles = StyleSheet.create({
   },
   settingsSheet: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: rs(24),
+    borderTopRightRadius: rs(24),
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
@@ -973,6 +974,6 @@ const styles = StyleSheet.create({
   settingsDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#EEE',
-    marginVertical: 4,
+    marginVertical: rs(4),
   },
 });

@@ -14,6 +14,7 @@ import { buildBasketSortGame, getConclusionForCategory } from '../../../../data/
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const FINISH_DELAY_MS    = 1600;
 
@@ -205,20 +206,20 @@ export default function ConceptBasketSortScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  safe: { flex: 1, paddingVertical: 10 },
+  safe: { flex: 1, paddingVertical: rs(10) },
 
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: rs(12),
     paddingHorizontal: Layout.spacing.md,
     paddingVertical: Layout.spacing.sm,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -227,10 +228,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     // Sits below the two icon buttons it shares the row with, rather than
     // centred against them.
-    marginTop: 22,
-    paddingHorizontal: 28,
-    paddingVertical: 10,
-    borderRadius: 24,
+    marginTop: rs(22),
+    paddingHorizontal: rs(28),
+    paddingVertical: rs(10),
+    borderRadius: rs(24),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -238,13 +239,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   pillText: {
-    fontSize: 21,
+    fontSize: rf(21),
     fontFamily: 'DMSans_800ExtraBold',
     letterSpacing: 0.4,
     textAlign: 'center',
   },
   pillTextSi: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.65,
     textAlign: 'center',
@@ -252,7 +253,7 @@ const styles = StyleSheet.create({
   },
 
   progress: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_700Bold',
     opacity: 0.6,
     textAlign: 'center',
@@ -264,26 +265,26 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
+    gap: rs(20),
     paddingHorizontal: Layout.spacing.lg,
   },
   emptyText: {
-    fontSize: 20,
+    fontSize: rf(20),
     fontFamily: 'DMSans_700Bold',
     textAlign: 'center',
   },
   continueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 44,
-    paddingVertical: 16,
-    borderRadius: 36,
+    gap: rs(8),
+    paddingHorizontal: rs(44),
+    paddingVertical: rs(16),
+    borderRadius: rs(36),
     borderBottomWidth: 5,
     borderBottomColor: 'rgba(0,0,0,0.22)',
   },
   continueBtnText: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontFamily: 'DMSans_800ExtraBold',
   },
 });

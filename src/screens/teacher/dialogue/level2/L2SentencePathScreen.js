@@ -21,6 +21,7 @@ import { DMSans_800ExtraBold, DMSans_700Bold, DMSans_600SemiBold } from '@expo-g
 import { Layout } from '../../../../constants/layout';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import { rs, rf } from '../../../../utils/responsive';
 
 const TOPIC_TITLES = {
   self_introduction: 'Myself',
@@ -254,9 +255,9 @@ export default function L2SentencePathScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1, overflow: 'hidden' },
   // Decorative background shapes (same as the other module screens).
-  blob: { position: 'absolute', borderRadius: 999, opacity: 0.08 },
-  blobTopRight:   { width: 220, height: 220, top: -60, right: -60 },
-  blobBottomLeft: { width: 260, height: 260, bottom: -80, left: -80 },
+  blob: { position: 'absolute', borderRadius: rs(999), opacity: 0.08 },
+  blobTopRight:   { width: rs(220), height: rs(220), top: rs(-60), right: rs(-60) },
+  blobBottomLeft: { width: rs(260), height: rs(260), bottom: rs(-80), left: rs(-80) },
   safe: { flex: 1 },
 
   topBar: {
@@ -265,48 +266,48 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     position: 'absolute', left: Layout.spacing.lg, top: Layout.spacing.sm,
-    width: 40, height: 40, borderRadius: 20,
+    width: rs(40), height: rs(40), borderRadius: rs(20),
     backgroundColor: 'rgba(255,255,255,0.75)',
     alignItems: 'center', justifyContent: 'center',
     zIndex: 1,
   },
 
   titlePill: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: rs(12),
     backgroundColor: '#FF7A00',
     alignSelf: 'center',
-    paddingVertical: 11, paddingHorizontal: 30,
-    borderRadius: 60,
+    paddingVertical: rs(11), paddingHorizontal: rs(30),
+    borderRadius: rs(60),
     borderWidth: 4, borderColor: 'rgba(255,255,255,0.5)',
-    shadowColor: '#C04800', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 1, shadowRadius: 0, elevation: 6,
+    shadowColor: '#C04800', shadowOffset: { width: 0, height: rs(6) }, shadowOpacity: 1, shadowRadius: 0, elevation: 6,
   },
-  titleEmoji: { fontSize: 21 },
-  titleText: { fontSize: 30, fontFamily: 'DMSans_900Black', color: '#FFF' },
+  titleEmoji: { fontSize: rf(21) },
+  titleText: { fontSize: rf(30), fontFamily: 'DMSans_900Black', color: '#FFF' },
 
   pathArea: { flex: 1, position: 'relative' },
 
   stopWrap: { position: 'absolute', alignItems: 'center', transform: [{ translateX: -40 }] },
   card: {
-    width: 118, backgroundColor: '#FFF', borderRadius: 14, borderWidth: 3,
+    width: rs(118), backgroundColor: '#FFF', borderRadius: rs(14), borderWidth: 3,
     overflow: 'hidden', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 5, elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(3) }, shadowOpacity: 0.15, shadowRadius: 5, elevation: 4,
   },
-  cardHeader: { width: '100%', alignItems: 'center', paddingVertical: 4 },
-  cardEmoji: { fontSize: 14 },
-  cardTitle: { fontSize: 12, fontFamily: 'DMSans_800ExtraBold', color: '#1A2B1A', textAlign: 'center', paddingHorizontal: 6, paddingVertical: 6, lineHeight: 15 },
-  stem: { width: 5, height: 16, borderRadius: 3 },
+  cardHeader: { width: '100%', alignItems: 'center', paddingVertical: rs(4) },
+  cardEmoji: { fontSize: rf(14) },
+  cardTitle: { fontSize: rf(12), fontFamily: 'DMSans_800ExtraBold', color: '#1A2B1A', textAlign: 'center', paddingHorizontal: rs(6), paddingVertical: rs(6), lineHeight: rf(15) },
+  stem: { width: rs(5), height: rs(16), borderRadius: rs(3) },
 
-  btnTouch: { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' },
-  btnShadow: { position: 'absolute', top: 6, width: 74, height: 74, borderRadius: 37 },
+  btnTouch: { width: rs(80), height: rs(80), alignItems: 'center', justifyContent: 'center' },
+  btnShadow: { position: 'absolute', top: rs(6), width: rs(74), height: rs(74), borderRadius: rs(37) },
   btn: {
-    width: 74, height: 74, borderRadius: 37,
+    width: rs(74), height: rs(74), borderRadius: rs(37),
     alignItems: 'center', justifyContent: 'center',
   },
   btnPressed: { transform: [{ translateY: 3 }] },
-  btnNumber: { fontSize: 26, fontFamily: 'DMSans_900Black', color: '#FFF' },
+  btnNumber: { fontSize: rf(26), fontFamily: 'DMSans_900Black', color: '#FFF' },
   doneBadge: {
     position: 'absolute', top: -2, right: -2,
-    width: 24, height: 24, borderRadius: 12,
+    width: rs(24), height: rs(24), borderRadius: rs(12),
     backgroundColor: '#22C55E', borderWidth: 2, borderColor: '#FFF',
     alignItems: 'center', justifyContent: 'center',
   },
@@ -316,22 +317,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   banner: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
+    flexDirection: 'row', alignItems: 'center', gap: rs(14),
     backgroundColor: 'rgba(255,255,255,0.97)',
-    maxWidth: 480,
-    borderRadius: 24, borderWidth: 3, borderColor: '#3DBB5A',
-    paddingVertical: 14, paddingHorizontal: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 6,
+    maxWidth: rs(480),
+    borderRadius: rs(24), borderWidth: 3, borderColor: '#3DBB5A',
+    paddingVertical: rs(14), paddingHorizontal: rs(20),
+    shadowColor: '#000', shadowOffset: { width: 0, height: rs(6) }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 6,
   },
-  bannerEmoji: { fontSize: 32 },
-  bannerLabel: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: '#3DBB5A', letterSpacing: 1, textTransform: 'uppercase' },
-  bannerTitle: { fontSize: 20, fontFamily: 'DMSans_900Black', color: '#1A2B1A' },
+  bannerEmoji: { fontSize: rf(32) },
+  bannerLabel: { fontSize: rf(12), fontFamily: 'DMSans_700Bold', color: '#3DBB5A', letterSpacing: 1, textTransform: 'uppercase' },
+  bannerTitle: { fontSize: rf(20), fontFamily: 'DMSans_900Black', color: '#1A2B1A' },
   startBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#3DBB5A', borderRadius: 13,
-    paddingVertical: 11, paddingHorizontal: 20,
-    shadowColor: '#27843D', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3,
+    flexDirection: 'row', alignItems: 'center', gap: rs(6),
+    backgroundColor: '#3DBB5A', borderRadius: rs(13),
+    paddingVertical: rs(11), paddingHorizontal: rs(20),
+    shadowColor: '#27843D', shadowOffset: { width: 0, height: rs(3) }, shadowOpacity: 1, shadowRadius: 0, elevation: 3,
   },
-  startBtnText: { fontSize: 16, fontFamily: 'DMSans_900Black', color: '#FFF' },
-  startBtnEmoji: { fontSize: 16 },
+  startBtnText: { fontSize: rf(16), fontFamily: 'DMSans_900Black', color: '#FFF' },
+  startBtnEmoji: { fontSize: rf(16) },
 });

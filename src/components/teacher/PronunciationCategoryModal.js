@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { rs, rf } from '../../utils/responsive';
 
 /**
  * One pronunciation category's summary, opened from a card in the Student
@@ -225,65 +226,65 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     maxHeight: '84%',
     backgroundColor: Colors.surface,
-    borderRadius: 24,
+    borderRadius: rs(24),
     overflow: 'hidden',
   },
 
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 16 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: rs(12), paddingHorizontal: rs(20), paddingVertical: rs(16) },
   headIcon: {
-    width: 44, height: 44, borderRadius: 22,
+    width: rs(44), height: rs(44), borderRadius: rs(22),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-  title:    { fontSize: 20, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  subtitle: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', marginTop: 1 },
+  title:    { fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  subtitle: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', marginTop: 1 },
   closeBtn: {
-    width: 34, height: 34, borderRadius: 17,
+    width: rs(34), height: rs(34), borderRadius: rs(17),
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
 
   scrollView: { flexShrink: 1 },
-  scroll: { padding: 20, paddingTop: 16, gap: 20 },
+  scroll: { padding: rs(20), paddingTop: rs(16), gap: rs(20) },
 
-  stats: { flexDirection: 'row', gap: 8 },
+  stats: { flexDirection: 'row', gap: rs(8) },
   stat: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 14,
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(14),
     backgroundColor: Colors.surfaceAlt,
   },
   statLabel: {
-    fontSize: 11, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary,
+    fontSize: rf(11), fontFamily: 'DMSans_700Bold', color: Colors.text.secondary,
     textTransform: 'uppercase', letterSpacing: 0.8,
   },
-  statValue: { fontSize: 20, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, marginTop: 4 },
+  statValue: { fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, marginTop: rs(4) },
 
   flagRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#FDF3E3',
+    flexDirection: 'row', alignItems: 'center', gap: rs(6),
+    paddingVertical: rs(8), paddingHorizontal: rs(12), borderRadius: rs(12), backgroundColor: '#FDF3E3',
   },
-  flagText: { fontSize: 12.5, fontFamily: 'DMSans_600SemiBold', color: '#8A5208' },
+  flagText: { fontSize: rf(12.5), fontFamily: 'DMSans_600SemiBold', color: '#8A5208' },
 
-  section: { gap: 10 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  sectionTitle: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  countPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Layout.radius.full },
-  countText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+  section: { gap: rs(10) },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: rs(7) },
+  sectionTitle: { fontSize: rf(15), fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  countPill: { paddingHorizontal: rs(8), paddingVertical: 2, borderRadius: Layout.radius.full },
+  countText: { fontSize: rf(11), fontFamily: 'DMSans_700Bold' },
 
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'baseline', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  chipText: { fontSize: 15, fontFamily: 'DMSans_800ExtraBold' },
-  chipMeta: { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(8) },
+  chip: { flexDirection: 'row', alignItems: 'baseline', gap: rs(6), paddingHorizontal: rs(10), paddingVertical: rs(6), borderRadius: rs(12) },
+  chipText: { fontSize: rf(15), fontFamily: 'DMSans_800ExtraBold' },
+  chipMeta: { fontSize: rf(11), fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
   chipIdle: { backgroundColor: Colors.surfaceAlt },
-  chipIdleText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: Colors.text.muted },
+  chipIdleText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: Colors.text.muted },
 
   table: {
-    borderRadius: 14,
+    borderRadius: rs(14),
     borderWidth: 1,
     borderColor: Colors.borderLight,
     overflow: 'hidden',
@@ -291,32 +292,32 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(9),
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
   },
-  headerRow: { borderTopWidth: 0, backgroundColor: Colors.surfaceAlt, paddingVertical: 7 },
+  headerRow: { borderTopWidth: 0, backgroundColor: Colors.surfaceAlt, paddingVertical: rs(7) },
   headerText: {
-    fontSize: 10.5, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary,
+    fontSize: rf(10.5), fontFamily: 'DMSans_700Bold', color: Colors.text.secondary,
     textTransform: 'uppercase', letterSpacing: 0.6,
   },
   cellWord: { flex: 1 },
-  cellNum: { width: 64, alignItems: 'center', textAlign: 'center' },
-  wordCell: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  wordText: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: Colors.text.primary, flexShrink: 1 },
-  numText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
-  scorePill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  scoreText: { fontSize: 12, fontFamily: 'DMSans_700Bold' },
+  cellNum: { width: rs(64), alignItems: 'center', textAlign: 'center' },
+  wordCell: { flexDirection: 'row', alignItems: 'center', gap: rs(5) },
+  wordText: { fontSize: rf(14), fontFamily: 'DMSans_700Bold', color: Colors.text.primary, flexShrink: 1 },
+  numText: { fontSize: rf(13), fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+  scorePill: { borderRadius: rs(10), paddingHorizontal: rs(8), paddingVertical: 2 },
+  scoreText: { fontSize: rf(12), fontFamily: 'DMSans_700Bold' },
 
   reportLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 14,
+    gap: rs(6),
+    paddingVertical: rs(12),
+    borderRadius: rs(14),
     backgroundColor: '#E4F4EC',
   },
-  reportLinkText: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: Colors.brandDeep },
+  reportLinkText: { fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: Colors.brandDeep },
 });

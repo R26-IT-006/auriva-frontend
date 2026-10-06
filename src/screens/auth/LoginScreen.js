@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +22,7 @@ import { Input } from '../../components/common/Input';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { useAuthStore } from '../../store/authStore';
+import { rs, rf } from '../../utils/responsive';
 
 // Aliases onto the shared brand token. The sign-in button is where this colour
 // is defined for the product, so other screens borrow it from `Colors` — keeping
@@ -29,12 +31,17 @@ const GREEN       = Colors.brand;
 const GREEN_GRAD  = Colors.brandGradient;
 const GREEN_LIGHT = '#E3F5F7';
 
-// The Auriva logo (book, wordmark and tagline). Its own background is the
-// card's white to within a shade, so it sits on the card without a visible box.
-const AURIVA_LOGO = require('../../../assets/logos/Auriva_Logo.jpeg');
-const LOGO_RATIO = 1086 / 1448;   // the image's height / width
+// The Auriva logo (book, wordmark and tagline): a transparent PNG trimmed to
+// the artwork, made from Auriva_Logo.jpeg, so no cream box shows on the card.
+const AURIVA_LOGO = require('../../../assets/logos/Auriva_Logo.png');
+const LOGO_RATIO = 821 / 931;   // the image's height / width
 
 export default function LoginScreen({ navigation }) {
+  // The logo's width is the smaller of its design size and what keeps it to
+  // 22% of the screen's height, so the whole sign-in card fits a short tablet
+  // without scrolling and the logo still reads at its designed size elsewhere.
+  const { height: winH } = useWindowDimensions();
+  const logoW = Math.min(rs(220), (winH * 0.22) / LOGO_RATIO);
   const slideAnim    = useRef(new Animated.Value(0)).current;
   const btnScale     = useRef(new Animated.Value(1)).current;
   const [selectorW, setSelectorW] = useState(0);
@@ -129,7 +136,7 @@ export default function LoginScreen({ navigation }) {
               <View style={styles.logoRow}>
                 <Image
                   source={AURIVA_LOGO}
-                  style={styles.logo}
+                  style={{ width: logoW, height: logoW * LOGO_RATIO }}
                   resizeMode="contain"
                   accessibilityRole="image"
                   accessibilityLabel="Auriva — Learning English, one happy step at a time"
@@ -256,13 +263,13 @@ const styles = StyleSheet.create({
   // ── Card ─────────────────────────────────────────────────────────────────
   card: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: rs(560),
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    paddingHorizontal: 36,
-    paddingVertical: 40,
+    borderRadius: rs(28),
+    paddingHorizontal: rs(36),
+    paddingVertical: rs(40),
     shadowColor: GREEN,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.10,
     shadowRadius: 24,
     elevation: 8,
@@ -271,29 +278,23 @@ const styles = StyleSheet.create({
   // ── Logo ──────────────────────────────────────────────────────────────────
   logoRow: {
     alignItems: 'center',
-    // The image carries its own white margin, so the gap below is small.
-    marginTop: -12,
-    marginBottom: 4,
-  },
-  logo: {
-    width: 300,
-    height: 300 * LOGO_RATIO,
+    marginBottom: rs(14),
   },
 
   // ── Headings ──────────────────────────────────────────────────────────────
   cardTitle: {
-    fontSize: 28,
+    fontSize: rf(28),
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A1A2E',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: rs(6),
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_400Regular',
     color: '#9B9FB0',
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: rs(28),
   },
 
   // ── Role selector ─────────────────────────────────────────────────────────
@@ -301,14 +302,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: GREEN_LIGHT,
     borderRadius: Layout.radius.lg,
-    padding: 4,
-    marginBottom: 24,
+    padding: rs(4),
+    marginBottom: rs(24),
   },
   rolePillIndicator: {
     position: 'absolute',
-    top: 4,
-    left: 4,
-    bottom: 4,
+    top: rs(4),
+    left: rs(4),
+    bottom: rs(4),
     backgroundColor: '#FFFFFF',
     borderRadius: Layout.radius.md,
     shadowColor: '#000',
@@ -319,12 +320,12 @@ const styles = StyleSheet.create({
   },
   rolePill: {
     flex: 1,
-    paddingVertical: 11,
+    paddingVertical: rs(11),
     alignItems: 'center',
     zIndex: 1,
   },
   rolePillText: {
-    fontSize: 14,
+    fontSize: rf(14),
     fontFamily: 'DMSans_600SemiBold',
     color: '#9B9FB0',
   },
@@ -335,11 +336,11 @@ const styles = StyleSheet.create({
   // ── Forgot password ───────────────────────────────────────────────────────
   forgotRow: {
     alignItems: 'flex-end',
-    marginTop: 4,
-    marginBottom: 20,
+    marginTop: rs(4),
+    marginBottom: rs(20),
   },
   forgotText: {
-    fontSize: 13,
+    fontSize: rf(13),
     fontFamily: 'DMSans_600SemiBold',
     color: '#4AABB8',
   },
@@ -348,10 +349,10 @@ const styles = StyleSheet.create({
   // The lift sits on the wrapper: the button itself clips its gradient, and a
   // shadow on a clipping view is cut off with the corners.
   loginBtnWrap: {
-    marginTop: 4,
-    borderRadius: 16,
+    marginTop: rs(4),
+    borderRadius: rs(16),
     shadowColor: GREEN,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: rs(6) },
     shadowOpacity: 0.30,
     shadowRadius: 12,
     elevation: 6,
@@ -362,31 +363,31 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   loginBtn: {
-    borderRadius: 16,
+    borderRadius: rs(16),
     overflow: 'hidden',
   },
   loginBtnGradient: {
-    height: 56,
+    height: rs(56),
     alignItems: 'center',
     justifyContent: 'center',
   },
   loginBtnRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: rs(10),
   },
   loginBtnText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: rf(16),
     fontFamily: 'DMSans_700Bold',
     letterSpacing: 0.4,
   },
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
-    marginTop: 20,
+    marginTop: rs(20),
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: rf(10),
     letterSpacing: 1.8,
     color: Colors.text.muted,
     fontFamily: 'DMSans_600SemiBold',
@@ -398,31 +399,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: rs(40),
   },
   errorCard: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: rs(400),
     backgroundColor: '#FFF',
-    borderRadius: 28,
-    paddingVertical: 40,
-    paddingHorizontal: 32,
+    borderRadius: rs(28),
+    paddingVertical: rs(40),
+    paddingHorizontal: rs(32),
     alignItems: 'center',
-    gap: 12,
+    gap: rs(12),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: rs(12) },
     shadowOpacity: 0.15,
     shadowRadius: 32,
     elevation: 12,
   },
   errorIconCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: rs(90),
+    height: rs(90),
+    borderRadius: rs(45),
     backgroundColor: '#FDF0EE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: rs(4),
   },
   errorTitle: {
     fontSize: Layout.fontSize.xl,
@@ -434,15 +435,15 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.sm,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 4,
+    lineHeight: rf(22),
+    marginBottom: rs(4),
   },
   errorBtn: {
     width: '100%',
-    borderRadius: 14,
-    marginTop: 8,
+    borderRadius: rs(14),
+    marginTop: rs(8),
     backgroundColor: GREEN,
-    height: 54,
+    height: rs(54),
     alignItems: 'center',
     justifyContent: 'center',
   },
