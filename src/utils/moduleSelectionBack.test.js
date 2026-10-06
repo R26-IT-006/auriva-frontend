@@ -184,7 +184,7 @@ describe('shared visible control and flow safety', () => {
   test('forward assessment destinations remain present', () => {
     expect(readCode(PRESS_AND_DRAG)).toMatch(/navigation\.navigate\('Instructions', \{ student, theme \}\)/);
     expect(readCode(INSTRUCTIONS)).toMatch(/navigation\.navigate\('StudentWelcome', \{ student, theme \}\)/);
-    expect(readCode(START)).toMatch(/navigation\.navigate\('ShapeAssessment', assessmentParams\)/);
+    expect(readCode(START)).toMatch(/navigation\.navigate\('ShapeAssessment', \{ student, theme \}\)/);
     expect(readCode('../screens/teacher/handwriting/AssessmentCompleteScreen.js'))
       .toMatch(/resetToPostAssessmentPractice\(navigation, \{/);
   });

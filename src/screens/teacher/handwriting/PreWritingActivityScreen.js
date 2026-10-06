@@ -601,23 +601,22 @@ export default function PreWritingActivityScreen({ route, navigation }) {
             <View style={styles.buttonsRow}>
               {canClearCanvas && (
                 <TouchableOpacity
-                  style={[styles.clearButton, { borderColor: theme.button + '60', backgroundColor: theme.button + '10' }]}
+                  style={[styles.clearBtn, { borderColor: theme.button + '55' }]}
                   onPress={handleClear}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="refresh" size={18} color={theme.button} />
-                  <Text style={[styles.clearText, { color: theme.button }]}>Clear</Text>
+                  <Ionicons name="refresh-outline" size={16} color={theme.headingText} />
+                  <Text style={[styles.clearText, { color: theme.headingText }]}>Clear</Text>
                 </TouchableOpacity>
               )}
 
               {showDone && !attemptFeedback && (
                 <TouchableOpacity
-                  style={[styles.nextButton, { backgroundColor: theme.button }]}
+                  style={[styles.nextBtn, { backgroundColor: theme.button }]}
                   onPress={submitAttempt}
                   activeOpacity={0.85}
                 >
-                  <Text style={[styles.nextText, { color: theme.buttonText }]}>Done</Text>
-                  <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
+                  <Text style={[styles.nextText, { color: theme.buttonText }]}>Done →</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -811,39 +810,44 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   buttonsRow: {
+    // Clear and Done are the same height: 12 + 12 + 2 + 5 matches 13 + 13 + 5.
     minHeight: actionRowMinHeight({
-      maxButtonPaddingVertical: 13,
-      maxButtonBorderWidth: 1.5,
+      maxButtonPaddingVertical: 12, maxButtonBorderWidth: 2, maxButtonBorderBottomWidth: 5,
     }),
     flexDirection: 'row',
     gap: 16,
     alignItems: 'center',
   },
-  clearButton: {
+  // Same raised 3D buttons as LetterWritingScreen: white outlined Clear
+  // (secondary), theme-coloured Done (main action).
+  clearBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderBottomWidth: 5,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  clearText: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
+  nextBtn: {
     paddingHorizontal: 28,
     paddingVertical: 13,
-    borderRadius: 50,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  clearText: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  nextButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 36,
-    paddingVertical: 13,
-    borderRadius: 50,
-  },
-  nextText: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-  },
+  nextText: { fontSize: 16, fontFamily: 'DMSans_800ExtraBold' },
 });

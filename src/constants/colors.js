@@ -99,3 +99,14 @@ export const BACKDROP = {
   start:  { x: 0, y: 0 },
   end:    { x: 0, y: 0.45 },
 };
+
+/**
+ * The sign-in screen's gradient (LoginScreen.js), top to bottom: sky blue →
+ * green → cream. Used by the teacher dashboard and student profile so they
+ * share the login page's background.
+ */
+export const LOGIN_BACKDROP = {
+  colors: ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'],
+  start:  { x: 0, y: 0 },
+  end:    { x: 0, y: 1 },
+};

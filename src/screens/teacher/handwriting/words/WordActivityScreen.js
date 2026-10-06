@@ -179,7 +179,6 @@ export default function WordActivityScreen({ route, navigation }) {
   const {
     replay: replayInstruction,
     instructionPlaying,
-    canWrite: instructionCanWrite,
     requestTargetSpeech,
   } = useInstructionAudioState(
     EXERCISE_INSTRUCTION_KEY[currentExercise],
@@ -365,7 +364,11 @@ export default function WordActivityScreen({ route, navigation }) {
       onWrongAnswer: showWrongAnswerFeedback,
       onCorrectAnswer: showCorrectAnswerFeedback,
       onIncomplete: showIncompleteWritingFeedback,
-      canWrite: currentExercise !== 'E' || instructionCanWrite,
+      // Activity E's canvas is live from the first frame: the child may start
+      // writing while the instruction is still playing. The spoken target
+      // word is still queued behind the instruction (requestTargetSpeech),
+      // so the two never overlap.
+      canWrite: true,
       requestTargetSpeech,
       // Tapping the support picture (A, C, D) says the word. Resolved at
       // PRESS time, from the word being shown — never a captured first word.

@@ -45,10 +45,12 @@ describe('shared worksheet vocabulary', () => {
     expect(REVIEW_OPTIONS.map((o) => o.label)).toEqual([
       'Completed satisfactorily', 'Continue practice', 'Discuss in next session',
     ]);
-    // Every option maps to a status the backend actually accepts.
-    for (const o of REVIEW_OPTIONS) {
-      expect(['reviewed', 'needs_more_practice']).toContain(o.status);
-    }
+    // Every option maps to its OWN status the backend accepts, so the history
+    // keeps the teacher's exact choice.
+    expect(REVIEW_OPTIONS.map((o) => o.status)).toEqual([
+      'reviewed', 'needs_more_practice', 'discuss_next_session',
+    ]);
+    expect(getReviewStatusLabel('discuss_next_session')).toBe('Discuss in next session');
   });
 
   it('practice types are neutral support levels, never difficulty grades', () => {

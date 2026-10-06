@@ -37,23 +37,21 @@ export const WORKSHEET_STATUS_LABELS = Object.freeze({
 // The teacher's own reading of a returned page. Neutral, actionable, never a
 // verdict on the child.
 export const REVIEW_STATUS_LABELS = Object.freeze({
-  pending_review:      'Pending review',
-  reviewed:            'Completed satisfactorily',
-  needs_more_practice: 'Continue practice',
+  pending_review:       'Pending review',
+  reviewed:             'Completed satisfactorily',
+  needs_more_practice:  'Continue practice',
+  discuss_next_session: 'Discuss in next session',
 });
 
 /**
  * The three options a teacher picks from when reviewing a returned worksheet.
- *
- * "Discuss in next session" deliberately maps to the SAME stored status as
- * "Continue practice": both mean the letter is still being worked on, and the
- * distinction the teacher wants to record is carried by their comment. Adding
- * a third stored status would imply a distinction the backend does not model.
+ * Each is stored as its own status (backend worksheetService REVIEW_STATUS),
+ * so the worksheet history shows exactly what the teacher chose.
  */
 export const REVIEW_OPTIONS = Object.freeze([
   { key: 'completed',  label: 'Completed satisfactorily', status: 'reviewed' },
   { key: 'continue',   label: 'Continue practice',        status: 'needs_more_practice' },
-  { key: 'discuss',    label: 'Discuss in next session',  status: 'needs_more_practice' },
+  { key: 'discuss',    label: 'Discuss in next session',  status: 'discuss_next_session' },
 ]);
 
 export const INTENSITY_LABELS = Object.freeze({

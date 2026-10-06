@@ -35,7 +35,10 @@
 import { LOWERCASE_LETTER_PATHS, UPPERCASE_LETTER_PATHS } from '../constants/activityPreviewLetterPaths';
 // The shared expo-sharing wrapper + filename sanitizer. Dependency-free at
 // module level, so the pure builders above stay unit-testable.
-import { sharePdfFile, sanitizeForFilename } from './pdfShare';
+import { sharePdfFile, printPdfFile, savePdfFile, sanitizeForFilename } from './pdfShare';
+
+// A4 portrait in PostScript points (1 pt = 1/72 in): 210 mm × 297 mm.
+export const A4_POINTS = Object.freeze({ width: 595, height: 842 });
 import { A4, REPEATS, resolveRowHeights } from './worksheetLayoutA4';
 
 // ─── Page geometry (A4 portrait, mm) ────────────────────────────────────────
@@ -437,6 +440,16 @@ export async function shareWorksheetPdf({ fileUri, worksheet, student }) {
   });
 }
 
+/** Opens the device print options for the previewed worksheet. Writes nothing. */
+export async function printWorksheetPdf({ fileUri }) {
+  return printPdfFile({ fileUri, logTag: 'worksheetPdf' });
+}
+
+/** Saves a copy of the previewed worksheet to a folder the teacher picks. Writes nothing to the server. */
+export async function downloadWorksheetPdf({ fileUri, filename }) {
+  return savePdfFile({ fileUri, filename, logTag: 'worksheetPdf' });
+}
+
 /**
  * Renders the worksheet to a real PDF file on this device.
  *
@@ -447,7 +460,12 @@ export async function generateWorksheetPdf({ student, worksheet, plan }) {
   try {
     const Print = await import('expo-print');
     const html = buildWorksheetHtml({ student, worksheet, plan });
-    const { uri } = await Print.printToFileAsync({ html, base64: false });
+    // A4 in points (210 × 297 mm). expo-print defaults to US Letter, and iOS
+    // sizes the page from these options rather than the CSS @page rule, so
+    // the page size is stated here as well as in the html.
+    const { uri } = await Print.printToFileAsync({
+      html, base64: false, width: A4_POINTS.width, height: A4_POINTS.height,
+    });
     return { status: 'ok', fileUri: uri, filename: buildWorksheetFilename({ student, worksheet }), html };
   } catch (err) {
     return { status: 'failed', fileUri: null, filename: null, error: err?.message ?? 'Unknown error' };

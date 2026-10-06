@@ -30,13 +30,12 @@ describe('A — the report knows where it was opened from', () => {
     expect(teacherNav).toMatch(/name="StudentSession"/);
   });
 
-  it('the child paths already passed one, and still do', () => {
-    // LetterHome no longer opens the report at all (its Report button was
-    // removed), so the word chooser is the one child path left to check.
+  it('the child paths no longer open the report', () => {
+    // LetterHome and the word chooser both had their Report buttons removed.
     expect(stripComments(read('../screens/teacher/handwriting/LetterHomeScreen.js')))
       .not.toMatch(/navigate\('TeacherReport'/);
     expect(stripComments(read('../screens/teacher/handwriting/words/WordLetterSelectScreen.js')))
-      .toMatch(/originRoute: 'WordLetterSelect'/);
+      .not.toMatch(/navigate\('TeacherReport'/);
   });
 
   it('the report resolves back through the shared origin helper', () => {

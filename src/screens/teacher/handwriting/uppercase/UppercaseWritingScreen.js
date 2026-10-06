@@ -574,6 +574,10 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   // full rationale (staleness + concurrent-request protection for the
   // repetition-recommendation fetch).
   const cycleTokenRef = useRef(0);
+
+  // True while a completion cycle (including its network POST) is running.
+  // See handleNext's own comment for why this guard exists.
+  const submitInFlightRef = useRef(false);
   attemptRef.current  = attempt;
   hasDrawnRef.current = hasDrawn;
 
@@ -701,15 +705,6 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     return replayInstruction();
   }, [replayInstruction]);
 
-  // Announce the letter the child can actually SEE.
-  //
-  // `sequence` is `runtimeSequence ?? effectiveSequence ?? baseSequence`, and
-  // effectiveSequence is null until the mastered-letter filter resolves — so
-  // on mount `letter` is the first UNFILTERED letter, not the one that will
-  // be presented. The render is already gated on masteredSequenceReady, but
-  // an effect is not: this spoke the pre-filter letter ("L") and only then
-  // the real one ("O"). Gating the announcement on the same flag the render
-  // uses means the audio can never name a letter that was never shown.
   // Feature 3 Step 6 — adaptive support recommendation fetch. See
   // LetterWritingScreen.js's identical block for the full rationale: once
   // per letter, skipped entirely in collection mode, never blocks
@@ -1023,7 +1018,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     ]).start();
   }, [celebOpacity, celebScale, reduceMotion]);
 
-  const handleNext = useCallback(async () => {
+  const runNextCycle = useCallback(async () => {
     // Feature 5 Step 3 — see LetterWritingScreen.js's identical block for
     // the full rationale.
     cycleTokenRef.current += 1;
@@ -1447,6 +1442,20 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   }, [attempt, actualDemoSpeedLevel, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
       letterObj, interactionId, resetCanvas, sequence, show, showCelebrationFor, student.sid, supportLevel]);
 
+  // Double-submit guard — see LetterWritingScreen.js's identical block. The
+  // Next button re-enables before the completion POST lands, so a second tap
+  // would send a duplicate completion under a new session_key. A ref, not
+  // state, so two taps in one frame cannot both pass.
+  const handleNext = useCallback(async () => {
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+    try {
+      await runNextCycle();
+    } finally {
+      submitInFlightRef.current = false;
+    }
+  }, [runNextCycle]);
+
   const handleDismissCelebration = useCallback(() => {
     const isAllDone = celebration?.isAllDone;
     setCelebration(null);
@@ -1495,7 +1504,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
         setAttempt(1);
       }
     }
-  }, [celebration, collectionMode, collectionSessionId, navigation, student, theme, sequence, letterIdx, interactionId, caseType]);
+  }, [celebration, collectionMode, collectionSessionId, navigation, student, theme, sequence, letterIdx, interactionId, caseType, writingCheckId]);
 
   // Feature 11B Phase 5 — blank gate until the mastery-filtered sequence
   // is known — see LetterWritingScreen.js's identical gate for the

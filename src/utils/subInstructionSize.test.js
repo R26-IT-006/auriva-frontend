@@ -158,9 +158,11 @@ describe('weight stays readable while Sinhala may use its system fallback', () =
   });
 
   it('no new font family was introduced', () => {
+    // DMSans is the app-registered face (App.js) the letter screens' raised
+    // 3D Clear/Next buttons use; the Pre-Writing buttons share that style.
     for (const [rel] of SUB_INSTRUCTIONS) {
       for (const m of read(rel).matchAll(/fontFamily:\s*'([^']+)'/g)) {
-        expect(m[1]).toMatch(/^Nunito_/);
+        expect(m[1]).toMatch(/^(Nunito|DMSans)_/);
       }
     }
   });

@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
-import { Colors } from '../../../constants/colors';
+import { Colors, LOGIN_BACKDROP as BACKDROP } from '../../../constants/colors';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
@@ -30,12 +30,6 @@ import { duration, firstNameOf } from '../../../constants/teacherWording';
 const GREEN_DEEP = Colors.brandDeep;
 const GREEN_TINT = '#E4F4EC';
 
-// The login page's gradient, as on the Concept report.
-const BACKDROP = {
-  colors: ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'],
-  start:  { x: 0, y: 0 },
-  end:    { x: 0, y: 1 },
-};
 // Muted enough to sit under the delete glyph without competing with the green
 // actions beside it. Colors.status.error is a pink built for error banners.
 const RED = '#D64545';

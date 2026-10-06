@@ -23,7 +23,7 @@ import { GroupProgress } from '../../../components/charts/GroupProgress';
 import { ConceptThumb, conceptLabel } from '../../../components/charts/ConceptThumb';
 import { MixUpCard, MixUpEmpty } from '../../../components/charts/MixUpCard';
 import { DayByDay } from '../../../components/charts/DayByDay';
-import { Colors } from '../../../constants/colors';
+import { Colors, LOGIN_BACKDROP as BACKDROP } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
@@ -55,12 +55,6 @@ const ICON_TINTS = {
   sessions: { bg: '#EFEBFA', fg: '#6C5CE0' },   // purple
   groups:   { bg: '#FBE7E2', fg: '#E0735F' },   // coral
   games:    { bg: '#DFF3F4', fg: '#2F9AA8' },   // teal
-};
-
-const BACKDROP = {
-  colors: ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'],
-  start:  { x: 0, y: 0 },
-  end:    { x: 0, y: 1 },
 };
 
 /**

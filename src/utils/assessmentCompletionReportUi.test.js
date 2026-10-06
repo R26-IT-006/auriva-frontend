@@ -24,9 +24,15 @@ describe('Initial Assessment completion report rows', () => {
 
   test('the number and bar consume the exact same row score', () => {
     expect(source).toContain("{score != null ? `${score}%` : 'N/A'}");
-    expect(source).toContain("{ width: `${score ?? 0}%`, backgroundColor: theme.button }");
-    expect(source).toContain('<Text style={styles.metaLabel}>Accuracy</Text>');
-    expect(styleBody(source, 'accuracyHeader')).toMatch(/width: 110[\s\S]*justifyContent: 'space-between'/);
+    expect(source).toContain("{ width: `${score ?? 0}%`, backgroundColor: badge.color }");
+    expect(source).toContain('const badge      = getScoreBadge(score);');
+  });
+
+  test('uses the Assessment Summary modal presentation', () => {
+    expect(source).toContain('<OverallScoreRing score={overallScore}');
+    expect(source).toContain('function AssessmentShapeIcon({ shapeId, color })');
+    expect(styleBody(source, 'shapeRow')).toMatch(/flexBasis: '47%'[\s\S]*borderColor: '#DCC7B0'/);
+    expect(styleBody(source, 'card')).toMatch(/borderRadius: 28,\s*borderWidth: 3/);
   });
 
   test('missing scores remain visibly unavailable rather than fabricated', () => {

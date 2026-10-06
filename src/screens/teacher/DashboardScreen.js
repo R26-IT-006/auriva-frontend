@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../../components/common/Avatar';
-import { BACKDROP } from '../../constants/colors';
+import { LOGIN_BACKDROP } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { ageFrom } from '../../utils/formatters';
 import { teacherApi } from '../../api/teacher';
@@ -879,7 +879,7 @@ export default function TeacherDashboardScreen({ navigation }) {
 
   if (!data) {
     return (
-      <LinearGradient colors={BACKDROP.colors} style={styles.root} start={BACKDROP.start} end={BACKDROP.end}>
+      <LinearGradient colors={LOGIN_BACKDROP.colors} style={styles.root} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end}>
         <SafeAreaView style={[styles.safe, styles.loadingCenter]} edges={['top', 'bottom']}>
           <ActivityIndicator color={CHROME} size="large" />
         </SafeAreaView>
@@ -1023,7 +1023,7 @@ export default function TeacherDashboardScreen({ navigation }) {
   );
 
   return (
-    <LinearGradient colors={BACKDROP.colors} style={styles.root} start={BACKDROP.start} end={BACKDROP.end}>
+    <LinearGradient colors={LOGIN_BACKDROP.colors} style={styles.root} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -1109,7 +1109,7 @@ export default function TeacherDashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  // Colour comes from the BACKDROP gradient this is applied to, not from here.
+  // Colour comes from the LOGIN_BACKDROP gradient this is applied to, not from here.
   root: { flex: 1 },
   safe: { flex: 1 },
   loadingCenter: { alignItems: 'center', justifyContent: 'center' },

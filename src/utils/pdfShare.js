@@ -94,3 +94,64 @@ export async function sharePdfFile({
     return { status: 'failed', error: message };
   }
 }
+
+/**
+ * Sends an ALREADY-GENERATED PDF to the device's print dialog (printers, and
+ * "Save as PDF" where the platform offers it). Prints the previewed file by
+ * uri, never a rebuilt document. A dismissed print dialog is 'cancelled'.
+ *
+ * @param {{ fileUri: string, logTag?: string }} params
+ * @returns {Promise<{status: 'printed'|'cancelled'|'failed', error: string|null}>}
+ */
+export async function printPdfFile({ fileUri, logTag = 'pdfShare' }) {
+  try {
+    const Print = require('expo-print');
+    if (!fileUri) return { status: 'failed', error: 'There is no document to print.' };
+    await Print.printAsync({ uri: fileUri });
+    return { status: 'printed', error: null };
+  } catch (err) {
+    const message = err?.message ?? String(err);
+    if (/cancel|dismiss/i.test(message)) return { status: 'cancelled', error: null };
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log(`[${logTag}] print failed:`, message);
+    }
+    return { status: 'failed', error: message };
+  }
+}
+
+/**
+ * Saves a copy of an ALREADY-GENERATED PDF into a folder the teacher picks
+ * (e.g. Downloads), via the system folder picker. Like sharePdfFile it
+ * copies the previewed file by uri and never rebuilds the document.
+ *
+ * Backing out of the folder picker is 'cancelled', never a failure.
+ *
+ * @param {{ fileUri: string, filename: string, logTag?: string }} params
+ * @returns {Promise<{status: 'saved'|'cancelled'|'failed', error: string|null}>}
+ */
+export async function savePdfFile({ fileUri, filename, logTag = 'pdfShare' }) {
+  try {
+    const { File, Directory } = require('expo-file-system');
+
+    if (!fileUri) {
+      return { status: 'failed', error: 'There is no document to save.' };
+    }
+
+    const folder = await Directory.pickDirectoryAsync();
+    if (!folder) return { status: 'cancelled', error: null };
+
+    const bytes = await new File(fileUri).bytes();
+    const target = folder.createFile(filename, 'application/pdf');
+    target.write(bytes);
+    return { status: 'saved', error: null };
+  } catch (err) {
+    const message = err?.message ?? String(err);
+    if (/cancel/i.test(message)) {
+      return { status: 'cancelled', error: null };
+    }
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.log(`[${logTag}] save failed:`, message);
+    }
+    return { status: 'failed', error: message };
+  }
+}

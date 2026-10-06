@@ -176,14 +176,14 @@ describe('§5 — completion is the existing all-of-A-to-E evidence', () => {
 
 // ─── §2 the two top buttons ─────────────────────────────────────────────
 
-describe('§2 — Word Progress and Progress Report', () => {
+describe('§2 — Word Progress only (Progress Report removed)', () => {
   const code = readCode(CHOOSER);
 
-  it('the labels read Word Progress and Progress Report', () => {
+  it('the label reads Word Progress, and there is no Progress Report', () => {
     // Header buttons now use the shared HeaderPillButton, so the label is a
     // prop (label="…") rather than a <Text> child; either form is accepted.
     expect(code).toMatch(/>Word Progress<\/Text>|label="Word Progress"/);
-    expect(code).toMatch(/>Progress Report<\/Text>|label="Progress Report"/);
+    expect(code).not.toMatch(/>Progress Report<\/Text>|label="Progress Report"/);
     expect(code).not.toMatch(/>Rewards<\/Text>/);
     expect(code).not.toMatch(/>Teacher<\/Text>/);
     expect(code).not.toMatch(/accessibilityLabel="View rewards"/);
@@ -193,17 +193,9 @@ describe('§2 — Word Progress and Progress Report', () => {
     expect(code).toMatch(/navigation\.navigate\('WordProgress', \{ student, theme \}\)/);
   });
 
-  it('Progress Report goes to the existing TeacherReport route, behind the gate', () => {
-    // Same destination and params as LetterHomeScreen's gated progress action.
-    // This phase renamed the LABEL; the screen behind it did not move.
-    expect(code).toMatch(/requestBack: requestTeacherReport/);
-    expect(code).toMatch(/gateModal: teacherReportGateModal/);
-    expect(code).toMatch(/useGatedBack\(\(\) => navigation\.navigate\('TeacherReport', \{/);
-    expect(code).toMatch(/originRoute: 'WordLetterSelect'/);
-    expect(code).toMatch(/onPress=\{requestTeacherReport\}/);
-    expect(code).toMatch(/\{teacherReportGateModal\}/);
-    // It stays behind the parent gate — never a bare tap.
-    expect(code).not.toMatch(/onPress=\{\(\) => navigation\.navigate\('TeacherReport'/);
+  it('the word chooser no longer opens the TeacherReport at all', () => {
+    expect(code).not.toMatch(/navigate\('TeacherReport'/);
+    expect(code).not.toMatch(/requestTeacherReport|teacherReportGateModal/);
   });
 
   it('no duplicate progress or report screen was introduced', () => {

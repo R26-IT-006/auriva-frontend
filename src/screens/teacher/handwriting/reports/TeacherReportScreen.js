@@ -96,13 +96,15 @@ import {
   reviewSubmission as apiReviewSubmission,
 } from '../../../../utils/worksheetApi';
 import {
-  getWorksheetStatusLine, getIntensityLabel, formatWorksheetDate, describeMotorPreparation,
+  getWorksheetStatusLine, getReviewStatusLabel, getIntensityLabel, formatWorksheetDate, describeMotorPreparation,
   REVIEW_OPTIONS, INTENSITY_OPTIONS, PRACTICE_SEQUENCE_TEXT, WORKSHEET_SUPPORTING_TEXT,
   EMPTY_NO_RECOMMENDATION, EMPTY_NO_HISTORY, EMPTY_NO_SUBMISSION,
   PENDING_REVIEW_TEXT, ALREADY_ASSIGNED_TEXT, UNMAPPED_LETTER_TEXT,
   isTwoCycleCandidate, TWO_CYCLE_SECTION_LABEL, TWO_CYCLE_STATUS_LABEL, TWO_CYCLE_DEFER_LABEL,
 } from '../../../../utils/worksheetLabels';
-import { generateWorksheetPdf, shareWorksheetPdf } from '../../../../utils/worksheetPdf';
+import {
+  generateWorksheetPdf, shareWorksheetPdf, printWorksheetPdf, downloadWorksheetPdf,
+} from '../../../../utils/worksheetPdf';
 // Reuses the existing preview modal rather than building a second preview
 // framework; the SHARE itself is worksheet-specific (shareWorksheetPdf), so a
 // practice sheet never carries report wording.
@@ -112,7 +114,7 @@ import useGatedBack from '../../../../utils/useGatedBack';
 import { fetchTeacherOverrideFamilies } from '../../../../utils/familyThresholds';
 import { navigateToWritingCheck } from '../../../../utils/writingCheckNavigation';
 import { goBackToOrigin } from '../../../../utils/backToOrigin';
-import { Colors } from '../../../../constants/colors';
+import { Colors, LOGIN_BACKDROP } from '../../../../constants/colors';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 import HeaderPillButton from '../../../../components/common/HeaderPillButton';
 import { resolveWordImageKey, resolveWordEmoji } from '../../../../utils/wordImageResolver';
@@ -122,10 +124,6 @@ import {
   fetchLetterMasteryEvidence, evidenceUnavailableMessage, evidenceCaption,
   EVIDENCE_STATUS,
 } from '../../../../utils/letterMasteryEvidence';
-
-// The sign-in screen's gradient, top to bottom — the same backdrop as the
-// Student Profile and the Concept report.
-const LOGIN_BACKDROP = ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'];
 
 // A teacher-report preview: recognisable at a glance, not an activity
 // illustration. Was 30 — too small to read the picture at all.
@@ -142,7 +140,8 @@ const T = {
   neutral:  { text: '#475569', bg: '#F8FAFC', border: '#CBD5E1', dot: '#94A3B8' },
 };
 
-const PAGE_BG  = '#F0F4FF';
+// Widest the report's cards grow on a large landscape screen.
+const REPORT_MAX_WIDTH = 920;
 const CARD_BG  = '#FFFFFF';
 const TEXT_1   = '#0F172A';
 const TEXT_2   = '#475569';
@@ -448,6 +447,10 @@ export default function TeacherReportScreen({ route, navigation }) {
   // never for what data is shown.
   const { width: viewportWidth } = useWindowDimensions();
   const isWideLayout = viewportWidth >= 600;
+  // Side gutter that grows with the screen (16 on a phone, ~35 on a tablet in
+  // portrait), so the cards are not stretched edge to edge. On very wide
+  // screens the content also stops at REPORT_MAX_WIDTH and centres.
+  const sideGutter = Math.round(Math.min(40, Math.max(16, viewportWidth * 0.04)));
   const [report,   setReport]   = useState(null);
 
   // Word activities and word writing arrive as two payloads and stay two
@@ -765,16 +768,16 @@ export default function TeacherReportScreen({ route, navigation }) {
 
   return (
     <LinearGradient
-      colors={LOGIN_BACKDROP}
+      colors={LOGIN_BACKDROP.colors}
       style={{ flex: 1 }}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
+      start={LOGIN_BACKDROP.start}
+      end={LOGIN_BACKDROP.end}
     >
       <SafeAreaView style={{ flex: 1 }}>
 
         {/* ── Top bar — the Concept report's: round back button, the heading
             beside it, the action pill on the right. ── */}
-        <View style={s.topBar}>
+        <View style={[s.topBar, { paddingHorizontal: sideGutter }]}>
           <TouchableOpacity
             style={BACK_BUTTON}
             onPress={requestBack}
@@ -836,9 +839,10 @@ export default function TeacherReportScreen({ route, navigation }) {
         ) : (
           <ScrollView
             style={s.scrollArea}
-            contentContainerStyle={s.scroll}
+            contentContainerStyle={[s.scroll, { paddingHorizontal: sideGutter }]}
             showsVerticalScrollIndicator={false}
           >
+            <View style={s.scrollInner}>
 
             {/* ══ 0. Periodic Report (FR-19/FR-20) ═══════════════════════════ */}
             <PeriodicReportSection student={student} theme={theme} />
@@ -1026,6 +1030,7 @@ export default function TeacherReportScreen({ route, navigation }) {
             </SectionCard>
 
             <View style={{ height: 40 }} />
+            </View>
           </ScrollView>
         )}
       </SafeAreaView>
@@ -2607,7 +2612,10 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
   const [message, setMessage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [sharing, setSharing] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [previewMessage, setPreviewMessage] = useState(null);
+  const [previewNotice, setPreviewNotice] = useState(null);
   const [reviewChoice, setReviewChoice] = useState(null);
   const [reviewComment, setReviewComment] = useState('');
   // A history row the teacher asked to view/reprint. Held in state so the gate
@@ -2745,8 +2753,34 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
     }
   };
 
+  // Print — the device print dialog for the SAME previewed file. Read-only.
+  const doPrintPreview = async () => {
+    if (!preview?.uri) { setPreviewMessage('There is no worksheet to print.'); return; }
+    setPrinting(true); setPreviewMessage(null); setPreviewNotice(null);
+    try {
+      const res = await printWorksheetPdf({ fileUri: preview.uri });
+      if (res.status === 'failed') setPreviewMessage('The worksheet could not be printed.');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  // Download — save a copy of the SAME previewed file to a folder the teacher
+  // picks. Read-only: no status or date changes.
+  const doDownloadPreview = async () => {
+    if (!preview?.uri) { setPreviewMessage('There is no worksheet to save.'); return; }
+    setDownloading(true); setPreviewMessage(null); setPreviewNotice(null);
+    try {
+      const res = await downloadWorksheetPdf({ fileUri: preview.uri, filename: preview.filename });
+      if (res.status === 'saved') setPreviewNotice('Worksheet saved to the folder you chose.');
+      else if (res.status === 'failed') setPreviewMessage('The worksheet could not be saved.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   // Closing is always safe and always re-openable — nothing is torn down.
-  const closePreview = () => { setPreview(null); setPreviewMessage(null); };
+  const closePreview = () => { setPreview(null); setPreviewMessage(null); setPreviewNotice(null); };
 
   const doUpload = (worksheet, fromCamera) => runGuarded(async () => {
     try {
@@ -2772,7 +2806,9 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
         uri: asset.uri,
         name: asset.fileName ?? `worksheet-${worksheet.worksheet_code}.jpg`,
         mimeType: asset.mimeType ?? 'image/jpeg',
-      }, 'photo');
+      // A camera shot is a photo; an image chosen from the device is treated
+      // as a scan (scanner apps save there). Recorded only, never analysed.
+      }, fromCamera ? 'photo' : 'scan');
       if (res.status === 'submitted') {
         setMessage('Worksheet submitted for teacher review.');
         onChanged();
@@ -3036,8 +3072,13 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
         html={preview?.html ?? null}
         filename={preview?.filename ?? null}
         sharing={sharing}
+        printing={printing}
+        downloading={downloading}
         message={previewMessage}
+        notice={previewNotice}
         onShare={doSharePreview}
+        onPrint={doPrintPreview}
+        onDownload={doDownloadPreview}
         onClose={closePreview}
       />
 
@@ -3075,8 +3116,25 @@ function HomeworkPracticeCard({ student, theme, candidates, history, onChanged }
               <Text style={pv.missing}>This proof image is no longer available.</Text>
             )}
             <Text style={pv.meta}>
-              {formatWorksheetDate(proofTarget?.submission?.submitted_at) || ''}
+              {proofTarget?.submission?.submission_type === 'scan' ? 'Scan' : 'Photo'}
+              {formatWorksheetDate(proofTarget?.submission?.submitted_at)
+                ? ` · uploaded ${formatWorksheetDate(proofTarget.submission.submitted_at)}` : ''}
             </Text>
+            {/* The teacher's own review, so the history shows what was decided. */}
+            <View style={hw.row}>
+              <Text style={hw.rowLabel}>Review</Text>
+              <Text style={hw.rowValue}>
+                {getReviewStatusLabel(proofTarget?.submission?.review_status)}
+                {formatWorksheetDate(proofTarget?.submission?.reviewed_at)
+                  ? ` · ${formatWorksheetDate(proofTarget.submission.reviewed_at)}` : ''}
+              </Text>
+            </View>
+            {proofTarget?.submission?.teacher_comment ? (
+              <View style={hw.row}>
+                <Text style={hw.rowLabel}>Teacher comment</Text>
+                <Text style={hw.rowValue}>{proofTarget.submission.teacher_comment}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -3643,8 +3701,12 @@ const s = StyleSheet.create({
   retryBtn:     { paddingHorizontal: 24, paddingVertical: 11, borderRadius: 50 },
   retryBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', fontFamily: 'Nunito_800ExtraBold' },
 
-  scrollArea: { flex: 1, backgroundColor: PAGE_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  scroll:     { padding: 16, paddingTop: 20 },
+  // No panel of its own: the cards sit directly on the screen's gradient.
+  scrollArea: { flex: 1 },
+  // Horizontal padding is set inline from the screen width (sideGutter).
+  scroll:     { paddingVertical: 16, paddingTop: 24 },
+  // Caps line length on very wide screens; centred within the gutter.
+  scrollInner: { width: '100%', maxWidth: REPORT_MAX_WIDTH, alignSelf: 'center' },
 
   summaryGrid: { flexDirection: 'row', gap: 8 },
 

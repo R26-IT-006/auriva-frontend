@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { generateAdaptiveSequence, calculateMotorProfile } from '../../../utils/adaptiveSequencing';
 import { storeLetterSequence, storeMotorProfile } from '../../../utils/storage';
 import client from '../../../api/client';
@@ -64,18 +65,65 @@ const SHAPE_ICONS = {
 // explicit, visually distinct "Not available" grey state — never silently
 // treated as a real score. See the ?? 50 fallback removal pass: a missing
 // score must never render as a plausible-looking mid-range number.
-function getDifficulty(score) {
+//
+// Presentation matches LetterHomeScreen's Assessment Summary modal: the same
+// labels, colours, overall ring and 2-column shape tiles, so the summary
+// shown right after the assessment looks like the one reopened later.
+function getScoreBadge(score) {
   if (score == null) return { label: 'Not available', bg: '#EEEEEE', color: '#757575' };
-  if (score >= 75) return { label: 'Easy',           bg: '#E8F5E9', color: '#2E7D32' };
-  if (score >= 50) return { label: 'Moderate',       bg: '#FFF8E1', color: '#F57F17' };
-  return             { label: 'Needs Practice', bg: '#FFEBEE', color: '#C62828' };
+  if (score >= 75) return { label: 'Good',           bg: '#E8F5E9', color: '#2E7D32' };
+  if (score >= 50) return { label: 'Moderate',       bg: '#FFFDE7', color: '#F57F17' };
+  return                   { label: 'Needs practice', bg: '#FFF3E0', color: '#E65100' };
 }
 
-function getScoreColor(score) {
-  if (score == null) return { color: '#757575', bg: '#EEEEEE' };
-  if (score >= 75) return { color: '#2E7D32', bg: '#E8F5E9' };
-  if (score >= 50) return { color: '#F57F17', bg: '#FFF8E1' };
-  return { color: '#C62828', bg: '#FFEBEE' };
+// Same line drawings as the Assessment Summary modal.
+function AssessmentShapeIcon({ shapeId, color }) {
+  const common = { stroke: color, strokeWidth: 2.4, strokeLinecap: 'round', fill: 'none' };
+  let mark;
+  switch (shapeId) {
+    case 'horizontal_line': mark = <Line x1="4" y1="12" x2="20" y2="12" {...common} />; break;
+    case 'vertical_line':   mark = <Line x1="12" y1="4" x2="12" y2="20" {...common} />; break;
+    case 'full_circle':     mark = <Circle cx="12" cy="12" r="8" {...common} />; break;
+    case 'half_circle':     mark = <Path d="M4 16 A8 8 0 0 1 20 16" {...common} />; break;
+    case 'zigzag':          mark = <Path d="M3 17 L7.5 7 L12 17 L16.5 7 L21 17" {...common} />; break;
+    case 'curve_wave':      mark = <Path d="M3 13 C6 6 9 6 12 13 C15 20 18 20 21 13" {...common} />; break;
+    default:
+      return <Ionicons name={SHAPE_ICONS[shapeId] ?? 'brush-outline'} size={18} color={color} />;
+  }
+  return <Svg width={24} height={24} viewBox="0 0 24 24">{mark}</Svg>;
+}
+
+// The modal's overall-score ring, coloured by the result band.
+function OverallScoreRing({ score, textColor, size = 104, strokeWidth = 10 }) {
+  const badge = getScoreBadge(score);
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, score ?? 0));
+  return (
+    <View style={styles.overallCard}>
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <Svg width={size} height={size}>
+          <Circle cx={size / 2} cy={size / 2} r={radius} stroke={badge.bg} strokeWidth={strokeWidth} fill="none" />
+          <Circle
+            cx={size / 2} cy={size / 2} r={radius}
+            stroke={badge.color} strokeWidth={strokeWidth} fill="none"
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={circumference * (1 - clamped / 100)}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${size / 2}, ${size / 2}`}
+          />
+        </Svg>
+        <Text style={[styles.ringPercentText, { color: textColor }]}>
+          {score != null ? `${score}%` : 'N/A'}
+        </Text>
+      </View>
+      <Text style={styles.overallLabel}>Overall Assessment Score</Text>
+      <View style={[styles.overallBadge, { backgroundColor: badge.bg }]}>
+        <Text style={[styles.overallBadgeText, { color: badge.color }]}>{badge.label}</Text>
+      </View>
+    </View>
+  );
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -113,7 +161,6 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
     ? Math.round(realScores.reduce((a, b) => a + b, 0) / realScores.length)
     : null;
 
-  const scoreTheme = getScoreColor(overallScore);
   const bgMoveUp = bgAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -16],
@@ -211,6 +258,7 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
         <Animated.View
           style={[
             styles.card,
+            { backgroundColor: theme.cardSurface, borderColor: theme.cardOutline },
             {
               opacity: cardOpacity,
               transform: [{ translateY: cardTranslateY }],
@@ -218,10 +266,10 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
           ]}
         >
 
-          {/* ── Header ── */}
+          {/* ── Header — same icon circle + title as the Assessment Summary ── */}
           <View style={styles.header}>
-            <View style={[styles.checkBadge, { backgroundColor: theme.button }]}>
-              <Ionicons name="checkmark" size={26} color={theme.buttonText} />
+            <View style={[styles.titleIcon, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="clipboard" size={18} color="#FFF" />
             </View>
             <View style={styles.headerText}>
               <Text style={[styles.headerTitle, { color: theme.headingText }]}>
@@ -229,71 +277,53 @@ export default function AssessmentCompleteScreen({ route, navigation }) {
               </Text>
               <Text style={styles.headerSub}>Here is how {student?.full_name} did</Text>
             </View>
-
-            {/* Overall score badge */}
-            <View style={[styles.scoreBadge, { backgroundColor: scoreTheme.bg }]}>
-              <Text style={[styles.scoreBadgeValue, { color: scoreTheme.color }]}>
-                {overallScore != null ? `${overallScore}%` : 'N/A'}
-              </Text>
-              <Text style={[styles.scoreBadgeLabel, { color: scoreTheme.color }]}>Overall</Text>
-            </View>
           </View>
 
-          {/* ── Results list — flat View, all 6 distributed evenly ── */}
-          <View style={styles.resultsList}>
-            {assessmentData.map((shape, i) => {
-              const score      = scores[i];
-              const difficulty = getDifficulty(score);
+          {/* ── Body: overall ring on top, shape tiles in 2 columns ── */}
+          <View style={styles.body}>
+            {assessmentData.length > 0 && (
+              <View style={styles.summaryTopRow}>
+                <OverallScoreRing score={overallScore} textColor={theme.headingText} />
+              </View>
+            )}
 
-              return (
-                <Animated.View
-                  key={`${shape.shapeId}-${i}`}
-                  style={[styles.resultCard, { backgroundColor: theme.background }]}
-                >
-                  {/* Icon + label */}
-                  <View style={[styles.shapeIconWrap, { backgroundColor: difficulty.bg }]}>
-                    <Ionicons
-                      name={SHAPE_ICONS[shape.shapeId] ?? 'brush-outline'}
-                      size={18}
-                      color={difficulty.color}
-                    />
-                  </View>
+            <View style={styles.shapeList}>
+              {assessmentData.map((shape, i) => {
+                const score      = scores[i];
+                const badge      = getScoreBadge(score);
 
-                  {/* Left: name + badge */}
-                  <View style={styles.resultLeft}>
-                    <Text style={[styles.shapeName, { color: theme.headingText }]}>
-                      {SHAPE_LABELS[shape.shapeId] ?? shape.shapeId}
-                    </Text>
-                    <View style={[styles.diffBadge, { backgroundColor: difficulty.bg }]}>
-                      <Text style={[styles.diffText, { color: difficulty.color }]}>
-                        {difficulty.label}
+                return (
+                  <View key={`${shape.shapeId}-${i}`} style={styles.shapeRow}>
+                    <View style={styles.shapeTileTop}>
+                      <View style={[styles.shapeIconWrap, { backgroundColor: badge.bg }]}>
+                        <AssessmentShapeIcon shapeId={shape.shapeId} color={badge.color} />
+                      </View>
+                      <Text style={styles.shapeName} numberOfLines={1}>
+                        {SHAPE_LABELS[shape.shapeId] ?? shape.shapeId}
                       </Text>
+                      <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                        <Text style={[styles.badgeText, { color: badge.color }]}>
+                          {badge.label}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-
-                  {/* Right: accuracy bar + strokes */}
-                  <View style={styles.resultRight}>
-                    <View style={styles.accuracyHeader}>
-                      <Text style={styles.metaLabel}>Accuracy</Text>
-                      <Text style={[styles.accuracyValue, { color: difficulty.color }]}>
+                    <View style={styles.shapeMetricColumn}>
+                      <View style={styles.barTrack}>
+                        <View
+                          style={[
+                            styles.barFill,
+                            { width: `${score ?? 0}%`, backgroundColor: badge.color },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.shapeScoreText}>
                         {score != null ? `${score}%` : 'N/A'}
                       </Text>
                     </View>
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.barFill,
-                          { width: `${score ?? 0}%`, backgroundColor: theme.button },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.metaLabel}>
-                      {shape.strokes.length} stroke{shape.strokes.length !== 1 ? 's' : ''}
-                    </Text>
                   </View>
-                </Animated.View>
-              );
-            })}
+                );
+              })}
+            </View>
           </View>
 
           {/* ── Footer ── */}
@@ -438,150 +468,167 @@ const styles = StyleSheet.create({
     left: '-7%',
   },
 
+  // Same frame as the Assessment Summary pop-up: 28 radius, 3px theme
+  // outline, theme card surface (set inline).
   card: {
     flex: 1,
     marginHorizontal: 18,
     marginVertical: 14,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    padding: 20,
+    borderWidth: 3,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.11,
-    shadowRadius: 18,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
 
   // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
+    paddingBottom: 10,
+    gap: 10,
   },
-  checkBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  titleIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
   },
   headerText: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
+    fontSize: 24,
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
   },
   headerSub: {
     fontSize: 13,
+    fontFamily: 'DMSans_600SemiBold',
     color: '#888888',
     marginTop: 2,
   },
-  scoreBadge: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    flexShrink: 0,
-  },
-  scoreBadgeValue: {
-    fontSize: 20,
-    fontWeight: '900',
-    fontFamily: 'Nunito_900Black',
-    lineHeight: 24,
-  },
-  scoreBadgeLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-    letterSpacing: 0.5,
-  },
 
-  // Results list — flat View, distributes 6 cards evenly without scrolling
-  resultsList: {
+  // Body — ring on top, tiles below; fills the card without scrolling.
+  body: {
     flex: 1,
     justifyContent: 'space-evenly',
+    gap: 12,
   },
-  resultCard: {
-    borderRadius: 18,
+  summaryTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  overallCard: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  ringPercentText: {
+    position: 'absolute',
+    fontSize: 22,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
+  overallLabel: {
+    marginTop: 2,
+    fontSize: 14,
+    color: '#6D7280',
+    fontFamily: 'DMSans_700Bold',
+  },
+  overallBadge: {
+    minWidth: 112,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  overallBadgeText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_800ExtraBold',
+  },
+
+  // Shape tiles: 2 columns x 3 rows, same tile as the Assessment Summary.
+  shapeList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  shapeRow: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#DCC7B0',
+  },
+  shapeTileTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderWidth: 1,
-    borderColor: '#E8EDF7',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 1,
   },
   shapeIconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-
-  // Result left
-  resultLeft: {
-    flex: 1,
-  },
   shapeName: {
+    flex: 1,
     fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_700Bold',
+    color: '#333333',
   },
-  diffBadge: {
-    borderRadius: 50,
-    paddingHorizontal: 9,
-    paddingVertical: 2,
-    marginTop: 4,
-    alignSelf: 'flex-start',
+  badge: {
+    minWidth: 84,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  diffText: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+  badgeText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
   },
-
-  // Result right
-  resultRight: {
-    alignItems: 'flex-end',
-    gap: 3,
-  },
-  accuracyHeader: {
-    width: 110,
+  shapeMetricColumn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  accuracyValue: {
-    fontSize: 12,
-    fontWeight: '800',
-    fontFamily: 'Nunito_800ExtraBold',
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: '#999999',
+    gap: 10,
   },
   barTrack: {
-    width: 110,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#EEEEEE',
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E7E9ED',
     overflow: 'hidden',
   },
   barFill: {
-    height: 7,
-    borderRadius: 4,
+    height: '100%',
+    borderRadius: 3,
+    opacity: 0.8,
+  },
+  shapeScoreText: {
+    minWidth: 44,
+    fontSize: 15,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: '#3F4550',
+    textAlign: 'right',
   },
 
   // Footer
@@ -589,32 +636,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingTop: 8,
-    paddingBottom: 2,
+    paddingTop: 10,
   },
   summaryText: {
     fontSize: 13,
+    fontFamily: 'DMSans_600SemiBold',
     color: '#666666',
     textAlign: 'center',
     lineHeight: 20,
   },
+  // The other modules' raised 3D button, in the theme colour.
   doneButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     minWidth: 180,
-    paddingHorizontal: 48,
-    paddingVertical: 14,
-    borderRadius: 50,
+    paddingHorizontal: 40,
+    paddingVertical: 13,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
   },
   doneButtonDisabled: {
     opacity: 0.75,
   },
   doneText: {
     fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'DMSans_800ExtraBold',
   },
-
 });

@@ -170,7 +170,8 @@ describe('the report screens use it', () => {
     expect(stripComments(letterPractice)).toMatch(/originRoute:\s*'LetterPractice'/);
     // LetterHome no longer opens a report (its Report button was removed).
     expect(stripComments(letterHome)).not.toMatch(/navigate\('TeacherReport'/);
-    expect(stripComments(wordSelect)).toMatch(/originRoute:\s*'WordLetterSelect'/);
+    // The word chooser's Progress Report button was removed too.
+    expect(stripComments(wordSelect)).not.toMatch(/navigate\('TeacherReport'/);
   });
 
   it('the teacher report retry no longer hardcodes its own route name', () => {

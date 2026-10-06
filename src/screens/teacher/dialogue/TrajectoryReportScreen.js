@@ -11,9 +11,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../../../components/common/Card';
 import { TrendSparkline } from '../../../components/charts/TrendSparkline';
-import { Colors } from '../../../constants/colors';
+import TeacherTopBar from '../../../components/teacher/TeacherTopBar';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
+import { MasteryRing } from '../../../components/charts/MasteryRing';
+import {
+  ReportSection as Section, SummaryTile, SummaryTiles, PracticeTrendCard, shortList,
+  REPORT_GREEN as GREEN, REPORT_BLUE as BLUE, REPORT_RED as RED,
+} from '../../../components/teacher/DialogueReportKit';
+import { Colors, LOGIN_BACKDROP } from '../../../constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Layout } from '../../../constants/layout';
 import { dialogueApi } from '../../../api/dialogue';
 import { buildReportHtml, printReport, printTimestamp } from '../../../utils/reportPrint';
@@ -92,16 +99,6 @@ export const PLAIN_SCORE_LEAD = {
   struggling: 'This word may need extra support — several signals below point that way.',
 };
 
-/**
- * TASK-45 — the same three numbers the old `0.78 → 0.78 × 0.35` expression
- * carried, as a phrase. The weight is the renormalized one, so it already
- * accounts for any term that was missing from the payload.
- */
-function plainContributionDetail(t) {
-  const weightPct = Math.round(t.renormalizedWeight * 100);
-  return `${formatValue(t.rawValue)} — counted for about ${weightPct}% of the score`;
-}
-
 const FEATURE_LABEL = {
   phase1_exposure_ratio:      'Phase 1 exposure',
   speech_score:               'Speech score',
@@ -150,70 +147,81 @@ export function wordSummaryLine(row) {
 // signal; the remainder is counted, never silently dropped.
 const MAX_SHAP_BARS = 6;
 
-function Section({ title, subtitle, children, right }) {
+// ── Look ─────────────────────────────────────────────────────────────────────
+// The Concept report's palette: its brand green for the headline card, and one
+// light tint per section heading.
+const BRAND = Colors.brandDeep;
+const TILE_ACCENT = { fast: '#3FAE6F', typical: '#3B82C4', struggling: '#E0735F' };
+const HEAD_TINT = {
+  trend: { bg: '#E3F7EC', fg: '#3FAE6F' },   // green
+  words: { bg: '#EFEBFA', fg: '#6C5CE0' },   // purple
+};
+
+const CATEGORY_ICON = {
+  greetings:   'hand-left-outline',
+  magic_words: 'sparkles-outline',
+  abilities:   'walk-outline',
+};
+
+// A signal's bar colour follows how good that one signal was (0-1), so a slow
+// response stands out even on a word that is going well overall.
+function signalColor(v) {
+  if (v == null) return Colors.icon.muted;
+  if (v >= 0.67) return GREEN;
+  if (v >= 0.34) return '#E0962B';
+  return RED;
+}
+
+/** The raw signal as a teacher reads it: "3", "100%", "none", "1 prompt", "4.4s". */
+function signalValue(term, raw) {
+  if (raw == null) return '—';
+  switch (term) {
+    case 'phoneme':   return typeof raw === 'number' ? `${Math.round(raw * 100)}%` : formatValue(raw);
+    case 'echolalia': return raw ? 'present' : 'none';
+    case 'prompt':    return typeof raw === 'number' ? `${raw} ${raw === 1 ? 'prompt' : 'prompts'}` : formatValue(raw);
+    case 'latency':   return typeof raw === 'number' ? `${(raw / 1000).toFixed(1)}s` : formatValue(raw);
+    default:          return formatValue(raw);
+  }
+}
+
+/** One Tier 1 signal: name and value over a bar, its weight beside the value. */
+function SignalBar({ term }) {
+  const v = typeof term.normalizedValue === 'number'
+    ? term.normalizedValue
+    : (term.renormalizedWeight ? term.contribution / term.renormalizedWeight : null);
+  const color = signalColor(v);
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.sectionSub}>{subtitle}</Text> : null}
-        </View>
-        {right}
+    <View style={styles.signal}>
+      <View style={styles.signalHead}>
+        <Text style={styles.signalLabel}>{TERM_LABEL[term.term] || term.term}</Text>
+        <Text style={[styles.signalValue, { color }]}>{signalValue(term.term, term.rawValue)}</Text>
+        <Text style={styles.signalWeight}>{Math.round((term.renormalizedWeight || 0) * 100)}%</Text>
       </View>
-      <Card style={styles.card}>{children}</Card>
-    </View>
-  );
-}
-
-function StatCell({ label, value, tint }) {
-  return (
-    <View style={styles.statCell}>
-      <Text style={[styles.statCellValue, tint ? { color: tint } : null]}>{value}</Text>
-      <Text style={styles.statCellLabel}>{label}</Text>
+      <View style={styles.signalTrack}>
+        <View style={[styles.signalFill, { width: `${Math.max(2, Math.round((v ?? 0) * 100))}%`, backgroundColor: color }]} />
+      </View>
     </View>
   );
 }
 
 /**
- * Which of the two prediction paths produced this row, at a glance.
- *
- * TASK-45: the keys and colours are unchanged — only the visible wording. A
- * teacher has no reason to know the words "tier", "formula" or "model", but
- * does need to know whether a row came from the AI or from a fixed rule.
- */
-function TierPill({ tier }) {
-  const map = {
-    tier2:    { bg: Colors.status.infoLight,    fg: Colors.text.link,  label: 'AI estimate' },
-    tier1:    { bg: Colors.status.warningLight, fg: '#B4780A',         label: 'Rule-based' },
-    disabled: { bg: Colors.surfaceAlt,          fg: Colors.text.muted, label: 'Off' },
-  };
-  const s = map[tier] || map.disabled;
-  return (
-    <View style={[styles.tierPill, { backgroundColor: s.bg }]}>
-      <Text style={[styles.tierPillText, { color: s.fg }]}>{s.label}</Text>
-    </View>
-  );
-}
-
-/**
- * One contribution bar. `magnitude` is 0-1 relative to the largest bar in the
- * same group, so bars are comparable within a word but never imply a shared
- * scale across words.
+ * One SHAP bar. `magnitude` is 0-1 relative to the largest bar in the same
+ * group, so bars are comparable within a word but never imply a shared scale
+ * across words.
  */
 function ContributionBar({ label, detail, contribution, magnitude }) {
   const positive = contribution >= 0;
   return (
-    <View style={styles.barRow}>
-      <View style={styles.barLabelWrap}>
-        <Text style={styles.barLabel} numberOfLines={1}>{label}</Text>
-        {detail != null ? (
-          <Text style={styles.barDetail} numberOfLines={1}>{detail}</Text>
-        ) : null}
+    <View style={styles.signal}>
+      <View style={styles.signalHead}>
+        <Text style={styles.signalLabel}>{label}</Text>
+        {detail != null ? <Text style={styles.signalDetail}>{detail}</Text> : null}
+        <Text style={styles.signalWeight}>{positive ? '+' : '−'}{Math.abs(contribution).toFixed(2)}</Text>
       </View>
-      <View style={styles.barTrack}>
+      <View style={styles.signalTrack}>
         <View
           style={[
-            styles.barFill,
+            styles.signalFill,
             {
               width: `${Math.max(2, Math.round(magnitude * 100))}%`,
               backgroundColor: positive ? Colors.status.info : Colors.icon.muted,
@@ -221,9 +229,6 @@ function ContributionBar({ label, detail, contribution, magnitude }) {
           ]}
         />
       </View>
-      <Text style={styles.barValue}>
-        {positive ? '+' : '−'}{Math.abs(contribution).toFixed(2)}
-      </Text>
     </View>
   );
 }
@@ -244,7 +249,7 @@ function formatValue(value) {
  * this component and is rendered unconditionally — there is no code path that
  * produces a Tier 1 breakdown without it.
  */
-function Tier1Breakdown({ explanation }) {
+function Tier1Breakdown({ explanation, wide }) {
   if (!explanation) {
     return (
       <View>
@@ -255,7 +260,6 @@ function Tier1Breakdown({ explanation }) {
   }
 
   const terms = explanation.terms || [];
-  const maxAbs = terms.reduce((m, t) => Math.max(m, Math.abs(t.contribution)), 0) || 1;
   const crossed = explanation.scored
     ? (explanation.label === 'fast'
       ? `scored ${explanation.score.toFixed(2)}, at or above the ${explanation.thresholds.fast} "fast" mark`
@@ -265,27 +269,18 @@ function Tier1Breakdown({ explanation }) {
     : 'no score — none of the five terms had data';
 
   return (
-    <View>
-      {/* Plain sentence first, the score-vs-threshold detail demoted beneath it.
-          The unscored case has no number to demote, so it stands alone. */}
-      <View style={styles.leadBlock}>
-        <Text style={styles.plainLead}>
-          {explanation.scored ? PLAIN_SCORE_LEAD[explanation.label] : crossed}
-        </Text>
-        {explanation.scored ? (
-          <Text style={styles.leadDetail}>{crossed}</Text>
-        ) : null}
-      </View>
+    <View style={styles.breakdown}>
+      {/* The plain sentence is the card's summary line; the score-vs-threshold
+          detail that backs it opens here. */}
+      {explanation.scored ? <Text style={styles.leadDetail}>{crossed}</Text> : null}
 
-      {terms.map((t) => (
-        <ContributionBar
-          key={t.term}
-          label={TERM_LABEL[t.term] || t.term}
-          detail={plainContributionDetail(t)}
-          contribution={t.contribution}
-          magnitude={Math.abs(t.contribution) / maxAbs}
-        />
-      ))}
+      <View style={styles.signalGrid}>
+        {terms.map((t) => (
+          <View key={t.term} style={wide ? styles.signalHalf : styles.signalFull}>
+            <SignalBar term={t} />
+          </View>
+        ))}
+      </View>
 
       {explanation.absentTerms?.length > 0 && (
         <Text style={styles.absentNote}>
@@ -302,7 +297,7 @@ function Tier1Breakdown({ explanation }) {
 }
 
 /** SHAP attributions for the class the model predicted. */
-function Tier2Breakdown({ explanation, confidence }) {
+function Tier2Breakdown({ explanation, wide }) {
   if (!explanation) {
     return (
       <Text style={styles.muted}>
@@ -317,25 +312,20 @@ function Tier2Breakdown({ explanation, confidence }) {
   const maxAbs = shown.reduce((m, a) => Math.max(m, Math.abs(a.contribution)), 0) || 1;
 
   return (
-    <View>
-      {/* Plain phrase carries the sentence; the raw vote share stays visible as
-          a muted suffix so the number is never hidden, only de-emphasised. */}
-      <Text style={styles.plainLead}>
-        The model’s prediction: {voteShareLabel(confidence)}
-        {confidence != null ? (
-          <Text style={styles.leadDetail}> ({confidence.toFixed(2)})</Text>
-        ) : null}
-      </Text>
-
-      {shown.map((a) => (
-        <ContributionBar
-          key={a.feature}
-          label={FEATURE_LABEL[a.feature] || a.feature}
-          detail={formatValue(a.value)}
-          contribution={a.contribution}
-          magnitude={Math.abs(a.contribution) / maxAbs}
-        />
-      ))}
+    <View style={styles.breakdown}>
+      {/* The plain phrase and the raw vote share are the card's summary line. */}
+      <View style={styles.signalGrid}>
+        {shown.map((a) => (
+          <View key={a.feature} style={wide ? styles.signalHalf : styles.signalFull}>
+            <ContributionBar
+              label={FEATURE_LABEL[a.feature] || a.feature}
+              detail={formatValue(a.value)}
+              contribution={a.contribution}
+              magnitude={Math.abs(a.contribution) / maxAbs}
+            />
+          </View>
+        ))}
+      </View>
 
       {all.length > shown.length && (
         <Text style={styles.absentNote}>
@@ -380,13 +370,9 @@ function WordHistory({ studentId, wordId }) {
   return (
     <View>
       <TouchableOpacity style={styles.historyToggle} activeOpacity={0.7} onPress={toggle}>
-        <Ionicons name="time-outline" size={13} color={Colors.text.link} />
+        <Ionicons name="time-outline" size={14} color={Colors.text.link} />
         <Text style={styles.historyToggleText}>History</Text>
-        <Ionicons
-          name={open ? 'chevron-up' : 'chevron-down'}
-          size={13}
-          color={Colors.text.link}
-        />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.text.link} />
       </TouchableOpacity>
 
       {open ? (
@@ -401,7 +387,7 @@ function WordHistory({ studentId, wordId }) {
           ) : failed ? (
             <Text style={styles.muted}>Could not load this word’s history.</Text>
           ) : (
-            <TrendSparkline points={points ?? []} width={220} height={48} />
+            <TrendSparkline points={points ?? []} width={260} height={48} />
           )}
         </View>
       ) : null}
@@ -409,37 +395,173 @@ function WordHistory({ studentId, wordId }) {
   );
 }
 
-function WordRow({ row, studentId }) {
-  const tint = TRAJECTORY_TINT[row.trajectory] || Colors.text.secondary;
-  const isDisabled = row.tier === 'disabled';
+// How each trajectory reads on a word card: a plain phrase, its colour and tint.
+const WORD_STATUS = {
+  fast:       { label: 'Going well',    fg: '#2E9E62', bg: '#E3F7EC' },
+  typical:    { label: 'Typical pace',  fg: '#3B82C4', bg: '#E6F1FC' },
+  struggling: { label: 'Needs support', fg: '#E0735F', bg: '#FBE7E2' },
+  none:       { label: 'No prediction', fg: Colors.text.muted, bg: '#EEF1F4' },
+};
+const statusKeyOf = (row) => (row.tier === 'disabled' ? 'none' : (WORD_STATUS[row.trajectory] ? row.trajectory : 'typical'));
+
+/** The one line a folded card shows — the same sentence the open card leads with. */
+function wordSummary(row) {
+  if (row.tier === 'disabled') return row.caveat || 'No prediction for this word yet.';
+  if (row.tier === 'tier1') {
+    if (!row.explanation) return 'No breakdown available for this word.';
+    return row.explanation.scored
+      ? PLAIN_SCORE_LEAD[row.explanation.label]
+      : 'No score — none of the five terms had data.';
+  }
+  return `The model’s prediction: ${voteShareLabel(row.confidence)}`
+    + (row.confidence != null ? ` (${row.confidence.toFixed(2)})` : '');
+}
+
+/**
+ * One predicted word as a card. Folded it is a glance — score, name, status;
+ * open, it shows everything the row always carried: the plain sentence, the
+ * breakdown with its placeholder-weights footer, the row's caveat, and history.
+ */
+function WordCard({ row, studentId, open, onToggle, wide }) {
+  const s = WORD_STATUS[statusKeyOf(row)];
+  const scored = row.tier === 'tier1' && row.explanation?.scored;
 
   return (
-    <View style={styles.wordRow}>
-      <View style={styles.wordHead}>
-        <Text style={styles.wordName} numberOfLines={1}>{row.word}</Text>
-        <TierPill tier={row.tier} />
-        {/* A disabled row has no finding, so it gets no trajectory label —
-            rendering its 'typical' here would read as a prediction. */}
-        <Text style={[styles.wordLabel, { color: isDisabled ? Colors.text.muted : tint }]}>
-          {isDisabled ? 'no prediction' : row.trajectory}
-        </Text>
-      </View>
+    <View style={[styles.wordCard, { borderLeftColor: s.fg }]}>
+      <TouchableOpacity
+        style={styles.wordTop}
+        activeOpacity={0.75}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${row.word}, ${s.label}. ${open ? 'Tap to fold' : 'Tap for details'}`}
+      >
+        {scored ? (
+          <MasteryRing value={row.explanation.score} size={60} strokeWidth={5} color={s.fg} />
+        ) : (
+          <View style={[styles.wordIcon, { backgroundColor: s.bg }]}>
+            <Ionicons name="sparkles" size={22} color={s.fg} />
+          </View>
+        )}
 
-      {isDisabled ? (
-        <Text style={styles.muted}>{row.caveat}</Text>
-      ) : row.tier === 'tier1' ? (
-        <Tier1Breakdown explanation={row.explanation} />
-      ) : (
-        <Tier2Breakdown explanation={row.explanation} confidence={row.confidence} />
-      )}
+        <View style={styles.wordMain}>
+          <Text style={styles.wordName} numberOfLines={1}>{row.word}</Text>
+          <Text style={styles.wordTier}>{row.tier === 'tier2' ? 'AI estimate' : 'Rule-based'}</Text>
+        </View>
 
-      {!isDisabled && row.caveat ? (
-        <Text style={styles.rowCaveat}>{row.caveat}</Text>
+        <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
+          <Text style={[styles.statusPillText, { color: s.fg }]}>{s.label}</Text>
+        </View>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.icon.default} />
+      </TouchableOpacity>
+
+      {open ? (
+        <View style={styles.wordBody}>
+          <Text style={styles.wordLead}>{wordSummary(row)}</Text>
+          {row.tier === 'tier1' ? (
+            <Tier1Breakdown explanation={row.explanation} wide={wide} />
+          ) : (
+            <Tier2Breakdown explanation={row.explanation} wide={wide} />
+          )}
+          {row.caveat ? <Text style={styles.rowCaveat}>{row.caveat}</Text> : null}
+          <WordHistory studentId={studentId} wordId={row.word_id} />
+        </View>
       ) : null}
-
-      <WordHistory studentId={studentId} wordId={row.word_id} />
     </View>
   );
+}
+
+/**
+ * The words with no prediction, together. Their caveat is the same sentence for
+ * each, so it is said once rather than on every row; the words are chips, and
+ * tapping one opens that word's history beneath.
+ */
+function NotPredictedGroup({ rows, studentId }) {
+  const [openId, setOpenId] = useState(null);
+  const notes = [...new Set(rows.map((r) => r.caveat).filter(Boolean))];
+  const openRow = rows.find((r) => r.word_id === openId);
+
+  return (
+    <View style={styles.noneGroup}>
+      <View style={styles.noneHead}>
+        <View style={styles.noneIcon}>
+          <Ionicons name="remove" size={18} color={Colors.text.muted} />
+        </View>
+        <Text style={styles.noneTitle}>Not predicted yet</Text>
+        <Text style={styles.noneCount}>{rows.length} {rows.length === 1 ? 'word' : 'words'}</Text>
+      </View>
+      {notes.map((n) => <Text key={n} style={styles.noneNote}>{n}</Text>)}
+      <View style={styles.noneChips}>
+        {rows.map((r) => {
+          const on = r.word_id === openId;
+          return (
+            <TouchableOpacity
+              key={r.word_id}
+              style={[styles.noneChip, on && styles.noneChipOn]}
+              activeOpacity={0.75}
+              onPress={() => setOpenId(on ? null : r.word_id)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: on }}
+              accessibilityLabel={`${r.word}. Tap for its history`}
+            >
+              <Text style={[styles.noneChipText, on && styles.noneChipTextOn]}>{r.word}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      {openRow ? (
+        <View style={styles.noneHistory}>
+          <Text style={styles.noneHistoryTitle}>{openRow.word}</Text>
+          <WordHistory key={openRow.word_id} studentId={studentId} wordId={openRow.word_id} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** The selected category at a glance: its status, the split, and the counts. */
+function CategoryOverview({ label, icon, rows, status, allOpen, onToggleAll }) {
+  const counts = ['fast', 'typical', 'struggling', 'none'].map((k) => ({
+    key: k, n: rows.filter((r) => statusKeyOf(r) === k).length,
+  }));
+  const predicted = rows.length - counts[3].n;
+  // Only the predicted words open, so Expand all is offered only when there are some.
+
+  return (
+    <View style={[styles.overview, { backgroundColor: status.color + '12' }]}>
+      <View style={styles.overviewHead}>
+        <View style={[styles.overviewIcon, { backgroundColor: status.color }]}>
+          <Ionicons name={icon.replace(/-outline$/, '')} size={18} color="#FFFFFF" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.overviewTitle}>{label} {status.phrase}</Text>
+          <Text style={styles.overviewMeta}>{predicted} of {rows.length} predicted</Text>
+        </View>
+        {predicted > 0 ? (
+          <TouchableOpacity onPress={onToggleAll} activeOpacity={0.7} accessibilityRole="button" hitSlop={8}>
+            <Text style={styles.expandAll}>{allOpen ? 'Collapse all' : 'Expand all'}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      <View style={styles.splitTrack}>
+        {counts.filter((c) => c.n > 0).map((c) => (
+          <View key={c.key} style={{ flex: c.n, backgroundColor: c.key === 'none' ? '#D9DEE4' : WORD_STATUS[c.key].fg }} />
+        ))}
+      </View>
+
+    </View>
+  );
+}
+
+/** "Greetings going well" — read off the category's own predicted rows. */
+function categoryStatus(rows) {
+  const predicted = rows.filter((r) => r.tier !== 'disabled');
+  if (predicted.length === 0) return { phrase: 'not predicted yet', color: Colors.text.muted };
+  const n = (t) => predicted.filter((r) => r.trajectory === t).length;
+  if (n('struggling') > 0 && n('struggling') >= n('fast')) return { phrase: 'needs support', color: RED };
+  if (n('fast') >= predicted.length / 2) return { phrase: 'going well', color: GREEN };
+  return { phrase: 'progressing', color: BLUE };
 }
 
 /**
@@ -482,7 +604,6 @@ export function buildTrajectoryPrintModel(report, studentName) {
 
 export default function TrajectoryReportScreen({ route, navigation }) {
   const student = route.params?.student;
-  const { width } = useWindowDimensions();
 
   const [report, setReport]         = useState(null);
   const [timeline, setTimeline]     = useState([]);
@@ -491,6 +612,10 @@ export default function TrajectoryReportScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [printing, setPrinting]     = useState(false);
   const [printError, setPrintError] = useState(null);
+  // The word category on show, and which word cards are open.
+  const [selected, setSelected]     = useState(null);
+  const [openWords, setOpenWords]   = useState({});
+  const { width: screenW } = useWindowDimensions();
 
   const load = useCallback(async () => {
     if (!student?.sid) return;
@@ -538,40 +663,46 @@ export default function TrajectoryReportScreen({ route, navigation }) {
     }
   }, [report, printing, student?.full_name]);
 
+  // The header is drawn inside the page (TeacherTopBar), like every other
+  // teacher-workspace screen, so the navigator's own bar is hidden.
   useEffect(() => {
-    navigation.setOptions({
-      title: student?.full_name ? `${student.full_name} · Trajectory` : 'Trajectory Report',
-      headerRight: () => (
-        report ? (
-          <TouchableOpacity
-            onPress={handlePrint}
-            disabled={printing}
-            accessibilityRole="button"
-            accessibilityLabel="Print report"
-            hitSlop={8}
-          >
-            {printing ? (
-              <ActivityIndicator size="small" color={Colors.icon.active} />
-            ) : (
-              <Ionicons name="print-outline" size={22} color={Colors.text.link} />
-            )}
-          </TouchableOpacity>
-        ) : null
-      ),
-    });
-  }, [navigation, student?.full_name, report, printing, handlePrint]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  // Print sits on the bar once there is a report to print.
+  const topBar = (
+    <TeacherTopBar
+      title={student?.full_name ? `${student.full_name} · Trajectory` : 'Trajectory Report'}
+      onBack={() => navigation.goBack()}
+      right={report ? (
+        <HeaderPillButton
+          variant="outline"
+          icon="print-outline"
+          label={printing ? 'Printing…' : 'Print'}
+          theme={{ button: Colors.brandDeep, buttonText: '#FFFFFF', headingText: Colors.text.primary }}
+          onPress={handlePrint}
+          accessibilityLabel="Print report"
+        />
+      ) : null}
+    />
+  );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <LinearGradient colors={LOGIN_BACKDROP.colors} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end} style={styles.safe}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        {topBar}
         <View style={styles.centered}><ActivityIndicator size="large" color={Colors.icon.active} /></View>
       </SafeAreaView>
+    </LinearGradient>
     );
   }
 
   if (error || !report) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <LinearGradient colors={LOGIN_BACKDROP.colors} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end} style={styles.safe}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        {topBar}
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={34} color={Colors.text.muted} />
           <Text style={styles.errorText}>{error || 'Could not load the report.'}</Text>
@@ -580,6 +711,7 @@ export default function TrajectoryReportScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+    </LinearGradient>
     );
   }
 
@@ -587,33 +719,49 @@ export default function TrajectoryReportScreen({ route, navigation }) {
   const categories = Object.keys(CATEGORY_LABEL)
     .map((key) => [key, words.filter((w) => w.category === key)])
     .filter(([, rows]) => rows.length > 0);
+  const activeKey = categories.some(([k]) => k === selected) ? selected : categories[0]?.[0];
+  const activeRows = categories.find(([k]) => k === activeKey)?.[1] ?? [];
+  const predictedRows = activeRows.filter((r) => r.tier !== 'disabled');
+  const noneRows = activeRows.filter((r) => r.tier === 'disabled');
+  const status = categoryStatus(activeRows);
+
+  const firstName = String(student?.full_name || 'This child').trim().split(/\s+/)[0];
+  const goingWell = words.filter((w) => w.tier !== 'disabled' && w.trajectory === 'fast').map((w) => w.word);
+  const needsHelp = words.filter((w) => w.tier !== 'disabled' && w.trajectory === 'struggling').map((w) => w.word);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <LinearGradient colors={LOGIN_BACKDROP.colors} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end} style={styles.safe}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        {topBar}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
       >
-        {/* Overview */}
-        <Card style={styles.card}>
-          <View style={styles.overview}>
-            <View style={styles.overviewStats}>
-              <StatCell label="Fast" value={String(totals.fast)} tint={TRAJECTORY_TINT.fast} />
-              <StatCell label="Typical" value={String(totals.typical)} />
-              <StatCell
-                label="Struggling"
-                value={String(totals.struggling)}
-                tint={totals.struggling > 0 ? Colors.status.error : undefined}
-              />
-              <StatCell label="No prediction" value={String(totals.disabled)} />
-            </View>
-            <Text style={styles.overviewMeta}>
-              {totals.words_predicted} of {totals.words_total} words have a prediction
-              {' · '}{totals.tier2} AI estimate{totals.tier2 === 1 ? '' : 's'}, {totals.tier1} rule-based
-            </Text>
-          </View>
-        </Card>
+        {/* Overview — the predicted count, then the three outcomes as tiles. */}
+        <SummaryTiles oneRow>
+          <SummaryTile
+            icon="checkmark-done"
+            label="Predicted"
+            value={String(totals.words_predicted)}
+            of={totals.words_total}
+            progress={totals.words_total ? totals.words_predicted / totals.words_total : 0}
+            sub={`${totals.tier2} AI · ${totals.tier1} rule-based`}
+            accent={BRAND}
+            compact
+          />
+          <SummaryTile icon="trending-up" label="Going well" value={String(totals.fast)} accent={TILE_ACCENT.fast} compact />
+          <SummaryTile icon="remove" label="Typical" value={String(totals.typical)} accent={TILE_ACCENT.typical} compact />
+          {/* Coral only when there is something to act on; at zero it wears the
+              brand green, as the Concept report's "Revisit" card does. */}
+          <SummaryTile
+            icon="alert-circle"
+            label="Needs support"
+            value={String(totals.struggling)}
+            accent={totals.struggling > 0 ? TILE_ACCENT.struggling : BRAND}
+            compact
+          />
+        </SummaryTiles>
 
         {/* TASK-48 — a print failure is reported here and nowhere else; the
             report below stays exactly as it was. */}
@@ -623,18 +771,6 @@ export default function TrajectoryReportScreen({ route, navigation }) {
             <Text style={styles.hintText}>{printError}</Text>
           </View>
         ) : null}
-
-        {/* TASK-47 — how practice is going over time. Sits with the at-a-glance
-            summary rather than under the per-word detail. This is practice
-            accuracy, not the mastery status shown per word below. */}
-        <Section title="Practice trend" subtitle="Accuracy per day · dashed line is the pass mark">
-          <View style={styles.trendWrap}>
-            <TrendSparkline
-              points={timeline}
-              width={width - Layout.spacing.lg * 2 - Layout.spacing.md * 2}
-            />
-          </View>
-        </Section>
 
         {/* DEC-07 — mandatory reliability caveat, placed immediately under the
             overview so it is on screen before any Tier 2 result can be read. */}
@@ -655,19 +791,78 @@ export default function TrajectoryReportScreen({ route, navigation }) {
           </View>
         )}
 
-        {categories.map(([key, rows]) => (
-          <Section
-            key={key}
-            title={CATEGORY_LABEL[key]}
-            subtitle={`${rows.filter((r) => r.tier !== 'disabled').length} of ${rows.length} predicted`}
-          >
-            <View style={styles.wordBlock}>
-              {rows.map((row) => (
-                <WordRow key={row.word_id} row={row} studentId={student.sid} />
+        {/* TASK-47 — how practice is going over time. This is practice
+            accuracy, not the mastery status shown per word below. */}
+        <PracticeTrendCard
+          points={timeline}
+          firstName={firstName}
+          subtitle="How often answers were right, day by day"
+          icon="trending-up"
+          iconTint={HEAD_TINT.trend}
+          inside
+          insights={[
+            ...(goingWell.length ? [`Going well on ${shortList(goingWell)}.`] : []),
+            ...(needsHelp.length ? [`Needs support on ${shortList(needsHelp)}.`] : []),
+          ]}
+        />
+
+        {categories.length > 0 ? (
+          <Section title="Words" subtitle="Pick a category to see its words" icon="chatbubbles" iconTint={HEAD_TINT.words} inside>
+            {/* Equal segments across the card, so the three categories read as one
+                switch rather than a row of loose buttons. */}
+            <View style={styles.segments}>
+              {categories.map(([key, rows]) => {
+                const on = key === activeKey;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.segment, on && styles.segmentOn]}
+                    activeOpacity={0.8}
+                    onPress={() => setSelected(key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Ionicons name={CATEGORY_ICON[key] || 'chatbubble-outline'} size={16} color={on ? BRAND : Colors.text.secondary} />
+                    <Text style={[styles.segmentText, on && styles.segmentTextOn]} numberOfLines={1}>{CATEGORY_LABEL[key]}</Text>
+                    <View style={[styles.segmentCount, on && styles.segmentCountOn]}>
+                      <Text style={[styles.segmentCountText, on && styles.segmentCountTextOn]}>{rows.length}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <CategoryOverview
+              label={CATEGORY_LABEL[activeKey]}
+              icon={CATEGORY_ICON[activeKey] || 'chatbubble-outline'}
+              rows={activeRows}
+              status={status}
+              allOpen={predictedRows.length > 0 && predictedRows.every((r) => openWords[r.word_id])}
+              onToggleAll={() => {
+                const all = predictedRows.length > 0 && predictedRows.every((r) => openWords[r.word_id]);
+                setOpenWords((prev) => {
+                  const next = { ...prev };
+                  predictedRows.forEach((r) => { next[r.word_id] = !all; });
+                  return next;
+                });
+              }}
+            />
+
+            <View style={styles.wordList}>
+              {predictedRows.map((row) => (
+                <WordCard
+                  key={row.word_id}
+                  row={row}
+                  studentId={student.sid}
+                  open={!!openWords[row.word_id]}
+                  onToggle={() => setOpenWords((prev) => ({ ...prev, [row.word_id]: !prev[row.word_id] }))}
+                  wide={screenW >= 700}
+                />
               ))}
+              {noneRows.length > 0 ? <NotPredictedGroup rows={noneRows} studentId={student.sid} /> : null}
             </View>
           </Section>
-        ))}
+        ) : null}
 
         <Text style={styles.footnote}>
           Based on each word’s most recent recorded session. “Rule-based” rows
@@ -677,90 +872,133 @@ export default function TrajectoryReportScreen({ route, navigation }) {
         </Text>
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:     { flex: 1, backgroundColor: Colors.background },
+  safeInner: { flex: 1 },
+  safe:     { flex: 1 },
   scroll:   { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm, padding: Layout.spacing.xl },
   errorText:{ fontSize: Layout.fontSize.sm, color: Colors.text.secondary, textAlign: 'center' },
   retry:    { fontSize: Layout.fontSize.sm, color: Colors.text.link, fontFamily: 'DMSans_700Bold' },
+  muted:    { fontSize: 12, color: Colors.text.muted, lineHeight: 17 },
 
-  card:    { marginBottom: 0 },
-  section: { marginTop: Layout.spacing.lg },
-  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: Layout.spacing.sm },
-  sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  sectionSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-  muted:   { fontSize: Layout.fontSize.xs, color: Colors.text.muted, lineHeight: 17 },
-
-  overview:      { padding: Layout.spacing.md, gap: Layout.spacing.sm },
-  overviewStats: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Layout.spacing.md },
-  overviewMeta:  { fontSize: Layout.fontSize.xs, color: Colors.text.muted },
-
-  statCell:      { minWidth: 76, flexGrow: 1 },
-  statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  statCellLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-
-  wordBlock: { padding: Layout.spacing.md, gap: Layout.spacing.md },
-  wordRow:   { gap: 6 },
-  wordHead:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  wordName:  { flex: 1, fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  wordLabel: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_800ExtraBold', textAlign: 'right' },
-
-  tierPill:     { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Layout.radius.full },
-  tierPillText: { fontSize: 10, fontFamily: 'DMSans_700Bold' },
-
-  // TASK-45 — plain sentence carries the meaning, the numbers sit under it at
-  // the same visual weight as a bar's detail line.
-  leadBlock:  { marginBottom: Layout.spacing.xs },
-  plainLead:  {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_700Bold',
-    color: Colors.text.primary,
-    lineHeight: 19,
+  segments: {
+    flexDirection: 'row', gap: 4, padding: 4,
+    borderRadius: 14, backgroundColor: '#EEF1F5',
+    marginBottom: 14,
   },
-  leadDetail: { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: 1 },
+  segment: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 8, borderRadius: 11,
+  },
+  segmentOn: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1,
+  },
+  segmentText:        { flexShrink: 1, fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+  segmentTextOn:      { color: Colors.text.primary },
+  segmentCount:       { minWidth: 22, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10, alignItems: 'center', backgroundColor: '#DFE4EA' },
+  segmentCountOn:     { backgroundColor: '#E4F4EC' },
+  segmentCountText:   { fontSize: 11, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary },
+  segmentCountTextOn: { color: BRAND },
 
-  barRow:      { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm, paddingVertical: 3 },
-  barLabelWrap:{ width: 108 },
-  barLabel:    { fontSize: Layout.fontSize.xs, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
-  barDetail:   { fontSize: 10, color: Colors.text.muted },
-  barTrack:    { flex: 1, height: 8, borderRadius: 4, backgroundColor: Colors.surfaceAlt, overflow: 'hidden' },
-  barFill:     { height: 8, borderRadius: 4 },
-  barValue:    { width: 46, textAlign: 'right', fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary },
+  overview:      { borderRadius: 16, padding: 18, gap: 14, marginBottom: 20 },
+  overviewHead:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  overviewIcon:  { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  overviewTitle: { fontSize: 16, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  overviewMeta:  { fontSize: 13, color: Colors.text.secondary, marginTop: 2 },
+  expandAll:     { fontSize: 13, fontFamily: 'DMSans_700Bold', color: Colors.text.link },
+  splitTrack:    { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: '#EEF1F4', gap: 2 },
 
-  absentNote: { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: 2 },
+  wordList: { gap: 14 },
+  wordCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#EEF1F4',
+    borderLeftWidth: 4,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  wordTop:   { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 16, paddingHorizontal: 18 },
+  wordIcon:  { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  wordMain:  { flex: 1, gap: 3 },
+  wordName:  { fontSize: 17, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  wordTier:  { fontSize: 12, color: Colors.text.muted },
+  statusPill:     { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Layout.radius.full },
+  statusPillText: { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  wordBody: {
+    gap: 14,
+    paddingHorizontal: 18, paddingBottom: 18, paddingTop: 16,
+    borderTopWidth: 1, borderTopColor: '#EEF1F4',
+  },
+  wordLead: { fontSize: 14, lineHeight: 20, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
 
-  // TASK-47 — module trend + per-word history
-  trendWrap: { padding: Layout.spacing.md },
+  noneGroup: {
+    borderRadius: 18, padding: 18, gap: 12,
+    backgroundColor: '#F6F8FA',
+    marginTop: 6,
+  },
+  noneHead:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  noneIcon:  { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E6EAEF' },
+  noneTitle: { flex: 1, fontSize: 15, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  noneCount: { fontSize: 13, color: Colors.text.secondary },
+  noneNote:  { fontSize: 12, lineHeight: 18, color: Colors.text.muted },
+  noneChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  noneChip: {
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: Layout.radius.full,
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3E8EE',
+  },
+  noneChipOn:       { borderColor: Colors.text.link, backgroundColor: '#EEF4FD' },
+  noneChipText:     { fontSize: 14, color: Colors.text.primary },
+  noneChipTextOn:   { color: Colors.text.link, fontFamily: 'DMSans_600SemiBold' },
+  noneHistory:      { gap: 4, padding: 12, borderRadius: 12, backgroundColor: '#FFFFFF' },
+  noneHistoryTitle: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+
+
+  breakdown: { gap: 8 },
+  leadDetail:{ fontSize: 11, color: Colors.text.muted, lineHeight: 16, marginTop: 2 },
+
+  signalGrid:   { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 },
+  signalHalf:   { flexBasis: '46%', flexGrow: 1 },
+  signalFull:   { flexBasis: '100%' },
+  signal:       { gap: 5 },
+  signalHead:   { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  signalLabel:  { flex: 1, fontSize: 13, color: Colors.text.primary },
+  signalValue:  { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  signalDetail: { fontSize: 12, color: Colors.text.secondary },
+  signalWeight: { width: 38, textAlign: 'right', fontSize: 11, color: Colors.text.muted },
+  signalTrack:  { height: 5, borderRadius: 3, backgroundColor: '#EEF1F4', overflow: 'hidden' },
+  signalFill:   { height: '100%', borderRadius: 3 },
+
+  absentNote: { fontSize: 11, color: Colors.text.muted, lineHeight: 16 },
+  disclaimer: { fontSize: 11, color: Colors.text.muted, lineHeight: 16, fontStyle: 'italic' },
+  rowCaveat:  { fontSize: 11, color: Colors.text.muted, lineHeight: 16 },
+
+  // TASK-47 — per-word history
   historyToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingVertical: 4,
-    marginTop: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    alignSelf: 'flex-start', paddingVertical: 4,
   },
-  historyToggleText: { fontSize: 10, color: Colors.text.link, fontFamily: 'DMSans_700Bold' },
-  historyBody:    { paddingTop: 2, gap: 4 },
-  historyNote:    { fontSize: 10, color: Colors.text.muted, lineHeight: 15 },
+  historyToggleText: { fontSize: 12, color: Colors.text.link, fontFamily: 'DMSans_600SemiBold' },
+  historyBody:    { gap: 6 },
+  historyNote:    { fontSize: 11, color: Colors.text.muted, lineHeight: 16 },
   historyLoading: { alignSelf: 'flex-start', paddingVertical: Layout.spacing.sm },
-  disclaimer: { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: Layout.spacing.xs, fontStyle: 'italic' },
-  rowCaveat:  { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: 2 },
 
   hint: {
     flexDirection: 'row',
     gap: 8,
     marginTop: Layout.spacing.md,
-    padding: Layout.spacing.sm,
-    borderRadius: Layout.radius.md,
+    padding: 12,
+    borderRadius: 12,
     backgroundColor: Colors.status.warningLight,
   },
-  hintText: { flex: 1, fontSize: Layout.fontSize.xs, color: '#8A5D06', lineHeight: 17 },
+  hintText: { flex: 1, fontSize: 12, color: '#8A5D06', lineHeight: 17 },
 
   footnote: {
-    fontSize: Layout.fontSize.xs,
+    fontSize: 12,
     color: Colors.text.muted,
     textAlign: 'center',
     marginTop: Layout.spacing.lg,

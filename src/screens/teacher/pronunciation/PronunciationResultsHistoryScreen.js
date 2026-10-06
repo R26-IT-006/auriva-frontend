@@ -16,7 +16,7 @@ import { Audio } from "expo-av";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLockPortrait } from "../../../utils/useOrientationLock";
 import { teacherApi } from "../../../api/teacher";
-import { Colors } from "../../../constants/colors";
+import { Colors, LOGIN_BACKDROP } from "../../../constants/colors";
 import { Layout } from "../../../constants/layout";
 import { getAvatarTheme } from "../../../constants/avatarThemes";
 import {
@@ -24,7 +24,7 @@ import {
   usePronunciationAlert,
 } from "./PronunciationAlert.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
-import { AvatarIdentityBadge } from "./pronunciationDesignKit.js";
+import TeacherTopBar from "../../../components/teacher/TeacherTopBar";
 import {
   buildGopPhonemeComparison,
   buildMfccDtwPhonemeComparison,
@@ -297,7 +297,7 @@ function SessionTab({ result, isSelected, onPress }) {
   );
 }
 
-export default function PronunciationResultsHistoryScreen({ route }) {
+export default function PronunciationResultsHistoryScreen({ route, navigation }) {
   // A teacher-facing reading screen, opened from the Student Profile: portrait,
   // like the profile and the reports beside it.
   useLockPortrait();
@@ -470,8 +470,20 @@ export default function PronunciationResultsHistoryScreen({ route }) {
   if (!student) return null;
 
   return (
-    <LinearGradient colors={theme.backgroundGradient} style={styles.safeOuter}>
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <LinearGradient colors={LOGIN_BACKDROP.colors} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end} style={styles.safeOuter}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      {/* The teacher workspace's in-page header, as on the profile and reports. */}
+      <TeacherTopBar
+        title={`${student.full_name} · Pronunciation`}
+        onBack={() => navigation?.goBack()}
+        right={
+          <View style={styles.countPill}>
+            <Text style={styles.countText}>
+              {results.length} {results.length === 1 ? "session" : "sessions"}
+            </Text>
+          </View>
+        }
+      />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -485,21 +497,6 @@ export default function PronunciationResultsHistoryScreen({ route }) {
           />
         }
       >
-        <View style={styles.header}>
-          <View style={styles.headerIdentity}>
-            <AvatarIdentityBadge
-              avatarKey={student?.avatar_key}
-              theme={theme}
-              size={44}
-            />
-            <Text style={[styles.title, { color: theme.headingText }]}>
-              {student.full_name}
-            </Text>
-          </View>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{results.length}</Text>
-          </View>
-        </View>
 
         {loading ? (
           <View style={styles.emptyCard}>
@@ -935,33 +932,16 @@ const styles = StyleSheet.create({
   safeOuter: { flex: 1 },
   safe: { flex: 1 },
   scroll: { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: Layout.spacing.lg,
-  },
-  headerIdentity: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Layout.spacing.sm,
-  },
-  title: {
-    fontSize: Layout.fontSize.xl,
-    fontFamily: Layout.fonts.bold,
-  },
-  countBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: Colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
+  countPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#E4F4EC",
   },
   countText: {
-    color: "#FFFFFF",
-    fontSize: Layout.fontSize.lg,
-    fontFamily: Layout.fonts.bold,
+    color: Colors.brandDeep,
+    fontSize: 13,
+    fontFamily: "DMSans_700Bold",
   },
   summaryPanel: {
     borderWidth: 1,

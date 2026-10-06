@@ -31,7 +31,7 @@ import {
   resolvePeriodRange, formatPeriodLabel, validateCustomRange, startOfTodayUtc, toDateOnly, parseDateOnly,
 } from '../../../utils/reportPeriod';
 import { fetchPeriodicReport } from '../../../api/periodicReport';
-import { generatePeriodicReportPdf, sharePeriodicReportPdf } from '../../../utils/periodicReportPdf';
+import { generatePeriodicReportPdf, sharePeriodicReportPdf, downloadPeriodicReportPdf } from '../../../utils/periodicReportPdf';
 import ReportPreviewModal from './ReportPreviewModal';
 import {
   getLetterMotorPresentation, buildReferenceProgressText, LETTER_MOTOR_PATTERN_CAPTION,
@@ -119,7 +119,9 @@ export default function PeriodicReportSection({ student, theme }) {
   const [exportMessage, setExportMessage] = useState(null);
   const [preview, setPreview] = useState(null); // { html, filename, fileUri }
   const [sharing, setSharing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [previewMessage, setPreviewMessage] = useState(null);
+  const [previewNotice, setPreviewNotice] = useState(null);
 
   // Stale-response guard (spec §15/§22) — only the MOST RECENT request's
   // result is ever applied to state.
@@ -306,6 +308,7 @@ export default function PeriodicReportSection({ student, theme }) {
     if (!preview?.fileUri) return;
     setSharing(true);
     setPreviewMessage(null);
+    setPreviewNotice(null);
 
     const result = await sharePeriodicReportPdf({
       fileUri: preview.fileUri,
@@ -326,10 +329,33 @@ export default function PeriodicReportSection({ student, theme }) {
     }
   }
 
+  // Download — save a copy of the SAME reviewed file into a folder the
+  // teacher picks (e.g. Downloads). The preview stays open afterwards.
+  async function handleDownloadPdf() {
+    if (!preview?.fileUri) return;
+    setDownloading(true);
+    setPreviewMessage(null);
+    setPreviewNotice(null);
+
+    const result = await downloadPeriodicReportPdf({
+      fileUri: preview.fileUri,
+      filename: preview.filename,
+    });
+    setDownloading(false);
+
+    if (result.status === 'saved') {
+      setPreviewNotice('Report downloaded to the folder you chose.');
+    } else if (result.status === 'failed') {
+      setPreviewMessage('Could not download the report. Please try again.');
+    }
+  }
+
   function handleClosePreview() {
     setPreview(null);
     setSharing(false);
+    setDownloading(false);
     setPreviewMessage(null);
+    setPreviewNotice(null);
   }
 
   return (
@@ -650,8 +676,11 @@ export default function PeriodicReportSection({ student, theme }) {
         html={preview?.html ?? null}
         filename={preview?.filename ?? null}
         sharing={sharing}
+        downloading={downloading}
         message={previewMessage}
+        notice={previewNotice}
         onShare={handleSharePdf}
+        onDownload={handleDownloadPdf}
         onClose={handleClosePreview}
       />
     </View>

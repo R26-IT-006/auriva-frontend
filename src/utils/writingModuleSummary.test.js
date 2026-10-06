@@ -223,7 +223,7 @@ describe('the Writing tab', () => {
   it('offers exactly one report action, worded like the Concept tab', () => {
     // Visible label matches Concept's "See {name}'s full history"; the a11y
     // label keeps the report's name.
-    expect(code).toMatch(/See \{firstName\}&apos;s writing history/);
+    expect(code).toMatch(/See \$\{firstName\}'s writing history/);
     expect((code.match(/View Writing Progress Report/g) || []).length).toBe(1);
   });
 

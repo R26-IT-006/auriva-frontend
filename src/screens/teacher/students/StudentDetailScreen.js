@@ -19,7 +19,8 @@ import { MasteryRing } from '../../../components/charts/MasteryRing';
 import { GroupGrid } from '../../../components/charts/GroupGrid';
 import { ConceptThumb } from '../../../components/charts/ConceptThumb';
 import { CategoryConceptsModal } from '../../../components/concept/CategoryConceptsModal';
-import { Colors } from '../../../constants/colors';
+// The sign-in screen's gradient, top to bottom: sky blue → green → cream.
+import { Colors, LOGIN_BACKDROP } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
@@ -32,6 +33,11 @@ import { ROUND, ACTION, sinceWords } from '../../../constants/teacherWording';
 // rendered while the Writing tab is open.
 import LiveSessionCard from '../../../components/teacher/LiveSessionCard';
 import { StrokeFamilyModal } from '../../../components/teacher/StrokeFamilyModal';
+import { PronunciationCategoryModal } from '../../../components/teacher/PronunciationCategoryModal';
+import ReportPreviewModal from '../../../components/handwriting/reports/ReportPreviewModal';
+import {
+  generatePronunciationReportPdf, sharePronunciationReportPdf, downloadPronunciationReportPdf,
+} from '../../../utils/pronunciationReportPdf';
 import { SESSION_CATEGORIES } from '../pronunciation/sessionCategories';
 import { WORD_BANK } from '../pronunciation/wordBank';
 import {
@@ -44,12 +50,6 @@ import {
 } from '../../../utils/writingModuleSummary';
 import { fetchStrokeBreakdown } from '../../../utils/writingStrokeBreakdown';
 
-// The sign-in screen's gradient, top to bottom: sky blue → green → cream.
-const LOGIN_BACKDROP = {
-  colors: ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'],
-  start:  { x: 0, y: 0 },
-  end:    { x: 0, y: 1 },
-};
 
 // Same tinted pairs the teacher dashboard uses for its section panels, so a
 // profile opened from a dashboard card keeps the same visual language.
@@ -203,9 +203,42 @@ function InfoList({ rows, section }) {
 }
 
 /** One figure on the progress panel: a small-caps label over a large number. */
-function ProgressStat({ label, value, of, tint }) {
+/**
+ * The one Module Progress action button: the green gradient pill every tab's
+ * footer uses, so all of them share one colour and one shape. `icon` sits
+ * before the label; `trailing` (an arrow) after it.
+ */
+function ModuleActionButton({
+  label, icon, trailing, onPress, disabled = false, busy = false, accessibilityLabel,
+}) {
   return (
-    <View style={styles.progressStat}>
+    <TouchableOpacity
+      style={[styles.reportBtn, disabled && styles.reportBtnDisabled]}
+      activeOpacity={0.85}
+      onPress={onPress}
+      disabled={disabled || busy}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: disabled || busy, busy }}
+    >
+      <LinearGradient
+        colors={Colors.brandGradientDeep}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.reportBtnFill}
+      />
+      {busy
+        ? <ActivityIndicator size="small" color="#FFFFFF" />
+        : icon ? <Ionicons name={icon} size={15} color="#FFFFFF" /> : null}
+      <Text style={styles.reportBtnText}>{label}</Text>
+      {trailing ? <Ionicons name={trailing} size={15} color="#FFFFFF" /> : null}
+    </TouchableOpacity>
+  );
+}
+
+function ProgressStat({ label, value, of, tint, style }) {
+  return (
+    <View style={[styles.progressStat, style]}>
       <Text style={styles.progressStatLabel} numberOfLines={2}>{label}</Text>
       <View style={styles.progressStatRow}>
         <Text style={[styles.progressStatValue, tint ? { color: tint } : null]}>{value}</Text>
@@ -375,11 +408,21 @@ const PRON_TOTALS = {
   [ALPHABET_KEY]: 26,
 };
 
+// Every word each category offers, so the category pop-up can list the ones
+// not tried yet. Same sources as PRON_TOTALS.
+const toCatalogueEntry = (w) => ({ id: w.id, label: w.word ?? w.id });
+const PRON_CATALOGUE = {
+  ...Object.fromEntries(SESSION_CATEGORIES.map((c) => [c.id, (WORD_BANK[c.id] || []).map(toCatalogueEntry)])),
+  animals: [...(WORD_BANK.animals || []), ...(WORD_BANK.moreAnimals || [])].map(toCatalogueEntry),
+  [ALPHABET_KEY]: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => ({ id: l.toLowerCase(), label: l })),
+};
+
 /**
  * PRONUNCIATION category breakdown — the counterpart of the Concept tab's.
  * Same card as the stroke families; each opens the sessions screen.
  */
 function PronunciationBreakdown({ groups, onSelect }) {
+  // Each card opens that category's summary pop-up (onSelect(group)).
   const [gridW, setGridW] = useState(0);
   const cols = gridW >= 3 * 200 + 2 * 8 ? 3 : 2;
 
@@ -392,12 +435,12 @@ function PronunciationBreakdown({ groups, onSelect }) {
             key={g.key}
             style={[styles.strokeCard, { flexBasis: cols === 3 ? '31%' : '46%' }]}
             activeOpacity={0.75}
-            onPress={onSelect}
+            onPress={() => onSelect(g)}
             accessibilityRole="button"
             accessibilityLabel={
               `${g.label}, ${g.practised}${g.total ? ` of ${g.total}` : ''} practised` +
               (g.average != null ? `, average ${g.average} percent` : '') +
-              '. Opens pronunciation sessions'
+              '. Opens its summary'
             }
           >
             <View style={styles.strokeHead}>
@@ -649,12 +692,77 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
       const rows = await teacherApi.getPronunciationResults(initialStudent.sid, PRON_RECENT_LIMIT);
       setPron({
         status: 'ok',
-        summary: buildPronunciationSummary(rows, { categories: SESSION_CATEGORIES, totals: PRON_TOTALS }),
+        summary: buildPronunciationSummary(rows, {
+          categories: SESSION_CATEGORIES, totals: PRON_TOTALS, catalogue: PRON_CATALOGUE,
+        }),
       });
     } catch {
       setPron({ status: 'error', summary: null });
     }
   }, [initialStudent?.sid]);
+
+  // The category whose summary pop-up is open, or null.
+  const [openPronGroup, setOpenPronGroup] = useState(null);
+
+  // Pronunciation report: GENERATE (PDF on this device + preview), then the
+  // teacher chooses Download or Share for that same file.
+  const [pronReport, setPronReport] = useState(null); // { html, filename, fileUri }
+  const [pronReportBusy, setPronReportBusy] = useState(null); // 'generating' | 'sharing' | 'downloading' | null
+  const [pronReportMessage, setPronReportMessage] = useState(null);
+  const [pronReportNotice, setPronReportNotice] = useState(null);
+
+  const openPronunciationReport = useCallback(async () => {
+    if (!pron.summary || pronReportBusy) return;
+    setPronReportBusy('generating');
+    setPronReportMessage(null);
+    setPronReportNotice(null);
+    const result = await generatePronunciationReportPdf({
+      summary: pron.summary,
+      studentName: initialStudent?.full_name ?? 'Student',
+    });
+    setPronReportBusy(null);
+    if (result.status === 'generated') {
+      setPronReport({ html: result.html, filename: result.filename, fileUri: result.fileUri });
+    } else {
+      setPronReportMessage('Could not create the report. Please try again.');
+    }
+  }, [pron.summary, pronReportBusy, initialStudent?.full_name]);
+
+  const sharePronunciationReport = useCallback(async () => {
+    if (!pronReport?.fileUri) return;
+    setPronReportBusy('sharing');
+    setPronReportMessage(null);
+    setPronReportNotice(null);
+    const result = await sharePronunciationReportPdf({
+      fileUri: pronReport.fileUri,
+      studentName: initialStudent?.full_name ?? 'Student',
+    });
+    setPronReportBusy(null);
+    if (result.status === 'shared') setPronReport(null);
+    else if (result.status === 'sharing_unavailable') setPronReportMessage('Sharing is not available on this device. Use Download instead.');
+    else if (result.status === 'failed') setPronReportMessage('Could not share the report. Please try again.');
+  }, [pronReport, initialStudent?.full_name]);
+
+  const downloadPronunciationReport = useCallback(async () => {
+    if (!pronReport?.fileUri) return;
+    setPronReportBusy('downloading');
+    setPronReportMessage(null);
+    setPronReportNotice(null);
+    const result = await downloadPronunciationReportPdf({
+      fileUri: pronReport.fileUri,
+      filename: pronReport.filename,
+    });
+    setPronReportBusy(null);
+    if (result.status === 'saved') setPronReportNotice('Report downloaded to the folder you chose.');
+    else if (result.status === 'failed') setPronReportMessage('Could not download the report. Please try again.');
+  }, [pronReport]);
+
+  const closePronunciationReport = useCallback(() => {
+    setPronReport(null);
+    setPronReportBusy(null);
+    setPronReportMessage(null);
+    setPronReportNotice(null);
+  }, []);
 
   // On opening the tab, and again on returning to the profile with it open,
   // so a session just finished is counted.
@@ -1004,22 +1112,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
               {/* The panel's one primary action, in the same ruled footer and
                   green as the Concept tab's history button. */}
               <View style={[styles.reportFooter, styles.reportFooterEnd]}>
-                <TouchableOpacity
-                  style={styles.reportBtn}
-                  activeOpacity={0.85}
+                <ModuleActionButton
+                  label={`See ${firstName}'s writing history`}
+                  trailing="arrow-forward"
                   onPress={openHandwritingReport}
-                  accessibilityRole="button"
                   accessibilityLabel="View Writing Progress Report"
-                >
-                  <LinearGradient
-                    colors={Colors.brandGradientDeep}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.reportBtnFill}
-                  />
-                  <Text style={styles.reportBtnText}>See {firstName}&apos;s writing history</Text>
-                  <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
-                </TouchableOpacity>
+                />
               </View>
             </>
           ) : activeModule === 'pronunciation' ? (
@@ -1102,11 +1200,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                       <Text style={styles.breakdownTitle}>Category breakdown</Text>
                       <Text style={styles.breakdownHint}>
                         {pron.summary.capped ? `Last ${PRON_RECENT_LIMIT} attempts` : 'All attempts'}
+                        {' · Tap a category for its summary'}
                       </Text>
                     </View>
                     <PronunciationBreakdown
                       groups={pron.summary.groups}
-                      onSelect={() => navigation.navigate('PronunciationResultsHistory', { student })}
+                      onSelect={setOpenPronGroup}
                     />
                   </>
                 )}
@@ -1114,47 +1213,34 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
 
               {/* The module's three ways in, kept as three buttons. The queue
                   lists only {firstName}'s attempts when opened from here. */}
-              <View style={styles.reportFooter}>
-                <View style={styles.pronFootLeft}>
-                  <TouchableOpacity
-                    style={styles.pronOutlineBtn}
-                    activeOpacity={0.75}
-                    onPress={() => navigation.navigate('PronunciationResultsHistory', { student })}
-                    accessibilityRole="button"
-                    accessibilityLabel="Pronunciation sessions. Review saved session scores and sound breakdowns"
-                  >
-                    <Ionicons name="list-outline" size={15} color={Colors.brandDeep} />
-                    <Text style={styles.pronOutlineText}>Sessions</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.pronOutlineBtn}
-                    activeOpacity={0.75}
-                    onPress={() => navigation.navigate('PronunciationReviewQueue', { student })}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Review queue. Check the scores the AI was least sure about in ${firstName}'s attempts today`}
-                  >
-                    <Ionicons name="checkmark-done-outline" size={15} color={Colors.brandDeep} />
-                    <Text style={styles.pronOutlineText}>Review queue</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.reportBtn}
-                  activeOpacity={0.85}
-                  onPress={() => navigation.navigate('PronunciationSessionSetup', { student })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Start a pronunciation session. Choose a word set and work through it with ${firstName}`}
-                >
-                  <LinearGradient
-                    colors={Colors.brandGradientDeep}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.reportBtnFill}
-                  />
-                  <Ionicons name="mic" size={15} color="#FFFFFF" />
-                  <Text style={styles.reportBtnText}>Start a session</Text>
-                </TouchableOpacity>
+              <View style={[styles.reportFooter, styles.reportFooterEnd, styles.footerWrap]}>
+                <ModuleActionButton
+                  label="Sessions"
+                  icon="list-outline"
+                  onPress={() => navigation.navigate('PronunciationResultsHistory', { student })}
+                  accessibilityLabel="Pronunciation sessions. Review saved session scores and sound breakdowns"
+                />
+                <ModuleActionButton
+                  label="Review queue"
+                  icon="checkmark-done-outline"
+                  onPress={() => navigation.navigate('PronunciationReviewQueue', { student })}
+                  accessibilityLabel={`Review queue. Check the scores the AI was least sure about in ${firstName}'s attempts today`}
+                />
+                {/* The tab's summary as a PDF: preview, then Download or Share. */}
+                <ModuleActionButton
+                  label="Report"
+                  icon="document-text-outline"
+                  onPress={openPronunciationReport}
+                  disabled={!pron.summary || pron.summary.attempts === 0}
+                  busy={pronReportBusy === 'generating'}
+                  accessibilityLabel={`Pronunciation report. Preview ${firstName}'s report, then download or share it`}
+                />
               </View>
+              {/* A report that could not be generated never opens its preview,
+                  so the message is shown here instead. */}
+              {!pronReport && pronReportMessage ? (
+                <Text style={styles.pronReportError}>{pronReportMessage}</Text>
+              ) : null}
             </>
           ) : activeModule === 'dialogue' ? (
             dialogueLoading ? (
@@ -1213,29 +1299,8 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                         </View>
                       </View>
 
-                      <View style={styles.breakdownHead}>
-                        <Ionicons name="list-outline" size={16} color={Colors.text.secondary} />
-                        <Text style={styles.breakdownTitle}>Category breakdown</Text>
-                      </View>
-
-                      {/* Categories the child has actually touched. An untouched
-                          category is omitted rather than shown as 0 / 0, for the
-                          same reason the concept panel filters on started > 0. */}
-                      <View style={styles.dialogueCats}>
-                        {DIALOGUE_CATEGORIES.map((c) => {
-                          const rows = dialogueWords.filter((w) => w.category === c.key);
-                          if (rows.length === 0) return null;
-                          const mastered = rows.filter((w) => w.status === 'mastered').length;
-                          return (
-                            <View key={c.key} style={styles.dialogueCatRow}>
-                              <Text style={styles.dialogueCatLabel}>{c.label}</Text>
-                              <Text style={styles.dialogueCatValue}>
-                                {mastered} / {rows.length} mastered
-                              </Text>
-                            </View>
-                          );
-                        })}
-                      </View>
+                      {/* No category breakdown here by request — the per-category
+                          detail lives in the Level 1 report. */}
                     </>
                   )}
 
@@ -1261,41 +1326,33 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
                             label="Mastered"
                             value={String(level2Totals.mastered)}
                             of={level2Totals.topics_total}
+                            style={styles.progressStatQuarter}
                           />
-                          <ProgressStat label="Started"       value={String(level2Totals.topics_started)} />
-                          <ProgressStat label="In progress"   value={String(level2Totals.in_progress)} />
-                          <ProgressStat label="Needs support" value={String(level2Totals.struggling)} />
+                          <ProgressStat label="Started"       value={String(level2Totals.topics_started)} style={styles.progressStatQuarter} />
+                          <ProgressStat label="In progress"   value={String(level2Totals.in_progress)}    style={styles.progressStatQuarter} />
+                          <ProgressStat label="Needs support" value={String(level2Totals.struggling)}     style={styles.progressStatQuarter} />
                         </View>
                       )}
                     </>
                   ) : null}
                 </View>
 
-                {/* Same ruled footer as the concept panel. Two reports rather
-                    than one, so neither wears the filled gradient — two solid
-                    buttons side by side would read as a choice between equals. */}
-                <View style={styles.reportFooter}>
-                  <TouchableOpacity
-                    style={styles.archiveBtn}
-                    activeOpacity={0.75}
+                {/* Same ruled footer as the concept panel. Two reports of equal
+                    weight, so both use the module's outlined pill button (as in
+                    the Pronunciation tab) rather than one filled gradient. */}
+                <View style={[styles.reportFooter, styles.reportFooterEnd, styles.footerWrap]}>
+                  <ModuleActionButton
+                    label="Level 1 report"
+                    icon="trending-up-outline"
                     onPress={() => navigation.navigate('TrajectoryReport', { student })}
-                    accessibilityRole="button"
                     accessibilityLabel="Level 1 word trajectory report"
-                  >
-                    <Ionicons name="trending-up-outline" size={15} color={Colors.text.secondary} />
-                    <Text style={styles.archiveBtnText}>Level 1 report</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.archiveBtn}
-                    activeOpacity={0.75}
+                  />
+                  <ModuleActionButton
+                    label="Level 2 report"
+                    icon="document-text-outline"
                     onPress={() => navigation.navigate('Level2Report', { student })}
-                    accessibilityRole="button"
                     accessibilityLabel="Level 2 sentence construction report"
-                  >
-                    <Ionicons name="document-text-outline" size={15} color={Colors.text.secondary} />
-                    <Text style={styles.archiveBtnText}>Level 2 report</Text>
-                  </TouchableOpacity>
+                  />
                 </View>
               </>
             )
@@ -1444,43 +1501,20 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
 
               {/* On its own ruled footer. Floating at the end of the last bar it
                   read as belonging to that category rather than to the panel. */}
-              <View style={styles.reportFooter}>
-                {/* Two different questions. This one answers "how was a named
-                    week or month", which the live view structurally cannot —
-                    its figures move every time it is opened. Text-and-icon
-                    rather than a second filled button: two solid buttons side by
-                    side would read as a choice between equals, and most days the
-                    live view is the one a teacher wants. */}
-                <TouchableOpacity
-                  style={styles.archiveBtn}
-                  activeOpacity={0.75}
+              <View style={[styles.reportFooter, styles.reportFooterEnd, styles.footerWrap]}>
+                {/* Saved weekly/monthly reports, and the live history. Same
+                    button as every other Module Progress action. */}
+                <ModuleActionButton
+                  label="Reports"
+                  icon="document-text-outline"
                   onPress={() => navigation.navigate('ConceptReports', { student })}
-                  accessibilityRole="button"
                   accessibilityLabel="Saved reports for each week and month"
-                >
-                  <Ionicons name="document-text-outline" size={15} color={Colors.text.secondary} />
-                  <Text style={styles.archiveBtnText}>Reports</Text>
-                </TouchableOpacity>
-
-                {/* The panel's one primary action, so it wears the primary action
-                    colour — the same green as the selected tab and the sign-in
-                    button. Charcoal made it read as a neutral control on a page
-                    that now has a colour for exactly this. */}
-                <TouchableOpacity
-                  style={styles.reportBtn}
-                  activeOpacity={0.85}
+                />
+                <ModuleActionButton
+                  label={ACTION.historyFor(firstName)}
+                  trailing="arrow-forward"
                   onPress={() => navigation.navigate('ConceptReport', { student })}
-                  accessibilityRole="button"
-                >
-                  <LinearGradient
-                    colors={Colors.brandGradientDeep}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.reportBtnFill}
-                  />
-                  <Text style={styles.reportBtnText}>{ACTION.historyFor(firstName)}</Text>
-                  <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
-                </TouchableOpacity>
+                />
               </View>
             </>
           )}
@@ -1495,6 +1529,26 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
         face={openStroke ? STROKE_FACE[openStroke.key] : null}
         onClose={() => setOpenStroke(null)}
         onOpenReport={openHandwritingReport}
+      />
+      <PronunciationCategoryModal
+        group={openPronGroup}
+        face={openPronGroup ? (PRON_FACE[openPronGroup.key] || PRON_FALLBACK_FACE) : null}
+        unit={openPronGroup?.key === ALPHABET_KEY ? 'letters' : 'words'}
+        onClose={() => setOpenPronGroup(null)}
+        onOpenSessions={() => navigation.navigate('PronunciationResultsHistory', { student })}
+      />
+      <ReportPreviewModal
+        title="Pronunciation report"
+        visible={!!pronReport}
+        html={pronReport?.html ?? null}
+        filename={pronReport?.filename ?? null}
+        sharing={pronReportBusy === 'sharing'}
+        downloading={pronReportBusy === 'downloading'}
+        message={pronReportMessage}
+        notice={pronReportNotice}
+        onShare={sharePronunciationReport}
+        onDownload={downloadPronunciationReport}
+        onClose={closePronunciationReport}
       />
       <CategoryConceptsModal
         visible={!!openCategory}
@@ -1529,18 +1583,6 @@ const styles = StyleSheet.create({
     paddingTop: Layout.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
-  },
-  // Text-and-icon, so the primary action beside it keeps the weight.
-  archiveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: Layout.spacing.sm,
-  },
-  archiveBtnText: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_600SemiBold',
-    color: Colors.text.secondary,
   },
   // No fill and no border. The ring is already a closed shape on a plain white
   // panel, so a plate behind it drew a second boundary around something that had
@@ -1619,6 +1661,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   reportBtnFill: { ...StyleSheet.absoluteFillObject },
+  reportBtnDisabled: { opacity: 0.45 },
   reportBtnText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },
 
   // ── Identity card ──────────────────────────────────────────────────────────
@@ -1756,6 +1799,7 @@ const styles = StyleSheet.create({
   // Colour comes from the BACKDROP gradient this is applied to.
   safe:      { flex: 1 },
   safeInner: { flex: 1 },
+  // Dialogue breakdown: two layered fills (in progress behind, mastered over it).
   pronChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pronChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -1767,16 +1811,11 @@ const styles = StyleSheet.create({
     fontSize: 11, fontFamily: 'DMSans_700Bold', color: '#8A5D06',
     backgroundColor: '#FFFFFF', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, overflow: 'hidden',
   },
-  pronFootLeft: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, flexShrink: 1 },
-  pronOutlineBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingVertical: 10, paddingHorizontal: 14,
-    borderRadius: Layout.radius.full,
-    borderWidth: 1.5, borderColor: Colors.brandDeep,
-    backgroundColor: '#FFFFFF',
-  },
-  pronOutlineText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: Colors.brandDeep },
+  pronReportError: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: '#DC2626', textAlign: 'right', marginTop: 6 },
   reportFooterEnd: { justifyContent: 'flex-end' },
+  // Several actions in one footer: right-aligned, wrapping onto a second line
+  // on a narrow screen rather than squeezing.
+  footerWrap: { flexWrap: 'wrap', gap: 10 },
   strokeWrap: { gap: 10, marginBottom: 12 },
   strokeEmpty: { fontSize: 12, color: Colors.text.muted },
   strokeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -2056,30 +2095,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: CARD_GAP,
   },
-  dialogueCats: {
-    marginTop: Layout.spacing.sm,
-    gap: 2,
-  },
+  // Level 2's four tiles on one line. With no ring beside them they have the
+  // full panel width; minWidth lets them fall back to two per row on a phone
+  // rather than squeezing four unreadably narrow tiles.
+  progressStatQuarter: { flexBasis: '22%', minWidth: 120 },
   // Label left, figure right — a three-row list of counts, which reads faster as
   // rows than as three more tiles competing with the four above.
-  dialogueCatRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Layout.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
-  },
-  dialogueCatLabel: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_600SemiBold',
-    color: Colors.text.primary,
-  },
-  dialogueCatValue: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_700Bold',
-    color: Colors.text.secondary,
-  },
 
   // ── Context strip ─────────────────────────────────────────────────────────
   // Ruled off rather than tiled. These two are context for the figures above,

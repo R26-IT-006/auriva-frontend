@@ -429,16 +429,14 @@ describe('claimDemoIfDue — read, decide, claim, in that order', () => {
 // ─── Where the demos are wired in ───────────────────────────────────────
 
 describe('initial assessment', () => {
-  it('the demo sits between the welcome screen and the real assessment', () => {
-    expect(welcomeScreen).toMatch(/claimDemoIfDue\(\{[\s\S]*?DEMO_KEYS\.INITIAL_SHAPE_ASSESSMENT/);
-    expect(welcomeScreen).toMatch(/nextRoute: 'ShapeAssessment'/);
-    expect(welcomeScreen).toMatch(/if \(!due\) \{\s*\n\s*navigation\.navigate\('ShapeAssessment'/);
+  // The "watch first" demonstration was removed from the initial assessment
+  // by request: Start Assessment goes straight to the first shape.
+  it('the welcome screen starts the real assessment directly, with no demo', () => {
+    expect(welcomeScreen).toMatch(/navigation\.navigate\('ShapeAssessment', \{ student, theme \}\)/);
+    expect(welcomeScreen).not.toMatch(/claimDemoIfDue|HandwritingDemo|INITIAL_SHAPE_ASSESSMENT/);
   });
 
-  it('demonstrates ONE representative shape, not six', () => {
-    expect(welcomeScreen).toMatch(/shapeId: 'horizontal_line'/);
-    expect((welcomeScreen.match(/HandwritingDemo/g) ?? []).length).toBe(1);
-    // ShapeAssessmentScreen itself was not given per-shape demo navigation.
+  it('ShapeAssessmentScreen has no demo navigation either', () => {
     expect(read('../screens/teacher/handwriting/ShapeAssessmentScreen.js')).not.toMatch(/HandwritingDemo|demoPolicy|demoDetour/);
   });
 });

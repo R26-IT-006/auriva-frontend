@@ -38,6 +38,11 @@ const TEXT_3 = '#94A3B8';
 
 export default function ReportPreviewModal({
   visible, html, filename, onShare, onClose, sharing = false, message = null,
+  // Optional Download action (save a copy to a folder the teacher picks).
+  // Shown only when a caller passes onDownload.
+  onDownload = null, downloading = false, notice = null,
+  // Optional Print action (the device print dialog). Shown only when passed.
+  onPrint = null, printing = false,
   // The document being previewed. Defaults to the periodic report's own
   // wording so existing report behaviour is unchanged; the worksheet preview
   // passes its own title rather than a second preview component being built.
@@ -64,8 +69,9 @@ export default function ReportPreviewModal({
         </View>
 
         <Text style={styles.hint}>
-          Check the report below. It has been saved to this device — nothing is sent to anyone
-          until you choose Share.
+          Check the document below. Nothing is sent to anyone until you choose Share
+          {onDownload ? '; Download saves a copy to a folder you pick' : ''}
+          {onPrint ? '; Print opens the device print options' : ''}.
         </Text>
 
         <View style={styles.viewer}>
@@ -95,6 +101,7 @@ export default function ReportPreviewModal({
         </View>
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
+        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
         <View style={styles.footer}>
           <TouchableOpacity
@@ -107,10 +114,42 @@ export default function ReportPreviewModal({
             <Text style={styles.secondaryBtnText}>Close</Text>
           </TouchableOpacity>
 
+          {onDownload ? (
+            <TouchableOpacity
+              style={[styles.btn, styles.downloadBtn, (downloading || sharing) && styles.btnDisabled]}
+              onPress={onDownload}
+              disabled={downloading || sharing}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Download this report"
+            >
+              {downloading
+                ? <ActivityIndicator size="small" color={ACCENT} />
+                : <Ionicons name="download-outline" size={16} color={ACCENT} />}
+              <Text style={styles.downloadBtnText}>Download</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {onPrint ? (
+            <TouchableOpacity
+              style={[styles.btn, styles.downloadBtn, (printing || sharing || downloading) && styles.btnDisabled]}
+              onPress={onPrint}
+              disabled={printing || sharing || downloading}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Print this document"
+            >
+              {printing
+                ? <ActivityIndicator size="small" color={ACCENT} />
+                : <Ionicons name="print-outline" size={16} color={ACCENT} />}
+              <Text style={styles.downloadBtnText}>Print</Text>
+            </TouchableOpacity>
+          ) : null}
+
           <TouchableOpacity
-            style={[styles.btn, styles.primaryBtn, sharing && styles.btnDisabled]}
+            style={[styles.btn, styles.primaryBtn, (sharing || downloading || printing) && styles.btnDisabled]}
             onPress={onShare}
-            disabled={sharing}
+            disabled={sharing || downloading || printing}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="Share this report"
@@ -149,6 +188,7 @@ const styles = StyleSheet.create({
   webview: { flex: 1, backgroundColor: '#FFFFFF' },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24 },
   message: { fontSize: 12, color: '#DC2626', paddingHorizontal: 18, paddingTop: 10 },
+  notice: { fontSize: 12, color: '#15803D', paddingHorizontal: 18, paddingTop: 10 },
   footer: {
     flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingVertical: 14,
   },
@@ -158,6 +198,8 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: { backgroundColor: '#F1F2FB', borderWidth: 1, borderColor: '#E2E6F0' },
   secondaryBtnText: { color: TEXT_2, fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
+  downloadBtn: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: ACCENT },
+  downloadBtnText: { color: ACCENT, fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   primaryBtn: { backgroundColor: ACCENT },
   primaryBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: 'Nunito_700Bold' },
   btnDisabled: { opacity: 0.7 },

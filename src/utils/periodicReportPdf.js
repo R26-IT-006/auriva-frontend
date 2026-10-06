@@ -41,7 +41,7 @@ import {
 // The single expo-sharing wrapper, shared with the worksheet exporter so the
 // share-sheet mechanics (availability check, cancellation-is-not-failure,
 // never re-render) exist in ONE place. Dependency-free at module level.
-import { sharePdfFile, sanitizeForFilename as sanitizeSegment } from './pdfShare';
+import { sharePdfFile, savePdfFile, sanitizeForFilename as sanitizeSegment } from './pdfShare';
 
 function escapeHtml(value) {
   if (value == null) return '';
@@ -525,4 +525,15 @@ export async function sharePeriodicReportPdf({ fileUri, studentName }) {
     missingFileMessage: 'No generated report to share.',
     logTag: 'periodicReportPdf',
   });
+}
+
+/**
+ * Saves a copy of an ALREADY-GENERATED report into a folder the teacher
+ * picks (Download). Same "the previewed file, by uri" rule as sharing.
+ *
+ * @param {{fileUri: string, filename: string}} params
+ * @returns {Promise<{status: 'saved'|'cancelled'|'failed', error: string|null}>}
+ */
+export async function downloadPeriodicReportPdf({ fileUri, filename }) {
+  return savePdfFile({ fileUri, filename, logTag: 'periodicReportPdf' });
 }

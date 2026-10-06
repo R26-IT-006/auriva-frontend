@@ -73,25 +73,8 @@ export default function WordLetterSelectScreen({ route, navigation }) {
   // Concept screens do. Cancelling navigates nowhere.
   const { requestBack, gateModal } = useGatedBack(() => navigation.goBack());
 
-  // The Progress Report is a teacher-facing surface, so it sits behind the
-  // same parent gate the back button uses  -  the useGatedBack(action) form
-  // TeacherReportScreen.js already uses for its own non-back actions.
-  //
-  // Both of these were REFERENCED below and declared nowhere, so evaluating
-  // the top bar threw a ReferenceError and the chooser could not render.
-  //
-  // The destination is TeacherReport - the same route LetterHomeScreen's own
-  // gated progress action uses, with the same { student, theme, originRoute }
-  // params. Only the BUTTON'S LABEL changed in this phase; the screen behind
-  // it is unchanged, and no second report screen was introduced.
-  const {
-    requestBack: requestTeacherReport,
-    gateModal: teacherReportGateModal,
-  } = useGatedBack(() => navigation.navigate('TeacherReport', {
-    student,
-    theme,
-    originRoute: 'WordLetterSelect',
-  }));
+  // No Progress Report button here by request: the teacher reaches the
+  // report from the student profile, not the word chooser.
 
   const { student, theme } = route.params;
 
@@ -151,7 +134,7 @@ export default function WordLetterSelectScreen({ route, navigation }) {
 
       <SafeAreaView style={styles.safe}>
 
-        {/* ── Top bar: back | title | Word Progress + Progress Report ──── */}
+        {/* ── Top bar: back | title | Word Progress ──── */}
         <View style={styles.topBar}>
           <View style={styles.sideGroup}>
             <TouchableOpacity
@@ -174,21 +157,13 @@ export default function WordLetterSelectScreen({ route, navigation }) {
           </View>
 
           <View style={[styles.sideGroup, styles.topActions]}>
-            {/* Shared header pills (HeaderPillButton); both filled, as before. */}
+            {/* Shared header pill (HeaderPillButton). */}
             <HeaderPillButton
               variant="primary"
               icon="ribbon-outline"
               label="Word Progress"
               theme={theme}
               onPress={() => navigation.navigate('WordProgress', { student, theme })}
-            />
-            <HeaderPillButton
-              variant="primary"
-              icon="document-text-outline"
-              label="Progress Report"
-              accessibilityLabel="Progress Report - needs a code"
-              theme={theme}
-              onPress={requestTeacherReport}
             />
           </View>
         </View>
@@ -258,7 +233,6 @@ export default function WordLetterSelectScreen({ route, navigation }) {
           whole screen. Only one can be visible at a time — each is opened
           by its own button and closes itself on success or cancel. */}
       {gateModal}
-      {teacherReportGateModal}
     </LinearGradient>
   );
 }
@@ -360,7 +334,7 @@ const styles = StyleSheet.create({
     left: -80,
   },
 
-  // ── Top bar: back | title | Word Progress + Progress Report ──────────
+  // ── Top bar: back | title | Word Progress ────────────────────────────
   // The two side groups share the leftover width equally (flex: 1) so the
   // title stays centred even though the buttons are wider than Back.
   topBar: {

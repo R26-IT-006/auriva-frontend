@@ -169,12 +169,12 @@ describe('worksheet preview', () => {
   });
 
   it('closes safely and can be reopened — nothing is torn down', () => {
-    expect(card).toMatch(/const closePreview = \(\) => \{ setPreview\(null\); setPreviewMessage\(null\); \};/);
+    expect(card).toMatch(/const closePreview = \(\) => \{ setPreview\(null\); setPreviewMessage\(null\); setPreviewNotice\(null\); \};/);
     expect(card).toMatch(/onClose=\{closePreview\}/);
   });
 
   it('shares from the preview using the WORKSHEET share helper, not the report one', () => {
-    expect(screen).toMatch(/import \{ generateWorksheetPdf, shareWorksheetPdf \}/);
+    expect(screen).toMatch(/import \{\s*generateWorksheetPdf, shareWorksheetPdf, printWorksheetPdf, downloadWorksheetPdf,\s*\}/);
     expect(screen).not.toMatch(/sharePeriodicReportPdf/);
     expect(card).toMatch(/onShare=\{doSharePreview\}/);
     expect(card).toMatch(/setPreviewMessage/);
@@ -184,6 +184,23 @@ describe('worksheet preview', () => {
     const fn = card.slice(card.indexOf('const doSharePreview'), card.indexOf('const closePreview'));
     expect(fn).toMatch(/catch \(err\)/);
     expect(fn).toMatch(/could not be shared/);
+  });
+
+  it('the preview also offers Print and Download for the same file', () => {
+    expect(card).toMatch(/onPrint=\{doPrintPreview\}/);
+    expect(card).toMatch(/onDownload=\{doDownloadPreview\}/);
+    expect(card).toMatch(/printWorksheetPdf\(\{ fileUri: preview\.uri \}\)/);
+    expect(card).toMatch(/downloadWorksheetPdf\(\{ fileUri: preview\.uri, filename: preview\.filename \}\)/);
+  });
+
+  it('the worksheet PDF is rendered at A4 size', () => {
+    const pdf = fs.readFileSync(path.resolve(__dirname, './worksheetPdf.js'), 'utf8');
+    expect(pdf).toMatch(/A4_POINTS = Object\.freeze\(\{ width: 595, height: 842 \}\)/);
+    expect(pdf).toMatch(/width: A4_POINTS\.width, height: A4_POINTS\.height/);
+  });
+
+  it('a camera shot uploads as a photo and a chosen image as a scan', () => {
+    expect(card).toMatch(/fromCamera \? 'photo' : 'scan'/);
   });
 });
 

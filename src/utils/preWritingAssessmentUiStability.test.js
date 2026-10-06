@@ -66,7 +66,18 @@ describe('Pre-Writing bilingual instruction readability', () => {
 });
 
 describe('Pre-Writing and Shape Assessment canvas stability', () => {
-  test.each([PRE, SHAPE])('%s reserves the complete 51 px action row from first render', (rel) => {
+  test('Pre-Writing reserves the complete 3D-button action row from first render', () => {
+    const source = readCode(PRE);
+    const row = styleBody(source, 'buttonsRow');
+    expect(row).toMatch(/minHeight: actionRowMinHeight\(\{/);
+    expect(row).toMatch(/maxButtonPaddingVertical: 12, maxButtonBorderWidth: 2, maxButtonBorderBottomWidth: 5/);
+    expect(styleBody(source, 'clearBtn')).toMatch(/borderWidth: 2,\s*borderBottomWidth: 5,[\s\S]*paddingVertical: 12/);
+    expect(styleBody(source, 'nextBtn')).toMatch(/paddingVertical: 13[\s\S]*borderBottomWidth: 5/);
+    expect(source).toMatch(/\{canClearCanvas && \(/);
+    expect(source).not.toMatch(/opacity: canClearCanvas \? 1 : 0|placeholderBtn/);
+  });
+
+  test.each([SHAPE])('%s reserves the complete 51 px action row from first render', (rel) => {
     const source = readCode(rel);
     const row = styleBody(source, 'buttonsRow');
     expect(row).toMatch(/minHeight: actionRowMinHeight\(\{/);

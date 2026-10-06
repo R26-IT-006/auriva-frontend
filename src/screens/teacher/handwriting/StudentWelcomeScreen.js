@@ -12,10 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLockLandscape } from '../../../utils/useOrientationLock';
-// One-time "watch first" demonstration before the child's FIRST real
-// assessment — see utils/demoPolicy.js for why it is once and not six times.
-import { claimDemoIfDue } from '../../../utils/demoDetour';
-import { DEMO_KEYS } from '../../../utils/demoPolicy';
 import useGatedBack from '../../../utils/useGatedBack';
 import {
   ASSESSMENT_FLOW_ROUTES,
@@ -45,39 +41,12 @@ export default function StudentWelcomeScreen({ route, navigation }) {
   );
   const { requestBack, gateModal } = useGatedBack(returnToTeacherInstructions);
 
-  /**
-   * Start the assessment — via the demonstration the first time only.
-   *
-   * The demo animates ONE representative shape (the horizontal line) to
-   * teach the interaction itself: follow the path with your finger. The six
-   * shapes share that one interaction, and each already carries its own
-   * looping pointer and spoken instruction inside ShapeAssessmentScreen, so
-   * a demo per shape would be five repetitions of a lesson already learned.
-   *
-   * Nothing here records anything: the demo screen replaces itself with the
-   * assessment, which then begins exactly as it always has.
-   */
-  const startAssessment = async () => {
-    const assessmentParams = { student, theme };
-    const due = await claimDemoIfDue({
-      studentId: student?.sid,
-      demoKey: DEMO_KEYS.INITIAL_SHAPE_ASSESSMENT,
-    });
-
-    if (!due) {
-      navigation.navigate('ShapeAssessment', assessmentParams);
-      return;
-    }
-
-    navigation.navigate('HandwritingDemo', {
-      student, theme,
-      demoKey: DEMO_KEYS.INITIAL_SHAPE_ASSESSMENT,
-      // The same template the assessment's own pointer follows and the
-      // unified motor score is computed against — never a demo-only shape.
-      shapeId: 'horizontal_line',
-      nextRoute: 'ShapeAssessment',
-      nextParams: assessmentParams,
-    });
+  // Start the assessment directly. The one-time "watch first" demonstration
+  // that used to open the initial assessment was removed by request: each
+  // shape already carries its own looping pointer and spoken instruction
+  // inside ShapeAssessmentScreen.
+  const startAssessment = () => {
+    navigation.navigate('ShapeAssessment', { student, theme });
   };
   const { width, height } = useWindowDimensions();
 

@@ -109,9 +109,10 @@ describe('screen wiring for the 75% gate', () => {
     expect(wordWriting).toContain('language: SPEECH_LOCALE_EN');
   });
 
-  test('Word Practice gates only Activity E and queues its visible target word', () => {
+  test('Word Practice Activity E can be written during the instruction and queues its target word', () => {
     expect(wordActivity).toContain("autoPlay: currentExercise === 'E'");
-    expect(wordActivity).toContain("canWrite: currentExercise !== 'E' || instructionCanWrite");
+    expect(wordActivity).toContain('canWrite: true,');
+    expect(wordActivity).not.toContain('instructionCanWrite');
     expect(wordActivity).toContain('requestTargetSpeech,');
     expect(exerciseE).toContain('requestTargetSpeech(() => {');
     expect(exerciseE).toContain('const spoken = spokenWord(wordEntry);');

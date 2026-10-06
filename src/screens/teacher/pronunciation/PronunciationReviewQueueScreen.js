@@ -23,8 +23,10 @@ import {
   PronunciationAlert,
   usePronunciationAlert,
 } from "./PronunciationAlert.js";
-import { Colors } from "../../../constants/colors";
+import { Colors, LOGIN_BACKDROP } from "../../../constants/colors";
+import { LinearGradient } from "expo-linear-gradient";
 import { Layout } from "../../../constants/layout";
+import TeacherTopBar from "../../../components/teacher/TeacherTopBar";
 import { useToast } from "../../../context/ToastContext";
 import { formatDateTime, getScoreColor } from "./pronunciationHistory.js";
 
@@ -306,7 +308,7 @@ function ReviewScoreModal({ item, onCancel, onSubmit, submitting }) {
   );
 }
 
-export default function PronunciationReviewQueueScreen({ route }) {
+export default function PronunciationReviewQueueScreen({ route, navigation }) {
   // A teacher-facing reading screen, opened from the Student Profile: portrait,
   // like the profile and the reports beside it.
   useLockPortrait();
@@ -315,6 +317,12 @@ export default function PronunciationReviewQueueScreen({ route }) {
   const student = route?.params?.student;
   const studentId = student?.sid ?? null;
   const firstName = student?.full_name?.trim().split(/\s+/)[0];
+
+  // The header is drawn inside the page (TeacherTopBar), like every other
+  // teacher-workspace screen, so the navigator's own bar is hidden.
+  useEffect(() => {
+    navigation?.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -357,11 +365,13 @@ export default function PronunciationReviewQueueScreen({ route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <LinearGradient colors={LOGIN_BACKDROP.colors} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end} style={styles.safe}>
+      <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
+      <TeacherTopBar
+        title={firstName ? `${firstName}'s review queue` : "Review Queue"}
+        onBack={() => navigation?.goBack()}
+      />
       <View style={styles.header}>
-        <Text style={styles.title}>
-          {firstName ? `${firstName}'s review queue` : "Review Queue"}
-        </Text>
         <Text style={styles.subtitle}>
           Attempts ranked by how much labeling them would help the AI scoring model —
           not just recency. Low-confidence attempts and under-represented student
@@ -411,23 +421,19 @@ export default function PronunciationReviewQueueScreen({ route }) {
         onSubmit={handleSubmitReview}
       />
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  safeInner: { flex: 1 },
+  safe: { flex: 1 },
   header: {
     paddingHorizontal: Layout.spacing.lg,
     paddingTop: Layout.spacing.md,
     paddingBottom: Layout.spacing.sm,
   },
-  title: {
-    fontSize: Layout.fontSize.xl,
-    fontFamily: Layout.fonts.bold,
-    color: Colors.text.primary,
-  },
   subtitle: {
-    marginTop: 4,
     color: Colors.text.secondary,
     fontSize: Layout.fontSize.sm,
     lineHeight: 19,

@@ -11,9 +11,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../../../components/common/Card';
 import { TrendSparkline } from '../../../components/charts/TrendSparkline';
-import { Colors } from '../../../constants/colors';
+import TeacherTopBar from '../../../components/teacher/TeacherTopBar';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
+import { MasteryRing } from '../../../components/charts/MasteryRing';
+import {
+  ReportSection, SummaryTile, SummaryTiles, PracticeTrendCard, shortList,
+} from '../../../components/teacher/DialogueReportKit';
+
+// The Level 1 Trajectory report's look, so the two dialogue reports match.
+const BRAND = Colors.brandDeep;
+const TILE_ACCENT = { mastered: '#3FAE6F', in_progress: '#3B82C4', struggling: '#E0735F' };
+const HEAD_TINT = {
+  trend:  { bg: '#E3F7EC', fg: '#3FAE6F' },   // green
+  topics: { bg: '#EFEBFA', fg: '#6C5CE0' },   // purple
+};
+import { Colors, LOGIN_BACKDROP } from '../../../constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Layout } from '../../../constants/layout';
 import { level2Api } from '../../../api/level2';
 import { formatDate } from '../../../utils/formatters';
@@ -49,10 +63,10 @@ const TOPIC_LABEL = {
  * simply has not reached yet must never read as a problem (AC5).
  */
 const STATUS_META = {
-  mastered:    { label: 'Mastered',      bg: Colors.status.successLight, fg: '#22A05F' },
-  in_progress: { label: 'In progress',   bg: Colors.status.infoLight,    fg: Colors.text.link },
-  struggling:  { label: 'Needs support', bg: Colors.status.errorLight,   fg: Colors.status.error },
-  not_started: { label: 'Not started',   bg: Colors.surfaceAlt,          fg: Colors.text.muted },
+  mastered:    { label: 'Mastered',      bg: '#E3F7EC', fg: '#2E9E62' },
+  in_progress: { label: 'In progress',   bg: '#E6F1FC', fg: '#3B82C4' },
+  struggling:  { label: 'Needs support', bg: '#FBE7E2', fg: '#E0735F' },
+  not_started: { label: 'Not started',   bg: '#EEF1F4', fg: Colors.text.muted },
 };
 
 /** How the child answered. Never rendered as the stored 'verbal'/'non_verbal'. */
@@ -82,35 +96,17 @@ function formatList(items) {
 
 const labelElements = (keys) => formatList(keys.map((k) => ELEMENT_LABEL[k] || k));
 
-function Section({ title, subtitle, children, right }) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.sectionSub}>{subtitle}</Text> : null}
-        </View>
-        {right}
-      </View>
-      <Card style={styles.card}>{children}</Card>
-    </View>
-  );
-}
-
-function StatCell({ label, value, tint }) {
-  return (
-    <View style={styles.statCell}>
-      <Text style={[styles.statCellValue, tint ? { color: tint } : null]}>{value}</Text>
-      <Text style={styles.statCellLabel}>{label}</Text>
-    </View>
-  );
-}
+const TOPIC_ICON = {
+  self_introduction: 'person-outline',
+  describe_friend:   'people-outline',
+  describe_pet:      'paw-outline',
+};
 
 function StatusChip({ status }) {
   const s = STATUS_META[status] || STATUS_META.not_started;
   return (
-    <View style={[styles.chip, { backgroundColor: s.bg }]}>
-      <Text style={[styles.chipText, { color: s.fg }]}>{s.label}</Text>
+    <View style={[styles.statusChip, { backgroundColor: s.bg }]}>
+      <Text style={[styles.statusChipText, { color: s.fg }]}>{s.label}</Text>
     </View>
   );
 }
@@ -121,6 +117,23 @@ function Line({ text, detail }) {
     <View>
       <Text style={styles.lineText}>{text}</Text>
       {detail ? <Text style={styles.lineDetail}>{detail}</Text> : null}
+    </View>
+  );
+}
+
+/** One measure out of a known total, as a labelled bar. `good` sets the colour. */
+function MeasureBar({ label, value, total, good }) {
+  const pct = total ? Math.max(0, Math.min(1, value / total)) : 0;
+  const color = good == null ? '#3B82C4' : good >= 0.67 ? '#2E9E62' : good >= 0.34 ? '#E0962B' : '#E0735F';
+  return (
+    <View style={styles.measure}>
+      <View style={styles.measureHead}>
+        <Text style={styles.measureLabel}>{label}</Text>
+        <Text style={[styles.measureValue, { color }]}>{value} of {total}</Text>
+      </View>
+      <View style={styles.measureTrack}>
+        <View style={[styles.measureFill, { width: `${Math.max(2, Math.round(pct * 100))}%`, backgroundColor: color }]} />
+      </View>
     </View>
   );
 }
@@ -181,9 +194,9 @@ function TopicHistory({ studentId, topic }) {
   return (
     <View>
       <TouchableOpacity style={styles.historyToggle} activeOpacity={0.7} onPress={toggle}>
-        <Ionicons name="time-outline" size={13} color={Colors.text.link} />
+        <Ionicons name="time-outline" size={14} color={Colors.text.link} />
         <Text style={styles.historyToggleText}>History</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color={Colors.text.link} />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.text.link} />
       </TouchableOpacity>
 
       {open ? (
@@ -197,7 +210,7 @@ function TopicHistory({ studentId, topic }) {
           ) : failed ? (
             <Text style={styles.historyNote}>Could not load this topic’s history.</Text>
           ) : (
-            <TrendSparkline points={points ?? []} width={220} height={48} />
+            <TrendSparkline points={points ?? []} width={260} height={48} />
           )}
         </View>
       ) : null}
@@ -205,12 +218,30 @@ function TopicHistory({ studentId, topic }) {
   );
 }
 
-function TopicBlock({ topic, studentId }) {
+function TopicBlock({ topic, studentId, wide }) {
   const started = topic.status !== 'not_started';
+  const sentences = topic.sentence_by_sentence_score;
 
   return (
     <View style={styles.topicBlock}>
-      <Line text={attemptSentence(topic)} />
+      {/* The measure mastery is judged on, as a ring beside the sentence that
+          explains it. */}
+      {topic.last_session_date && sentences != null ? (
+        <View style={styles.leadRow}>
+          <MasteryRing
+            value={sentences / 5}
+            size={72}
+            strokeWidth={5}
+            color={(STATUS_META[topic.status] || STATUS_META.not_started).fg}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.leadText}>
+              Saying the sentences one at a time is the part mastery is judged on.
+            </Text>
+            <Text style={styles.lineDetail}>{`${sentences} of 5 sentences`}</Text>
+          </View>
+        </View>
+      ) : null}
 
       {started && topic.sessions_attempted > 0 ? (
         <Line
@@ -222,6 +253,27 @@ function TopicBlock({ topic, studentId }) {
 
       {topic.last_session_date ? (
         <>
+          <View style={styles.measureGrid}>
+          {topic.paragraph_score != null ? (
+            <View style={wide ? styles.measureHalf : styles.measureFull}>
+              <MeasureBar label="Paragraph parts" value={topic.paragraph_score} total={5} good={topic.paragraph_score / 5} />
+            </View>
+          ) : null}
+          {/* Omitted entirely when there were no sentences, rather than
+              rendering a "0 of 0" bar. Fewer hints is better, so it colours
+              by the share answered without one. */}
+          {topic.sentences_total > 0 ? (
+            <View style={wide ? styles.measureHalf : styles.measureFull}>
+              <MeasureBar
+                label="Hints needed"
+                value={topic.sentences_needing_hints}
+                total={topic.sentences_total}
+                good={1 - topic.sentences_needing_hints / topic.sentences_total}
+              />
+            </View>
+          ) : null}
+          </View>
+
           <Line
             text={paragraphSentence(topic)}
             detail={topic.paragraph_score != null
@@ -229,15 +281,6 @@ function TopicBlock({ topic, studentId }) {
               : null}
           />
 
-          {topic.sentence_by_sentence_score != null ? (
-            <Line
-              text="Saying the sentences one at a time is the part mastery is judged on."
-              detail={`${topic.sentence_by_sentence_score} of 5 sentences`}
-            />
-          ) : null}
-
-          {/* Omitted entirely when there were no sentences, rather than
-              rendering a "0 of 0" line. */}
           {topic.sentences_total > 0 ? (
             <Line
               text={topic.sentences_needing_hints === 0
@@ -332,7 +375,6 @@ export function buildLevel2PrintModel(report, studentName) {
 
 export default function Level2ReportScreen({ route, navigation }) {
   const student = route.params?.student;
-  const { width } = useWindowDimensions();
 
   const [report, setReport]         = useState(null);
   const [timeline, setTimeline]     = useState([]);
@@ -341,6 +383,9 @@ export default function Level2ReportScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [printing, setPrinting]     = useState(false);
   const [printError, setPrintError] = useState(null);
+  // The topic on show.
+  const [selected, setSelected]     = useState(null);
+  const { width: screenW } = useWindowDimensions();
 
   const load = useCallback(async () => {
     if (!student?.sid) return;
@@ -383,40 +428,46 @@ export default function Level2ReportScreen({ route, navigation }) {
     }
   }, [report, printing, student?.full_name]);
 
+  // The header is drawn inside the page (TeacherTopBar), like every other
+  // teacher-workspace screen, so the navigator's own bar is hidden.
   useEffect(() => {
-    navigation.setOptions({
-      title: student?.full_name ? `${student.full_name} · Level 2` : 'Level 2 Report',
-      headerRight: () => (
-        report ? (
-          <TouchableOpacity
-            onPress={handlePrint}
-            disabled={printing}
-            accessibilityRole="button"
-            accessibilityLabel="Print report"
-            hitSlop={8}
-          >
-            {printing ? (
-              <ActivityIndicator size="small" color={Colors.icon.active} />
-            ) : (
-              <Ionicons name="print-outline" size={22} color={Colors.text.link} />
-            )}
-          </TouchableOpacity>
-        ) : null
-      ),
-    });
-  }, [navigation, student?.full_name, report, printing, handlePrint]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  // Print sits on the bar once there is a report to print.
+  const topBar = (
+    <TeacherTopBar
+      title={student?.full_name ? `${student.full_name} · Level 2` : 'Level 2 Report'}
+      onBack={() => navigation.goBack()}
+      right={report ? (
+        <HeaderPillButton
+          variant="outline"
+          icon="print-outline"
+          label={printing ? 'Printing…' : 'Print'}
+          theme={{ button: Colors.brandDeep, buttonText: '#FFFFFF', headingText: Colors.text.primary }}
+          onPress={handlePrint}
+          accessibilityLabel="Print report"
+        />
+      ) : null}
+    />
+  );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <LinearGradient colors={LOGIN_BACKDROP.colors} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end} style={styles.safe}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        {topBar}
         <View style={styles.centered}><ActivityIndicator size="large" color={Colors.icon.active} /></View>
       </SafeAreaView>
+    </LinearGradient>
     );
   }
 
   if (error || !report) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <LinearGradient colors={LOGIN_BACKDROP.colors} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end} style={styles.safe}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        {topBar}
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={34} color={Colors.text.muted} />
           <Text style={styles.errorText}>{error || 'Could not load the report.'}</Text>
@@ -425,6 +476,7 @@ export default function Level2ReportScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+    </LinearGradient>
     );
   }
 
@@ -432,32 +484,47 @@ export default function Level2ReportScreen({ route, navigation }) {
   const byTopic = TOPIC_ORDER
     .map((key) => topics.find((t) => t.topic === key))
     .filter(Boolean);
+  const active = byTopic.find((t) => t.topic === selected) ?? byTopic[0];
+
+  const firstName = String(student?.full_name || 'This child').trim().split(/\s+/)[0];
+  const named = (status) => byTopic
+    .filter((t) => t.status === status)
+    .map((t) => TOPIC_LABEL[t.topic] || t.topic);
+  const mastered = named('mastered');
+  const struggling = named('struggling');
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <LinearGradient colors={LOGIN_BACKDROP.colors} start={LOGIN_BACKDROP.start} end={LOGIN_BACKDROP.end} style={styles.safe}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        {topBar}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
       >
-        {/* Overview */}
-        <Card style={styles.card}>
-          <View style={styles.overview}>
-            <View style={styles.overviewStats}>
-              <StatCell label="Mastered" value={String(totals.mastered)} tint="#22A05F" />
-              <StatCell label="In progress" value={String(totals.in_progress)} />
-              <StatCell
-                label="Needs support"
-                value={String(totals.struggling)}
-                tint={totals.struggling > 0 ? Colors.status.error : undefined}
-              />
-              <StatCell label="Not started" value={String(totals.not_started)} />
-            </View>
-            <Text style={styles.overviewMeta}>
-              {totals.topics_started} of {totals.topics_total} topics started
-            </Text>
-          </View>
-        </Card>
+        {/* Overview — topics started, then the three outcomes as tiles. */}
+        <SummaryTiles oneRow>
+          <SummaryTile
+            icon="checkmark-done"
+            label="Topics started"
+            value={String(totals.topics_started)}
+            of={totals.topics_total}
+            progress={totals.topics_total ? totals.topics_started / totals.topics_total : 0}
+            sub={`${totals.not_started} not started`}
+            accent={BRAND}
+            compact
+          />
+          <SummaryTile icon="trophy" label="Mastered" value={String(totals.mastered)} accent={TILE_ACCENT.mastered} compact />
+          <SummaryTile icon="trending-up" label="In progress" value={String(totals.in_progress)} accent={TILE_ACCENT.in_progress} compact />
+          {/* Coral only when there is something to act on, as on Level 1. */}
+          <SummaryTile
+            icon="alert-circle"
+            label="Needs support"
+            value={String(totals.struggling)}
+            accent={totals.struggling > 0 ? TILE_ACCENT.struggling : BRAND}
+            compact
+          />
+        </SummaryTiles>
 
         {/* TASK-48 — a print failure is reported here and nowhere else; the
             report below stays exactly as it was. */}
@@ -467,17 +534,6 @@ export default function Level2ReportScreen({ route, navigation }) {
             <Text style={styles.hintText}>{printError}</Text>
           </View>
         ) : null}
-
-        {/* TASK-47 — practice over time across all three topics. Sits with the
-            at-a-glance summary, above the per-topic detail. */}
-        <Section title="Practice trend" subtitle="Session score per day · dashed line is the pass mark">
-          <View style={styles.trendWrap}>
-            <TrendSparkline
-              points={timeline}
-              width={width - Layout.spacing.lg * 2 - Layout.spacing.md * 2}
-            />
-          </View>
-        </Section>
 
         {totals.topics_started === 0 && (
           <View style={styles.hint}>
@@ -489,17 +545,74 @@ export default function Level2ReportScreen({ route, navigation }) {
           </View>
         )}
 
-        {byTopic.map((topic) => (
-          <Section
-            key={topic.topic}
-            title={TOPIC_LABEL[topic.topic] || topic.topic}
-            right={<StatusChip status={topic.status} />}
+        {/* TASK-47 — practice over time across all three topics. Sits with the
+            at-a-glance summary, above the per-topic detail. */}
+        <PracticeTrendCard
+          points={timeline}
+          firstName={firstName}
+          subtitle="Session score per day"
+          unit="session"
+          icon="trending-up"
+          iconTint={HEAD_TINT.trend}
+          inside
+          insights={[
+            ...(mastered.length ? [`Mastered ${shortList(mastered)}.`] : []),
+            ...(struggling.length ? [`Needs support on ${shortList(struggling)}.`] : []),
+          ]}
+        />
+
+        {byTopic.length > 0 ? (
+          <ReportSection
+            title="Topics"
+            subtitle="Pick a topic to see how it went"
+            icon="chatbubbles"
+            iconTint={HEAD_TINT.topics}
+            inside
           >
-            <View style={styles.topicCard}>
-              <TopicBlock topic={topic} studentId={student?.sid} />
+            {/* Equal segments across the card, as on Level 1's Words. */}
+            <View style={styles.segments}>
+              {byTopic.map((t) => {
+                const on = t.topic === active?.topic;
+                return (
+                  <TouchableOpacity
+                    key={t.topic}
+                    style={[styles.segment, on && styles.segmentOn]}
+                    activeOpacity={0.8}
+                    onPress={() => setSelected(t.topic)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Ionicons name={TOPIC_ICON[t.topic] || 'chatbubble-outline'} size={16} color={on ? BRAND : Colors.text.secondary} />
+                    <Text style={[styles.segmentText, on && styles.segmentTextOn]} numberOfLines={1}>
+                      {TOPIC_LABEL[t.topic] || t.topic}
+                    </Text>
+                    <View style={[styles.segmentDot, { backgroundColor: (STATUS_META[t.status] || STATUS_META.not_started).fg }]} />
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          </Section>
-        ))}
+
+            {active ? (() => {
+              const meta = STATUS_META[active.status] || STATUS_META.not_started;
+              return (
+                <>
+                  {/* The topic at a glance, tinted by its status. */}
+                  <View style={[styles.topicPanel, { backgroundColor: meta.fg + '12' }]}>
+                    <View style={[styles.topicIcon, { backgroundColor: meta.fg }]}>
+                      <Ionicons name={(TOPIC_ICON[active.topic] || 'chatbubble-outline').replace(/-outline$/, '')} size={18} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.topicTitle}>{TOPIC_LABEL[active.topic] || active.topic}</Text>
+                      <Text style={styles.topicMeta}>{attemptSentence(active)}</Text>
+                    </View>
+                    <StatusChip status={active.status} />
+                  </View>
+                  <TopicBlock topic={active} studentId={student?.sid} wide={screenW >= 700} />
+                </>
+              );
+            })() : null}
+          </ReportSection>
+        ) : null}
 
         <Text style={styles.footnote}>
           Each topic shows its most recent session. Mastery needs two sessions
@@ -508,65 +621,82 @@ export default function Level2ReportScreen({ route, navigation }) {
         </Text>
       </ScrollView>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:     { flex: 1, backgroundColor: Colors.background },
+  safeInner: { flex: 1 },
+  safe:     { flex: 1 },
   scroll:   { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm, padding: Layout.spacing.xl },
   errorText:{ fontSize: Layout.fontSize.sm, color: Colors.text.secondary, textAlign: 'center' },
   retry:    { fontSize: Layout.fontSize.sm, color: Colors.text.link, fontFamily: 'DMSans_700Bold' },
 
-  card:    { marginBottom: 0 },
-  section: { marginTop: Layout.spacing.lg },
-  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: Layout.spacing.sm },
-  sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  sectionSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-
-  overview:      { padding: Layout.spacing.md, gap: Layout.spacing.sm },
-  overviewStats: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Layout.spacing.md },
-  overviewMeta:  { fontSize: Layout.fontSize.xs, color: Colors.text.muted },
-
-  statCell:      { minWidth: 76, flexGrow: 1 },
-  statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  statCellLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
-
-  topicCard:  { padding: Layout.spacing.md },
-  topicBlock: { gap: Layout.spacing.sm },
-
-  lineText:   { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary, lineHeight: 19 },
-  lineDetail: { fontSize: 10, color: Colors.text.muted, lineHeight: 15, marginTop: 1 },
-
-  chip:     { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Layout.radius.full },
-  chipText: { fontSize: 10, fontFamily: 'DMSans_700Bold' },
-
-  // TASK-47 — module trend + per-topic history
-  trendWrap: { padding: Layout.spacing.md },
-  historyToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingVertical: 4,
+  segments: {
+    flexDirection: 'row', gap: 4, padding: 4,
+    borderRadius: 14, backgroundColor: '#EEF1F5',
+    marginBottom: 20,
   },
-  historyToggleText: { fontSize: 10, color: Colors.text.link, fontFamily: 'DMSans_700Bold' },
-  historyBody:    { paddingTop: 2, gap: 4 },
-  historyNote:    { fontSize: 10, color: Colors.text.muted, lineHeight: 15 },
+  segment: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 8, borderRadius: 11,
+  },
+  segmentOn: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1,
+  },
+  segmentText:   { flexShrink: 1, fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+  segmentTextOn: { color: Colors.text.primary },
+  segmentDot:    { width: 8, height: 8, borderRadius: 4 },
+
+  topicPanel: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 18, marginBottom: 20 },
+  topicIcon:  { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  topicTitle: { fontSize: 16, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  topicMeta:  { fontSize: 13, color: Colors.text.secondary, marginTop: 2 },
+  topicBlock: { gap: 16 },
+
+  statusChip:     { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Layout.radius.full },
+  statusChipText: { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+
+  leadRow:  { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  leadText: { fontSize: 14, lineHeight: 20, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+
+  lineText:   { fontSize: 14, color: Colors.text.primary, lineHeight: 20 },
+  lineDetail: { fontSize: 11, color: Colors.text.muted, lineHeight: 16, marginTop: 1 },
+
+  measureGrid:  { flexDirection: 'row', flexWrap: 'wrap', columnGap: 24, rowGap: 14 },
+  measureHalf:  { flexBasis: '46%', flexGrow: 1 },
+  measureFull:  { flexBasis: '100%' },
+  measure:      { gap: 6 },
+  measureHead:  { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  measureLabel: { flex: 1, fontSize: 13, color: Colors.text.primary },
+  measureValue: { fontSize: 13, fontFamily: 'DMSans_700Bold' },
+  measureTrack: { height: 6, borderRadius: 3, backgroundColor: '#EEF1F4', overflow: 'hidden' },
+  measureFill:  { height: '100%', borderRadius: 3 },
+
+  // TASK-47 — per-topic history
+  historyToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    alignSelf: 'flex-start', paddingVertical: 4,
+  },
+  historyToggleText: { fontSize: 12, color: Colors.text.link, fontFamily: 'DMSans_600SemiBold' },
+  historyBody:    { gap: 6 },
+  historyNote:    { fontSize: 11, color: Colors.text.muted, lineHeight: 16 },
   historyLoading: { alignSelf: 'flex-start', paddingVertical: Layout.spacing.sm },
 
   hint: {
     flexDirection: 'row',
     gap: 8,
     marginTop: Layout.spacing.md,
-    padding: Layout.spacing.sm,
-    borderRadius: Layout.radius.md,
+    padding: 12,
+    borderRadius: 12,
     backgroundColor: Colors.status.warningLight,
   },
-  hintText: { flex: 1, fontSize: Layout.fontSize.xs, color: '#8A5D06', lineHeight: 17 },
+  hintText: { flex: 1, fontSize: 12, color: '#8A5D06', lineHeight: 17 },
 
   footnote: {
-    fontSize: Layout.fontSize.xs,
+    fontSize: 12,
     color: Colors.text.muted,
     textAlign: 'center',
     marginTop: Layout.spacing.lg,
