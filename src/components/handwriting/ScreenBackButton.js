@@ -29,20 +29,22 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+// `tint` is still accepted for compatibility but no longer changes the look:
+// every back button in the student workspace shares the same style
+// (constants/backButton.js BACK_BUTTON — mirrored in styles.btn below).
 export default function ScreenBackButton({
   onPress,
   color = '#5A5F7A',
+  // eslint-disable-next-line no-unused-vars
   tint,
   gated = false,
   style,
   accessibilityLabel,
 }) {
-  const background = tint ? `${tint}14` : 'rgba(255,255,255,0.6)';
-  const border = tint ? `${tint}40` : 'rgba(0,0,0,0.08)';
-
   return (
     <TouchableOpacity
-      style={[styles.btn, { backgroundColor: background, borderColor: border }, style]}
+      // styles.btn last, so a caller's style can position the button but not restyle it.
+      style={[style, styles.btn]}
       onPress={onPress}
       activeOpacity={0.8}
       accessibilityRole="button"
@@ -56,6 +58,7 @@ export default function ScreenBackButton({
   );
 }
 
+// Same values as constants/backButton.js BACK_BUTTON.
 const styles = StyleSheet.create({
   btn: {
     width: 40,
@@ -63,6 +66,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });

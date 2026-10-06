@@ -15,6 +15,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { level2Api } from '../../../../api/level2';
 import { useToast } from '../../../../context/ToastContext';
 import PortraitView from '../../../../components/level2/PortraitView';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 // Book-cover style topic images. Self-Introduction's cover isn't generated
 // yet — it falls back to the coral gradient + icon below until it is.
@@ -223,12 +224,12 @@ export default function L2TopicSelectionScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <View style={styles.sideGroup}>
             <TouchableOpacity
-              style={styles.iconBtn}
+              style={[styles.iconBtn, BACK_BUTTON]}
               onPress={() => navigation.navigate('DialogueLanding', { student })}
               activeOpacity={0.7}
               accessibilityLabel="Go back"
             >
-              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
             </TouchableOpacity>
           </View>
 

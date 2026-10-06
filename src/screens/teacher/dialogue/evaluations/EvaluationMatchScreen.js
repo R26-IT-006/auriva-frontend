@@ -20,6 +20,7 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { evaluationApi } from '../../../../api/evaluation';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const PLACEHOLDER_IMAGE = require('../../../../../assets/dialogue-images/placeholder.png');
 
@@ -312,8 +313,8 @@ export default function EvaluationMatchScreen({ route, navigation }) {
     <View style={styles.root}>
       <SafeAreaView style={{ backgroundColor: theme.headerBackground }} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => setShowGate(true)} activeOpacity={0.7} style={styles.headerBtn}>
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <TouchableOpacity onPress={() => setShowGate(true)} activeOpacity={0.7} style={[styles.headerBtn, BACK_BUTTON]}>
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]} numberOfLines={1}>
             {categoryLabel} Evaluation

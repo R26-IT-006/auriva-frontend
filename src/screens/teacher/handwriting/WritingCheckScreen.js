@@ -38,6 +38,7 @@ import {
   startWritingCheck, fetchWritingCheckProgress, completeWritingCheck,
   WRITING_CHECK_REQUIRED_COUNT,
 } from '../../../utils/writingCheck';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 
 /** A calm, discrete progress row — no animation, no percentage. */
 function ProgressDots({ captured, total }) {
@@ -161,12 +162,12 @@ export default function WritingCheckScreen({ route, navigation }) {
       <SafeAreaView style={styles.fill} edges={['top', 'left', 'right']}>
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={styles.backBtn}
+            style={[styles.backBtn, BACK_BUTTON]}
             onPress={requestBack}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-back" size={20} color={theme?.headingText ?? '#1E293B'} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme?.headingText ?? '#1E293B'} />
           </TouchableOpacity>
         </View>
 

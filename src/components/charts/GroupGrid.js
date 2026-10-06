@@ -8,6 +8,10 @@ import { DEPTH, GROUP_FACE, FALLBACK_FACE } from './GroupProgress';
 
 const INITIAL_GROUPS = 6;
 
+// The legend is neutral: each card shades its bar from its own group colour, so
+// the key shows the three depths in grey rather than favouring one group's hue.
+const LEGEND_GREY = '#6B7280';
+
 const GRID_GAP = 8;
 // Three across only while each card still clears ~140pt. Below that the icon, the
 // count and a two-line group name stop fitting and the row is three cramped cards
@@ -75,9 +79,9 @@ export function GroupGrid({ categories = [], showLegend = false, initialCount = 
 
       {showLegend && (
         <View style={styles.legend}>
-          <LegendDot color={DEPTH[0]} label={ROUND.tier1.label} />
-          <LegendDot color={DEPTH[1]} label={ROUND.tier2.label} />
-          <LegendDot color={DEPTH[2]} label={ROUND.tier3.label} />
+          <LegendDot color={LEGEND_GREY + '45'} label={ROUND.tier1.label} />
+          <LegendDot color={LEGEND_GREY + '99'} label={ROUND.tier2.label} />
+          <LegendDot color={LEGEND_GREY} label={ROUND.tier3.label} />
         </View>
       )}
 
@@ -108,6 +112,9 @@ function GroupCard({ category: c, width, onPress }) {
   const pictPct  = c.total ? (c.tier1_passed / c.total) * 100 : 0;
   const wordPct  = c.total ? (c.tier2_passed / c.total) * 100 : 0;
   const videoPct = c.total ? (c.tier3_passed / c.total) * 100 : 0;
+  const pct      = c.total ? Math.round((c.mastered / c.total) * 100) : 0;
+  // The three depths in the group's own colour, as on the report's Groups card.
+  const shade    = [face.fg + '45', face.fg + '99', face.fg];
 
   // Falls back to a plain View when no handler is passed, so the grid stays
   // usable as a read-only chart wherever it is dropped in without one.
@@ -128,22 +135,28 @@ function GroupCard({ category: c, width, onPress }) {
     >
       <View style={styles.cardHead}>
         <View style={[styles.face, { backgroundColor: face.bg }]}>
-          <Ionicons name={face.icon} size={15} color={face.fg} />
+          <Ionicons name={face.icon.replace(/-outline$/, '')} size={18} color={face.fg} />
         </View>
-        <Text style={styles.count}>
-          <Text style={styles.countNum}>{c.mastered}</Text>
-          <Text style={styles.countOf}> / {c.total}</Text>
-        </Text>
+        {/* Height reserved for two lines whether or not the name needs them, so
+            the bars in a row line up instead of stepping with the labels. */}
+        <Text style={styles.label} numberOfLines={2}>{c.label}</Text>
+        {onPress ? <Ionicons name="chevron-forward" size={15} color={Colors.text.muted} /> : null}
       </View>
 
-      {/* Height reserved for two lines whether or not the name needs them, so the
-          bars in a row line up instead of stepping with the labels above them. */}
-      <Text style={styles.label} numberOfLines={2}>{c.label}</Text>
-
       <View style={styles.track}>
-        <View style={[styles.seg, { width: `${pictPct}%`,  backgroundColor: DEPTH[0] }]} />
-        <View style={[styles.seg, styles.segOver, { width: `${wordPct}%`,  backgroundColor: DEPTH[1] }]} />
-        <View style={[styles.seg, styles.segOver, { width: `${videoPct}%`, backgroundColor: DEPTH[2] }]} />
+        <View style={[styles.seg, { width: `${pictPct}%`,  backgroundColor: shade[0] }]} />
+        <View style={[styles.seg, styles.segOver, { width: `${wordPct}%`,  backgroundColor: shade[1] }]} />
+        <View style={[styles.seg, styles.segOver, { width: `${videoPct}%`, backgroundColor: shade[2] }]} />
+      </View>
+
+      <View style={styles.cardFoot}>
+        <Text style={styles.count}>
+          <Text style={styles.countNum}>{c.mastered}</Text>
+          <Text style={styles.countOf}> of {c.total} learned</Text>
+        </Text>
+        <View style={[styles.pctPill, { backgroundColor: face.bg }]}>
+          <Text style={[styles.pctText, { color: face.fg }]}>{pct}%</Text>
+        </View>
       </View>
     </Wrap>
   );
@@ -167,39 +180,43 @@ const styles = StyleSheet.create({
   card: {
     flexGrow: 1,
     flexBasis: '31%',
-    gap: 7,
-    padding: Layout.spacing.md - 4,
-    borderRadius: Layout.radius.md,
+    gap: 10,
+    padding: 12,
+    borderRadius: 16,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
 
-  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   face: {
-    width: 28, height: 28, borderRadius: 14,
+    width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
   },
-  count:    { fontSize: Layout.fontSize.sm },
-  countNum: { fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  countOf:  { fontFamily: 'DMSans_600SemiBold',  color: Colors.text.muted },
-
   label: {
-    height: 34,
-    fontSize: Layout.fontSize.sm,
+    flex: 1,
+    minHeight: 34,
+    fontSize: 13,
     lineHeight: 17,
-    fontFamily: 'DMSans_700Bold',
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
   },
 
+  cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  count:    { fontSize: 12 },
+  countNum: { fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  countOf:  { fontFamily: 'DMSans_400Regular', color: Colors.text.secondary },
+  pctPill:  { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  pctText:  { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+
   track: {
     flexDirection: 'row',
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: Colors.surfaceAlt,
     overflow: 'hidden',
   },
-  seg:     { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 4 },
+  seg:     { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3 },
   segOver: { borderRightWidth: 2, borderRightColor: Colors.surface },
 
   moreBtn: {

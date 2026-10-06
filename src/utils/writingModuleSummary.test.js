@@ -40,8 +40,9 @@ describe('letter totals', () => {
   });
 
   it('SENTINEL — the screen renders the total from the shared constant', () => {
-    expect(code).toMatch(/\{s\.totalMastered\}/);
-    expect(code).toMatch(/\{s\.totalLetterForms\}/);
+    // Laid out as Concept's tiles now: the count and its total are props.
+    expect(code).toMatch(/String\(s\.totalMastered\)/);
+    expect(code).toMatch(/of=\{s\.totalLetterForms\}/);
     // Never a hand-typed 52 / 26 in the summary card.
     const card = code.slice(code.indexOf('function WritingSummaryCard'), code.indexOf('export default function'));
     expect(card).not.toMatch(/\/ 52/);
@@ -219,9 +220,11 @@ describe('the Writing tab', () => {
     expect(code).toMatch(/title="Writing Progress"/);
   });
 
-  it('offers exactly one report action, with the requested label', () => {
-    expect(code).toMatch(/View Writing Progress Report/);
-    expect((code.match(/View Writing Progress Report/g) || []).length).toBe(2); // label + a11y
+  it('offers exactly one report action, worded like the Concept tab', () => {
+    // Visible label matches Concept's "See {name}'s full history"; the a11y
+    // label keeps the report's name.
+    expect(code).toMatch(/See \{firstName\}&apos;s writing history/);
+    expect((code.match(/View Writing Progress Report/g) || []).length).toBe(1);
   });
 
   it('navigates to the EXISTING report route with the same params', () => {
@@ -234,7 +237,8 @@ describe('the Writing tab', () => {
     const card = code.slice(code.indexOf('function WritingSummaryCard'), code.indexOf('export default function'));
     for (const banned of [/MotorPerformance/, /InitialShapeAssessment/, /DifficultyAnalysis/,
                           /WritingCheckHistory/, /WorksheetHistory/, /PeriodicReport/,
-                          /ThresholdCard/, /MasteryRing/, /TierBar/]) {
+                          /ThresholdCard/, /TierBar/]) {
+      // MasteryRing is allowed: the tab now mirrors the Concept tab's ring.
       expect(card).not.toMatch(banned);
     }
   });

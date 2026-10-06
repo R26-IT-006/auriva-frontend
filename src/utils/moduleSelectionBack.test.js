@@ -38,7 +38,8 @@ describe('actual registered assessment-flow routes', () => {
     expect(readCode(START)).toMatch(/Start Assessment/);
     expect(readCode(INSTRUCTIONS)).toMatch(/FOR TEACHER/);
     expect(readCode(PRESS_AND_DRAG)).toMatch(/Press and drag right/);
-    expect(readCode(HOME)).toMatch(/Letter Writing/);
+    // LetterHome's heading was renamed "Letter Writing" → "Writing Module".
+    expect(readCode(HOME)).toMatch(/Writing Module/);
   });
 
   test('each route is registered exactly once', () => {

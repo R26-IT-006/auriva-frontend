@@ -418,7 +418,7 @@ export default function WelcomeScreen({ route, navigation }) {
           onPress={requestBack}
           gated
           tint={themeColor}
-          color={themeColor}
+          color={theme?.headingText ?? themeColor}
           accessibilityLabel="Back"
           style={styles.flowBackButton}
         />

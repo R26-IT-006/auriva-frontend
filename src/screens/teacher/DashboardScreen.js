@@ -52,18 +52,14 @@ const CORAL_L   = '#FDECEA';
 // on its own. Teal is retired and the digest takes rose instead: five hues, minimum
 // gap now 48 degrees rather than 22, so the sections are told apart by colour alone.
 //
-// Kept deliberately desaturated. These sit on the BACKDROP gradient above, which is
-// itself blue-to-sage-to-cream — saturated accents fought it and the panels stopped
-// reading as cards.
+// Kept deliberately desaturated. They now appear only as small icon plates on
+// white panels, and saturated accents at that size read as warning lights.
 const TINTS = {
   purple: { bg: '#EDE9FA', fg: '#6438BE' },
   green:  { bg: '#E6F4EA', fg: '#2A7146' },
   blue:   { bg: '#E5EEF9', fg: '#27609F' },
   amber:  { bg: '#FAF0DF', fg: '#945D08' },
   rose:   { bg: '#FAE9F0', fg: '#A5366A' },
-  // Deepened from the teal the pronunciation module already uses, so the review
-  // queue reads as part of that module rather than as a sixth unrelated colour.
-  teal:   { bg: '#DDF0F3', fg: '#1F6F7A' },
 };
 
 // Each dashboard section gets its own accent so the panels read as distinct
@@ -72,9 +68,7 @@ const SECTION = {
   students:     { icon: 'people-outline',      ...TINTS.purple },
   notes:        { icon: 'document-text-outline', ...TINTS.amber },
   calendar:     { icon: 'calendar-outline',    ...TINTS.blue },
-  daySessions:  { icon: 'time-outline',        ...TINTS.green },
   digest:       { icon: 'sparkles-outline',    ...TINTS.rose },
-  reviewQueue:  { icon: 'checkmark-done-outline', ...TINTS.teal },
 };
 
 const PANEL_PAD    = 20;
@@ -102,6 +96,15 @@ const DIGEST_SPLIT_MIN = 820;
  *  what keeps an evening session on the right day for a teacher offset from UTC. */
 function dayKey(d) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/** Local midnight on the Sunday of `now`'s week — the same week the server's
+ *  teacherService.startOfWeek() scopes weekStats and the digest to, and the
+ *  same Sunday-first week the calendar grid draws. */
+function startOfWeek(now = new Date()) {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  start.setDate(start.getDate() - start.getDay());
+  return start;
 }
 
 /**
@@ -161,9 +164,6 @@ function StudentCard({ student, width, onPress }) {
             size={AVATAR_TILE}
             style={styles.studentAvatarTile}
           />
-          {/* On the tile's corner rather than in the card's flow, so it reads as
-              belonging to this child rather than as a bullet before their name. */}
-          <View style={[styles.studentDot, { backgroundColor: student.lastSessionAt ? '#3FAE6F' : '#E0A030' }]} />
         </View>
 
         {/* First name only. Full names ran to two lines, so every card reserved the
@@ -173,7 +173,16 @@ function StudentCard({ student, width, onPress }) {
         <Text style={styles.studentName} numberOfLines={1}>
           {student.fullName?.trim().split(/\s+/)[0] || student.fullName}
         </Text>
-        <Text style={styles.studentAge}>{age != null ? `AGE ${age}` : 'AGE NOT SET'}</Text>
+        <Text style={styles.studentAge}>{age != null ? `Age ${age}` : 'Age not set'}</Text>
+
+        {/* The card's one job is opening the profile, so it says so. A bare avatar
+            and name read as a roster to look at rather than something to tap. */}
+        <View style={styles.studentOpen}>
+          {/* One line always: a pill that wraps on the narrowest card makes that
+              card taller than its neighbours and the row stops lining up. */}
+          <Text style={styles.studentOpenText} numberOfLines={1}>View profile</Text>
+          <Ionicons name="chevron-forward" size={13} color={SECTION.students.fg} />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -181,46 +190,39 @@ function StudentCard({ student, width, onPress }) {
 
 // ── Panel shell ──────────────────────────────────────────────────────────────
 
-function Panel({ title, subtitle, section, action, onAction, right, children, style }) {
+// `fill` stretches the panel to its parent's height — used when two panels sit
+// side by side, so the pair ends on one line rather than leaving a hole under
+// the shorter one. Both views need it: the outer one takes the height, and the
+// inner one carries the border, which would otherwise stop at the content.
+function Panel({ title, subtitle, section, action, onAction, right, children, style, fill }) {
   const accent = section ? SECTION[section] : null;
   return (
-    // The shadow lives on this outer view; the inner one clips the tinted header
-    // to the rounded corners. Overflow:hidden clips a view's own shadow on iOS,
-    // so the two can't be the same view or the shadow silently disappears.
-    <View style={[styles.panelShadowWrap, style]}>
-      <View style={[
-        styles.panel,
-        accent && { borderColor: accent.fg + '33' },
-        // A solid edge in the section's own colour. The tinted header alone left
-        // the panels reading as one undifferentiated stack once they were on a
-        // coloured page; a spine down the side is visible from the scroll
-        // position rather than only when the header is on screen.
-        accent && { borderLeftWidth: 4, borderLeftColor: accent.fg },
-      ]}>
+    // The shadow lives on this outer view; the inner one clips the content to the
+    // rounded corners. Overflow:hidden clips a view's own shadow on iOS, so the
+    // two can't be the same view or the shadow silently disappears.
+    //
+    // White panels with the section colour confined to the header icon. Each
+    // panel used to carry its colour three times over — a tinted header band, a
+    // tinted border and a solid spine down the left — and with five sections on
+    // one gradient page that read as a rainbow where nothing led. The icon alone
+    // still tells the sections apart; the white lets the content be the colour.
+    <View style={[styles.panelShadowWrap, fill && styles.fill, style]}>
+      <View style={[styles.panel, fill && styles.fill]}>
         {(title || right) && (
-          <View style={[
-            styles.panelHeader,
-            accent && { backgroundColor: accent.bg, borderBottomColor: accent.fg + '26' },
-          ]}>
+          <View style={styles.panelHeader}>
             {accent ? (
-              <View style={[styles.panelIcon, { backgroundColor: '#FFFFFF' }]}>
+              <View style={[styles.panelIcon, { backgroundColor: accent.bg }]}>
                 <Ionicons name={accent.icon} size={17} color={accent.fg} />
               </View>
             ) : null}
             {/* Title and subtitle stack in a flexing column so the subtitle can
                 sit under the title without pushing the header controls around. */}
             <View style={styles.panelTitleWrap}>
-              <Text
-                style={[styles.panelTitle, accent && { color: accent.fg }]}
-                numberOfLines={1}
-              >
+              <Text style={styles.panelTitle} numberOfLines={1}>
                 {title}
               </Text>
               {subtitle ? (
-                <Text
-                  style={[styles.panelSubtitle, accent && { color: accent.fg }]}
-                  numberOfLines={1}
-                >
+                <Text style={styles.panelSubtitle} numberOfLines={1}>
                   {subtitle}
                 </Text>
               ) : null}
@@ -314,33 +316,64 @@ function CalendarGrid({ monthDate, activeDays, selectedKey, onSelectDay }) {
 // ── Selected-day sessions ────────────────────────────────────────────────────
 
 function dayHeading(d) {
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const label = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return dayKey(d) === dayKey(new Date()) ? `Today · ${label}` : label;
 }
 
 function sessionTimeLabel(dateStr) {
   return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-function DaySessionsPanel({ date, sessions }) {
+function sessionStatusLabel(s) {
+  if (s.isActive) return 'In progress';
+  const mins = s.endedAt
+    ? Math.round((new Date(s.endedAt) - new Date(s.startedAt)) / 60000)
+    : null;
+  return mins >= 1 ? `Completed · ${mins} min` : 'Completed';
+}
+
+// Rendered inside the Calendar panel, under the grid, rather than as a panel of
+// its own: it is the answer to the day the grid has selected, and two stacked
+// panels for one question made the column look busier than what it held.
+function DaySessions({ date, sessions, onOpenStudent }) {
   return (
-    <Panel title={dayHeading(date)} section="daySessions">
+    <View style={styles.daySessions}>
+      <Text style={styles.daySessionsHeading}>{dayHeading(date)}</Text>
       {sessions.length > 0 ? (
         sessions.map((s, i) => {
-          const tint = TINTS[['purple', 'amber', 'green', 'blue'][i % 4]];
+          // Coloured by status, not by position. The rows used to cycle through
+          // four tints by index, so a colour meant nothing and the one fact worth
+          // picking out at a glance — a session still running — looked like the rest.
+          const live = s.isActive;
+          const canOpen = s.studentId != null;
           return (
-            <View key={`${s.startedAt}-${i}`} style={[styles.slot, { backgroundColor: tint.bg }]}>
+            <TouchableOpacity
+              key={`${s.startedAt}-${i}`}
+              style={[styles.slot, live ? styles.slotLive : styles.slotDone]}
+              onPress={canOpen ? () => onOpenStudent(s.studentId) : undefined}
+              disabled={!canOpen}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={`${s.studentName}, ${sessionTimeLabel(s.startedAt)}, ${sessionStatusLabel(s)}`}
+            >
               <Text style={styles.slotTime}>{sessionTimeLabel(s.startedAt)}</Text>
               <View style={styles.slotBody}>
                 <Text style={styles.slotTitle} numberOfLines={1}>{s.studentName}</Text>
-                <Text style={styles.slotSub}>{s.isActive ? 'In progress' : 'Completed'}</Text>
+                <View style={styles.slotStatusRow}>
+                  {live ? <View style={styles.slotLiveDot} /> : null}
+                  <Text style={[styles.slotSub, live && styles.slotSubLive]}>
+                    {sessionStatusLabel(s)}
+                  </Text>
+                </View>
               </View>
-            </View>
+              {canOpen ? <Ionicons name="chevron-forward" size={16} color="#9AAFA7" /> : null}
+            </TouchableOpacity>
           );
         })
       ) : (
-        <Text style={styles.panelEmptyText}>No sessions recorded on this day.</Text>
+        <Text style={styles.panelEmptyText}>No sessions on this day.</Text>
       )}
-    </Panel>
+    </View>
   );
 }
 
@@ -352,12 +385,20 @@ function noteTimeLabel(dateStr) {
   });
 }
 
-function NotesPanel({ students, selectedId, onSelect, notes, loading, draft, onDraftChange, onAdd, onDelete, saving }) {
+function NotesPanel({ students, selectedId, onSelect, notes, loading, draft, onDraftChange, onAdd, onDelete, saving, fill }) {
   return (
-    <Panel title="Notes" section="notes">
+    <Panel title="Notes" section="notes" fill={fill}>
       {students.length > 0 ? (
         <>
-          <View style={styles.notesChipRow}>
+          {/* One scrolling row, not a wrapping one. Wrapped, the fifth child
+              dropped onto a line of their own — a ragged edge that made the
+              picker look like two groups. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.notesChipScroll}
+            contentContainerStyle={styles.notesChipRow}
+          >
             {students.map((s) => (
               <TouchableOpacity
                 key={s.studentId}
@@ -365,12 +406,14 @@ function NotesPanel({ students, selectedId, onSelect, notes, loading, draft, onD
                 onPress={() => onSelect(s.studentId)}
                 activeOpacity={0.8}
               >
+                {/* First name, as on the student cards — full names truncated
+                    ("Akash Maduka Ba…") and made the row read as a form field. */}
                 <Text style={[styles.notesChipText, selectedId === s.studentId && styles.notesChipTextActive]} numberOfLines={1}>
-                  {s.fullName}
+                  {s.fullName?.trim().split(/\s+/)[0] || s.fullName}
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
           <View style={styles.notesComposer}>
             <TextInput
@@ -438,13 +481,11 @@ const EMPHASIS_STYLE = {
  * "Aug 21 – Aug 28, 2026" — computed here, never asked of the model.
  *
  * A date a language model writes is a date it can get wrong, and this one is
- * knowable: the digest always covers the week starting Monday, matching
+ * knowable: the digest always covers the week starting Sunday, matching
  * teacherService.startOfWeek() on the server.
  */
 function weekRangeLabel(now = new Date()) {
-  const start = new Date(now);
-  const back = (start.getDay() + 6) % 7;          // Monday-first
-  start.setDate(start.getDate() - back);
+  const start = startOfWeek(now);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
 
@@ -462,9 +503,15 @@ function weekRangeLabel(now = new Date()) {
  * warrant an error state when it is missing.
  */
 function DigestPanel({ data, loading, onRefresh, refreshing, width }) {
+  // Collapsed by default: the one-sentence headline is the summary, and the
+  // bullets, watch list and caveat are there for a teacher who asks for them.
+  // Open, this panel was the longest thing on the page — three groups of prose
+  // between the teacher and their notes and calendar on every visit.
+  const [expanded, setExpanded] = useState(false);
+
   if (loading) {
     return (
-      <Panel title="This week" section="digest" style={{ width }}>
+      <Panel title="Weekly summary" section="digest" style={{ width }}>
         <View style={styles.digestLoading}>
           <ActivityIndicator size="small" color={TINTS.rose.fg} />
           <Text style={styles.digestLoadingText}>Writing summary…</Text>
@@ -487,10 +534,11 @@ function DigestPanel({ data, loading, onRefresh, refreshing, width }) {
   // long after the page's paired panels do — and prose needs more room than the
   // calendar and notes beside it, which are short lines and a grid.
   const wide = width >= DIGEST_SPLIT_MIN;
+  const hasDetails = !!(highlights?.length || watchAreas?.length || caveat);
 
   return (
     <Panel
-      title="This week"
+      title="Weekly summary"
       subtitle={weekRangeLabel()}
       section="digest"
       style={{ width }}
@@ -509,70 +557,81 @@ function DigestPanel({ data, loading, onRefresh, refreshing, width }) {
         </TouchableOpacity>
       }
     >
-      {/* Two columns: the summary and what went well on the left, what to look at
-          on the right. Stacked they read as one long list where the last item is
-          the least visible — and "worth a look" is the part a teacher acts on.
-          Below the breakpoint they stack anyway: two columns of prose at phone
-          width gives four-word lines. */}
-      <View style={[styles.digestBody, wide && styles.digestBodyRow]}>
-        <View style={wide ? styles.digestMain : null}>
-          {/* Filled, not a bare paragraph. The box is what makes this read as the
-              summary rather than as the first bullet of the list under it. */}
-          {(parts?.length || headline) ? (
-            <View style={styles.digestSummaryBox}>
-              <Text style={styles.digestHeadline}>
-                {parts?.length
-                  ? parts.map((p, i) => (
-                      <Text key={i} style={EMPHASIS_STYLE[p.emphasis] || null}>{p.text}</Text>
-                    ))
-                  : headline}
-              </Text>
-            </View>
-          ) : null}
+      {(parts?.length || headline) ? (
+        <Text style={styles.digestHeadline}>
+          {parts?.length
+            ? parts.map((p, i) => (
+                <Text key={i} style={EMPHASIS_STYLE[p.emphasis] || null}>{p.text}</Text>
+              ))
+            : headline}
+        </Text>
+      ) : null}
 
-          {highlights?.length ? (
-            <View style={styles.digestGroup}>
-              {highlights.map((h, i) => (
-                <View key={`hl-${i}`} style={styles.digestRow}>
-                  <Ionicons name="ellipse" size={5} color={TINTS.green.fg} style={styles.digestDot} />
-                  <Text style={styles.digestText}>{h}</Text>
-                </View>
-              ))}
+      {hasDetails ? (
+        <TouchableOpacity
+          style={styles.digestToggle}
+          onPress={() => setExpanded((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.digestToggleText}>{expanded ? 'Hide details' : 'Show details'}</Text>
+          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={TINTS.rose.fg} />
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Two columns: what went well on the left, what to look at on the right.
+          Stacked they read as one long list where the last item is the least
+          visible — and "worth a look" is the part a teacher acts on. Below the
+          breakpoint they stack anyway: two columns of prose at phone width gives
+          four-word lines. */}
+      {expanded && hasDetails ? (
+        <View style={[styles.digestBody, styles.digestDetails, wide && styles.digestBodyRow]}>
+          <View style={wide ? styles.digestMain : null}>
+            {highlights?.length ? (
+              <View>
+                {highlights.map((h, i) => (
+                  <View key={`hl-${i}`} style={styles.digestRow}>
+                    <Ionicons name="ellipse" size={5} color={TINTS.green.fg} style={styles.digestDot} />
+                    <Text style={styles.digestText}>{h}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          {wide && (watchAreas?.length || caveat) ? <View style={styles.digestDivider} /> : null}
+
+          {(watchAreas?.length || caveat) ? (
+            <View style={wide ? styles.digestSide : styles.digestSideStacked}>
+              {watchAreas?.length ? (
+                <>
+                  <View style={styles.digestSideHead}>
+                    {/* Same hex as digestGroupTitle beside it. This file works in
+                        raw hexes and TINTS rather than the Colors palette, and
+                        reaching for Colors here was an import it does not have. */}
+                    <Ionicons name="eye-outline" size={12} color="#8AA79D" />
+                    <Text style={styles.digestGroupTitle}>Worth a look</Text>
+                  </View>
+                  {watchAreas.map((w, i) => {
+                    // Accepts a bare string as well as { text, tone }: a digest
+                    // cached before the schema gained tones is still served verbatim.
+                    const item = typeof w === 'string' ? { text: w, tone: 'watch' } : (w || {});
+                    const tone = item.tone === 'good' ? TINTS.green.fg : TINTS.amber.fg;
+                    return (
+                      <View key={`wa-${i}`} style={[styles.digestWatchRow, { borderLeftColor: tone }]}>
+                        <Text style={styles.digestText}>{item.text}</Text>
+                      </View>
+                    );
+                  })}
+                </>
+              ) : null}
+
+              {caveat ? <Text style={styles.digestCaveat}>{caveat}</Text> : null}
             </View>
           ) : null}
         </View>
-
-        {wide && (watchAreas?.length || caveat) ? <View style={styles.digestDivider} /> : null}
-
-        {(watchAreas?.length || caveat) ? (
-          <View style={wide ? styles.digestSide : styles.digestSideStacked}>
-            {watchAreas?.length ? (
-              <>
-                <View style={styles.digestSideHead}>
-                  {/* Same hex as digestGroupTitle beside it. This file works in
-                      raw hexes and TINTS rather than the Colors palette, and
-                      reaching for Colors here was an import it does not have. */}
-                  <Ionicons name="eye-outline" size={12} color="#8AA79D" />
-                  <Text style={styles.digestGroupTitle}>Worth a look</Text>
-                </View>
-                {watchAreas.map((w, i) => {
-                  // Accepts a bare string as well as { text, tone }: a digest
-                  // cached before the schema gained tones is still served verbatim.
-                  const item = typeof w === 'string' ? { text: w, tone: 'watch' } : (w || {});
-                  const tone = item.tone === 'good' ? TINTS.green.fg : TINTS.amber.fg;
-                  return (
-                    <View key={`wa-${i}`} style={[styles.digestWatchRow, { borderLeftColor: tone }]}>
-                      <Text style={styles.digestText}>{item.text}</Text>
-                    </View>
-                  );
-                })}
-              </>
-            ) : null}
-
-            {caveat ? <Text style={styles.digestCaveat}>{caveat}</Text> : null}
-          </View>
-        ) : null}
-      </View>
+      ) : null}
     </Panel>
   );
 }
@@ -618,11 +677,14 @@ export default function TeacherDashboardScreen({ navigation }) {
   // so there is nothing to justify the 62/38 split the old two-column body used.
   const COL_GAP = Layout.spacing.lg;
   const pairW   = pairRow ? Math.floor((contentWidth - COL_GAP) / 2) : contentWidth;
-  // Panels are border-box, so the 1px border eats the same width the padding does.
-  // Measuring against padding alone overruns the pane by 2px — enough to wrap the
-  // last card onto its own row. The trailing pixel is slack against fractional
-  // device-pixel rounding, which would do the same thing on a half-pixel screen.
-  const mainPane = contentWidth - (PANEL_PAD + PANEL_BORDER) * 2 - 1;
+  // The student grid's width as laid out, measured rather than derived. Deriving
+  // it meant restating every border the Panel draws, and it drifted whenever the
+  // panel's borders changed — the cards overran the row and the last one wrapped
+  // onto a line of its own. The estimate is only for the first frame, before
+  // onLayout reports the real width.
+  const [studentGridW, setStudentGridW] = useState(null);
+  const mainPane = studentGridW
+    ?? contentWidth - (PANEL_PAD + PANEL_BORDER) * 2 - 1;
 
   // Column counts come from a target width rather than fixed breakpoints, so the
   // grid keeps filling its row at any pane width. Capped at four to hold the
@@ -717,6 +779,21 @@ export default function TeacherDashboardScreen({ navigation }) {
       .sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt));
   }, [sessions, selectedDayKey]);
 
+  // Same params the student cards send, so the profile hero has the name, photo
+  // and age on its first frame whichever way the teacher arrived.
+  const openStudent = useCallback((studentId) => {
+    const s = proficiency.find((p) => p.studentId === studentId);
+    if (!s) return;
+    navigation.navigate('TeacherStudentDetail', {
+      student: {
+        sid:               s.studentId,
+        full_name:         s.fullName,
+        profile_photo_url: s.profilePhotoUrl,
+        date_of_birth:     s.dateOfBirth,
+      },
+    });
+  }, [proficiency, navigation]);
+
   // Defaults to the first student once the roster loads, so the Notes panel
   // isn't blank on first paint.
   useEffect(() => {
@@ -777,6 +854,29 @@ export default function TeacherDashboardScreen({ navigation }) {
   const shiftMonth = (delta) =>
     setMonthDate((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
 
+  // Tapping one of the greyed days at either edge of the grid also turns the page
+  // to that month — otherwise the selection lands on a day the grid no longer
+  // shows as part of the month, and the sessions list below names a date that
+  // looks unselected.
+  const selectDay = (d) => {
+    setSelectedDate(d);
+    if (d.getMonth() !== monthDate.getMonth() || d.getFullYear() !== monthDate.getFullYear()) {
+      setMonthDate(new Date(d.getFullYear(), d.getMonth(), 1));
+    }
+  };
+
+  const goToToday = () => {
+    const n = new Date();
+    setSelectedDate(n);
+    setMonthDate(new Date(n.getFullYear(), n.getMonth(), 1));
+  };
+
+  const now = new Date();
+  const onToday =
+    selectedDayKey === dayKey(now) &&
+    monthDate.getMonth() === now.getMonth() &&
+    monthDate.getFullYear() === now.getFullYear();
+
   if (!data) {
     return (
       <LinearGradient colors={BACKDROP.colors} style={styles.root} start={BACKDROP.start} end={BACKDROP.end}>
@@ -787,39 +887,32 @@ export default function TeacherDashboardScreen({ navigation }) {
     );
   }
 
-  // ── Full-width band: the week's summary, then the class ───────────────────
+  // ── Full-width band: the class first, then the week's summary ─────────────
+  // Students lead because they are how the teacher gets anywhere — every
+  // profile, report and session starts from a card. The digest used to sit above
+  // them and, being prose that loads late, pushed the cards down the screen a
+  // beat after first paint.
   const topBand = (
     <View style={[styles.column, { width: contentWidth }]}>
-      {/* Absent whenever the summary is unavailable — the column closes up. */}
-      <DigestPanel
-        data={digest}
-        loading={digestLoading}
-        refreshing={digestRefreshing}
-        onRefresh={() => loadDigest(true)}
-        width={contentWidth}
-      />
-
       <Panel
         title={`My Students${proficiency.length > 0 ? ` (${proficiency.length})` : ''}`}
         section="students"
       >
         {proficiency.length > 0 ? (
-          <View style={styles.studentGrid}>
+          <View
+            style={styles.studentGrid}
+            onLayout={(e) => {
+              // Floored: a fractional width would round the cards up past the row.
+              const w = Math.floor(e.nativeEvent.layout.width);
+              if (w !== studentGridW) setStudentGridW(w);
+            }}
+          >
             {proficiency.map((s) => (
               <StudentCard
                 key={s.studentId}
                 student={s}
                 width={cardW}
-                onPress={() => navigation.navigate('TeacherStudentDetail', {
-                  student: {
-                    sid:               s.studentId,
-                    full_name:         s.fullName,
-                    profile_photo_url: s.profilePhotoUrl,
-                    // Seeds the profile hero so the age chip is there on the
-                    // first frame, before getStudent resolves.
-                    date_of_birth:     s.dateOfBirth,
-                  },
-                })}
+                onPress={() => openStudent(s.studentId)}
               />
             ))}
           </View>
@@ -835,6 +928,15 @@ export default function TeacherDashboardScreen({ navigation }) {
           </View>
         )}
       </Panel>
+
+      {/* Absent whenever the summary is unavailable — the column closes up. */}
+      <DigestPanel
+        data={digest}
+        loading={digestLoading}
+        refreshing={digestRefreshing}
+        onRefresh={() => loadDigest(true)}
+        width={contentWidth}
+      />
     </View>
   );
 
@@ -852,6 +954,7 @@ export default function TeacherDashboardScreen({ navigation }) {
         onAdd={handleAddNote}
         onDelete={handleDeleteNote}
         saving={noteSaving}
+        fill={pairRow}
       />
     </View>
   );
@@ -864,8 +967,22 @@ export default function TeacherDashboardScreen({ navigation }) {
       <Panel
         title="Calendar"
         section="calendar"
+        fill={pairRow}
         right={
           <View style={styles.calNav}>
+            {/* Only offered once the teacher has wandered off today, so it never
+                sits there as a control that does nothing. */}
+            {!onToday ? (
+              <TouchableOpacity
+                style={styles.calTodayBtn}
+                onPress={goToToday}
+                accessibilityRole="button"
+                accessibilityLabel="Go to today"
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              >
+                <Text style={styles.calTodayText}>Today</Text>
+              </TouchableOpacity>
+            ) : null}
             <Text style={styles.calMonth}>
               {monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </Text>
@@ -894,11 +1011,14 @@ export default function TeacherDashboardScreen({ navigation }) {
           monthDate={monthDate}
           activeDays={activeDays}
           selectedKey={selectedDayKey}
-          onSelectDay={setSelectedDate}
+          onSelectDay={selectDay}
+        />
+        <DaySessions
+          date={selectedDate}
+          sessions={sessionsForSelectedDay}
+          onOpenStudent={openStudent}
         />
       </Panel>
-
-      <DaySessionsPanel date={selectedDate} sessions={sessionsForSelectedDay} />
     </View>
   );
 
@@ -944,9 +1064,7 @@ export default function TeacherDashboardScreen({ navigation }) {
                 accessibilityRole="button"
                 accessibilityLabel="Switch workspace"
               >
-                {/* Filled icon to match the filled button — the outline version
-                    reads as thin and washed out reversed on solid ink. */}
-                <Ionicons name="grid" size={17} color="#FFFFFF" />
+                <Ionicons name="grid-outline" size={17} color="#2A5A48" />
                 <Text style={styles.workspaceBtnText}>Workspaces</Text>
               </TouchableOpacity>
 
@@ -957,15 +1075,9 @@ export default function TeacherDashboardScreen({ navigation }) {
                 accessibilityRole="button"
                 accessibilityLabel={`${profile?.full_name ?? 'Account'} — sign out`}
               >
-                <Avatar name={profile?.full_name} uri={profile?.profile_photo_url} size={34} />
-                <View style={styles.profileChipText}>
-                  <Text style={styles.profileChipName} numberOfLines={1}>
-                    {profile?.full_name ?? '...'}
-                  </Text>
-                  <Text style={styles.profileChipCode} numberOfLines={1}>
-                    {profile?.teacher_code ?? 'Teacher'}
-                  </Text>
-                </View>
+                {/* Avatar only. The chip used to repeat the name and teacher code
+                    printed in large type a few inches to its left. */}
+                <Avatar name={profile?.full_name} uri={profile?.profile_photo_url} size={40} />
                 <Ionicons name="chevron-down" size={15} color="#6B8A80" />
               </TouchableOpacity>
             </View>
@@ -974,22 +1086,6 @@ export default function TeacherDashboardScreen({ navigation }) {
           {/* ── Body ── */}
           <View style={[styles.body, { gap: COL_GAP }]}>
             {topBand}
-            {/* The only entry point to the pronunciation review queue. Kept on the
-                dashboard rather than inside a student's profile because the queue is
-                class-wide: it ranks attempts across every child by how much a
-                teacher's confirmation would improve future scoring. */}
-            <Panel
-              title="Review queue"
-              subtitle="Confirm AI scores to improve future accuracy"
-              section="reviewQueue"
-              action="Open"
-              onAction={() => navigation.navigate('PronunciationReviewQueue')}
-            >
-              <Text style={styles.emptySub}>
-                Pronunciation attempts the model was least sure about, ranked so the
-                ones you check teach it the most.
-              </Text>
-            </Panel>
             <View style={[styles.pair, pairRow && styles.pairRow, { gap: COL_GAP }]}>
               {notesColumn}
               {calendarColumn}
@@ -1052,15 +1148,11 @@ const styles = StyleSheet.create({
   // Stacked, the controls own the full width: the one navigation action goes to
   // one end and the account menu to the other, rather than huddling on the left.
   headerRightStacked: { justifyContent: 'space-between' },
-  // Filled, not outlined. This is the only way out of the workspace and it used to
-  // be a white pill with a #EDF1EF border sitting beside the profile chip, which is
-  // also a white pill — two identical-looking chips, so the one navigation action in
-  // the header carried no more weight than the account menu. Solid ink reverses that
-  // and leaves the profile chip as the quiet one.
-  //
-  // #2A5A48 is the colour the button's own label already used, so this adds weight
-  // without adding a hue: it stays the header's green, and at 7.91:1 against white
-  // it is safe to reverse the text out of.
+  // A secondary button, not a filled one. Solid dark ink made it the heaviest
+  // thing on the page, pulling the eye to "leave this workspace" before the
+  // students it exists to show. Outlined in the header's green it still reads as
+  // a button — and it is no longer confusable with the profile control beside
+  // it, which is now a bare avatar rather than a second white pill.
   workspaceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1068,52 +1160,32 @@ const styles = StyleSheet.create({
     height: 44,
     paddingHorizontal: 18,
     borderRadius: 22,
-    backgroundColor: '#2A5A48',
-    shadowColor: '#1A3D2E',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderWidth: 1,
+    borderColor: '#C9DCD4',
   },
   workspaceBtnText: {
     fontSize: 14,
     fontFamily: 'DMSans_700Bold',
-    color: '#FFFFFF',
+    color: '#2A5A48',
   },
+  // 44pt tall like the button beside it, so the two controls share one centre line.
   profileChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    paddingVertical: 6,
-    paddingLeft: 6,
-    paddingRight: 12,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EDF1EF',
-    // The chip is the one part of the header that can give ground on a narrow
-    // screen — the avatar and chevron hold their size and the name truncates,
-    // rather than the whole chip pushing the row wider than the screen.
-    flexShrink: 1,
-  },
-  profileChipText: { flexShrink: 1, maxWidth: 140 },
-  profileChipName: {
-    fontSize: 14,
-    fontFamily: 'DMSans_700Bold',
-    color: '#1A3D2E',
-  },
-  profileChipCode: {
-    fontSize: 11,
-    fontFamily: 'DMSans_400Regular',
-    color: '#6B8A80',
+    gap: 2,
+    height: 44,
   },
 
   // ── Layout ────────────────────────────────────────────────────────────────
   body:    { flexDirection: 'column' },
   pair:    { flexDirection: 'column' },
-  // flex-start, not stretch: the two panels are different heights and the shorter
-  // one should end where its content does rather than growing to match.
-  pairRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  // Stretch, so Notes and the Calendar end on one line. They used to end where
+  // their content did, and with the day's sessions now inside the calendar the
+  // gap under a short Notes panel was a hole in the page — the pair read as two
+  // unrelated boxes dropped side by side rather than one row.
+  pairRow: { flexDirection: 'row', alignItems: 'stretch' },
+  fill:    { flex: 1 },
   column:  { gap: Layout.spacing.lg },
 
   // ── Panels ────────────────────────────────────────────────────────────────
@@ -1132,33 +1204,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1.5,
+    borderWidth: PANEL_BORDER,
     borderColor: '#EDF1EF',
   },
+  // No band and no rule under it: the header is the first line of the panel, not
+  // a separate strip. The body's own top padding provides the gap below it.
   panelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Layout.spacing.sm,
+    gap: Layout.spacing.sm + 2,
     paddingHorizontal: PANEL_PAD,
-    paddingVertical: PANEL_PAD,
-    backgroundColor: '#F9FBFA',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDF1EF',
+    paddingTop: 18,
+    paddingBottom: 2,
   },
   panelBody: {
     padding: PANEL_PAD,
+    paddingTop: 16,
   },
   panelIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
   },
   panelTitleWrap: { flex: 1 },
   panelTitle: {
@@ -1166,8 +1234,8 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_800ExtraBold',
     color: '#1A3D2E',
   },
-  // Inherits the section accent but drops back in weight and opacity — it dates
-  // the panel, it does not compete with the title for it.
+  // Drops back in weight and opacity — it dates the panel, it does not compete
+  // with the title for it.
   panelSubtitle: {
     fontSize: 11,
     fontFamily: 'DMSans_400Regular',
@@ -1199,16 +1267,31 @@ const styles = StyleSheet.create({
   },
   digestSideHead: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
 
-  digestSummaryBox: {
-    padding: Layout.spacing.md,
-    borderRadius: Layout.radius.md,
-    backgroundColor: '#F5F8F7',
-  },
+  // A plain sentence now, not a filled box: with the details folded away there is
+  // no list under it to set it apart from.
   digestHeadline: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'DMSans_600SemiBold',
     color: '#1A3D2E',
-    lineHeight: 22,
+    lineHeight: 24,
+  },
+  digestToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: Layout.spacing.sm + 2,
+  },
+  digestToggleText: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    color: TINTS.rose.fg,
+  },
+  digestDetails: {
+    marginTop: Layout.spacing.md,
+    paddingTop: Layout.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#EDF1EF',
   },
   // A coloured spine per item rather than a dot: it marks the whole line as one
   // point, which matters here because these run to two lines more often than not.
@@ -1217,7 +1300,6 @@ const styles = StyleSheet.create({
     paddingLeft: Layout.spacing.sm,
     paddingVertical: 3,
   },
-  digestGroup: { marginTop: Layout.spacing.md },
   digestGroupTitle: {
     fontSize: 11,
     fontFamily: 'DMSans_600SemiBold',
@@ -1278,27 +1360,21 @@ const styles = StyleSheet.create({
 
   // ── Student cards ─────────────────────────────────────────────────────────
   studentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
-  // Shadow here, not on `studentCard` — see the matching note on panelShadowWrap.
+  // Flat tiles, not cards. Each child used to be a bordered, shadowed card inside
+  // a panel that is itself a bordered, shadowed card — two layers of chrome
+  // around five avatars. A tinted plate is enough to group a child's tile, and
+  // it leaves the panel as the only raised surface in this section.
   studentCardShadowWrap: {
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#1A3D2E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 2,
+    borderRadius: 18,
   },
   studentCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    // 30 at the top made room for a gradient wash that is no longer there.
+    backgroundColor: '#F4F7F6',
+    borderRadius: 18,
     paddingTop: 18,
-    paddingBottom: 14,
+    paddingBottom: 16,
     paddingHorizontal: 10,
     alignItems: 'center',
     gap: 4,
-    borderWidth: 1,
-    borderColor: '#EDF1EF',
     overflow: 'hidden',
   },
   // Soft tinted wash behind the avatar, fading into the card's white body — gives
@@ -1311,19 +1387,6 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     overflow: 'hidden',
   },
-  // Big enough to read as a status light across a row of five, and overlapping the
-  // tile's corner so it belongs to the avatar. The white ring is what separates it
-  // from the tile underneath at any avatar colour.
-  studentDot: {
-    position: 'absolute',
-    right: -3,
-    bottom: -3,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-  },
   studentName: {
     fontSize: 15,
     lineHeight: 20,
@@ -1334,12 +1397,29 @@ const styles = StyleSheet.create({
     color: '#1A3D2E',
     textAlign: 'center',
   },
+  // Sentence case like every other secondary line on the page. It was the one
+  // tracked, all-caps label here, which made it read as a heading.
   studentAge: {
-    fontSize: 11,
+    fontSize: 12,
+    fontFamily: 'DMSans_400Regular',
+    color: '#6B8A80',
+  },
+  // White on the tile's tint — clearly a control, but quieter than the name.
+  studentOpen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 10,
+    paddingVertical: 5,
+    paddingLeft: 12,
+    paddingRight: 8,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+  },
+  studentOpenText: {
+    fontSize: 12,
     fontFamily: 'DMSans_700Bold',
-    color: '#9AAFA7',
-    letterSpacing: 0.8,
-    marginTop: 2,
+    color: SECTION.students.fg,
   },
 
   // ── Calendar ──────────────────────────────────────────────────────────────
@@ -1348,6 +1428,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'DMSans_600SemiBold',
     color: '#1A3D2E',
+  },
+  calTodayBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: SECTION.calendar.fg,
+    marginRight: 2,
+  },
+  calTodayText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+    color: SECTION.calendar.fg,
   },
   calArrow: {
     width: 26,
@@ -1389,6 +1482,18 @@ const styles = StyleSheet.create({
   calDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#52C07C' },
 
   // ── Selected-day sessions ─────────────────────────────────────────────────
+  daySessions: {
+    marginTop: Layout.spacing.md,
+    paddingTop: Layout.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#EDF1EF',
+  },
+  daySessionsHeading: {
+    fontSize: 14,
+    fontFamily: 'DMSans_700Bold',
+    color: '#1A3D2E',
+    marginBottom: 10,
+  },
   slot: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1398,12 +1503,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 10,
   },
+  // Tint and the status dot carry "running"; no edge stripe, which shifted this
+  // row's text 3pt right of the rows around it.
+  slotLive: { backgroundColor: TINTS.green.bg },
+  slotDone: { backgroundColor: '#F5F8F7' },
   slotTime: {
     fontSize: 12,
     fontFamily: 'DMSans_600SemiBold',
     color: '#6B8A80',
     width: 62,
   },
+  slotStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  slotLiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: TINTS.green.fg },
+  slotSubLive: { color: TINTS.green.fg, fontFamily: 'DMSans_700Bold' },
   slotBody: { flex: 1, gap: 1 },
   slotTitle: {
     fontSize: 13,
@@ -1417,7 +1529,10 @@ const styles = StyleSheet.create({
   },
 
   // ── Notes ─────────────────────────────────────────────────────────────────
-  notesChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  // flexGrow 0: a horizontal ScrollView otherwise grows to fill the panel when the
+  // panel is stretched to match the calendar, pushing the composer to the bottom.
+  notesChipScroll: { flexGrow: 0, marginBottom: 16 },
+  notesChipRow: { flexDirection: 'row', gap: 8 },
   notesChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,

@@ -26,6 +26,8 @@ import { getConclusionForCategory } from '../../../data/conceptConclusions';
 import { getPairableItems, MIN_PAIRS } from '../../../data/conceptPairMatch';
 import { conceptApi } from '../../../api/concept';
 import { Layout } from '../../../constants/layout';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
 
 function ConceptCard({ item, cardW, cardH, theme, isResume, onPress }) {
   const popAnim = useRef(new Animated.Value(isResume ? 0.8 : 1)).current;
@@ -477,11 +479,11 @@ export default function ConceptItemsScreen({ route, navigation }) {
               group. */}
           <View style={styles.topBarSide}>
             <TouchableOpacity
-              style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+              style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }, BACK_BUTTON]}
               onPress={() => navigation.navigate('ConceptCategories', { student })}
               activeOpacity={0.7}
             >
-              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
             </TouchableOpacity>
           </View>
 
@@ -490,18 +492,15 @@ export default function ConceptItemsScreen({ route, navigation }) {
           </View>
 
           <View style={styles.topBarRight}>
-            <TouchableOpacity
-              style={[styles.activitiesBtn, { backgroundColor: theme.button }]}
-              onPress={() => setPickerVisible(true)}
-              activeOpacity={0.85}
-              accessibilityRole="button"
+            {/* Shared header pill (HeaderPillButton). */}
+            <HeaderPillButton
+              variant="primary"
+              icon="game-controller"
+              label="Activities"
               accessibilityLabel="Choose an activity"
-            >
-              <Ionicons name="game-controller" size={18} color={theme.buttonText} />
-              <Text style={[styles.activitiesBtnText, { color: theme.buttonText }]}>
-                Activities
-              </Text>
-            </TouchableOpacity>
+              theme={theme}
+              onPress={() => setPickerVisible(true)}
+            />
           </View>
         </View>
 
@@ -577,23 +576,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: 10,
-  },
-  activitiesBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    height: 40,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  activitiesBtnText: {
-    fontSize: 15,
-    fontFamily: 'DMSans_700Bold',
   },
   titleRow: {
     flexDirection: 'row',

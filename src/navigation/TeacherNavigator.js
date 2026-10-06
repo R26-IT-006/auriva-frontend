@@ -93,7 +93,8 @@ import PronunciationSpeakWordScreen from "../screens/teacher/pronunciation/Pronu
 import PronunciationResultScreen from "../screens/teacher/pronunciation/PronunciationResultScreen";
 import PronunciationResultsHistoryScreen from "../screens/teacher/pronunciation/PronunciationResultsHistoryScreen";
 // Teacher-facing active-learning queue for the layer-3 calibration model —
-// the client for GET /api/teacher/pronunciation-review-queue.
+// the client for GET /api/teacher/pronunciation-review-queue. Opened from the
+// pronunciation module on a student's profile, scoped to that child.
 import PronunciationReviewQueueScreen from "../screens/teacher/pronunciation/PronunciationReviewQueueScreen";
 
 const Stack = createNativeStackNavigator();
@@ -232,9 +233,12 @@ export default function TeacherNavigator() {
           name="PronunciationResult"
           component={PronunciationResultScreen}
         />
+        {/* Opened from the Student Profile, so portrait like it — overrides
+            this group's landscape. */}
         <Stack.Screen
           name="PronunciationResultsHistory"
           component={PronunciationResultsHistoryScreen}
+          options={{ orientation: 'portrait' }}
         />
         <Stack.Screen name="DialogueCategory"  component={DialogueCategoryScreen} />
         <Stack.Screen name="Level1Overview"    component={Level1OverviewScreen} />

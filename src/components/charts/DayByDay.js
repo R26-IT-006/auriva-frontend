@@ -61,7 +61,7 @@ export function DayByDay({ days = [], onOpenArtwork, accent = Colors.primary }) 
         ))}
       </ScrollView>
 
-      <DayCard day={active} onOpenArtwork={onOpenArtwork} />
+      <DayCard day={active} onOpenArtwork={onOpenArtwork} accent={accent} />
     </View>
   );
 }
@@ -84,7 +84,7 @@ function DateTile({ day, active, accent, onPress }) {
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={`${top} ${num} ${month}${hasArt ? ', has drawings' : ''}`}
-      style={[styles.tile, active && { backgroundColor: accent, borderColor: accent }]}
+      style={[styles.tile, { borderColor: accent + '40' }, active && [styles.tileActive, { backgroundColor: accent, borderColor: accent, shadowColor: accent }]]}
     >
       <Text style={[styles.tileTop, active && styles.tileTextActive]} numberOfLines={1}>{top}</Text>
       <Text style={[styles.tileNum, active && styles.tileTextActive]}>{num}</Text>
@@ -93,14 +93,14 @@ function DateTile({ day, active, accent, onPress }) {
           opening every tile in turn. */}
       <View style={[
         styles.tileDot,
-        hasArt && styles.tileDotOn,
+        hasArt && { backgroundColor: accent },
         hasArt && active && styles.tileDotOnActive,
       ]} />
     </TouchableOpacity>
   );
 }
 
-function DayCard({ day, onOpenArtwork }) {
+function DayCard({ day, onOpenArtwork, accent }) {
   const categories = day.categories || [];
   const artworks   = day.artworks || [];
 
@@ -114,17 +114,17 @@ function DayCard({ day, onOpenArtwork }) {
         <Text style={styles.date}>{friendlyDate(day.date)}</Text>
         <View style={styles.metaRow}>
           {conceptCount > 0 && (
-            <View style={styles.metaPill}>
-              <Ionicons name="shapes-outline" size={11} color={Colors.text.secondary} />
-              <Text style={styles.metaText}>
+            <View style={[styles.metaPill, { backgroundColor: accent + '1A' }]}>
+              <Ionicons name="shapes" size={13} color={accent} />
+              <Text style={[styles.metaText, { color: accent }]}>
                 {conceptCount} {conceptCount === 1 ? 'thing' : 'things'}
               </Text>
             </View>
           )}
           {day.time_spent_ms > 0 && (
-            <View style={styles.metaPill}>
-              <Ionicons name="time-outline" size={11} color={Colors.text.secondary} />
-              <Text style={styles.metaText}>{duration(day.time_spent_ms)}</Text>
+            <View style={[styles.metaPill, { backgroundColor: accent + '1A' }]}>
+              <Ionicons name="time" size={13} color={accent} />
+              <Text style={[styles.metaText, { color: accent }]}>{duration(day.time_spent_ms)}</Text>
             </View>
           )}
         </View>
@@ -135,7 +135,7 @@ function DayCard({ day, onOpenArtwork }) {
           <Text style={styles.catLabel}>{cat.label}</Text>
           <View style={styles.chipRow}>
             {(cat.concepts || []).map((c) => (
-              <ConceptChip key={c.concept_key} concept={c} categoryKey={cat.category_key} />
+              <ConceptChip key={c.concept_key} concept={c} categoryKey={cat.category_key} accent={accent} />
             ))}
           </View>
         </View>
@@ -183,18 +183,18 @@ function DayCard({ day, onOpenArtwork }) {
  * warning panel and left nothing for the eye to land on; colour now marks only the
  * concept that gave trouble, and the tick badge carries "done" on its own.
  */
-function ConceptChip({ concept, categoryKey }) {
+function ConceptChip({ concept, categoryKey, accent }) {
   const item = getConceptItem(categoryKey, concept.concept_key);
   const label = item?.label ?? formatConceptLabel(concept.concept_key);
 
   const tone = concept.passed ? 'good' : concept.struggled ? 'tricky' : 'neutral';
 
   return (
-    <View style={[styles.chip, styles[`chip_${tone}`]]}>
+    <View style={[styles.chip, styles[`chip_${tone}`], tone === 'good' && { backgroundColor: accent + '14', borderColor: accent + '40' }]}>
       <Text style={[styles.chipText, styles[`chipText_${tone}`]]} numberOfLines={1}>{label}</Text>
       {concept.passed && (
-        <View style={styles.doneBadge}>
-          <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+        <View style={[styles.doneBadge, { backgroundColor: accent }]}>
+          <Ionicons name="checkmark" size={11} color="#FFFFFF" />
         </View>
       )}
       {!concept.passed && concept.struggled && (
@@ -261,7 +261,7 @@ function tileParts(iso) {
 }
 
 const styles = StyleSheet.create({
-  list: { padding: Layout.spacing.md, gap: Layout.spacing.sm },
+  list: { padding: 12, gap: Layout.spacing.sm },
 
   // ── Date picker ───────────────────────────────────────────────────────────
   // The strip bleeds through the list's own padding and puts it back inside the
@@ -274,29 +274,36 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tile: {
-    width: 58,
+    width: 68,
     alignItems: 'center',
-    paddingVertical: Layout.spacing.sm,
-    borderRadius: Layout.radius.lg,
+    paddingVertical: 12,
+    borderRadius: 20,
     backgroundColor: Colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.border,
   },
+  // The chosen day lifts a little, in the accent colour (set inline).
+  tileActive: {
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    elevation: 4,
+  },
   tileTop: {
-    fontSize: Layout.fontSize.xs - 1,
+    fontSize: 11,
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   tileNum: {
-    fontSize: Layout.fontSize.md,
-    fontFamily: 'DMSans_800ExtraBold',
+    fontSize: 20,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
-    lineHeight: Layout.fontSize.md * 1.25,
+    lineHeight: 28,
   },
   tileMonth: {
-    fontSize: Layout.fontSize.xs - 1,
+    fontSize: 11,
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
   },
@@ -304,10 +311,10 @@ const styles = StyleSheet.create({
   // Always laid out, coloured in only when the day has drawings — reserving the
   // space keeps every tile the same height whether or not it has any.
   tileDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 5,
     backgroundColor: 'transparent',
   },
   tileDotOn:       { backgroundColor: Colors.text.muted },
@@ -318,11 +325,11 @@ const styles = StyleSheet.create({
   // page makes — it read as a panel that had been dropped in from somewhere else.
   // The rule above it is enough to separate it from the date strip.
   card: {
-    paddingTop: Layout.spacing.md,
+    paddingTop: 12,
     marginTop: 2,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
-    gap: Layout.spacing.md,
+    gap: 12,
   },
   cardHead: {
     flexDirection: 'row',
@@ -330,41 +337,41 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Layout.spacing.sm,
   },
-  date: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, letterSpacing: -0.2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  date: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary, letterSpacing: -0.2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   metaPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: Layout.radius.full,
     backgroundColor: Colors.surfaceAlt,
   },
   metaText: {
-    fontSize: Layout.fontSize.xs,
+    fontSize: 12,
     color: Colors.text.secondary,
     fontFamily: 'DMSans_600SemiBold',
   },
 
   catBlock: { gap: 6 },
   catLabel: {
-    fontSize: Layout.fontSize.xs - 1,
+    fontSize: 12,
     fontFamily: 'DMSans_600SemiBold',
-    color: Colors.text.muted,
+    color: Colors.text.secondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
-  chipRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chipRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
     borderRadius: Layout.radius.full,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   // Passed is an outlined chip on the card's own white, so it sits a step above
   // the flat grey of a concept that was only attempted; the tick tells them
@@ -373,16 +380,16 @@ const styles = StyleSheet.create({
   chip_tricky:  { backgroundColor: '#FDF3E0',         borderColor: '#F0DBB0' },
   chip_neutral: { backgroundColor: Colors.surfaceAlt, borderColor: Colors.borderLight },
 
-  chipText: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', maxWidth: 140 },
+  chipText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', maxWidth: 160 },
   chipText_good:    { color: Colors.text.primary },
   chipText_tricky:  { color: '#8A5D06' },
   chipText_neutral: { color: Colors.text.muted },
 
   // The whole of the green: a 15px badge instead of a chip-wide wash.
   doneBadge: {
-    width: 15,
-    height: 15,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#3FAE6F',
@@ -396,19 +403,19 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.divider,
   },
   artLabel: {
-    fontSize: Layout.fontSize.xs - 1,
+    fontSize: 11,
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  artRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  artThumbWrap: { borderRadius: Layout.radius.lg, ...Layout.shadow.sm },
+  artRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  artThumbWrap: { borderRadius: 20, ...Layout.shadow.sm },
   artThumb: {
     // Up from 58: at that size a coloured-in drawing was a smudge, and the whole
     // point of showing it is that a teacher can tell what they are looking at.
-    width: 76, height: 76,
-    borderRadius: Layout.radius.lg,
+    width: 92, height: 92,
+    borderRadius: 20,
     backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
     borderColor: Colors.borderLight,

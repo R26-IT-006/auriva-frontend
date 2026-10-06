@@ -19,6 +19,7 @@ import {
 } from "./pronunciationSessionStore.js";
 import { getStudentIdentifier } from "./studentIdentity.js";
 import { IMAGE_STYLES } from "./wordImageStyles.js";
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 
 // Alphabet page spacing: side padding and the gap between letter tiles.
 const ALPHA_PAD = Layout.spacing.xl;
@@ -273,13 +274,13 @@ export default function PronunciationWordSelectionScreen({
           {/* Header — same as the Pronunciation setup / Concept screens */}
           <View style={styles.alphaTopBar}>
             <ButtonFeedback
-              style={[styles.alphaIconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+              style={[styles.alphaIconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }, BACK_BUTTON]}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Back"
             >
-              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
             </ButtonFeedback>
 
             <View style={styles.alphaTitleRow}>
@@ -340,13 +341,13 @@ export default function PronunciationWordSelectionScreen({
         {/* Header — same as the alphabet page: category name as the title */}
         <View style={styles.alphaTopBar}>
           <ButtonFeedback
-            style={[styles.alphaIconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+            style={[styles.alphaIconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }, BACK_BUTTON]}
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </ButtonFeedback>
 
           <View style={styles.alphaTitleRow}>

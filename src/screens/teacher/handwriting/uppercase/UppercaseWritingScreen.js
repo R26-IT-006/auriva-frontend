@@ -85,6 +85,7 @@ import {
   PAD, COL_L, LETTER_CARD_SIZE, CANVAS_W, CANVAS_H, ASPECT, aspectX,
   LINE_1, LINE_2, LINE_3, LINE_4,
 } from '../../../../constants/letterCanvasLayout';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 // The canvas view's own borderWidth. measure() reports the BORDER box while
 // the Svg starts inside the border, so this removes that systematic offset.
@@ -1517,9 +1518,9 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={requestBack}
             hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-            style={styles.backBtn}
+            style={[styles.backBtn, BACK_BUTTON]}
           >
-            <Ionicons name="chevron-back" size={26} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           <Text style={[styles.counterText, { color: theme.headingText }]}>

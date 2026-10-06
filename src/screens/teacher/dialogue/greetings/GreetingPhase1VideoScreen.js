@@ -19,6 +19,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { DIALOGUE_WORD_ASSETS } from '../../../../data/dialogueAssets';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const WORD_LABELS = {
   hello:          'Hello',
@@ -265,8 +266,8 @@ export default function GreetingPhase1VideoScreen({ route, navigation }) {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={goBack} activeOpacity={0.7} style={styles.headerBtn}>
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <TouchableOpacity onPress={goBack} activeOpacity={0.7} style={[styles.headerBtn, BACK_BUTTON]}>
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progressFraction * 100}%`, backgroundColor: theme.button }]} />

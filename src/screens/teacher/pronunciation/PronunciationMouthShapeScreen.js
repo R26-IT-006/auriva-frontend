@@ -16,6 +16,7 @@ import {
   selectionTextColor,
   ThemedGradientFill,
 } from "./pronunciationDesignKit.js";
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 
 const MOUTH_SHAPES = [
   { id: "k", ipa: "/k/", label: "open", variant: "open" },
@@ -118,9 +119,9 @@ export default function PronunciationMouthShapeScreen({ navigation, route }) {
         <ButtonFeedback
           activeOpacity={0.82}
           onPress={() => navigation.goBack()}
-          style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }]}
+          style={[styles.backBtn, isCompact && styles.backBtnCompact, { borderColor: theme.cardOutline }, BACK_BUTTON]}
         >
-          <Ionicons name="arrow-back" size={26} color={theme.headingText} />
+          <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
         </ButtonFeedback>
 
         <View style={[styles.centerWrap, isCompact && styles.centerWrapCompact]}>

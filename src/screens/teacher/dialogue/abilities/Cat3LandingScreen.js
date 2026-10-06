@@ -19,6 +19,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import ProbeBanner from '../../../../components/common/ProbeBanner';
 import { dialogueApi } from '../../../../api/dialogue';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 // Same per-avatar photos as Magic Words and the handwriting screens. A still
 // image rather than a video: nothing moves or plays sound while the child
@@ -133,9 +134,9 @@ export default function Cat3LandingScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={goBackSmart}
             activeOpacity={0.7}
-            style={styles.headerBtn}
+            style={[styles.headerBtn, BACK_BUTTON]}
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.progressTrack}>

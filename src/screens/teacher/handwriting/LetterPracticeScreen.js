@@ -25,6 +25,7 @@ import {
   canOpen, isPreview, PREVIEW_BADGE, UPPERCASE_ORDER_CAPTION,
 } from '../../../constants/demoAccess';
 import ScreenBackButton from '../../../components/handwriting/ScreenBackButton';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
 import LetterProgressPanel from '../../../components/handwriting/LetterProgressPanel';
 import useGatedBack from '../../../utils/useGatedBack';
 
@@ -165,15 +166,14 @@ export default function LetterPracticeScreen({ route, navigation }) {
           </View>
 
           <View style={[styles.sideGroup, styles.sideGroupRight]}>
-            <TouchableOpacity
-              style={[styles.progressBtn, { backgroundColor: theme.button, borderColor: theme.button }]}
+            {/* Shared header pill (HeaderPillButton). */}
+            <HeaderPillButton
+              variant="primary"
+              icon="trophy"
+              label="Progress"
+              theme={theme}
               onPress={() => setShowProgress(true)}
-              activeOpacity={0.8}
-              accessibilityLabel="Progress"
-            >
-              <Ionicons name="trophy" size={17} color={theme.buttonText} />
-              <Text style={[styles.progressBtnText, { color: theme.buttonText }]}>Progress</Text>
-            </TouchableOpacity>
+            />
           </View>
         </View>
 
@@ -496,21 +496,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 2,
     paddingHorizontal: Layout.spacing.lg,
-  },
-  // Same pill as LetterHome's Progress button.
-  progressBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    minHeight: 40,
-  },
-  progressBtnText: {
-    fontSize: 13,
-    fontFamily: 'DMSans_700Bold',
   },
 
   // ── Main content ──────────────────────────────────────────────────────────

@@ -960,7 +960,7 @@ export const CONCEPT_CATEGORIES = {
     ],
   },
 
-  // ── Not yet authored ───────────────────────────────────────────────────────
+  // ── Not yet authored (nature) ──────────────────────────────────────────────
   // Tile artwork exists, but there are no per-concept assets under
   // assets/concepts/categories/ and no sequence in the backend catalogue yet.
   // They open like any other category — the concept list is simply empty until
@@ -972,12 +972,66 @@ export const CONCEPT_CATEGORIES = {
     image: require('../../assets/concepts/category-images/Nature.png'),
     items: [],
   },
+  // Family members: a real photo and an illustrated (animated) picture for each.
+  // No colouring pages, per-item audio or tier 3 videos exist for this category,
+  // so the ladder ends at tier 2 (hasVideo: false); the photo ↔ picture match
+  // works because every item has both `real` and `animated`.
   family: {
-    key:   'family',
-    label: 'Family Members',
-    order: 8,
-    image: require('../../assets/concepts/category-images/Family.png'),
-    items: [],
+    key:      'family',
+    label:    'Family Members',
+    order:    8,
+    image:    require('../../assets/concepts/category-images/Family.png'),
+    hasVideo: false,
+    items: [
+      {
+        key:      'mother',
+        label:    'Mother',
+        labelSi:  'අම්මා',
+        icon:     require('../../assets/concepts/categories/Family Members/Mother/Mother_Animated.png'),
+        real:     require('../../assets/concepts/categories/Family Members/Mother/Mother_Real.png'),
+        animated: require('../../assets/concepts/categories/Family Members/Mother/Mother_Animated.png'),
+      },
+      {
+        key:      'father',
+        label:    'Father',
+        labelSi:  'තාත්තා',
+        icon:     require('../../assets/concepts/categories/Family Members/Father/Father_Animated.png'),
+        real:     require('../../assets/concepts/categories/Family Members/Father/Father_Real.png'),
+        animated: require('../../assets/concepts/categories/Family Members/Father/Father_Animated.png'),
+      },
+      {
+        key:      'brother',
+        label:    'Brother',
+        labelSi:  'සහෝදරයා',
+        icon:     require('../../assets/concepts/categories/Family Members/Brother/Brother_Animated.png'),
+        real:     require('../../assets/concepts/categories/Family Members/Brother/Brother_Real.png'),
+        animated: require('../../assets/concepts/categories/Family Members/Brother/Brother_Animated.png'),
+      },
+      {
+        key:      'sister',
+        label:    'Sister',
+        labelSi:  'සහෝදරිය',
+        icon:     require('../../assets/concepts/categories/Family Members/Sister/Sister_Animated.png'),
+        real:     require('../../assets/concepts/categories/Family Members/Sister/Sister_Real.png'),
+        animated: require('../../assets/concepts/categories/Family Members/Sister/Sister_Animated.png'),
+      },
+      {
+        key:      'grandmother',
+        label:    'Grandmother',
+        labelSi:  'ආච්චි',
+        icon:     require('../../assets/concepts/categories/Family Members/Grandmother/Grandmother_Animated.png'),
+        real:     require('../../assets/concepts/categories/Family Members/Grandmother/Grandmother_Real.png'),
+        animated: require('../../assets/concepts/categories/Family Members/Grandmother/Grandmother_Animated.png'),
+      },
+      {
+        key:      'grandfather',
+        label:    'Grandfather',
+        labelSi:  'සීයා',
+        icon:     require('../../assets/concepts/categories/Family Members/Grandfather/Grandfather_Animated.png'),
+        real:     require('../../assets/concepts/categories/Family Members/Grandfather/Grandfather_Real.png'),
+        animated: require('../../assets/concepts/categories/Family Members/Grandfather/Grandfather_Animated.png'),
+      },
+    ],
   },
 };
 

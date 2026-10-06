@@ -181,7 +181,7 @@ export default function InstructionScreen({ route, navigation }) {
           onPress={requestBack}
           gated
           tint={theme.button}
-          color={theme.button}
+          color={theme?.headingText ?? theme?.button}
           accessibilityLabel="Back"
           style={styles.flowBackButton}
         />

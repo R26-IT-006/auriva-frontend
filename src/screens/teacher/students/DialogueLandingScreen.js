@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import FlowOverviewModal from '../../../components/common/FlowOverviewModal';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
+import { buildDialogueFlow } from '../../../data/dialogueFlow';
+
+// "How it works" stages — static, so built once.
+const DIALOGUE_FLOW = buildDialogueFlow();
 
 const LEVELS = [
   {
@@ -68,6 +75,7 @@ export default function DialogueLandingScreen({ route, navigation }) {
   const student   = route.params?.student;
   const theme     = getAvatarTheme(student?.avatar_key);
   const { width } = useWindowDimensions();
+  const [showFlow, setShowFlow] = useState(false);
 
   // Intercept Android hardware back → same destination as the UI back arrow
   useFocusEffect(useCallback(() => {
@@ -105,23 +113,36 @@ export default function DialogueLandingScreen({ route, navigation }) {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
         {/* ── Header — same layout as ConceptCategoriesScreen ─── */}
+        {/* Top bar: back | title | header pills — equal-width side groups keep
+            the title centred, same layout as the other module headers. */}
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
-            onPress={() => navigation.navigate('StudentDashboard', { student })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
-          </TouchableOpacity>
+          <View style={styles.sideGroup}>
+            <TouchableOpacity
+              style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }, BACK_BUTTON]}
+              onPress={() => navigation.navigate('StudentDashboard', { student })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.titleRow}>
             <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
               <Ionicons name="chatbubbles" size={18} color="#FFF" />
             </View>
-            <Text style={[styles.title, { color: theme.headingText }]}>Dialogue Learning</Text>
+            <Text style={[styles.title, { color: theme.headingText }]}>Dialogue Module</Text>
           </View>
 
-          <View style={styles.iconBtn} />
+          <View style={[styles.sideGroup, styles.topBtnGroup]}>
+            {/* "How it works" — teacher-facing flow overview (FlowOverviewModal). */}
+            <HeaderPillButton
+              variant="outline"
+              icon="map"
+              label="How it works"
+              theme={theme}
+              onPress={() => setShowFlow(true)}
+            />
+          </View>
         </View>
 
         <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -146,6 +167,14 @@ export default function DialogueLandingScreen({ route, navigation }) {
 
         </View>
       </SafeAreaView>
+
+      <FlowOverviewModal
+        visible={showFlow}
+        onClose={() => setShowFlow(false)}
+        theme={theme}
+        stages={DIALOGUE_FLOW}
+        subtitle="How the Dialogue module works"
+      />
     </LinearGradient>
   );
 }
@@ -179,6 +208,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Layout.spacing.md,
     paddingVertical: Layout.spacing.sm,
+  },
+  // Equal-width side groups keep the title centred (same as the other module headers).
+  sideGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  topBtnGroup: {
+    justifyContent: 'flex-end',
+    gap: 10,
   },
   iconBtn: {
     width:  40,

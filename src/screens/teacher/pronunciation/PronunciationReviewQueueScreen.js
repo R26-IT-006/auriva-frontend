@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { useFocusEffect } from "@react-navigation/native";
+import { useLockPortrait } from "../../../utils/useOrientationLock";
 import { teacherApi } from "../../../api/teacher";
 import {
   PronunciationAlert,
@@ -305,7 +306,16 @@ function ReviewScoreModal({ item, onCancel, onSubmit, submitting }) {
   );
 }
 
-export default function PronunciationReviewQueueScreen() {
+export default function PronunciationReviewQueueScreen({ route }) {
+  // A teacher-facing reading screen, opened from the Student Profile: portrait,
+  // like the profile and the reports beside it.
+  useLockPortrait();
+  // Opened from a student profile's pronunciation module, so it lists only
+  // that child's attempts.
+  const student = route?.params?.student;
+  const studentId = student?.sid ?? null;
+  const firstName = student?.full_name?.trim().split(/\s+/)[0];
+
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -315,7 +325,7 @@ export default function PronunciationReviewQueueScreen() {
 
   const fetchQueue = useCallback(async () => {
     try {
-      const data = await teacherApi.getPronunciationReviewQueue(QUEUE_LIMIT);
+      const data = await teacherApi.getPronunciationReviewQueue(QUEUE_LIMIT, studentId);
       setQueue(Array.isArray(data) ? data : []);
     } catch (error) {
       toast.show(error.message || "Could not load the review queue.", "error");
@@ -323,7 +333,7 @@ export default function PronunciationReviewQueueScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [toast]);
+  }, [toast, studentId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -349,7 +359,9 @@ export default function PronunciationReviewQueueScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Review Queue</Text>
+        <Text style={styles.title}>
+          {firstName ? `${firstName}'s review queue` : "Review Queue"}
+        </Text>
         <Text style={styles.subtitle}>
           Attempts ranked by how much labeling them would help the AI scoring model —
           not just recency. Low-confidence attempts and under-represented student
@@ -366,7 +378,9 @@ export default function PronunciationReviewQueueScreen() {
           <Ionicons name="checkmark-done-circle-outline" size={28} color={Colors.icon.muted} />
           <Text style={styles.emptyTitle}>Nothing to review</Text>
           <Text style={styles.emptyCopy}>
-            Every recent attempt has either been reviewed or is confidently scored.
+            {firstName
+              ? `Every attempt ${firstName} made today has either been reviewed or is confidently scored.`
+              : "Every recent attempt has either been reviewed or is confidently scored."}
           </Text>
         </View>
       ) : (

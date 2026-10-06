@@ -39,6 +39,7 @@ import {
   usePronunciationAlert,
 } from "./PronunciationAlert.js";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 
 const CAT_FLASHCARD_VIDEO = require("../../../../assets/pronunciation-videos/whiskers_cat.mp4");
 const CAT_MEOW_AUDIO = require("../../../../assets/pronunciation-audios/cat_meow.wav");
@@ -340,11 +341,11 @@ export default function PronunciationLearnWordScreen({ navigation, route }) {
         <ButtonFeedback
           activeOpacity={0.7}
           onPress={() => navigation.goBack()}
-          style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+          style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }, BACK_BUTTON]}
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
         </ButtonFeedback>
       </View>
 

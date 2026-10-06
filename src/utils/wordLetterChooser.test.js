@@ -180,8 +180,10 @@ describe('§2 — Word Progress and Progress Report', () => {
   const code = readCode(CHOOSER);
 
   it('the labels read Word Progress and Progress Report', () => {
-    expect(code).toMatch(/>Word Progress<\/Text>/);
-    expect(code).toMatch(/>Progress Report<\/Text>/);
+    // Header buttons now use the shared HeaderPillButton, so the label is a
+    // prop (label="…") rather than a <Text> child; either form is accepted.
+    expect(code).toMatch(/>Word Progress<\/Text>|label="Word Progress"/);
+    expect(code).toMatch(/>Progress Report<\/Text>|label="Progress Report"/);
     expect(code).not.toMatch(/>Rewards<\/Text>/);
     expect(code).not.toMatch(/>Teacher<\/Text>/);
     expect(code).not.toMatch(/accessibilityLabel="View rewards"/);

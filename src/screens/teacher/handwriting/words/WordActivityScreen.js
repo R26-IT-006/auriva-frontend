@@ -52,6 +52,7 @@ import { CHILD_INSTRUCTIONS, INSTRUCTION_KEYS } from '../../../../constants/chil
 import { useInstructionAudioState } from '../../../../utils/useInstructionAudio';
 import InstructionReplayButton from '../../../../components/handwriting/InstructionReplayButton';
 import WordPracticeResultCard from '../../../../components/word/WordPracticeResultCard';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 // The same dwell the letter screens give their feedback.
 const ATTEMPT_FEEDBACK_MS = 2200;
@@ -402,13 +403,13 @@ export default function WordActivityScreen({ route, navigation }) {
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={styles.iconBtn}
+            style={[styles.iconBtn, BACK_BUTTON]}
             onPress={requestBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.counterRow}>
@@ -507,13 +508,13 @@ export default function WordActivityScreen({ route, navigation }) {
             <View pointerEvents="none" style={[styles.blob, styles.blobTopRight, { backgroundColor: theme.cardOutline }]} />
             <View pointerEvents="none" style={[styles.blob, styles.blobBottomLeft, { backgroundColor: theme.cardOutline }]} />
             <TouchableOpacity
-              style={[styles.iconBtn, styles.resultBack]}
+              style={[styles.iconBtn, styles.resultBack, BACK_BUTTON]}
               onPress={requestBack}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
             </TouchableOpacity>
             <WordPracticeResultCard
               word={wordResult.word}

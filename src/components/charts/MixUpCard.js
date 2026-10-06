@@ -19,7 +19,10 @@ import { mixUpWhere, mixUpReason } from '../../constants/teacherWording';
  * a sentence built from the same figures the model was given, so a teacher is never
  * left with a bare pair and no reading of it.
  */
-export function MixUpCard({ pair, note }) {
+// `large` is the roomy variant used by the "What to work on" pop-up: bigger
+// pictures and text, a green "where" chip, and (with `rank`) a numbered badge so
+// "most worth your time first" is visible. The compact one stays on the page.
+export function MixUpCard({ pair, note, rank = null, large = false }) {
   const { category_key: cat, concept_a: a, concept_b: b, tiers = [] } = pair;
 
   const itemA = getConceptItem(cat, a);
@@ -36,37 +39,59 @@ export function MixUpCard({ pair, note }) {
   // pictures or the words.
   const bothRounds = tiers.includes(1) && tiers.includes(2);
 
-  return (
-    <View style={[styles.card, bothRounds && styles.cardBoth]}>
+  const body = (
+    <View style={large ? styles.bodyLarge : null}>
       <View style={styles.pairRow}>
-        <Face item={itemA} fallback={a} />
+        <Face item={itemA} fallback={a} large={large} />
         {/* The arrow sits in its own badge so it reads as the relationship
             between the two pictures rather than as a third item beside them. */}
-        <View style={styles.swapBadge}>
-          <Ionicons name="swap-horizontal" size={15} color="#C4674F" />
+        <View style={[styles.swapBadge, large && styles.swapBadgeLarge]}>
+          <Ionicons name="swap-horizontal" size={large ? 18 : 15} color={large ? Colors.brandDeep : '#C4674F'} />
         </View>
-        <Face item={itemB} fallback={b} />
+        <Face item={itemB} fallback={b} large={large} />
       </View>
 
       <View style={styles.reasonWrap}>
         {/* A quotation mark, not a speech-bubble icon. The sentence is written
             about this pair rather than said by anyone, and the mark carries that
             without occupying a badge's worth of space. */}
-        <Text style={styles.quoteMark}>“</Text>
-        <Text style={styles.reason}>{reason}</Text>
+        <Text style={[styles.quoteMark, large && styles.quoteMarkLarge]}>“</Text>
+        <Text style={[styles.reason, large && styles.reasonLarge]}>{reason}</Text>
       </View>
 
       {/* Which rounds it happened in, kept last and quiet: it qualifies the
-          sentence above rather than competing with it. */}
-      <Text style={styles.where}>{mixUpWhere(tiers)}</Text>
+          sentence above rather than competing with it. In the large variant it
+          is a small green chip. */}
+      {large ? (
+        <View style={styles.whereChip}>
+          <Text style={styles.whereChipText}>{mixUpWhere(tiers)}</Text>
+        </View>
+      ) : (
+        <Text style={styles.where}>{mixUpWhere(tiers)}</Text>
+      )}
+    </View>
+  );
+
+  if (!large) {
+    return <View style={[styles.card, bothRounds && styles.cardBoth]}>{body}</View>;
+  }
+
+  return (
+    <View style={[styles.card, styles.cardLarge]}>
+      {rank != null ? (
+        <View style={styles.rankBadge}>
+          <Text style={styles.rankText}>{rank}</Text>
+        </View>
+      ) : null}
+      <View style={{ flex: 1 }}>{body}</View>
     </View>
   );
 }
 
-function Face({ item, fallback }) {
+function Face({ item, fallback, large = false }) {
   return (
     <View style={styles.face}>
-      <View style={styles.faceImageBox}>
+      <View style={[styles.faceImageBox, large && styles.faceImageBoxLarge]}>
         {item?.real || item?.icon ? (
           <Image
             source={item.real ?? item.icon}
@@ -77,7 +102,7 @@ function Face({ item, fallback }) {
           <Ionicons name="help-circle-outline" size={26} color={Colors.icon.muted} />
         )}
       </View>
-      <Text style={styles.faceLabel} numberOfLines={1}>
+      <Text style={[styles.faceLabel, large && styles.faceLabelLarge]} numberOfLines={1}>
         {(item?.label ?? formatConceptLabel(fallback)).toUpperCase()}
       </Text>
     </View>
@@ -107,6 +132,39 @@ const styles = StyleSheet.create({
   // teacher, not an alarm about a child.
   cardBoth: { borderColor: '#D9C2E8', borderWidth: 1.5 },
 
+  // ── Large variant ("What to work on" pop-up) ──────────────────────────────
+  cardLarge: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 12,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#CDEBD8',
+  },
+  bodyLarge: { gap: 6 },
+  rankBadge: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: Colors.brandDeep,
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 2,
+  },
+  rankText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
+  swapBadgeLarge: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E4F4EC', marginTop: 26 },
+  faceImageBoxLarge: { width: 76, height: 76, borderRadius: 20, borderColor: '#CDEBD8', borderWidth: 1.5 },
+  faceLabelLarge: { fontSize: 11, letterSpacing: 0.8, color: Colors.text.secondary },
+  quoteMarkLarge: { fontSize: 20, lineHeight: 20, color: Colors.brandDeep, opacity: 0.5 },
+  reasonLarge: { fontSize: 13, lineHeight: 19 },
+  whereChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E4F4EC',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 2,
+  },
+  whereChipText: { fontSize: 11, fontFamily: 'DMSans_600SemiBold', color: Colors.brandDeep },
+
   pairRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
 
   swapBadge: {
@@ -115,7 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginTop: 24,
   },
-  quoteMark: { fontSize: 18, lineHeight: 18, color: '#D9BDB4', fontFamily: 'DMSans_800ExtraBold' },
+  quoteMark: { fontSize: 18, lineHeight: 18, color: '#D9BDB4', fontFamily: 'DMSans_600SemiBold' },
 
   face:         { alignItems: 'center', gap: 6 },
   // Bigger and rounder. These pictures are what the child actually works with —
@@ -130,12 +188,12 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   faceImage:  { width: '78%', height: '78%' },
-  faceLabel:  { fontSize: 9, fontFamily: 'DMSans_700Bold', color: Colors.text.muted, letterSpacing: 0.7 },
+  faceLabel:  { fontSize: 10, fontFamily: 'DMSans_600SemiBold', color: Colors.text.muted, letterSpacing: 0.7 },
 
-  where: { fontSize: 10, color: Colors.text.muted, marginTop: 6 },
+  where: { fontSize: 11, color: Colors.text.muted, marginTop: 6 },
 
   reasonWrap: { flexDirection: 'row', gap: 6, marginTop: Layout.spacing.sm },
-  reason: { flex: 1, fontSize: 12, color: Colors.text.primary, lineHeight: 18 },
+  reason: { flex: 1, fontSize: 13, color: Colors.text.primary, lineHeight: 18 },
 
   emptyWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: Layout.spacing.md },
   empty:     { fontSize: 12, color: Colors.text.secondary },

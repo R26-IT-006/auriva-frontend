@@ -20,6 +20,7 @@ import ProbeBanner from '../../../../components/common/ProbeBanner';
 import { dialogueApi } from '../../../../api/dialogue';
 import { clearRestartCount } from '../../../../utils/sessionRetryTracker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const WORD_LABELS = {
   hello:          'Hello',
@@ -151,9 +152,9 @@ export default function GreetingLandingScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={goBackSmart}
             activeOpacity={0.7}
-            style={styles.headerBtn}
+            style={[styles.headerBtn, BACK_BUTTON]}
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.progressTrack}>

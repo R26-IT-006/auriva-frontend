@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 
 const CATEGORIES = [
   {
@@ -134,11 +135,11 @@ export default function DialogueCategoryScreen({ route, navigation }) {
         {/* Top bar */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }, BACK_BUTTON]}
             onPress={() => navigation.navigate('DialogueLanding', { student })}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.titleRow}>

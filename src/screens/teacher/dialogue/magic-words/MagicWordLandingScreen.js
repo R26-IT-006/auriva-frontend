@@ -21,6 +21,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import ProbeBanner from '../../../../components/common/ProbeBanner';
 import { dialogueApi } from '../../../../api/dialogue';
 import { clearRestartCount } from '../../../../utils/sessionRetryTracker';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const WORD_LABELS = {
   thank_you:        'THANK YOU',
@@ -150,9 +151,9 @@ export default function MagicWordLandingScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={goBackSmart}
             activeOpacity={0.7}
-            style={styles.iconBtn}
+            style={[styles.iconBtn, BACK_BUTTON]}
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           {/* Progress bar */}

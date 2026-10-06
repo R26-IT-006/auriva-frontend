@@ -48,6 +48,12 @@ import { fetchInitialAssessmentShapes } from '../../../utils/initialAssessmentSh
 import { useLockLandscape } from '../../../utils/useOrientationLock';
 import ScreenBackButton from '../../../components/handwriting/ScreenBackButton';
 import { returnToStudentModuleSelection } from '../../../utils/postAssessmentNavigation';
+import FlowOverviewModal from '../../../components/common/FlowOverviewModal';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
+import { buildHandwritingFlow } from '../../../data/handwritingFlow';
+
+// "How it works" stages — static for the session, so built once.
+const HANDWRITING_FLOW = buildHandwritingFlow();
 
 const SHAPE_ICONS = {
   horizontal_line: 'remove-outline',
@@ -244,6 +250,7 @@ export default function LetterHomeScreen({ route, navigation }) {
   const [showSummary,       setShowSummary]       = useState(false);
   const [showWhyModal,      setShowWhyModal]       = useState(false);
   const [showProgress,      setShowProgress]      = useState(false);
+  const [showFlow,          setShowFlow]          = useState(false);
   const [lowercaseProgress, setLowercaseProgress] = useState(0);
   const [uppercaseProgress, setUppercaseProgress] = useState(0);
   const [motorProfile,      setMotorProfile]      = useState(passedProfile);
@@ -424,42 +431,44 @@ export default function LetterHomeScreen({ route, navigation }) {
             <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
               <Ionicons name="create" size={18} color="#FFF" />
             </View>
-            <Text style={[styles.title, { color: theme.headingText }]}>Letter Writing</Text>
+            <Text style={[styles.title, { color: theme.headingText }]}>Writing Module</Text>
           </View>
 
           <View style={styles.topBtnGroup}>
+            {/* Shared header pills (HeaderPillButton).
+                How it works — teacher-facing overview of the module's flow
+                (FlowOverviewModal). Not gated: it only explains. */}
+            <HeaderPillButton
+              variant="outline"
+              icon="map"
+              label="How it works"
+              theme={theme}
+              onPress={() => setShowFlow(true)}
+            />
+
             {/* Progress — the child's own progress, in a small pop-up. Not
                 gated: it is the same child-facing summary that used to sit
                 on screen as the "Your Progress" box. */}
-            <TouchableOpacity
-              style={[styles.topBtn, {
-                backgroundColor: theme.button,
-                borderColor: theme.button,
-              }]}
+            <HeaderPillButton
+              variant="primary"
+              icon="trophy"
+              label="Progress"
+              theme={theme}
               onPress={() => setShowProgress(true)}
-              activeOpacity={0.8}
-              accessibilityLabel="Progress"
-            >
-              <Ionicons name="trophy" size={17} color={theme.buttonText} />
-              <Text style={[styles.topBtnText, { color: theme.buttonText }]}>Progress</Text>
-            </TouchableOpacity>
+            />
 
             {/* Assessment — the grown-up control, gated by ParentGateModal
                 on tap (requestGatedAction). No Dashboard or Report button
                 here: the gated Back is the one way out, and the teacher
                 report opens from the student's profile. */}
-            <TouchableOpacity
-              style={[styles.topBtn, {
-                backgroundColor: theme.button + '20',
-                borderColor: theme.button + '70',
-              }]}
-              onPress={() => requestGatedAction('assessment')}
-              activeOpacity={0.8}
+            <HeaderPillButton
+              variant="soft"
+              icon="clipboard-outline"
+              label="Assessment"
               accessibilityLabel="Assessment — needs a code"
-            >
-              <Ionicons name="clipboard-outline" size={17} color={theme.button} />
-              <Text style={[styles.topBtnText, { color: theme.button }]}>Assessment</Text>
-            </TouchableOpacity>
+              theme={theme}
+              onPress={() => requestGatedAction('assessment')}
+            />
           </View>
         </View>
 
@@ -573,6 +582,15 @@ export default function LetterHomeScreen({ route, navigation }) {
           </View>
 
         </View>
+
+        {/* ── "How it works" pop-up ── */}
+        <FlowOverviewModal
+          visible={showFlow}
+          onClose={() => setShowFlow(false)}
+          theme={theme}
+          stages={HANDWRITING_FLOW}
+          subtitle="How the Writing module works"
+        />
 
         {/* ── "Your Progress" pop-up (Progress button) ──
             The same panel that used to sit beside the cards, now opened on
@@ -895,21 +913,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 8,
-  },
-  topBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    minHeight: 40,
-  },
-  topBtnText: {
-    fontSize: 13,
-    fontFamily: 'DMSans_700Bold',
+    gap: 10,
   },
   // Grown-ups-only cluster (Assessment + Progress, both gated) — quiet,
   // deliberately smaller and less colorful than the Letters/Words cards,

@@ -70,26 +70,32 @@ export const Colors = {
 };
 
 /**
- * The teacher workspace's page backdrop — blue → sage → cream.
+ * The teacher workspace's page backdrop — the dashboard, the student profile and
+ * the reports — built from the app's signature gradient, sky blue → mint → pale
+ * green → cream (['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0']), which the sign-in
+ * screens, WorkspaceSelectScreen and StudentPickerScreen all draw. The workspace
+ * then reads as the same app a teacher just signed in to and picked a workspace in.
  *
- * The same progression WorkspaceSelectScreen and StudentPickerScreen use, so a
- * teacher moving between the dashboard, a student and their report stays on one
- * surface rather than crossing three unrelated greys.
+ * Its first stop is that gradient's own sky blue, so stepping in from the
+ * workspace picker the top of the screen does not change colour. It then softens through
+ * the same mint and settles, by just under half the screen height, on a mint-cream
+ * a step down from the gradient's cream.
  *
- * Paler than the picker screens on purpose. Those are sparse and can carry the
- * saturated version; the dashboard and the report are dense grids of pure-white
- * cards, and at full strength the backdrop competes with them until the cards
- * stop reading as cards.
+ * Not the full-strength gradient end to end. The picker screens are a few big
+ * cards and can carry it; these are dense pages of white panels and text, and
+ * under saturated mint the panels' edges and the grey body text both lose
+ * contrast. Nor washed out to near-white everywhere — that was tried, and the
+ * pages stopped looking like part of the app.
  *
- * Diagonal rather than straight down: a two-column layout is wide enough that a
- * vertical ramp bands visibly across it.
+ * Vertical, matching the signature gradient's direction (expo's default is
+ * top → bottom).
  *
  * Lives here rather than in one screen because it was defined inside
  * DashboardScreen and a second screen needed it — two copies of a gradient drift
  * the moment one is nudged.
  */
 export const BACKDROP = {
-  colors: ['#DCEFF5', '#E4F0E6', '#EFF3E4', '#FAF8F1'],
+  colors: ['#B8E4F0', '#C3E5D3', '#E5F0E2', '#EFF3EA'],
   start:  { x: 0, y: 0 },
-  end:    { x: 0.6, y: 1 },
+  end:    { x: 0, y: 0.45 },
 };

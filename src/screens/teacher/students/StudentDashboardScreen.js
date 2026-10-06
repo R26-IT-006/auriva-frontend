@@ -12,6 +12,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { useToast } from '../../../context/ToastContext';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 
 // ── Assets ────────────────────────────────────────────────────────────────────
 const AVATAR_VIDEOS = {
@@ -32,7 +33,7 @@ const MODULE_ICONS = {
 // owning a colour each, so the screen stays a single calm colour world. The
 // module icons already carry the distinction between them.
 const MODULES = [
-  { key: 'concept',       label: 'Concept Learning',     image: MODULE_ICONS.concept,       corner: 'tl' },
+  { key: 'concept',       label: 'Concept Module',       image: MODULE_ICONS.concept,       corner: 'tl' },
   { key: 'writing',       label: 'Writing Module',       image: MODULE_ICONS.writing,       corner: 'tr' },
   { key: 'pronunciation', label: 'Pronunciation Module', image: MODULE_ICONS.pronunciation, corner: 'bl' },
   { key: 'dialogue',      label: 'Dialogue Module',      image: MODULE_ICONS.dialogue,      corner: 'br' },
@@ -143,15 +144,12 @@ function ModuleCard({ item, index, w, h, iconSize, plateSize, labelSize, radius,
       >
         <View style={[styles.card, { borderRadius: radius, borderColor: theme.cardOutline }]}>
           {/* The plate gives every icon the same footprint, so four artworks of
-              different weight and aspect stop looking randomly sized. */}
+              different weight and aspect stop looking randomly sized. It has no
+              fill — the icon sits straight on the white card. */}
           <View
             style={[
               styles.iconPlate,
-              {
-                width: plateSize, height: plateSize,
-                borderRadius: Math.round(plateSize * 0.32),
-                backgroundColor: tint(theme.cardOutline, 0.16),
-              },
+              { width: plateSize, height: plateSize },
             ]}
           >
             <Image
@@ -177,6 +175,8 @@ function ModuleCard({ item, index, w, h, iconSize, plateSize, labelSize, radius,
 }
 
 // ── Hub + spokes ──────────────────────────────────────────────────────────────
+const HUB_BORDER = 3;
+
 function ModuleHub({ student, theme, onModulePress }) {
   const [box, setBox] = useState({ width: 0, height: 0 });
   // The greeting loops by default to hold the child's attention on the screen,
@@ -214,7 +214,7 @@ function ModuleHub({ student, theme, onModulePress }) {
             ))}
           </Svg>
 
-          {/* the child at the centre */}
+          {/* the child at the centre — the white ring pops in (animated)... */}
           <Animated.View
             style={[
               styles.hub,
@@ -226,8 +226,22 @@ function ModuleHub({ student, theme, onModulePress }) {
                 transform: [{ scale: hubIn.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }],
               },
             ]}
-          >
-            {student.avatar_key && AVATAR_VIDEOS[student.avatar_key] && (
+          />
+
+          {/* ...while the video sits in its own plain, non-animated circle on
+              top. On Android a video inside a view whose opacity / scale is
+              animated can stay invisible, so it must not share that view. */}
+          {student.avatar_key && AVATAR_VIDEOS[student.avatar_key] && (
+            <View
+              style={[
+                styles.hubVideoLayer,
+                {
+                  left: hub.cx - hub.hubR + HUB_BORDER, top: hub.cy - hub.hubR + HUB_BORDER,
+                  width: (hub.hubR - HUB_BORDER) * 2, height: (hub.hubR - HUB_BORDER) * 2,
+                  borderRadius: hub.hubR - HUB_BORDER,
+                },
+              ]}
+            >
               <Pressable
                 onPress={() => setPlaying((p) => !p)}
                 accessibilityRole="button"
@@ -243,8 +257,8 @@ function ModuleHub({ student, theme, onModulePress }) {
                   isMuted
                 />
               </Pressable>
-            )}
-          </Animated.View>
+            </View>
+          )}
 
           {/* Play state indicator — visual only, the whole hub is the target. */}
           {student.avatar_key && AVATAR_VIDEOS[student.avatar_key] && (
@@ -319,27 +333,28 @@ export default function StudentDashboardScreen({ route, navigation }) {
       <View style={styles.topBar}>
         {/* Both take the child's own accent, the way the cards and the hub do */}
         <TouchableOpacity
-          style={[styles.iconBtn, { borderColor: tint(theme.cardOutline, 0.55) }]}
+          style={[styles.iconBtn, { borderColor: tint(theme.cardOutline, 0.55) }, BACK_BUTTON]}
           onPress={() => setGateVisible(true)}
           activeOpacity={0.75}
           accessibilityRole="button"
           accessibilityLabel="Back to student list"
         >
-          <Ionicons name="arrow-back" size={24} color={theme.button} />
+          <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
         </TouchableOpacity>
 
         <View style={styles.greeting}>
           <Text style={styles.greetingText}>Hi, {firstName}! 👋</Text>
         </View>
 
+        {/* Same round header button as Back, so the pair matches. */}
         <TouchableOpacity
-          style={[styles.iconBtn, { borderColor: tint(theme.cardOutline, 0.55) }]}
+          style={[styles.iconBtn, BACK_BUTTON]}
           onPress={() => setLogoutVisible(true)}
           activeOpacity={0.75}
           accessibilityRole="button"
           accessibilityLabel="Sign out"
         >
-          <Ionicons name="exit-outline" size={24} color={theme.button} />
+          <Ionicons name="exit-outline" size={BACK_ICON_SIZE} color={theme.headingText} />
         </TouchableOpacity>
       </View>
 
@@ -401,10 +416,19 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12, shadowRadius: 5, elevation: 4,
   },
+  // Plain (never animated) circle that clips the greeting video, inset by the
+  // ring's border so the coloured outline stays visible.
+  hubVideoLayer: {
+    position: 'absolute',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
   hub: {
     position: 'absolute',
     backgroundColor: '#FFFFFF',
-    borderWidth: 3,
+    borderWidth: HUB_BORDER,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },

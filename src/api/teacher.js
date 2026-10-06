@@ -207,10 +207,12 @@ export const teacherApi = {
   },
 
   // ── Pronunciation review queue ────────────────────────────────────────────
-  async getPronunciationReviewQueue(limit) {
-    const { data } = await client.get(ENDPOINTS.TEACHER_PRONUNCIATION_REVIEW_QUEUE, {
-      params: limit ? { limit } : undefined,
-    });
+  // `studentId` limits the queue to one child; omitted, it covers the class.
+  async getPronunciationReviewQueue(limit, studentId) {
+    const params = {};
+    if (limit) params.limit = limit;
+    if (studentId != null) params.student_id = studentId;
+    const { data } = await client.get(ENDPOINTS.TEACHER_PRONUNCIATION_REVIEW_QUEUE, { params });
     return data;
   },
 

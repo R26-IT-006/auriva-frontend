@@ -33,6 +33,8 @@ import { getSoundLetters } from "./wordBank.js";
 import { playVoicePrompt, stopVoicePrompt } from "./pronunciationVoicePrompts.js";
 import { useExitSessionGuard } from "./useExitSessionGuard.js";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
 
 // Local Fisher-Yates, matching PronunciationListenChooseScreen's shuffle —
 // duplicating a 4-line helper here rather than importing across two
@@ -229,23 +231,24 @@ export default function PronunciationTapSoundsScreen({ navigation, route }) {
           <ButtonFeedback
             activeOpacity={0.7}
             onPress={() => navigation.goBack()}
-            style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
+            style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }, BACK_BUTTON]}
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </ButtonFeedback>
 
-          <ButtonFeedback
-            activeOpacity={0.7}
-            onPress={handleSkip}
-            style={styles.skipBtn}
-            accessibilityRole="button"
+          {/* Shared header pill (HeaderPillButton), subtle variant — keeps this
+            module's click sound via ButtonFeedback. */}
+          <HeaderPillButton
+            as={ButtonFeedback}
+            variant="subtle"
+            icon="play-skip-forward"
+            label="Skip"
             accessibilityLabel="Skip this activity"
-          >
-            <Text style={[styles.skipText, { color: theme.headingText }]}>Skip</Text>
-            <Ionicons name="play-skip-forward" size={14} color={theme.headingText} />
-          </ButtonFeedback>
+            theme={theme}
+            onPress={handleSkip}
+          />
         </View>
 
         <ScrollView
@@ -444,24 +447,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   // Same translucent wash as the icon button, as a small pill.
-  skipBtn: {
-    height: 40,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.7)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  skipText: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: Layout.fonts.bold,
-  },
 
   container: {
     flexGrow: 1,

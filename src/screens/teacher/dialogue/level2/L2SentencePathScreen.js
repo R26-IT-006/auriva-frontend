@@ -20,6 +20,7 @@ import { useFonts } from 'expo-font';
 import { DMSans_800ExtraBold, DMSans_700Bold, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { Layout } from '../../../../constants/layout';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const TOPIC_TITLES = {
   self_introduction: 'Myself',
@@ -160,8 +161,8 @@ export default function L2SentencePathScreen({ route, navigation }) {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
 
         <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => setShowGate(true)} activeOpacity={0.7} accessibilityLabel="Go back">
-            <Ionicons name="arrow-back" size={20} color="#1A2B1A" />
+          <TouchableOpacity style={[styles.backBtn, BACK_BUTTON]} onPress={() => setShowGate(true)} activeOpacity={0.7} accessibilityLabel="Go back">
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.titlePill}>

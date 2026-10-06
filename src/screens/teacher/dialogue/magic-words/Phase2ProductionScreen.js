@@ -19,6 +19,7 @@ import { dialogueApi } from '../../../../api/dialogue';
 import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 import { LinearGradient } from 'expo-linear-gradient';
 import ProductionStage from '../../../../components/dialogue/ProductionStage';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 // Progress: Phase 2 sits at ~85% through Level 1
 const PROGRESS_FRACTION = 0.85;
@@ -576,8 +577,8 @@ export default function Phase2ProductionScreen({ route, navigation }) {
       {/* ── Header ──────────────────────────────────────────── */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={styles.headerBtn}>
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <TouchableOpacity onPress={() => { setGatePurpose('back'); setShowGate(true); }} activeOpacity={0.7} style={[styles.headerBtn, BACK_BUTTON]}>
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.levelLabel, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.progressTrack}>

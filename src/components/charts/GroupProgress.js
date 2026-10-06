@@ -41,6 +41,10 @@ export const FALLBACK_FACE = { icon: 'albums-outline', bg: Colors.surfaceAlt, fg
 
 const INITIAL_GROUPS = 3;
 
+// Each bar is drawn in its group's own icon colour, so the legend shows the three
+// shades (light / medium / full) in a neutral grey that stands for any of them.
+const LEGEND_GREY = '#6B7280';
+
 /**
  * How far through each group the child is.
  *
@@ -86,6 +90,7 @@ export function GroupProgress({ categories = [], selectedKey, onSelect, renderDe
         const pictPct  = c.total ? (c.tier1_passed / c.total) * 100 : 0;
         const wordPct  = c.total ? (c.tier2_passed / c.total) * 100 : 0;
         const videoPct = c.total ? (c.tier3_passed / c.total) * 100 : 0;
+        const shade    = [face.fg + '45', face.fg + '99', face.fg];
 
         return (
           <View key={c.category_key}>
@@ -99,27 +104,29 @@ export function GroupProgress({ categories = [], selectedKey, onSelect, renderDe
             >
               <View style={styles.row}>
                 <View style={[styles.face, { backgroundColor: face.bg }]}>
-                  <Ionicons name={face.icon} size={18} color={face.fg} />
+                  <Ionicons name={face.icon.replace(/-outline$/, '')} size={22} color={face.fg} />
                 </View>
 
                 <Text style={styles.label} numberOfLines={1}>{c.label}</Text>
 
-                <Text style={styles.value}>{c.mastered} / {c.total} learned</Text>
+                <View style={[styles.valuePill, { backgroundColor: face.bg }]}>
+                  <Text style={[styles.value, { color: face.fg }]}>{c.mastered} / {c.total} learned</Text>
+                </View>
 
                 {onSelect ? (
                   <Ionicons
                     name={open ? 'chevron-up' : 'chevron-down'}
-                    size={14}
-                    color={Colors.icon.muted}
+                    size={18}
+                    color={Colors.icon.default}
                   />
                 ) : null}
               </View>
 
               <View style={styles.trackInset}>
               <View style={styles.track}>
-                <View style={[styles.seg, { width: `${pictPct}%`,  backgroundColor: DEPTH[0] }]} />
-                <View style={[styles.seg, styles.segOver, { width: `${wordPct}%`,  backgroundColor: DEPTH[1] }]} />
-                <View style={[styles.seg, styles.segOver, { width: `${videoPct}%`, backgroundColor: DEPTH[2] }]} />
+                <View style={[styles.seg, { width: `${pictPct}%`,  backgroundColor: shade[0] }]} />
+                <View style={[styles.seg, styles.segOver, { width: `${wordPct}%`,  backgroundColor: shade[1] }]} />
+                <View style={[styles.seg, styles.segOver, { width: `${videoPct}%`, backgroundColor: shade[2] }]} />
               </View>
               </View>
             </TouchableOpacity>
@@ -136,9 +143,9 @@ export function GroupProgress({ categories = [], selectedKey, onSelect, renderDe
           what the shades mean. */}
       {showLegend && (
         <View style={styles.legend}>
-          <LegendDot color={DEPTH[0]} label={ROUND.tier1.label} />
-          <LegendDot color={DEPTH[1]} label={ROUND.tier2.label} />
-          <LegendDot color={DEPTH[2]} label={ROUND.tier3.label} />
+          <LegendDot color={LEGEND_GREY + '45'} label={ROUND.tier1.label} />
+          <LegendDot color={LEGEND_GREY + '99'} label={ROUND.tier2.label} />
+          <LegendDot color={LEGEND_GREY} label={ROUND.tier3.label} />
         </View>
       )}
 
@@ -170,24 +177,29 @@ function LegendDot({ color, label }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: Layout.spacing.lg },
+  wrap: { gap: 14 },
 
   row:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
   face: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
   },
   label: {
     flex: 1,
-    fontSize: Layout.fontSize.md,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 14,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
   },
   value: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_700Bold',
-    color: '#8FA9BC',
-    marginLeft: Layout.spacing.md,
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  // The group's own pastel (set inline) behind the figure.
+  valuePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    marginLeft: Layout.spacing.sm,
   },
 
   // Tucked close under its row. At 8px of clearance the bar read as a divider
@@ -195,39 +207,38 @@ const styles = StyleSheet.create({
   // Indented to sit under the name rather than under the icon. Starting at the
   // card's edge made the bar read as a divider between two categories; starting
   // where the name starts makes it the measure of the row above it.
-  trackInset: { paddingLeft: 36 + Layout.spacing.sm },
+  trackInset: { paddingLeft: 44 + Layout.spacing.sm },
   track: {
     flexDirection: 'row',
-    height: 10,
-    borderRadius: 5,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: Colors.surfaceAlt,
     overflow: 'hidden',
-    marginTop: 6,
+    marginTop: 8,
   },
-  seg: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 5 },
+  seg: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 4 },
   segOver: { borderRightWidth: 2, borderRightColor: Colors.surface },
 
   // Indented past the face, so the concepts read as belonging to the group whose
   // row they opened rather than as a new list starting at the card's edge.
   detail: {
     marginTop: Layout.spacing.sm,
-    marginLeft: 36 + Layout.spacing.sm,
+    marginLeft: 44 + Layout.spacing.sm,
     paddingLeft: Layout.spacing.sm,
-    borderLeftWidth: 2,
+    gap: 4,
+    borderLeftWidth: 3,
     borderLeftColor: Colors.borderLight,
   },
 
   moreBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.radius.lg,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: Colors.border,
+    paddingVertical: 13,
+    borderRadius: 999,
+    backgroundColor: Colors.surfaceAlt,
   },
   moreText: {
-    fontSize: Layout.fontSize.sm,
+    fontSize: 13,
     fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.secondary,
   },
@@ -237,12 +248,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Layout.spacing.md,
     rowGap: 6,
-    paddingLeft: 36 + Layout.spacing.sm,
+    paddingLeft: 44 + Layout.spacing.sm,
     paddingTop: Layout.spacing.xs,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot:  { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 11, color: Colors.text.secondary, fontFamily: 'DMSans_600SemiBold' },
+  legendText: { fontSize: 12, color: Colors.text.secondary, fontFamily: 'DMSans_600SemiBold' },
 
   empty: { fontSize: 12, color: Colors.text.muted },
 });

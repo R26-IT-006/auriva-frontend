@@ -26,6 +26,13 @@ import {
   EntranceItem,
   SelectionCheck,
 } from "./pronunciationDesignKit.js";
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
+import FlowOverviewModal from "../../../components/common/FlowOverviewModal";
+import HeaderPillButton from "../../../components/common/HeaderPillButton";
+import { buildPronunciationFlow } from "../../../data/pronunciationFlow";
+
+// "How it works" stages — static, so built once.
+const PRONUNCIATION_FLOW = buildPronunciationFlow();
 
 // Grid spacing, as ConceptCategoriesScreen: wider between columns than rows.
 const H_PAD = Layout.spacing.xl;
@@ -155,6 +162,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   );
   const [savingSensorySetting, setSavingSensorySetting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const { showAlert, alertProps } = usePronunciationAlert();
   const startSession = usePronunciationSessionStore((state) => state.startSession);
@@ -287,34 +295,52 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
 
     <SafeAreaView style={styles.safeInner} edges={["top", "bottom"]}>
       {/* ── Header — same layout as ConceptCategoriesScreen ─────────── */}
+      {/* Top bar: back | title | header pills — equal-width side groups keep
+          the title centred, same layout as the other module headers. */}
       <View style={styles.topBar}>
-        <ButtonFeedback
-          style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-        >
-          <Ionicons name="arrow-back" size={20} color={theme.headingText} />
-        </ButtonFeedback>
+        <View style={styles.sideGroup}>
+          <ButtonFeedback
+            style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }, BACK_BUTTON]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
+          </ButtonFeedback>
+        </View>
 
         <View style={styles.titleRow}>
           <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
             <Ionicons name="mic" size={18} color="#FFF" />
           </View>
-          <Text style={[styles.title, { color: theme.headingText }]}>Pronunciation Learning</Text>
+          <Text style={[styles.title, { color: theme.headingText }]}>Pronunciation Module</Text>
         </View>
 
-        {/* Teacher settings live behind this button, out of the child's way. */}
-        <ButtonFeedback
-          style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }]}
-          onPress={() => setSettingsOpen(true)}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Teacher settings"
-        >
-          <Ionicons name="settings-outline" size={20} color={theme.headingText} />
-        </ButtonFeedback>
+        <View style={[styles.sideGroup, styles.topBtnGroup]}>
+          {/* "How it works" — teacher-facing flow overview (FlowOverviewModal).
+              Uses ButtonFeedback so it keeps this module's click sound. */}
+          <HeaderPillButton
+            as={ButtonFeedback}
+            variant="outline"
+            icon="map"
+            label="How it works"
+            theme={theme}
+            onPress={() => setShowFlow(true)}
+          />
+
+          {/* Teacher settings live behind this button, out of the child's way.
+              Same round header button as Back. */}
+          <ButtonFeedback
+            style={[styles.iconBtn, BACK_BUTTON]}
+            onPress={() => setSettingsOpen(true)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Teacher settings"
+          >
+            <Ionicons name="settings-outline" size={BACK_ICON_SIZE} color={theme.headingText} />
+          </ButtonFeedback>
+        </View>
       </View>
 
       <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -483,6 +509,13 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
 
       <PronunciationAlert {...alertProps} theme={theme} />
     </SafeAreaView>
+      <FlowOverviewModal
+        visible={showFlow}
+        onClose={() => setShowFlow(false)}
+        theme={theme}
+        stages={PRONUNCIATION_FLOW}
+        subtitle="How the Pronunciation module works"
+      />
     </LinearGradient>
   );
 }
@@ -526,6 +559,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: Layout.spacing.md,
     paddingVertical: Layout.spacing.sm,
+  },
+  // Equal-width side groups keep the title centred (same as the other module headers).
+  sideGroup: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  topBtnGroup: {
+    justifyContent: "flex-end",
+    gap: 10,
   },
   iconBtn: {
     width: 40,

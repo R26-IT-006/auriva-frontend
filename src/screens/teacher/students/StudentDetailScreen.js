@@ -19,9 +19,10 @@ import { MasteryRing } from '../../../components/charts/MasteryRing';
 import { GroupGrid } from '../../../components/charts/GroupGrid';
 import { ConceptThumb } from '../../../components/charts/ConceptThumb';
 import { CategoryConceptsModal } from '../../../components/concept/CategoryConceptsModal';
-import { Colors, BACKDROP } from '../../../constants/colors';
+import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 import { teacherApi } from '../../../api/teacher';
 import { dialogueApi } from '../../../api/dialogue';
 import { level2Api } from '../../../api/level2';
@@ -30,11 +31,25 @@ import { ROUND, ACTION, sinceWords } from '../../../constants/teacherWording';
 // Proposal FR-16, Phase 7B — compact "Live Handwriting Session" card, only
 // rendered while the Writing tab is open.
 import LiveSessionCard from '../../../components/teacher/LiveSessionCard';
+import { StrokeFamilyModal } from '../../../components/teacher/StrokeFamilyModal';
+import { SESSION_CATEGORIES } from '../pronunciation/sessionCategories';
+import { WORD_BANK } from '../pronunciation/wordBank';
+import {
+  buildPronunciationSummary, RECENT_LIMIT as PRON_RECENT_LIMIT, ALPHABET_KEY,
+} from '../../../utils/pronunciationModuleSummary';
 import {
   fetchWritingSummary, buildWritingSummary,
   TOTAL_LOWERCASE as TOTAL_LOWERCASE_FORMS,
   TOTAL_UPPERCASE as TOTAL_UPPERCASE_FORMS,
 } from '../../../utils/writingModuleSummary';
+import { fetchStrokeBreakdown } from '../../../utils/writingStrokeBreakdown';
+
+// The sign-in screen's gradient, top to bottom: sky blue → green → cream.
+const LOGIN_BACKDROP = {
+  colors: ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'],
+  start:  { x: 0, y: 0 },
+  end:    { x: 0, y: 1 },
+};
 
 // Same tinted pairs the teacher dashboard uses for its section panels, so a
 // profile opened from a dashboard card keeps the same visual language.
@@ -79,14 +94,14 @@ const REVISIT_SHOWN = 4;
  * under it, so the large variant keeps the accent to the icon plate and the
  * action, and lets the title carry the weight in plain ink.
  */
-function Panel({ title, section, action, onAction, children, flush, size = 'md' }) {
+function Panel({ title, section, action, onAction, children, flush, size = 'md', style }) {
   const accent = SECTION[section];
   const lg = size === 'lg';
 
   return (
     // Shadow on the outer view, clipping on the inner one: a view with
     // overflow:hidden clips its own shadow on iOS, so the two can't be the same.
-    <View style={[styles.panelShadowWrap, lg && styles.panelShadowWrapLg]}>
+    <View style={[styles.panelShadowWrap, lg && styles.panelShadowWrapLg, style]}>
       <View style={[
         styles.panel,
         lg ? styles.panelLg : { borderColor: accent.fg + '33' },
@@ -227,177 +242,301 @@ const DIALOGUE_CATEGORIES = [
 ];
 
 const MODULES = [
-  { key: 'concept',       tab: 'Concepts',      title: 'Concept Learning',     icon: 'school-outline' },
+  { key: 'concept',       tab: 'Concepts',      title: 'Concept Module',       icon: 'school-outline' },
   { key: 'writing',       tab: 'Writing',       title: 'Writing Module',       icon: 'create-outline' },
   { key: 'pronunciation', tab: 'Pronunciation', title: 'Pronunciation Module', icon: 'mic-outline' },
   { key: 'dialogue',      tab: 'Dialogue',      title: 'Dialogue Module',      icon: 'chatbubbles-outline' },
 ];
 
+// One colour and icon per stroke family, as the Concept breakdown gives each
+// category its own face.
+const STROKE_FACE = {
+  curved:              { icon: 'refresh',     bg: '#E5EEF9', fg: '#27609F' },
+  diagonal:            { icon: 'trending-up', bg: '#EDE9FA', fg: '#6438BE' },
+  vertical_horizontal: { icon: 'add',         bg: '#E6F4EA', fg: '#2A7146' },
+  mixed:               { icon: 'shuffle',     bg: '#FAF0DF', fg: '#945D08' },
+};
+
 /**
- * A compact bar for one mastery row. Deliberately small: this is an
- * at-a-glance overview, not the report's charts.
+ * WRITING stroke-family breakdown — the handwriting counterpart of the Concept
+ * tab's category breakdown. A glance only: each card and the heading open the
+ * Writing Progress Report, where the per-letter detail lives.
  */
-function MiniBar({ percent }) {
-  const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+function StrokeBreakdown({ state, onOpenReport, onSelect }) {
+  // Four across only while each card keeps ~200pt; otherwise two, so a long
+  // family name is not cut off.
+  const [gridW, setGridW] = useState(0);
+  const cols = gridW >= 4 * 200 + 3 * 8 ? 4 : 2;
+
   return (
-    <View style={styles.wsBarTrack}>
-      <View style={[styles.wsBarFill, { width: `${pct}%` }]} />
+    <View style={styles.strokeWrap}>
+      <TouchableOpacity
+        style={styles.breakdownHead}
+        activeOpacity={0.7}
+        onPress={onOpenReport}
+        accessibilityRole="button"
+        accessibilityLabel="Stroke families. Opens the Writing Progress Report"
+      >
+        <View style={styles.breakdownIcon}>
+          <Ionicons name="grid" size={14} color={Colors.brandDeep} />
+        </View>
+        <Text style={styles.breakdownTitle}>Stroke families</Text>
+        <Text style={styles.breakdownHint}>Tap a family to see its letters</Text>
+      </TouchableOpacity>
+
+      {state.status === 'loading' ? (
+        <View style={styles.wsLoading}><ActivityIndicator color={Colors.icon.active} /></View>
+      ) : state.status === 'unavailable' ? (
+        <Text style={styles.strokeEmpty}>Stroke breakdown isn&apos;t available right now.</Text>
+      ) : (
+        <View style={styles.strokeGrid} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
+          {state.families.map((fam) => {
+            const face = STROKE_FACE[fam.key] || STROKE_FACE.mixed;
+            const started = fam.practised > 0 && fam.current != null;
+            return (
+              <TouchableOpacity
+                key={fam.key}
+                style={[styles.strokeCard, { flexBasis: cols === 4 ? '22%' : '46%' }]}
+                activeOpacity={0.75}
+                onPress={() => onSelect(fam)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  `${fam.label}, ${fam.practised} of ${fam.total} letters practised` +
+                  (started ? `, now ${fam.current} percent` : '') +
+                  '. Opens its letters'
+                }
+              >
+                <View style={styles.strokeHead}>
+                  <View style={[styles.strokeFace, { backgroundColor: face.bg }]}>
+                    <Ionicons name={face.icon} size={18} color={face.fg} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.strokeLabel} numberOfLines={2}>{fam.label}</Text>
+                    <Text style={styles.strokeSample} numberOfLines={1}>{fam.sample}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={15} color={Colors.text.muted} />
+                </View>
+
+                <View style={styles.strokeTrack}>
+                  <View style={[styles.strokeFill, { width: `${started ? fam.current : 0}%`, backgroundColor: face.fg }]} />
+                </View>
+
+                <View style={styles.strokeFoot}>
+                  <Text style={styles.strokeCount}>
+                    <Text style={styles.strokeCountNum}>{fam.practised}</Text>
+                    <Text style={styles.strokeCountOf}> of {fam.total} practised</Text>
+                  </Text>
+                  {started ? (
+                    <View style={[styles.strokePill, { backgroundColor: face.bg }]}>
+                      <Text style={[styles.strokePillText, { color: face.fg }]}>{fam.current}%</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {started && fam.delta != null ? (
+                  <View style={styles.strokeDelta}>
+                    <Ionicons
+                      name={fam.delta > 0 ? 'arrow-up' : fam.delta < 0 ? 'arrow-down' : 'remove'}
+                      size={11}
+                      color={fam.delta > 0 ? '#2A7146' : fam.delta < 0 ? '#B86E12' : Colors.text.muted}
+                    />
+                    <Text style={styles.strokeDeltaText}>
+                      {fam.delta === 0 ? 'Same as first try' : `${Math.abs(fam.delta)} since first try`}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.strokeDeltaText}>{started ? ' ' : 'Not practised yet'}</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
 
-function WsRow({ label, value, percent }) {
-  return (
-    <View style={styles.wsRow}>
-      <View style={styles.wsRowHead}>
-        <Text style={styles.wsRowLabel}>{label}</Text>
-        <Text style={styles.wsRowValue}>{value}</Text>
-      </View>
-      <MiniBar percent={percent} />
-    </View>
-  );
-}
+// One colour and icon per pronunciation category — Animals, Fruits and
+// Classroom in the same colours the Concept breakdown gives those groups.
+const PRON_FACE = {
+  animals:         { icon: 'paw',         bg: '#FAE9F0', fg: '#A5366A' },
+  classroom:       { icon: 'school',      bg: '#EDE9FA', fg: '#6438BE' },
+  fruits:          { icon: 'nutrition',   bg: '#FAF0DF', fg: '#945D08' },
+  'daily-actions': { icon: 'walk',        bg: '#E5EEF9', fg: '#27609F' },
+  [ALPHABET_KEY]:  { icon: 'text',        bg: '#E6F4EA', fg: '#2A7146' },
+};
+const PRON_FALLBACK_FACE = { icon: 'mic', bg: '#F1F4F7', fg: '#5B6672' };
 
-function WsStatus({ icon, label, value, muted }) {
+// Words per category, as the word selection screen offers them (Animals
+// includes its "more animals" page). Alphabet is the 26 letters.
+const PRON_TOTALS = {
+  ...Object.fromEntries(SESSION_CATEGORIES.map((c) => [c.id, (WORD_BANK[c.id] || []).length])),
+  animals: (WORD_BANK.animals || []).length + (WORD_BANK.moreAnimals || []).length,
+  [ALPHABET_KEY]: 26,
+};
+
+/**
+ * PRONUNCIATION category breakdown — the counterpart of the Concept tab's.
+ * Same card as the stroke families; each opens the sessions screen.
+ */
+function PronunciationBreakdown({ groups, onSelect }) {
+  const [gridW, setGridW] = useState(0);
+  const cols = gridW >= 3 * 200 + 2 * 8 ? 3 : 2;
+
   return (
-    <View style={styles.wsStatus}>
-      <Ionicons name={icon} size={14} color={muted ? Colors.text.muted : Colors.text.link} />
-      <View style={styles.wsStatusText}>
-        <Text style={styles.wsStatusLabel}>{label}</Text>
-        <Text style={[styles.wsStatusValue, muted && styles.wsStatusValueMuted]}>{value}</Text>
-      </View>
+    <View style={styles.strokeGrid} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
+      {groups.map((g) => {
+        const face = PRON_FACE[g.key] || PRON_FALLBACK_FACE;
+        return (
+          <TouchableOpacity
+            key={g.key}
+            style={[styles.strokeCard, { flexBasis: cols === 3 ? '31%' : '46%' }]}
+            activeOpacity={0.75}
+            onPress={onSelect}
+            accessibilityRole="button"
+            accessibilityLabel={
+              `${g.label}, ${g.practised}${g.total ? ` of ${g.total}` : ''} practised` +
+              (g.average != null ? `, average ${g.average} percent` : '') +
+              '. Opens pronunciation sessions'
+            }
+          >
+            <View style={styles.strokeHead}>
+              <View style={[styles.strokeFace, { backgroundColor: face.bg }]}>
+                <Ionicons name={face.icon} size={18} color={face.fg} />
+              </View>
+              <Text style={[styles.strokeLabel, { flex: 1 }]} numberOfLines={2}>{g.label}</Text>
+              <Ionicons name="chevron-forward" size={15} color={Colors.text.muted} />
+            </View>
+
+            <View style={styles.strokeTrack}>
+              <View style={[styles.strokeFill, { width: `${g.average ?? 0}%`, backgroundColor: face.fg }]} />
+            </View>
+
+            <View style={styles.strokeFoot}>
+              <Text style={styles.strokeCount}>
+                <Text style={styles.strokeCountNum}>{g.practised}</Text>
+                <Text style={styles.strokeCountOf}>
+                  {g.total ? ` of ${g.total}` : ''} {g.key === ALPHABET_KEY ? 'letters' : 'words'}
+                </Text>
+              </Text>
+              {g.average != null ? (
+                <View style={[styles.strokePill, { backgroundColor: face.bg }]}>
+                  <Text style={[styles.strokePillText, { color: face.fg }]}>{g.average}%</Text>
+                </View>
+              ) : null}
+            </View>
+
+            <Text style={styles.strokeDeltaText}>
+              {g.attempts} {g.attempts === 1 ? 'try' : 'tries'}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
 
 /**
- * WRITING PROGRESS summary.
- *
- * Information priority, top to bottom: overall letters mastered, the two
- * case breakdowns, word status, then two or three teacher-relevant statuses,
- * then the single report action.
+ * WRITING PROGRESS summary, laid out like the Concept tab: a ring beside a 2x2
+ * of figures, then a ruled strip for the statuses that are not counts.
  *
  * Every value comes from utils/writingModuleSummary.js, which reads only
  * backend-authoritative counts. Nothing here is derived from a demo/preview
  * flag, and nothing shows raw DTW, motor features, thresholds, cycle counts
- * or clustering terminology.
+ * or clustering terminology. The report action lives in the panel footer.
  */
-function WritingSummaryCard({ state, onOpenReport, onRetry }) {
+function WritingSummaryCard({ state, onRetry }) {
   const s = state.summary;
-  // Tablet landscape: let the headline and the two case rows share the width
-  // instead of stacking into a tall column. One breakpoint, no horizontal
-  // scrolling, and the hierarchy is identical in both layouts.
+  // The ring is a touch smaller on a phone, where the tiles wrap under it.
   const { width } = useWindowDimensions();
   const wide = width >= 720;
 
+  if (state.status === 'loading') {
+    return (
+      <View style={styles.wsLoading}>
+        <ActivityIndicator color={Colors.icon.active} />
+      </View>
+    );
+  }
+
+  if (state.status === 'partial') {
+    // Core letter progress did not load. Secondary items degrade on their
+    // own (a missing Writing Check simply reads "Not checked yet"), but
+    // without the letter counts there is no summary to show — and a made-up
+    // 0/52 would read as real. Never a status code, never "read_failed".
+    return (
+      <View style={styles.wsUnavailable}>
+        <Ionicons name="cloud-offline-outline" size={20} color={Colors.text.muted} />
+        <Text style={styles.wsUnavailableText}>
+          Writing progress isn&apos;t available right now.
+        </Text>
+        <TouchableOpacity onPress={onRetry} activeOpacity={0.7}>
+          <Text style={styles.wsRetryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
-    <Card style={styles.wsCard} padding="none">
-      {state.status === 'loading' ? (
-        <View style={styles.wsLoading}>
-          <ActivityIndicator color={Colors.icon.active} />
+    <>
+      {/* 52 letter FORMS (26 lowercase + 26 uppercase); words are a separate
+          module and never counted into this figure. */}
+      <View style={styles.statRow}>
+        <View style={styles.ringCard}>
+          <MasteryRing
+            value={s.totalMastered / s.totalLetterForms}
+            size={wide ? 168 : 140}
+            label="mastered"
+            color={Colors.brandDeep}
+          />
         </View>
-      ) : state.status === 'partial' ? (
-        // Core letter progress did not load. Secondary items degrade on their
-        // own (a missing Writing Check simply reads "Not checked yet"), but
-        // without the letter counts there is no summary to show — and a made-up
-        // 0/52 would read as real. Never a status code, never "read_failed".
-        <View style={styles.wsUnavailable}>
-          <Ionicons name="cloud-offline-outline" size={20} color={Colors.text.muted} />
-          <Text style={styles.wsUnavailableText}>
-            Writing progress isn&apos;t available right now.
-          </Text>
-          <TouchableOpacity onPress={onRetry} activeOpacity={0.7}>
-            <Text style={styles.wsRetryText}>Retry</Text>
-          </TouchableOpacity>
+
+        <View style={styles.statGrid}>
+          <ProgressStat label="Letters mastered" value={String(s.totalMastered)} of={s.totalLetterForms} />
+          {/* Words are locked until BOTH cases are complete — the same rule
+              the child-facing gate uses. */}
+          <ProgressStat
+            label="Word practice"
+            value={s.wordsUnlocked ? 'Available' : 'Locked'}
+            tint={s.wordsUnlocked ? Colors.brandDeep : Colors.text.secondary}
+          />
+          <ProgressStat label="Lowercase letters" value={String(s.lowercaseMastered)} of={TOTAL_LOWERCASE_FORMS} />
+          <ProgressStat label="Uppercase letters" value={String(s.uppercaseMastered)} of={TOTAL_UPPERCASE_FORMS} />
         </View>
-      ) : (
-        <>
-          {/* Priority 1 — the headline. 52 letter FORMS (26 lowercase +
-              26 uppercase); words are a separate module and never counted
-              into this percentage. */}
-          <View style={[styles.wsBody, wide && styles.wsBodyWide]}>
-          <View style={[styles.wsHeadline, wide && styles.wsHeadlineWide]}>
-            <View>
-              <Text style={styles.wsHeadlineLabel}>Letters Mastered</Text>
-              <Text style={styles.wsHeadlineValue}>
-                {s.totalMastered}
-                <Text style={styles.wsHeadlineTotal}> / {s.totalLetterForms}</Text>
-              </Text>
-            </View>
-            <View style={styles.wsPercentPill}>
-              <Text style={styles.wsPercentText}>{s.masteredPercent}%</Text>
-            </View>
+      </View>
+
+      <View style={styles.context}>
+        {/* Latest Writing Check status only. Never a cluster id, never a
+            chart, never framed as good or bad. */}
+        <View style={styles.lastWorked}>
+          <Ionicons name="pulse-outline" size={15} color={Colors.text.secondary} />
+          <Text style={styles.lastWorkedLabel}>Writing pattern</Text>
+          <Text style={styles.lastWorkedValue}>{s.writingPatternLabel}</Text>
+        </View>
+
+        {/* Home practice, counted rather than listed. */}
+        {s.homePracticeCount != null && s.homePracticeCount > 0 ? (
+          <View style={styles.lastWorked}>
+            <Ionicons name="home-outline" size={15} color={Colors.text.secondary} />
+            <Text style={styles.lastWorkedLabel}>Home practice</Text>
+            <Text style={styles.lastWorkedValue}>
+              {s.homePracticeCount === 1 && s.homePracticeLetters.length === 1
+                ? `${s.homePracticeLetters[0]} needs additional practice`
+                : `${s.homePracticeCount} letters recommended`}
+            </Text>
           </View>
+        ) : null}
 
-          {/* Priority 2 — the two cases, counted independently. */}
-          <View style={[styles.wsRows, wide && styles.wsRowsWide]}>
-            <WsRow
-              label="Lowercase Letters"
-              value={`${s.lowercaseMastered} / ${TOTAL_LOWERCASE_FORMS}`}
-              percent={s.lowercasePercent}
-            />
-            <WsRow
-              label="Uppercase Letters"
-              value={`${s.uppercaseMastered} / ${TOTAL_UPPERCASE_FORMS}`}
-              percent={s.uppercasePercent}
-            />
+        {!s.wordsUnlocked ? (
+          <View style={styles.revisit}>
+            <Text style={styles.revisitLabel}>Word practice</Text>
+            <Text style={styles.revisitEmpty}>
+              Complete all lowercase and uppercase letters first.
+            </Text>
           </View>
-
-          </View>
-
-          {/* Priority 3 — words. Locked until BOTH cases are complete; the
-              same rule the child-facing gate uses. */}
-          <View style={styles.wsDivider} />
-          <View style={styles.wsStatusGrid}>
-            <WsStatus
-              icon={s.wordsUnlocked ? 'text-outline' : 'lock-closed-outline'}
-              label="Word Practice"
-              value={s.wordsUnlocked ? 'Available' : 'Locked'}
-              muted={!s.wordsUnlocked}
-            />
-            {!s.wordsUnlocked ? (
-              <Text style={styles.wsLockedHint}>
-                Complete all lowercase and uppercase letters first.
-              </Text>
-            ) : null}
-
-            {/* Priority 5 — home practice, counted rather than listed. */}
-            {s.homePracticeCount != null && s.homePracticeCount > 0 ? (
-              <WsStatus
-                icon="home-outline"
-                label="Home Practice"
-                value={
-                  s.homePracticeCount === 1 && s.homePracticeLetters.length === 1
-                    ? `${s.homePracticeLetters[0]} needs additional practice`
-                    : `${s.homePracticeCount} letters recommended`
-                }
-              />
-            ) : null}
-
-            {/* Priority 6 — latest Writing Check status only. Never a
-                cluster id, never a chart, never framed as good or bad. */}
-            <WsStatus
-              icon="pulse-outline"
-              label="Writing Pattern"
-              value={s.writingPatternLabel}
-              muted={s.writingPatternLabel === 'Not checked yet'}
-            />
-          </View>
-
-          {/* The single action out to the existing report. */}
-          <TouchableOpacity
-            style={styles.wsReportBtn}
-            activeOpacity={0.75}
-            onPress={onOpenReport}
-            accessibilityRole="button"
-            accessibilityLabel="View Writing Progress Report"
-          >
-            <Text style={styles.wsReportText}>View Writing Progress Report</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.text.link} />
-          </TouchableOpacity>
-        </>
-      )}
-    </Card>
+        ) : null}
+      </View>
+    </>
   );
 }
 
@@ -496,10 +635,44 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
   // needs `route.name` as the report's back target, and a second copy here
   // would be a redeclaration.
 
+  const [strokes, setStrokes] = useState({ status: 'loading', families: [] });
+  // The stroke family whose letters are open, or null.
+  const [openStroke, setOpenStroke] = useState(null);
+
+  // Pronunciation: the most recent attempts, summarised. null until loaded.
+  const [pron, setPron] = useState({ status: 'loading', summary: null });
+
+  const loadPronunciation = useCallback(async () => {
+    if (!initialStudent?.sid) return;
+    setPron((prev) => ({ ...prev, status: prev.summary ? 'ok' : 'loading' }));
+    try {
+      const rows = await teacherApi.getPronunciationResults(initialStudent.sid, PRON_RECENT_LIMIT);
+      setPron({
+        status: 'ok',
+        summary: buildPronunciationSummary(rows, { categories: SESSION_CATEGORIES, totals: PRON_TOTALS }),
+      });
+    } catch {
+      setPron({ status: 'error', summary: null });
+    }
+  }, [initialStudent?.sid]);
+
+  // On opening the tab, and again on returning to the profile with it open,
+  // so a session just finished is counted.
+  useFocusEffect(useCallback(() => {
+    if (activeModule === 'pronunciation') loadPronunciation();
+  }, [activeModule, loadPronunciation]));
+
   const loadWritingSummary = useCallback(async () => {
     if (!initialStudent?.sid) return;
     setWritingSummary((prev) => ({ ...prev, status: 'loading' }));
-    setWritingSummary(await fetchWritingSummary(initialStudent.sid));
+    setStrokes((prev) => ({ ...prev, status: 'loading' }));
+    // Independent: one failing never blanks the other.
+    const [summary, strokeState] = await Promise.all([
+      fetchWritingSummary(initialStudent.sid),
+      fetchStrokeBreakdown(initialStudent.sid),
+    ]);
+    setWritingSummary(summary);
+    setStrokes(strokeState);
   }, [initialStudent?.sid]);
 
   useEffect(() => { fetch(); }, [fetch]);
@@ -604,18 +777,38 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
     else if (activeModule === 'concept') navigation.navigate('ConceptReport', { student });
   }
 
+  useEffect(() => {
+    // The header is drawn inside the page (see `topBar`), with the same round
+    // back button and heading style as the report screens and the student side.
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const topBar = (
+    <View style={styles.topBar}>
+      <TouchableOpacity
+        style={BACK_BUTTON}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+      >
+        <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={Colors.text.primary} />
+      </TouchableOpacity>
+      <Text style={styles.topTitle} numberOfLines={1}>Student Profile</Text>
+    </View>
+  );
+
   return (
-    // The same backdrop the report uses. The profile is the screen you pass
-    // through on the way to that report, and it was the one flat Colors.background
-    // between the dashboard and the report — so the two ends of the journey shared
-    // a surface and the middle dropped it.
+    // The sign-in screen's gradient — the same one the concept report uses — so
+    // the profile and the report it leads to share one surface.
     <LinearGradient
-      colors={BACKDROP.colors}
-      start={BACKDROP.start}
-      end={BACKDROP.end}
+      colors={LOGIN_BACKDROP.colors}
+      start={LOGIN_BACKDROP.start}
+      end={LOGIN_BACKDROP.end}
       style={styles.safe}
     >
-      <SafeAreaView style={styles.safeInner} edges={['bottom']}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+      {topBar}
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetch(); }} />}
@@ -733,8 +926,7 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
           section="progress"
           size="lg"
           flush
-          action={activeModule === 'concept' && hasProgress ? ACTION.history : null}
-          onAction={() => navigation.navigate('ConceptReport', { student })}
+          style={styles.progressLift}
         >
           {/* One track holding four equal tabs, rather than a scrolling row of
               chips. There are exactly four modules and there always will be until
@@ -787,103 +979,183 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
           </View>
 
           {activeModule === 'writing' ? (
-            <View style={styles.writingPanel}>
-              <TouchableOpacity
-                style={styles.reportCard}
-                activeOpacity={0.75}
-                onPress={openHandwritingReport}
-              >
-                <LinearGradient
-                  colors={['#6366F1', '#7C3AED']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.reportIconWrap}
+            <>
+              <View style={styles.conceptBody}>
+                {/* WRITING PROGRESS — a compact OVERVIEW only, following the
+                    Concepts pattern: a small summary here, the detail behind the
+                    footer button.
+                    Deliberately NOT here: the motor performance chart, initial
+                    shape assessment, difficulty analysis, Writing Check history,
+                    per-letter history, worksheet history and periodic charts —
+                    all of which live in the Writing Progress Report. */}
+                <WritingSummaryCard
+                  state={writingSummary}
+                  onRetry={loadWritingSummary}
+                />
+
+                {/* Proposal FR-16, Phase 7B — near-real-time (not sub-second,
+                    not biometric) live handwriting-session monitoring. Polls on
+                    its own focus-gated interval. */}
+                <LiveSessionCard studentId={initialStudent?.sid} compactWhenInactive />
+
+                <StrokeBreakdown state={strokes} onOpenReport={openHandwritingReport} onSelect={setOpenStroke} />
+              </View>
+
+              {/* The panel's one primary action, in the same ruled footer and
+                  green as the Concept tab's history button. */}
+              <View style={[styles.reportFooter, styles.reportFooterEnd]}>
+                <TouchableOpacity
+                  style={styles.reportBtn}
+                  activeOpacity={0.85}
+                  onPress={openHandwritingReport}
+                  accessibilityRole="button"
+                  accessibilityLabel="View Writing Progress Report"
                 >
-                  <Ionicons name="document-text" size={22} color="#FFF" />
-                </LinearGradient>
-
-                <View style={styles.reportContent}>
-                  <Text style={styles.reportTitle}>Handwriting Report</Text>
-                  <Text style={styles.reportDesc}>
-                    Motor analysis · Letter mastery · AI recommendations
-                  </Text>
-                  <View style={styles.reportTagRow}>
-                    <View style={styles.reportTag}>
-                      <Ionicons name="analytics-outline" size={10} color="#6366F1" />
-                      <Text style={styles.reportTagText}>XAI Powered</Text>
-                    </View>
-                    <View style={styles.reportTag}>
-                      <Ionicons name="school-outline" size={10} color="#6366F1" />
-                      <Text style={styles.reportTagText}>End-of-Day</Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.reportArrow}>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
-                </View>
-              </TouchableOpacity>
-
-              {/* Proposal FR-16, Phase 7B — near-real-time (not sub-second,
-                  not biometric) live handwriting-session monitoring. Polls on
-                  its own focus-gated interval; entirely independent of the
-                  report card above and the summary below. */}
-              <LiveSessionCard studentId={initialStudent?.sid} compactWhenInactive />
-
-              {/* WRITING PROGRESS — a compact OVERVIEW only, following the
-                  Concepts pattern: a small summary here, the detail behind the
-                  report card above.
-                  Deliberately NOT here: the motor performance chart, initial
-                  shape assessment, difficulty analysis, Writing Check history,
-                  per-letter history, worksheet history and periodic charts —
-                  all of which live in the Writing Progress Report. The
-                  per-family "Writing Standard" targets belong there too: a
-                  threshold is report-level detail, not an at-a-glance status. */}
-              <WritingSummaryCard
-                state={writingSummary}
-                onOpenReport={openHandwritingReport}
-                onRetry={loadWritingSummary}
-              />
-            </View>
+                  <LinearGradient
+                    colors={Colors.brandGradientDeep}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.reportBtnFill}
+                  />
+                  <Text style={styles.reportBtnText}>See {firstName}&apos;s writing history</Text>
+                  <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </>
           ) : activeModule === 'pronunciation' ? (
-            /* The pronunciation module is built and in use, so this tab links into
-               it rather than rendering the "not available yet" placeholder the
-               remaining modules still get. Two ways in, matching how the module
-               itself is entered: start a new session, or read what earlier ones
-               recorded. */
-            <View style={styles.writingPanel}>
-              <TouchableOpacity
-                style={styles.reportCard}
-                activeOpacity={0.75}
-                onPress={() => navigation.navigate('PronunciationSessionSetup', { student })}
-              >
-                <View style={styles.reportContent}>
-                  <Text style={styles.reportTitle}>Start a pronunciation session</Text>
-                  <Text style={styles.reportDesc}>
-                    Choose a word set and work through it with {firstName}.
+            /* Laid out like the Concept and Writing tabs: a summary of the most
+               recent attempts, then the three ways into the module as footer
+               buttons — start a session, read earlier ones, or check the
+               review queue. */
+            <>
+              <View style={styles.conceptBody}>
+                {pron.status === 'loading' ? (
+                  <View style={styles.wsLoading}><ActivityIndicator color={Colors.icon.active} /></View>
+                ) : pron.status === 'error' ? (
+                  <View style={styles.wsUnavailable}>
+                    <Ionicons name="cloud-offline-outline" size={20} color={Colors.text.muted} />
+                    <Text style={styles.wsUnavailableText}>
+                      Pronunciation progress isn&apos;t available right now.
+                    </Text>
+                    <TouchableOpacity onPress={loadPronunciation} activeOpacity={0.7}>
+                      <Text style={styles.wsRetryText}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : !pron.summary || pron.summary.attempts === 0 ? (
+                  <Text style={styles.revisitEmpty}>
+                    No pronunciation practice yet. Progress appears here once {firstName} has a session.
                   </Text>
-                </View>
-                <View style={styles.reportArrow}>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
-                </View>
-              </TouchableOpacity>
+                ) : (
+                  <>
+                    <View style={styles.statRow}>
+                      <View style={styles.ringCard}>
+                        <MasteryRing
+                          value={(pron.summary.averageScore ?? 0) / 100}
+                          size={168}
+                          label="average score"
+                          color={Colors.brandDeep}
+                        />
+                      </View>
+                      <View style={styles.statGrid}>
+                        <ProgressStat label="Attempts" value={String(pron.summary.attempts)} />
+                        <ProgressStat label="Words practised" value={String(pron.summary.wordsPractised)} />
+                        <ProgressStat
+                          label="Latest score"
+                          value={pron.summary.latestScore != null ? `${pron.summary.latestScore}%` : '—'}
+                        />
+                        <ProgressStat
+                          label="Flagged for review"
+                          value={String(pron.summary.flagged)}
+                          tint={pron.summary.flagged > 0 ? '#B86E12' : undefined}
+                        />
+                      </View>
+                    </View>
 
-              <TouchableOpacity
-                style={styles.reportCard}
-                activeOpacity={0.75}
-                onPress={() => navigation.navigate('PronunciationResultsHistory', { student })}
-              >
-                <View style={styles.reportContent}>
-                  <Text style={styles.reportTitle}>Pronunciation sessions</Text>
-                  <Text style={styles.reportDesc}>
-                    Review saved session scores and sound breakdowns.
-                  </Text>
+                    <View style={styles.context}>
+                      <View style={styles.lastWorked}>
+                        <Ionicons name="time-outline" size={15} color={Colors.text.secondary} />
+                        <Text style={styles.lastWorkedLabel}>Last practised</Text>
+                        <Text style={styles.lastWorkedValue}>{sinceWords(pron.summary.latestAt)}</Text>
+                      </View>
+
+                      <View style={styles.revisit}>
+                        <Text style={styles.revisitLabel}>Worth another look</Text>
+                        {pron.summary.lookAgain.length === 0 ? (
+                          <Text style={styles.revisitEmpty}>Nothing needs another look right now.</Text>
+                        ) : (
+                          <View style={styles.pronChips}>
+                            {pron.summary.lookAgain.slice(0, 8).map((w) => (
+                              <View key={w.label} style={styles.pronChip}>
+                                <Text style={styles.pronChipText}>{w.label}</Text>
+                                <Text style={styles.pronChipScore}>{w.score}%</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    <View style={styles.breakdownHead}>
+                      <View style={styles.breakdownIcon}>
+                        <Ionicons name="grid" size={14} color={Colors.brandDeep} />
+                      </View>
+                      <Text style={styles.breakdownTitle}>Category breakdown</Text>
+                      <Text style={styles.breakdownHint}>
+                        {pron.summary.capped ? `Last ${PRON_RECENT_LIMIT} attempts` : 'All attempts'}
+                      </Text>
+                    </View>
+                    <PronunciationBreakdown
+                      groups={pron.summary.groups}
+                      onSelect={() => navigation.navigate('PronunciationResultsHistory', { student })}
+                    />
+                  </>
+                )}
+              </View>
+
+              {/* The module's three ways in, kept as three buttons. The queue
+                  lists only {firstName}'s attempts when opened from here. */}
+              <View style={styles.reportFooter}>
+                <View style={styles.pronFootLeft}>
+                  <TouchableOpacity
+                    style={styles.pronOutlineBtn}
+                    activeOpacity={0.75}
+                    onPress={() => navigation.navigate('PronunciationResultsHistory', { student })}
+                    accessibilityRole="button"
+                    accessibilityLabel="Pronunciation sessions. Review saved session scores and sound breakdowns"
+                  >
+                    <Ionicons name="list-outline" size={15} color={Colors.brandDeep} />
+                    <Text style={styles.pronOutlineText}>Sessions</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.pronOutlineBtn}
+                    activeOpacity={0.75}
+                    onPress={() => navigation.navigate('PronunciationReviewQueue', { student })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Review queue. Check the scores the AI was least sure about in ${firstName}'s attempts today`}
+                  >
+                    <Ionicons name="checkmark-done-outline" size={15} color={Colors.brandDeep} />
+                    <Text style={styles.pronOutlineText}>Review queue</Text>
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.reportArrow}>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
-                </View>
-              </TouchableOpacity>
-            </View>
+
+                <TouchableOpacity
+                  style={styles.reportBtn}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('PronunciationSessionSetup', { student })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Start a pronunciation session. Choose a word set and work through it with ${firstName}`}
+                >
+                  <LinearGradient
+                    colors={Colors.brandGradientDeep}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.reportBtnFill}
+                  />
+                  <Ionicons name="mic" size={15} color="#FFFFFF" />
+                  <Text style={styles.reportBtnText}>Start a session</Text>
+                </TouchableOpacity>
+              </View>
+            </>
           ) : activeModule === 'dialogue' ? (
             dialogueLoading ? (
               <View style={styles.conceptLoading}>
@@ -1149,8 +1421,11 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
               </View>
 
               <View style={styles.breakdownHead}>
-                <Ionicons name="list-outline" size={16} color={Colors.text.secondary} />
+                <View style={styles.breakdownIcon}>
+                  <Ionicons name="grid" size={14} color={Colors.brandDeep} />
+                </View>
                 <Text style={styles.breakdownTitle}>Category breakdown</Text>
+                <Text style={styles.breakdownHint}>Tap a group to see its concepts</Text>
               </View>
 
               {/* Cards two to a row rather than the report's full-width rows.
@@ -1215,6 +1490,12 @@ export default function TeacherStudentDetailScreen({ route, navigation }) {
 
       {/* Outside the ScrollView: a Modal nested in a scroller inherits its
           clipping on Android and comes up cropped. */}
+      <StrokeFamilyModal
+        family={openStroke}
+        face={openStroke ? STROKE_FACE[openStroke.key] : null}
+        onClose={() => setOpenStroke(null)}
+        onOpenReport={openHandwritingReport}
+      />
       <CategoryConceptsModal
         visible={!!openCategory}
         category={openCategory}
@@ -1475,13 +1756,90 @@ const styles = StyleSheet.create({
   // Colour comes from the BACKDROP gradient this is applied to.
   safe:      { flex: 1 },
   safeInner: { flex: 1 },
+  pronChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pronChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 5, paddingLeft: 10, paddingRight: 6,
+    borderRadius: 14, backgroundColor: '#FDF4E3',
+  },
+  pronChipText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  pronChipScore: {
+    fontSize: 11, fontFamily: 'DMSans_700Bold', color: '#8A5D06',
+    backgroundColor: '#FFFFFF', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, overflow: 'hidden',
+  },
+  pronFootLeft: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, flexShrink: 1 },
+  pronOutlineBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: Layout.radius.full,
+    borderWidth: 1.5, borderColor: Colors.brandDeep,
+    backgroundColor: '#FFFFFF',
+  },
+  pronOutlineText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: Colors.brandDeep },
+  reportFooterEnd: { justifyContent: 'flex-end' },
+  strokeWrap: { gap: 10, marginBottom: 12 },
+  strokeEmpty: { fontSize: 12, color: Colors.text.muted },
+  strokeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  strokeCard: {
+    flexGrow: 1,
+    gap: 9,
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  strokeHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  strokeFace: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  strokeLabel: { fontSize: 13, lineHeight: 17, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  strokeSample: { fontSize: 11, color: Colors.text.muted, letterSpacing: 1, marginTop: 1 },
+  strokeTrack: { height: 6, borderRadius: 3, backgroundColor: Colors.surfaceAlt, overflow: 'hidden' },
+  strokeFill: { height: '100%', borderRadius: 3 },
+  strokeFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  strokeCount: { fontSize: 12 },
+  strokeCountNum: { fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  strokeCountOf: { fontFamily: 'DMSans_400Regular', color: Colors.text.secondary },
+  strokePill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  strokePillText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+  strokeDelta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  strokeDeltaText: { fontSize: 11, color: Colors.text.secondary },
+  breakdownIcon: {
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#E4F4EC',
+  },
+  breakdownHint: {
+    marginLeft: 'auto',
+    fontSize: 11,
+    fontFamily: 'DMSans_400Regular',
+    color: Colors.text.muted,
+  },
+  // Pulls Module Progress closer to the card above it, without moving the rest.
+  progressLift: { marginTop: -Layout.spacing.md },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: 28,
+    paddingBottom: 8,
+  },
+  topTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: Colors.text.primary,
+    letterSpacing: -0.3,
+  },
   scroll: {
     padding: Layout.spacing.lg,
-    // More clearance above the identity card than the sides carry. It is the
-    // first thing under the navigation bar, and at an even 24 all round it sat
-    // tight against that bar — the one edge where the card has a hard boundary
-    // above it rather than open backdrop.
-    paddingTop: Layout.spacing.xl + Layout.spacing.sm,
+    // The in-page top bar already carries its own clearance, so the identity
+    // card only needs a small gap under it — which lifts the cards below
+    // (Module Progress included) up the page.
+    paddingTop: Layout.spacing.lg,
     paddingBottom: Layout.spacing.xxl,
     gap: Layout.spacing.lg,
   },
@@ -1772,42 +2130,6 @@ const styles = StyleSheet.create({
     color: Colors.text.muted,
     alignSelf: 'center',
   },
-  // Wraps the report card inside the Writing module panel. The Card it now sits
-  // in already supplies the outer surface, so this only adds inset padding.
-  writingPanel: { padding: Layout.spacing.md },
-  reportCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.radius.lg,
-    padding: Layout.spacing.md,
-    borderWidth: 1, borderColor: Colors.borderLight,
-    gap: Layout.spacing.md,
-    ...Layout.shadow.sm,
-  },
-  reportIconWrap: {
-    width: 46, height: 46, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  reportContent: { flex: 1 },
-  reportTitle: {
-    fontSize: Layout.fontSize.md,
-    fontWeight: Layout.fontWeight.bold,
-    color: Colors.text.primary,
-  },
-  reportDesc: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted, marginTop: 2,
-  },
-  reportTagRow: { flexDirection: 'row', gap: 6, marginTop: 6 },
-  reportTag: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 7, paddingVertical: 3,
-    borderRadius: 8,
-  },
-  reportTagText: { fontSize: 10, color: '#6366F1', fontWeight: '700' },
-  reportArrow: { paddingLeft: 4 },
-
   // ── Writing Progress summary ─────────────────────────────────────────
   // Compact by design: the whole card sits inside the Module Progress area
   // without turning it into the full report. No fixed heights and no nested

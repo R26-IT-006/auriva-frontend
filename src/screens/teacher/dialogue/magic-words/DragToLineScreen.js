@@ -21,6 +21,7 @@ import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../../api/dialogue';
 import { getRestartCount, incrementRestartCount, clearRestartCount, MAX_SAME_SITTING_RESTARTS } from '../../../../utils/sessionRetryTracker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const AVATAR_IMAGES = {
   lily:     require('../../../../../assets/avatar-images/Lily.png'),
@@ -451,8 +452,8 @@ export default function DragToLineScreen({ route, navigation }) {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={styles.headerBtn}>
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <TouchableOpacity onPress={goBackSmart} activeOpacity={0.7} style={[styles.headerBtn, BACK_BUTTON]}>
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progressFraction * 100}%`, backgroundColor: theme.button }]} />

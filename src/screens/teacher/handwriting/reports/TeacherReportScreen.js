@@ -112,6 +112,9 @@ import useGatedBack from '../../../../utils/useGatedBack';
 import { fetchTeacherOverrideFamilies } from '../../../../utils/familyThresholds';
 import { navigateToWritingCheck } from '../../../../utils/writingCheckNavigation';
 import { goBackToOrigin } from '../../../../utils/backToOrigin';
+import { Colors } from '../../../../constants/colors';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import HeaderPillButton from '../../../../components/common/HeaderPillButton';
 import { resolveWordImageKey, resolveWordEmoji } from '../../../../utils/wordImageResolver';
 import { mergeWordPracticeByLetter, hasWritingResult }
   from '../../../../utils/wordPracticeReport';
@@ -119,6 +122,10 @@ import {
   fetchLetterMasteryEvidence, evidenceUnavailableMessage, evidenceCaption,
   EVIDENCE_STATUS,
 } from '../../../../utils/letterMasteryEvidence';
+
+// The sign-in screen's gradient, top to bottom — the same backdrop as the
+// Student Profile and the Concept report.
+const LOGIN_BACKDROP = ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'];
 
 // A teacher-report preview: recognisable at a glance, not an activity
 // illustration. Was 30 — too small to read the picture at all.
@@ -758,21 +765,30 @@ export default function TeacherReportScreen({ route, navigation }) {
 
   return (
     <LinearGradient
-      colors={theme.backgroundGradient}
+      colors={LOGIN_BACKDROP}
       style={{ flex: 1 }}
       start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 0.3 }}
+      end={{ x: 0, y: 1 }}
     >
       <SafeAreaView style={{ flex: 1 }}>
 
-        {/* ── Top bar ── */}
+        {/* ── Top bar — the Concept report's: round back button, the heading
+            beside it, the action pill on the right. ── */}
         <View style={s.topBar}>
-          <TouchableOpacity style={s.topBtn} onPress={requestBack} activeOpacity={0.75}>
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <TouchableOpacity
+            style={BACK_BUTTON}
+            onPress={requestBack}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={Colors.text.primary} />
           </TouchableOpacity>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={[s.topTitle, { color: theme.headingText }]}>Progress Report</Text>
-            <Text style={[s.topDate,  { color: theme.headingText }]}>{dateStr}</Text>
+          <View style={s.topTitleWrap}>
+            <Text style={s.topTitle} numberOfLines={1}>
+              {student?.full_name ? `${student.full_name} · Writing` : 'Progress Report'}
+            </Text>
+            <Text style={s.topDate}>{dateStr}</Text>
           </View>
           {/* Proposal FR-19/FR-20, Phase 7C/7D §25 — this is the pre-
               existing PLAINTEXT current-state summary share (Share.share,
@@ -780,32 +796,14 @@ export default function TeacherReportScreen({ route, navigation }) {
               share for a selected period lives in PeriodicReportSection
               below, as its own distinctly-labeled "Export & Share PDF"
               button — the two are never both called "Share Report". */}
-          <TouchableOpacity
-            style={s.topBtn}
+          <HeaderPillButton
+            variant="outline"
+            icon="share-social-outline"
+            label="Share"
+            theme={{ button: Colors.brandDeep, buttonText: '#FFFFFF', headingText: Colors.text.primary }}
             onPress={handleShare}
-            activeOpacity={0.75}
-            accessibilityRole="button"
             accessibilityLabel="Share text summary"
-          >
-            <Ionicons name="share-social-outline" size={20} color={theme.headingText} />
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Student hero strip ── */}
-        <View style={s.heroStrip}>
-          <View style={[s.heroInitial, { backgroundColor: theme.button }]}>
-            <Text style={s.heroInitialText}>
-              {(student?.full_name ?? '?').charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.heroName, { color: theme.headingText }]} numberOfLines={1}>
-              {student?.full_name ?? '—'}
-            </Text>
-            <Text style={[s.heroMeta, { color: theme.headingText }]}>
-              ID #{student?.sid ?? '—'}  ·  {duration} min session
-            </Text>
-          </View>
+          />
         </View>
 
         {loading ? (
@@ -3632,30 +3630,13 @@ const mp = StyleSheet.create({
 
 const s = StyleSheet.create({
   topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
-  },
-  topBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  topTitle: { fontSize: 17, fontWeight: '900', fontFamily: 'Nunito_900Black', letterSpacing: 0.2 },
-  topDate:  { fontSize: 11, opacity: 0.65, fontWeight: '500', fontFamily: 'Nunito_600SemiBold', marginTop: 1 },
-
-  heroStrip: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 20, paddingBottom: 16,
+    paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16,
   },
-  heroInitial: {
-    width: 48, height: 48, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
-    elevation: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6,
-  },
-  heroInitialText: { fontSize: 22, fontWeight: '900', fontFamily: 'Nunito_900Black', color: '#FFF' },
-  heroName:        { fontSize: 20, fontWeight: '900', fontFamily: 'Nunito_900Black' },
-  heroMeta:        { fontSize: 12, opacity: 0.7, fontWeight: '500', fontFamily: 'Nunito_600SemiBold', marginTop: 2 },
+  topTitleWrap: { flex: 1 },
+  topTitle: { fontSize: 22, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, letterSpacing: -0.3 },
+  topDate:  { fontSize: 12, fontFamily: 'DMSans_400Regular', color: Colors.text.secondary, marginTop: 1 },
+
 
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
   loadingText: { fontSize: 14, fontWeight: '600', fontFamily: 'Nunito_600SemiBold', opacity: 0.75, textAlign: 'center' },

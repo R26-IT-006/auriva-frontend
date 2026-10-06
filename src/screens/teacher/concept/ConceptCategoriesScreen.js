@@ -17,6 +17,10 @@ import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { getOrderedCategories } from '../../../data/conceptData';
 import { Layout } from '../../../constants/layout';
+import ConceptSummaryModal from '../../../components/concept/ConceptSummaryModal';
+import ConceptFlowModal from '../../../components/concept/ConceptFlowModal';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 
 // Derived from the catalogue rather than listed here, so the grid can never offer a
 // category that has no concepts behind it.
@@ -82,6 +86,8 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
   const student = route.params?.student;
   const { width, height } = useWindowDimensions();
   const [gateVisible, setGateVisible] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [showFlow,    setShowFlow]    = useState(false);
 
   const theme       = getAvatarTheme(student?.avatar_key);
   const isLandscape = width > height;
@@ -126,22 +132,43 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
 
         {/* Top bar */}
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
-            onPress={() => setGateVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
-          </TouchableOpacity>
+          {/* Equal-width side groups keep the title centred now that the right
+              side holds two buttons. */}
+          <View style={styles.sideGroup}>
+            <TouchableOpacity
+              style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }, BACK_BUTTON]}
+              onPress={() => setGateVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.titleRow}>
             <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
               <Ionicons name="bulb" size={18} color="#FFF" />
             </View>
-            <Text style={[styles.title, { color: theme.headingText }]}>Concept Learning</Text>
+            <Text style={[styles.title, { color: theme.headingText }]}>Concept Module</Text>
           </View>
 
-          <View style={styles.iconBtn} />
+          <View style={[styles.sideGroup, styles.topBtnGroup]}>
+            {/* Shared header pills (HeaderPillButton): "How it works" overview,
+                then the Concept Summary pop-up. */}
+            <HeaderPillButton
+              variant="outline"
+              icon="map"
+              label="How it works"
+              theme={theme}
+              onPress={() => setShowFlow(true)}
+            />
+            <HeaderPillButton
+              variant="primary"
+              icon="trophy"
+              label="Progress"
+              theme={theme}
+              onPress={() => setShowSummary(true)}
+            />
+          </View>
         </View>
 
         <Text style={[styles.subtitle, { color: theme.headingText }]}>
@@ -165,6 +192,19 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
         visible={gateVisible}
         onSuccess={() => { setGateVisible(false); navigation.navigate('StudentDashboard', { student }); }}
         onCancel={() => setGateVisible(false)}
+      />
+
+      <ConceptFlowModal
+        visible={showFlow}
+        onClose={() => setShowFlow(false)}
+        theme={theme}
+      />
+
+      <ConceptSummaryModal
+        visible={showSummary}
+        onClose={() => setShowSummary(false)}
+        student={student}
+        theme={theme}
       />
     </LinearGradient>
   );
@@ -211,6 +251,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  sideGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  topBtnGroup: {
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -243,7 +292,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   list: {
-    paddingVertical: Layout.spacing.md,
+    // Extra top padding drops the card grid a little further below the subtitle.
+    paddingTop: Layout.spacing.md + 28,
+    paddingBottom: Layout.spacing.md,
   },
   card: {
     borderRadius: 20,

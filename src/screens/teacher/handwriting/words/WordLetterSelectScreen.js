@@ -21,6 +21,8 @@ import { filterUnfinishedWords } from '../../../../utils/wordCompletionHistory';
 import { useLockLandscape } from '../../../../utils/useOrientationLock';
 import useGatedBack from '../../../../utils/useGatedBack';
 import { useToast } from '../../../../context/ToastContext';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
+import HeaderPillButton from '../../../../components/common/HeaderPillButton';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -153,12 +155,12 @@ export default function WordLetterSelectScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <View style={styles.sideGroup}>
             <TouchableOpacity
-              style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
+              style={[styles.backBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }, BACK_BUTTON]}
               onPress={requestBack}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityLabel="Go back"
             >
-              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
             </TouchableOpacity>
           </View>
 
@@ -172,24 +174,22 @@ export default function WordLetterSelectScreen({ route, navigation }) {
           </View>
 
           <View style={[styles.sideGroup, styles.topActions]}>
-            {/* Same filled style as Progress Report beside it. */}
-            <TouchableOpacity
-              style={[styles.topFilledBtn, { backgroundColor: theme.button }]}
+            {/* Shared header pills (HeaderPillButton); both filled, as before. */}
+            <HeaderPillButton
+              variant="primary"
+              icon="ribbon-outline"
+              label="Word Progress"
+              theme={theme}
               onPress={() => navigation.navigate('WordProgress', { student, theme })}
-              accessibilityLabel="Word Progress"
-            >
-              <Ionicons name="ribbon-outline" size={14} color={theme.buttonText} />
-              <Text style={[styles.topFilledBtnText, { color: theme.buttonText }]}>Word Progress</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.topFilledBtn, { backgroundColor: theme.button }]}
-              onPress={requestTeacherReport}
+            />
+            <HeaderPillButton
+              variant="primary"
+              icon="document-text-outline"
+              label="Progress Report"
               accessibilityLabel="Progress Report - needs a code"
-            >
-              <Ionicons name="document-text-outline" size={14} color={theme.buttonText} />
-              <Text style={[styles.topFilledBtnText, { color: theme.buttonText }]}>Progress Report</Text>
-            </TouchableOpacity>
+              theme={theme}
+              onPress={requestTeacherReport}
+            />
           </View>
         </View>
 
@@ -414,19 +414,7 @@ const styles = StyleSheet.create({
   },
   topActions: {
     justifyContent: 'flex-end',
-    gap:            IS_TABLET ? 10 : 8,
-  },
-  topFilledBtn: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               5,
-    borderRadius:      20,
-    paddingHorizontal: IS_TABLET ? 14 : 10,
-    paddingVertical:   IS_TABLET ? 8 : 5,
-  },
-  topFilledBtnText: {
-    fontSize:   IS_TABLET ? 13 : 11,
-    fontFamily: 'DMSans_700Bold',
+    gap:            10,
   },
 
   // ── Subtitle line: instruction + progress pill, centred ─────────────────

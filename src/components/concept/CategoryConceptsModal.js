@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Modal,
+  Pressable,
   View,
   Text,
   Image,
@@ -14,6 +15,12 @@ import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
 import { conceptApi } from '../../api/concept';
 import { getConceptItem, getConceptItemsForCategory } from '../../data/conceptData';
+import { GROUP_FACE, FALLBACK_FACE } from '../charts/GroupProgress';
+
+const GRID_GAP = 10;
+// Four across when the dialog is wide enough for ~110pt cards, fewer otherwise.
+const MIN_CARD = 110;
+const SCROLL_PAD = 20;
 
 /**
  * Everything inside one group, as the pictures the child actually sees.
@@ -34,6 +41,7 @@ export function CategoryConceptsModal({ visible, category, studentId, accent = C
   const [items, setItems]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed]   = useState(false);
+  const [gridW, setGridW]     = useState(0);
 
   // The analytics summary names it `category_key`; the local catalogue and the
   // concept screens name it `key`. Accepting both means this opens from either
@@ -81,6 +89,15 @@ export function CategoryConceptsModal({ visible, category, studentId, accent = C
     (i) => !(i.tier1_status === 'passed' && i.tier2_status === 'passed'),
   );
 
+  // The group's own colour and icon, as on the breakdown card that opened this.
+  const face = GROUP_FACE[categoryKey] || FALLBACK_FACE;
+
+  // Measured so the cards fill each row edge to edge instead of leaving a gap.
+  const cols  = gridW
+    ? Math.max(2, Math.min(4, Math.floor((gridW + GRID_GAP) / (MIN_CARD + GRID_GAP))))
+    : 4;
+  const cardW = gridW ? Math.floor((gridW - GRID_GAP * (cols - 1)) / cols) : MIN_CARD;
+
   return (
     <Modal
       visible={visible}
@@ -89,23 +106,26 @@ export function CategoryConceptsModal({ visible, category, studentId, accent = C
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      {/* Tapping the backdrop closes it. A floating dialog has dead space around
-          it in a way an edge-anchored sheet does not, and tapping beside a dialog
-          to dismiss it is the gesture people already have. */}
-      <TouchableOpacity
-        style={styles.backdrop}
-        activeOpacity={1}
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel="Close"
-      >
-        {/* Swallows taps so a press inside the card does not reach the backdrop. */}
-        <TouchableOpacity style={styles.dialog} activeOpacity={1}>
-          <View style={styles.head}>
+      <View style={styles.backdrop}>
+        {/* Tapping the backdrop closes it. A sibling Pressable rather than a
+            wrapper around the card, so a drag inside the card reaches the
+            ScrollView instead of being swallowed as a tap. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        />
+
+        <View style={styles.dialog}>
+          <View style={[styles.head, { backgroundColor: face.bg }]}>
+            <View style={styles.headIcon}>
+              <Ionicons name={face.icon.replace(/-outline$/, '')} size={22} color={face.fg} />
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.title} numberOfLines={1}>{category?.label}</Text>
               {items ? (
-                <Text style={styles.subtitle}>
+                <Text style={[styles.subtitle, { color: face.fg }]}>
                   {learned.length} of {items.length} learned
                 </Text>
               ) : null}
@@ -134,62 +154,78 @@ export function CategoryConceptsModal({ visible, category, studentId, accent = C
             </View>
           ) : (
             <ScrollView
+              style={styles.scrollView}
               contentContainerStyle={styles.scroll}
               showsVerticalScrollIndicator={false}
+              // The grid's width is the scroller's less its side padding.
+              onLayout={(e) => setGridW(e.nativeEvent.layout.width - SCROLL_PAD * 2)}
             >
+
               {upNext.length > 0 && (
                 <Section
                   title="Up next"
+                  icon="play-forward"
+                  tint={accent}
                   hint="In the order the app will offer them, worked out from what this child mixes up"
                   count={upNext.length}
                 >
                   {upNext.map((i) => (
-                    <ConceptCard key={i.concept_key} item={i} accent={accent} />
+                    <ConceptCard key={i.concept_key} item={i} accent={accent} width={cardW} />
                   ))}
                 </Section>
               )}
 
               {learned.length > 0 && (
-                <Section title="Learned" count={learned.length}>
+                <Section title="Learned" icon="checkmark-circle" tint="#3FAE6F" count={learned.length}>
                   {learned.map((i) => (
-                    <ConceptCard key={i.concept_key} item={i} accent={accent} learned />
+                    <ConceptCard key={i.concept_key} item={i} accent={accent} width={cardW} learned />
                   ))}
                 </Section>
               )}
             </ScrollView>
           )}
-        </TouchableOpacity>
-      </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 }
 
-function Section({ title, hint, count, children }) {
+function Section({ title, icon, tint, hint, count, children }) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
+        <Ionicons name={icon} size={16} color={tint} />
         <Text style={styles.sectionTitle}>{title}</Text>
-        <View style={styles.countPill}><Text style={styles.countText}>{count}</Text></View>
+        <View style={[styles.countPill, { backgroundColor: tint + '1F' }]}>
+          <Text style={[styles.countText, { color: tint }]}>{count}</Text>
+        </View>
       </View>
-      {hint ? <Text style={styles.sectionHint}>{hint}</Text> : null}
+      {hint ? (
+        <View style={styles.hintBox}>
+          <Ionicons name="information-circle-outline" size={14} color={Colors.text.muted} />
+          <Text style={styles.sectionHint}>{hint}</Text>
+        </View>
+      ) : null}
       <View style={styles.grid}>{children}</View>
     </View>
   );
 }
 
-function ConceptCard({ item, accent, learned }) {
+function ConceptCard({ item, accent, learned, width }) {
   // Both ends of every confusion pair come back, so this fires on the concept the
   // child was asked about AND on the one they reached for instead.
   const mixedWith = (item.confused_with || [])
     .map((k) => getConceptItem(item.category_key, k)?.label)
     .filter(Boolean);
 
+  const priority = item.is_priority && !learned;
+
   return (
     <View
       style={[
         styles.card,
-        learned && styles.cardLearned,
-        item.is_priority && { borderColor: accent },
+        { width },
+        priority && { borderColor: accent, borderWidth: 2 },
       ]}
       accessibilityLabel={
         `${item.label}. ${learned ? 'Learned' : 'Not learned yet'}` +
@@ -197,14 +233,26 @@ function ConceptCard({ item, accent, learned }) {
         (mixedWith.length ? `. Mixed up with ${mixedWith.join(', ')}` : '')
       }
     >
-      <View style={styles.thumbWrap}>
+      {/* The starred ones are those the confusion ordering actually moved up the
+          sequence — not merely everything unfinished. On the card's top edge, so
+          it reads as a tag on the card rather than part of the picture. */}
+      {priority ? (
+        <View style={styles.nextWrap} pointerEvents="none">
+          <View style={[styles.nextPill, { backgroundColor: accent }]}>
+            <Ionicons name="arrow-up" size={9} color="#FFFFFF" />
+            <Text style={styles.nextText}>Next</Text>
+          </View>
+        </View>
+      ) : null}
+
+      <View style={[styles.thumbWrap, learned && styles.thumbWrapLearned]}>
         {item.image ? (
           <Image source={item.image} style={styles.thumb} resizeMode="contain" />
         ) : (
           <View style={styles.thumb} />
         )}
 
-        {/* Dimming the picture, not hiding it: a teacher recognises the row by
+        {/* Marking the picture, not hiding it: a teacher recognises the row by
             its photographs, so a learned concept still has to be findable. */}
         {learned ? (
           <View style={styles.doneBadge}>
@@ -214,15 +262,6 @@ function ConceptCard({ item, accent, learned }) {
       </View>
 
       <Text style={styles.cardLabel} numberOfLines={2}>{item.label}</Text>
-
-      {/* The starred ones are those the confusion ordering actually moved up the
-          sequence — not merely everything unfinished. */}
-      {item.is_priority && !learned ? (
-        <View style={[styles.nextPill, { backgroundColor: accent }]}>
-          <Ionicons name="arrow-up" size={9} color="#FFFFFF" />
-          <Text style={styles.nextText}>Next</Text>
-        </View>
-      ) : null}
 
       {mixedWith.length > 0 ? (
         <View style={styles.mixRow}>
@@ -234,8 +273,6 @@ function ConceptCard({ item, accent, learned }) {
   );
 }
 
-const CARD_W = 104;
-
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
@@ -245,77 +282,94 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.lg,
   },
   // A dialog floating clear of every edge rather than a sheet joined to the
-  // bottom of the screen. It is one group's contents pulled out of the panel
-  // behind it — a thing lifted off the page, not a drawer the page opens into —
-  // and the backdrop showing on all four sides is what says so.
-  //
-  // Capped rather than sized: a group of four should be a small card, and only a
-  // group of twenty-one should reach for the height.
+  // bottom of the screen. Capped rather than sized: a group of four should be a
+  // small card, and only a group of twenty-one should reach for the height.
   dialog: {
     width: '100%',
-    maxWidth: 560,
-    maxHeight: '82%',
+    maxWidth: 580,
+    maxHeight: '84%',
     backgroundColor: Colors.surface,
-    borderRadius: 28,
+    borderRadius: 24,
     overflow: 'hidden',
-    ...Layout.shadow.lg,
   },
 
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Layout.spacing.md,
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.sm,
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  title:    { fontSize: Layout.fontSize.xl, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  subtitle: { fontSize: Layout.fontSize.sm, color: Colors.text.secondary, marginTop: 2 },
+  headIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  title:    { fontSize: 20, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  subtitle: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', marginTop: 1 },
   closeBtn: {
     width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.surfaceAlt,
+    backgroundColor: 'rgba(255,255,255,0.85)',
   },
 
   centre: { paddingVertical: Layout.spacing.xxl, alignItems: 'center', gap: Layout.spacing.sm },
   centreText: { fontSize: Layout.fontSize.sm, color: Colors.text.secondary },
   retry: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold' },
 
-  scroll:  { padding: Layout.spacing.lg, paddingTop: Layout.spacing.sm, gap: Layout.spacing.xl },
-  section: { gap: Layout.spacing.sm },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  sectionTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  // flexShrink lets the list scroll inside the capped dialog instead of pushing
+  // past it.
+  scrollView: { flexShrink: 1 },
+  scroll:  { padding: SCROLL_PAD, paddingTop: 16, gap: 22 },
+  section: { gap: 10 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  sectionTitle: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
   countPill: {
     paddingHorizontal: 8, paddingVertical: 2,
     borderRadius: Layout.radius.full,
+  },
+  countText: { fontSize: 11, fontFamily: 'DMSans_700Bold' },
+  hintBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
     backgroundColor: Colors.surfaceAlt,
   },
-  countText: { fontSize: 11, fontFamily: 'DMSans_700Bold', color: Colors.text.secondary },
   sectionHint: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.text.muted,
-    lineHeight: Layout.fontSize.xs * 1.5,
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 16,
+    color: Colors.text.secondary,
   },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 },
+  // Top padding leaves room for the "Next" tags that sit on the first row's edge.
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, paddingTop: 8 },
   card: {
-    width: CARD_W,
     padding: 8,
-    gap: 5,
+    paddingBottom: 10,
+    gap: 6,
     alignItems: 'center',
-    borderWidth: 2,
-    borderRadius: 18,
+    borderWidth: 1,
+    borderRadius: 16,
     borderColor: Colors.borderLight,
     backgroundColor: Colors.surface,
   },
-  cardLearned: { backgroundColor: Colors.surfaceAlt, borderColor: Colors.borderLight },
 
-  thumbWrap: { width: '100%' },
-  thumb: { width: '100%', height: 66 },
+  thumbWrap: {
+    width: '100%',
+    borderRadius: 12,
+    padding: 6,
+    backgroundColor: '#F6F8F9',
+  },
+  thumbWrapLearned: { backgroundColor: '#EEF7F1' },
+  thumb: { width: '100%', height: 70 },
   doneBadge: {
     position: 'absolute',
-    right: -2, top: -2,
-    width: 18, height: 18, borderRadius: 9,
+    right: 4, top: 4,
+    width: 20, height: 20, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#3FAE6F',
     borderWidth: 2,
@@ -324,21 +378,38 @@ const styles = StyleSheet.create({
 
   cardLabel: {
     fontSize: 13,
-    fontFamily: 'DMSans_700Bold',
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
     textAlign: 'center',
+  },
+  nextWrap: {
+    position: 'absolute',
+    top: -9,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 2,
   },
   nextPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: Layout.radius.full,
   },
   nextText: { fontSize: 9, fontFamily: 'DMSans_700Bold', color: '#FFFFFF', letterSpacing: 0.4 },
 
-  mixRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 3 },
+  mixRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 3,
+    alignSelf: 'stretch',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#FDF4E3',
+  },
   mixText: {
     flex: 1,
     fontSize: 10,

@@ -16,6 +16,7 @@ import { getConceptItem } from '../../../../data/conceptData';
 import { conceptApi } from '../../../../api/concept';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { Layout } from '../../../../constants/layout';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 export default function Tier3VideoScreen({ route, navigation }) {
   const { student, category, conceptKey, needsReplay = false } = route.params;
@@ -105,11 +106,11 @@ export default function Tier3VideoScreen({ route, navigation }) {
             never stuck here if the video misbehaves. */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }, BACK_BUTTON]}
             onPress={() => setGateVisible(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
         </View>
 

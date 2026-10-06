@@ -17,6 +17,7 @@ import { buildMemoryGame, MEMORY_PAIRS } from '../../../../data/conceptMemoryGam
 import { getPairableItems, MIN_PAIRS } from '../../../../data/conceptPairMatch';
 import { conceptApi } from '../../../../api/concept';
 import { Layout } from '../../../../constants/layout';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const PROMPT_EN = 'Find the matching pairs!';
 const PROMPT_SI = 'ගැළපෙන යුගල් සොයමු!';
@@ -269,13 +270,13 @@ export default function ConceptMemoryScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <View style={styles.topBarSide}>
             <TouchableOpacity
-              style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+              style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }, BACK_BUTTON]}
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Back"
             >
-              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
             </TouchableOpacity>
           </View>
 

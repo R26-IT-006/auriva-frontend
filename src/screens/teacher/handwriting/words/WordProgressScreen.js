@@ -16,6 +16,7 @@ import WordImageDisplay from '../../../../components/word/WordImageDisplay';
 import { useLockLandscape } from '../../../../utils/useOrientationLock';
 import useGatedBack from '../../../../utils/useGatedBack';
 import { resolveWordImageKey, resolveWordEmoji } from '../../../../utils/wordImageResolver';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const ALPHABET  = 'abcdefghijklmnopqrstuvwxyz'.split('');
 const EXERCISES = ['A', 'B', 'C', 'D', 'E'];
@@ -148,13 +149,13 @@ export default function WordProgressScreen({ route, navigation }) {
         <View style={styles.topBar}>
           <View style={styles.sideGroup}>
             <TouchableOpacity
-              style={styles.backBtn}
+              style={[styles.backBtn, BACK_BUTTON]}
               onPress={requestBack}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+              <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
             </TouchableOpacity>
           </View>
 

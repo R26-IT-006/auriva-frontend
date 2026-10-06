@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { Asset } from 'expo-asset';
 import DatePickerField from '../../../components/common/DatePickerField';
 import { principalApi } from '../../../api/principal';
 import { validatePhone } from '../../../utils/validation';
@@ -126,6 +127,13 @@ function SectionCard({ accentColor, iconName, title, children }) {
   );
 }
 
+// Ready-made profile pictures: choosing one marks the student as a boy or a girl
+// without needing a photo. It is uploaded as the student's profile photo.
+const PROFILE_CHOICES = [
+  { key: 'boy',  label: 'Boy',  image: require('../../../../assets/profiles/Boy.png') },
+  { key: 'girl', label: 'Girl', image: require('../../../../assets/profiles/Girl.png') },
+];
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function CreateStudentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -138,6 +146,7 @@ export default function CreateStudentScreen({ navigation }) {
     marital_status: '', mobile_number: '', home_number: '',
   });
   const [photo,               setPhoto]               = useState(null);
+  const [profileChoice,       setProfileChoice]       = useState(null);   // 'boy' | 'girl' | null
   const [loading,             setLoading]             = useState(false);
   const [loadingTeachers,     setLoadingTeachers]     = useState(false);
   const [errors,              setErrors]              = useState({});
@@ -156,7 +165,30 @@ export default function CreateStudentScreen({ navigation }) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true, aspect: [1, 1], quality: 0.8,
     });
-    if (!result.canceled) setPhoto(result.assets[0]);
+    if (!result.canceled) {
+      setPhoto(result.assets[0]);
+      setProfileChoice(null);   // a real photo replaces the ready-made picture
+    }
+  }
+
+  // Boy / Girl picture. The bundled image is resolved to a local file first, so
+  // it can be uploaded exactly like a photo from the gallery. Tapping the chosen
+  // one again clears it.
+  async function chooseProfile(kind) {
+    if (profileChoice === kind) {
+      setProfileChoice(null);
+      setPhoto(null);
+      return;
+    }
+    try {
+      const choice = PROFILE_CHOICES.find((c) => c.key === kind);
+      const asset  = Asset.fromModule(choice.image);
+      await asset.downloadAsync();
+      setPhoto({ uri: asset.localUri ?? asset.uri });
+      setProfileChoice(kind);
+    } catch {
+      toast.show('Could not load that picture. Please try again.', 'error');
+    }
   }
 
   function validateStep1() {
@@ -191,10 +223,15 @@ export default function CreateStudentScreen({ navigation }) {
       Object.entries(form).forEach(([k, v]) => { if (v && v.trim()) formData.append(k, v.trim()); });
       if (photo) {
         const uri  = photo.uri;
-        const name = uri.split('/').pop();
-        const ext  = name.split('.').pop().toLowerCase();
-        const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
-        formData.append('photo', { uri, name, type: mime[ext] || 'image/jpeg' });
+        if (profileChoice) {
+          // Ready-made Boy / Girl picture: always a PNG, whatever the cached file is called.
+          formData.append('photo', { uri, name: `${profileChoice}.png`, type: 'image/png' });
+        } else {
+          const name = uri.split('/').pop();
+          const ext  = name.split('.').pop().toLowerCase();
+          const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+          formData.append('photo', { uri, name, type: mime[ext] || 'image/jpeg' });
+        }
       }
       const created = await principalApi.createStudent(formData);
       const sid = created?.sid ?? created?.student?.sid;
@@ -285,6 +322,35 @@ export default function CreateStudentScreen({ navigation }) {
                   <Ionicons name="camera-outline" size={14} color={BLUE} />
                   <Text style={styles.photoBtnText}>{photo ? 'Change' : 'Add Photo'}</Text>
                 </ButtonFeedback>
+              </View>
+
+              {/* Ready-made profile pictures — a quick way to mark the student as a boy or a girl */}
+              <View style={styles.choiceRow}>
+                <Text style={styles.choiceLabel}>Or choose a profile picture</Text>
+                <View style={styles.choiceItems}>
+                  {PROFILE_CHOICES.map((c) => {
+                    const selected = profileChoice === c.key;
+                    return (
+                      <ButtonFeedback
+                        key={c.key}
+                        onPress={() => chooseProfile(c.key)}
+                        activeOpacity={0.8}
+                        style={[styles.choiceItem, selected && styles.choiceItemSelected]}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={`${c.label} profile picture`}
+                      >
+                        <Image source={c.image} style={styles.choiceImg} />
+                        <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{c.label}</Text>
+                        {selected && (
+                          <View style={styles.choiceTick}>
+                            <Ionicons name="checkmark" size={12} color={SURFACE} />
+                          </View>
+                        )}
+                      </ButtonFeedback>
+                    );
+                  })}
+                </View>
               </View>
 
               {/* Required Information */}
@@ -690,6 +756,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8, flexShrink: 0,
   },
   photoBtnText: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: BLUE },
+
+  // ── Boy / Girl profile pictures ───────────────────────────────────────────
+  choiceRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14,
+    backgroundColor: SURFACE, borderRadius: 16,
+    borderWidth: 1, borderColor: BORDER, paddingHorizontal: 16, paddingVertical: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+  },
+  choiceLabel: { flex: 1, fontSize: 13, fontFamily: 'DMSans_700Bold', color: TEXT },
+  choiceItems: { flexDirection: 'row', gap: 12 },
+  choiceItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 14, borderWidth: 2, borderColor: BORDER,
+    paddingVertical: 6, paddingLeft: 6, paddingRight: 14,
+    backgroundColor: SURFACE, position: 'relative',
+  },
+  choiceItemSelected: { borderColor: BLUE, backgroundColor: BLUE_L },
+  choiceImg: { width: 44, height: 44, borderRadius: 22 },
+  choiceText: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: MUTED },
+  choiceTextSelected: { color: BLUE },
+  choiceTick: {
+    position: 'absolute', top: -6, right: -6,
+    width: 20, height: 20, borderRadius: 10, backgroundColor: BLUE,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: SURFACE,
+  },
 
   // ── Section cards ─────────────────────────────────────────────────────────
   card: {

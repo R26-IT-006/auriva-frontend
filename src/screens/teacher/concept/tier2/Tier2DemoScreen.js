@@ -20,6 +20,7 @@ import {
   NAMING_QUESTION_SI,
 } from '../../../../data/conceptData';
 import { Layout } from '../../../../constants/layout';
+import HeaderPillButton from '../../../../components/common/HeaderPillButton';
 
 // The same celebration the real rounds play, so the demo rehearses exactly what
 // the child will see when they answer correctly.
@@ -128,13 +129,15 @@ export default function Tier2DemoScreen({ route, navigation }) {
             <Text style={[styles.watchText, { color: theme.headingText }]}>Watch first!</Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.skipBtn, { backgroundColor: 'rgba(255,255,255,0.6)' }]}
+          {/* Shared header pill (HeaderPillButton), subtle variant. */}
+          <HeaderPillButton
+            variant="subtle"
+            icon="play-skip-forward"
+            label="Skip"
+            accessibilityLabel="Skip the demo"
+            theme={theme}
             onPress={goToActivity}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.skipText, { color: theme.headingText }]}>Skip</Text>
-          </TouchableOpacity>
+          />
         </View>
 
         {/* Bilingual question — same wording the real activity asks */}
@@ -251,16 +254,6 @@ const styles = StyleSheet.create({
   watchText: {
     fontSize: 14,
     fontFamily: 'DMSans_700Bold',
-  },
-  skipBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  skipText: {
-    fontSize: 14,
-    fontFamily: 'DMSans_700Bold',
-    opacity: 0.7,
   },
 
   questionBlock: {

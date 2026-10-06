@@ -23,6 +23,7 @@ import { level2Api } from '../../../../api/level2';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import { useGuardedRecorder } from '../../../../utils/useGuardedRecorder';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 // ── Shared audio helpers ──────────────────────────────────────────────────────
 async function playBase64Audio(base64, soundRef) {
@@ -132,8 +133,8 @@ export default function L2SentenceTeachScreen({ route, navigation }) {
       {/* Header */}
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => setShowGate(true)} style={styles.headerBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <TouchableOpacity onPress={() => setShowGate(true)} style={[styles.headerBtn, BACK_BUTTON]} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.button }]} />
@@ -392,8 +393,8 @@ function Step2DragOne({ sentence, theme, onComplete }) {
         <Ionicons name="hand-left-outline" size={14} /> Drag the card below into the blank
       </Text>
       {!placed && (
-        <Animated.View style={[styles.tile, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] }]} {...panResponder.panHandlers}>
-          <Text style={styles.tileText}>{sentence.dynamic_value}</Text>
+        <Animated.View style={[styles.tile, { borderColor: theme.cardOutline }, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] }]} {...panResponder.panHandlers}>
+          <Text style={[styles.tileText, { color: theme.headingText }]}>{sentence.dynamic_value}</Text>
           <Text style={{ fontSize: 16 }}>✨</Text>
         </Animated.View>
       )}
@@ -427,8 +428,8 @@ function DragCard({ label, isCorrect, isHint, dropBounds, placed, onCorrect, onW
   if (placed && isCorrect) return null;
   if (placed && !isCorrect) return null;
   return (
-    <Animated.View style={[styles.tile, isHint && { borderColor: theme.button, borderWidth: 3 }, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] }]} {...pr.panHandlers}>
-      <Text style={styles.tileText}>{label}</Text>
+    <Animated.View style={[styles.tile, { borderColor: theme.cardOutline }, isHint && { borderColor: theme.button, borderWidth: 3, borderBottomWidth: 5 }, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] }]} {...pr.panHandlers}>
+      <Text style={[styles.tileText, { color: theme.headingText }]}>{label}</Text>
       {isHint && <Ionicons name="star" size={14} color={theme.button} />}
     </Animated.View>
   );

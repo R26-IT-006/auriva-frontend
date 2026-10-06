@@ -11,6 +11,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const SAMAN_VIDEO = require('../../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4');
 
@@ -47,9 +48,9 @@ export default function ClapActivityScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
-            style={styles.headerBtn}
+            style={[styles.headerBtn, BACK_BUTTON]}
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.headingText }]}>Level 1</Text>
           <View style={styles.headerSide} />

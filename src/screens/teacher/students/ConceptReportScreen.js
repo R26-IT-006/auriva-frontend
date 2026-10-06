@@ -9,18 +9,21 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
+import HeaderPillButton from '../../../components/common/HeaderPillButton';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 import { ImageViewerModal } from '../../../components/common/ImageViewerModal';
 import { AccuracyChart } from '../../../components/charts/AccuracyChart';
 import { GroupProgress } from '../../../components/charts/GroupProgress';
 import { ConceptThumb, conceptLabel } from '../../../components/charts/ConceptThumb';
 import { MixUpCard, MixUpEmpty } from '../../../components/charts/MixUpCard';
 import { DayByDay } from '../../../components/charts/DayByDay';
-import { Colors, BACKDROP } from '../../../constants/colors';
+import { Colors } from '../../../constants/colors';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { teacherApi } from '../../../api/teacher';
@@ -33,6 +36,32 @@ import {
 } from '../../../constants/teacherWording';
 
 const TIER_LABEL = ROUND_BY_STATUS_KEY;
+
+// The page background: the login page's gradient (screens/auth/LoginScreen.js), so
+// the report opens in the same colours as the screen the app starts on. Local to
+// this screen — the shared BACKDROP is also used by the teacher dashboard.
+// The brand green the Module Progress panel on the student profile uses (and the
+// sign-in button): the deep green for icons, text and fills, and the teal end of
+// the same pair for the second summary card.
+const BRAND      = Colors.brandDeep;
+const BRAND_TEAL = Colors.brandGradientDeep[0];
+
+// One light colour per section heading: a pale circle with a darker icon of the
+// same hue, so the sections can be told apart by colour as well as by shape.
+const ICON_TINTS = {
+  trend:    { bg: '#E3F7EC', fg: '#3FAE6F' },   // green
+  work:     { bg: '#FDF1DC', fg: '#E89A2E' },   // amber
+  how:      { bg: '#E6F1FC', fg: '#3B82C4' },   // blue
+  sessions: { bg: '#EFEBFA', fg: '#6C5CE0' },   // purple
+  groups:   { bg: '#FBE7E2', fg: '#E0735F' },   // coral
+  games:    { bg: '#DFF3F4', fg: '#2F9AA8' },   // teal
+};
+
+const BACKDROP = {
+  colors: ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'],
+  start:  { x: 0, y: 0 },
+  end:    { x: 0, y: 1 },
+};
 
 /**
  * A section of the report, optionally collapsed.
@@ -48,6 +77,8 @@ const TIER_LABEL = ROUND_BY_STATUS_KEY;
 function Section({
   title, subtitle, summary, children, right, icon, tone = 'neutral',
   collapsible = false, defaultOpen = true, inPair = false, headerInside = false,
+  solidIcon = true,
+  iconTint = null,
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const isOpen = collapsible ? open : true;
@@ -60,13 +91,23 @@ function Section({
           undifferentiated ladder — a teacher scrolling for the games had to read
           every title on the way past. */}
       {icon ? (
-        <View style={[styles.sectionIcon, { backgroundColor: t.bg }]}>
-          <Ionicons name={icon} size={17} color={t.fg} />
-        </View>
+        // solidIcon (the default): the brand-green circle with a white icon, the
+        // same one on the summary cards, the Progress trend card and every other
+        // heading on the page. The sections pass outline icon names; the circle
+        // takes the filled form of the same icon.
+        solidIcon ? (
+          <View style={[styles.sectionIconSolid, { backgroundColor: iconTint?.bg ?? BRAND }]}>
+            <Ionicons name={icon.replace(/-outline$/, '')} size={20} color={iconTint?.fg ?? '#FFFFFF'} />
+          </View>
+        ) : (
+          <View style={[styles.sectionIcon, { backgroundColor: t.bg }]}>
+            <Ionicons name={icon} size={17} color={t.fg} />
+          </View>
+        )
       ) : null}
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={[styles.sectionTitle, solidIcon && styles.sectionTitleLg]}>{title}</Text>
         {/* When closed, the summary replaces the subtitle: the subtitle explains
             how to read the contents, which is not useful until they are visible. */}
         {isOpen
@@ -143,48 +184,61 @@ function Section({
  * A count of zero on "worth another look" is good news and must not wear a warning
  * colour, so the tone is chosen by the caller from the value.
  */
-function StatTile({ label, value, of, note, noteTone, icon, tone = 'neutral' }) {
-  const t = STAT_TONES[tone] || STAT_TONES.neutral;
+function StatTile({
+  label, value, of, note, noteTone, icon, tone = 'neutral', progress = null,
+  accentColor = null, textColor = null,
+}) {
+  const t0 = STAT_TONES[tone] || STAT_TONES.neutral;
+  // The summary cards take the student's theme colours (accentColor for the icon
+  // circle / top edge / bar, textColor for the words, which needs the stronger
+  // colour to stay readable). The soft tint is the accent at low alpha. Without
+  // an override a card tone carries its own accent, and the older flat tones fall
+  // back to their foreground colour so nothing else that reads them changes.
+  const t = accentColor ? { ...t0, accent: accentColor, soft: accentColor + '33' } : t0;
+  const accent = t.accent || t.fg;
+  const ink = textColor || accent;
   return (
-    // The tile takes its own tint rather than the shared cold grey.
-    //
-    // This is a learning product, and the teacher's side of it had drifted into
-    // reading like a finance dashboard: every surface the same blue-grey, every
-    // caption at 10px, colour confined to small badges. Letting each tile sit on
-    // the colour it already carries costs nothing — the tints are the validated
-    // ones the badges use — and the row stops looking like a spreadsheet header.
-    <View style={[styles.statTile, { backgroundColor: t.bg }, tone === 'plain' && styles.statTilePlain]}>
-      {/* Badge beside the figure, not above it. Stacked and centred, the tile
-          needed three lines of height for one number and the label had to shrink
-          to 9px to fit — a row puts the badge in the margin where it costs no
-          vertical space and lets the number be the biggest thing in the tile. */}
-      {/* White, not the tone's tint — the tile is already wearing that, and a tint
-          on a tint at this size turns to mush. On colour, white reads as a chip. */}
-      <View style={[styles.statBadge, { backgroundColor: t.chip || '#FFFFFF' }]}>
-        <Ionicons name={icon} size={17} color={t.ink || t.fg} />
-      </View>
-
-      <View style={styles.statBody}>
-        {/* Label first, then the number. Reading order matches the question — a
-            teacher asks "how many learned?", so the tile answers in that order
-            rather than making them find the number's caption underneath it. */}
-        <Text style={[styles.statTileLabel, { color: t.fg }]} numberOfLines={1}>
+    // White card, coloured top edge, solid icon circle: the three summary
+    // figures share one design and only the accent says which is which. They used
+    // to be one white and two solid-fill tiles, and white on the blue and coral
+    // fills measured well under the readable contrast floor.
+    <View style={[styles.statTile, styles.statCard, t.soft ? { borderColor: t.soft } : null]}>
+      <View style={styles.statTop}>
+        <View style={[styles.statBadge, { backgroundColor: accent }]}>
+          <Ionicons name={icon} size={22} color="#FFFFFF" />
+        </View>
+        <Text style={[styles.statTileLabel, { color: ink }]} numberOfLines={1}>
           {label}
         </Text>
+      </View>
 
-        <View style={styles.statValueRow}>
-          <Text style={[styles.statTileValue, { color: t.ink || Colors.text.primary }]}>{value}</Text>
-          {/* The denominator, kept small and grey. "9 of 93" set at one size makes
-              93 look like part of the answer; the child's score is the 9. */}
-          {of ? <Text style={[styles.statTileOf, { color: t.fg }]}>/ {of}</Text> : null}
-        </View>
+      <View style={styles.statValueRow}>
+        <Text style={styles.statTileValue}>{value}</Text>
+        {/* The denominator stays small and grey — "17 / 93" at one size makes 93
+            look like part of the answer. */}
+        {of ? <Text style={styles.statTileOf}>/ {of}</Text> : null}
+      </View>
 
-        {note ? (
-          <Text style={[styles.statTileNote, { color: t.fg }, noteTone ? { color: noteTone } : null]} numberOfLines={1}>
-            {note}
-          </Text>
+      {/* Reserved on every card so the three stay the same height, drawn only
+          where there is a total to measure against. */}
+      <View style={styles.statBarSlot}>
+        {progress != null ? (
+          <View style={[styles.statBarTrack, { backgroundColor: t.soft }]}>
+            <View
+              style={[
+                styles.statBarFill,
+                { width: `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%`, backgroundColor: accent },
+              ]}
+            />
+          </View>
         ) : null}
       </View>
+
+      {note ? (
+        <Text style={[styles.statTileNote, { color: ink }, noteTone ? { color: noteTone } : null]} numberOfLines={1}>
+          {note}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -217,6 +271,11 @@ const STAT_TONES = {
   // same hues were tried and rejected in favour of the design as drawn. If these
   // figures turn out hard to read on a tablet in classroom light, the fix that
   // keeps the palette is dark ink on these fills rather than white.
+  // Summary cards: a solid accent for the icon / top edge / bar, and a soft tint
+  // of the same hue for the card outline and the empty part of the bar.
+  cardGreen: { accent: '#2E9E5B', soft: '#CDEBD8' },
+  cardBlue:  { accent: '#3B82C4', soft: '#CFE1F3' },
+  cardCoral: { accent: '#E8735F', soft: '#F7D5CD' },
   plain:      { bg: '#FFFFFF', fg: Colors.text.secondary, ink: Colors.text.primary, chip: Colors.surfaceAlt },
   solidBlue:  { bg: '#7A9DB0', fg: 'rgba(255,255,255,0.92)', ink: '#FFFFFF', chip: 'rgba(255,255,255,0.28)' },
   solidCoral: { bg: WRONG_CORAL, fg: 'rgba(255,255,255,0.92)', ink: '#FFFFFF', chip: 'rgba(255,255,255,0.28)' },
@@ -357,7 +416,7 @@ function TierPill({ status }) {
   const s = map[status] || map.not_started;
   return (
     <View style={[styles.tierPill, { backgroundColor: s.bg }]}>
-      <Ionicons name={s.icon} size={11} color={s.fg} />
+      <Ionicons name={s.icon} size={14} color={s.fg} />
     </View>
   );
 }
@@ -444,33 +503,54 @@ export default function ConceptReportScreen({ route, navigation }) {
   }, [report, frozen, loadNarrative]);
 
   useEffect(() => {
-    navigation.setOptions({
-      // A saved report is titled by its period. "Ayodya · Concepts" on an archived
-      // August report would leave a teacher with two identical-looking screens and
-      // no way to tell which one they are reading.
-      title: saved?.label
-        ? `${firstNameOf(student?.full_name)} · ${saved.label}`
-        : (student?.full_name ? `${student.full_name} · Concepts` : ACTION.historyHeading),
-      // Only on the live view. From a saved report the archive is already one
-      // Back away, and a second route to it would grow the stack every time.
-      headerRight: frozen ? undefined : () => (
-        <TouchableOpacity
+    // The header is drawn inside the page (see `topBar`), with the same round
+    // back button and heading style as the student-side screens.
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  // A saved report is titled by its period. "Ayodya · Concepts" on an archived
+  // August report would leave a teacher with two identical-looking screens and
+  // no way to tell which one they are reading.
+  const headingTitle = saved?.label
+    ? `${firstNameOf(student?.full_name)} · ${saved.label}`
+    : (student?.full_name ? `${student.full_name} · Concepts` : ACTION.historyHeading);
+
+  const topBar = (
+    <View style={styles.topBar}>
+      <TouchableOpacity
+        style={BACK_BUTTON}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+      >
+        <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={Colors.text.primary} />
+      </TouchableOpacity>
+
+      <Text style={styles.topTitle} numberOfLines={1}>{headingTitle}</Text>
+
+      {/* Only on the live view. From a saved report the archive is already one
+          Back away, and a second route to it would grow the stack every time. */}
+      {frozen ? null : (
+        <HeaderPillButton
+          variant="outline"
+          icon="document-text-outline"
+          label="Saved reports"
+          theme={{ button: BRAND, buttonText: '#FFFFFF', headingText: Colors.text.primary }}
           onPress={() => navigation.navigate('ConceptReports', { student })}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityRole="button"
-          accessibilityLabel="Saved reports"
-        >
-          <Ionicons name="document-text-outline" size={20} color={Colors.icon.default} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, student, student?.full_name, saved?.label, frozen]);
+        />
+      )}
+    </View>
+  );
 
   if (loading) {
     return (
       <LinearGradient colors={BACKDROP.colors} start={BACKDROP.start} end={BACKDROP.end} style={styles.safe}>
-        <SafeAreaView style={[styles.safeInner, styles.centered]} edges={['bottom']}>
-          <ActivityIndicator size="large" color={Colors.icon.active} />
+        <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+          {topBar}
+          <View style={[styles.safeInner, styles.centered]}>
+            <ActivityIndicator size="large" color={Colors.icon.active} />
+          </View>
         </SafeAreaView>
       </LinearGradient>
     );
@@ -479,12 +559,15 @@ export default function ConceptReportScreen({ route, navigation }) {
   if (error || !report) {
     return (
       <LinearGradient colors={BACKDROP.colors} start={BACKDROP.start} end={BACKDROP.end} style={styles.safe}>
-        <SafeAreaView style={[styles.safeInner, styles.centered]} edges={['bottom']}>
+        <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+          {topBar}
+          <View style={[styles.safeInner, styles.centered]}>
           <Ionicons name="cloud-offline-outline" size={34} color={Colors.text.muted} />
           <Text style={styles.errorText}>{error || 'Could not load the report.'}</Text>
           <TouchableOpacity onPress={() => { setLoading(true); load(); }}>
             <Text style={styles.retry}>Try again</Text>
           </TouchableOpacity>
+          </View>
         </SafeAreaView>
       </LinearGradient>
     );
@@ -642,7 +725,8 @@ export default function ConceptReportScreen({ route, navigation }) {
       end={BACKDROP.end}
       style={styles.safe}
     >
-      <SafeAreaView style={styles.safeInner} edges={['bottom']}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+      {topBar}
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -696,15 +780,21 @@ export default function ConceptReportScreen({ route, navigation }) {
                 value={String(totals.mastered)}
                 of={totals.catalogue_concepts}
                 note={learnedThisWeek > 0 ? `+${learnedThisWeek} this week` : 'Both rounds passed'}
-                noteTone={learnedThisWeek > 0 ? STAT_TONES.good.fg : undefined}
-                tone="plain"
+                tone="cardGreen"
+                accentColor={BRAND}
+                textColor={BRAND}
+                progress={totals.catalogue_concepts > 0 ? totals.mastered / totals.catalogue_concepts : 0}
               />
               <StatTile
                 icon="eye-outline"
                 label="Pictures"
                 value={String(totals.tier1_passed)}
+                of={totals.catalogue_concepts}
                 note="Finds the picture"
-                tone="solidBlue"
+                tone="cardBlue"
+                accentColor={BRAND_TEAL}
+                textColor={BRAND_TEAL}
+                progress={totals.catalogue_concepts > 0 ? totals.tier1_passed / totals.catalogue_concepts : 0}
               />
               {/* Amber only when there is actually something to look at. Zero here
                   is good news, and dressing it in a warning colour would have the
@@ -713,8 +803,13 @@ export default function ConceptReportScreen({ route, navigation }) {
                 icon="repeat-outline"
                 label="Revisit"
                 value={String(struggling.length)}
-                note="Worth another look"
-                tone="solidCoral"
+                note={struggling.length > 0 ? 'Worth another look' : 'All good — nothing to revisit'}
+                // Theme-coloured like the other two when all is well; coral only
+                // when there is something to look at, so a warning still reads
+                // as one.
+                tone={struggling.length > 0 ? 'cardCoral' : 'cardGreen'}
+                accentColor={struggling.length > 0 ? null : BRAND}
+                textColor={struggling.length > 0 ? null : BRAND}
               />
             </View>
           </View>
@@ -729,16 +824,18 @@ export default function ConceptReportScreen({ route, navigation }) {
             and a chart squeezed into 60% of a tablet is the first thing to
             become unreadable — it was sharing the row to keep the page short,
             which is the wrong thing to optimise for on the one graph here. */}
-        <Card style={styles.card}>
-          {/* The card names itself now. It carried the headline sentence straight
-              off the top edge, so on a page of titled sections this was the one
-              block with nothing saying what it was. */}
+        <Card style={[styles.card, styles.trendCard]}>
+          {/* The card names itself, with the same theme-coloured icon circle the
+              summary cards use. */}
           <View style={styles.trendHead}>
+            <View style={[styles.trendIcon, { backgroundColor: ICON_TINTS.trend.bg }]}>
+              <Ionicons name="trending-up" size={20} color={ICON_TINTS.trend.fg} />
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.trendTitle}>Progress trend</Text>
+              <Text style={[styles.trendTitle, { color: Colors.text.primary }]}>Progress trend</Text>
               <Text style={styles.trendSub}>
                 {totals.started > 0
-                  ? `${name} has finished ${totals.mastered} of ${totals.started} things.`
+                  ? 'How learning has changed over time'
                   : `${name} has not started anything yet.`}
               </Text>
             </View>
@@ -747,18 +844,34 @@ export default function ConceptReportScreen({ route, navigation }) {
                 two ends, but only once you are already reading the plot — the pill
                 answers "what period is this?" before you look. */}
             {trendRange ? (
-              <View style={styles.datePill}>
-                <Text style={styles.datePillText}>{trendRange}</Text>
+              <View style={[styles.datePill, { backgroundColor: BRAND + '14' }]}>
+                <Ionicons name="calendar-outline" size={13} color={BRAND} />
+                <Text style={[styles.datePillText, { color: BRAND }]}>{trendRange}</Text>
               </View>
             ) : null}
           </View>
 
-          <View style={styles.glanceBlock}>
-            <Text style={styles.glance}>{headline}</Text>
+          {/* The one-sentence answer, lifted into its own panel with how much of
+              what was started is finished — the sentence says it, the bar shows it. */}
+          <View style={styles.trendHighlight}>
+            <Text style={[styles.trendHighlightText, { color: Colors.text.primary }]}>{headline}</Text>
 
-            {/* Provenance stays visible even though the card is no longer badged as
-                an AI panel. A teacher acting on a sentence should know a machine
-                wrote it, and the refresh has to remain reachable. */}
+            {totals.started > 0 ? (
+              <View style={styles.trendHlRow}>
+                <View style={[styles.trendHlTrack, { backgroundColor: BRAND + '26' }]}>
+                  <View
+                    style={[
+                      styles.trendHlFill,
+                      { width: `${Math.round((totals.mastered / totals.started) * 100)}%`, backgroundColor: BRAND },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.trendHlPct, { color: BRAND }]}>
+                  {totals.mastered} of {totals.started} finished
+                </Text>
+              </View>
+            ) : null}
+
             {/* While the summary is still being written the card already shows the
                 computed sentence, so this says a better one is coming rather than
                 letting the text change under the reader with no explanation. */}
@@ -769,15 +882,12 @@ export default function ConceptReportScreen({ route, navigation }) {
               </View>
             ) : null}
 
-            {/* A heading for the lines under it rather than a footnote under the
-                sentence above. It has to say two things at once — that a machine
-                wrote these, and that they are about this child — and as a caption
-                trailing the headline it read as a disclaimer on the headline
-                instead of a label on the list. */}
+            {/* Provenance stays visible: a teacher acting on a sentence should know
+                a machine wrote it, and the refresh has to remain reachable. */}
             {aiHeadline && strengths.length ? (
               <View style={styles.aiRow}>
-                <Ionicons name="sparkles" size={11} color={Colors.primary} />
-                <Text style={styles.aiTag}>Insights from {name}'s activity</Text>
+                <Ionicons name="sparkles" size={12} color={BRAND} />
+                <Text style={[styles.aiTag, { color: BRAND }]}>Insights from {name}'s activity</Text>
                 <View style={{ flex: 1 }} />
                 {/* Absent on a saved report. Rewriting the insights would change
                     what a snapshot says after someone has already read it. */}
@@ -791,38 +901,40 @@ export default function ConceptReportScreen({ route, navigation }) {
                   >
                     {narrativeRefreshing
                       ? <ActivityIndicator size="small" color={Colors.icon.muted} />
-                      : <Ionicons name="refresh" size={14} color={Colors.icon.default} />}
+                      : <Ionicons name="refresh" size={15} color={BRAND} />}
                   </TouchableOpacity>
                 )}
               </View>
             ) : null}
-
           </View>
 
-          <View style={styles.trendWrap}>
+          {/* The chart sits in its own white panel, inset from the card. Its width
+              is reduced by the panel's padding and border so it still fits. */}
+          <View style={[styles.trendChartPanel, { borderColor: BRAND + '55' }]}>
             <AccuracyChart
               points={timeline}
-              width={chartWidth}
+              width={chartWidth - 2 * (Layout.spacing.md + 1 + 8)}
               height={210}
             />
           </View>
 
-          {/* The model's observations, boxed and titled, under the chart rather
-              than loose above it. Two bare sentences between the headline and the
-              plot read as more of the headline; in a box under the evidence they
-              read as remarks about it, which is what they are. */}
+          {/* The model's observations, in a themed box under the chart: remarks
+              about the evidence above them. */}
           {strengths.length > 0 && (
             <View style={styles.insightsBox}>
-              <View style={styles.insightsIcon}>
-                <Ionicons name="bulb-outline" size={15} color="#8A7A3D" />
+              <View style={[styles.insightsIcon, { backgroundColor: BRAND }]}>
+                <Ionicons name="bulb" size={17} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.insightsTitle}>Activity insights</Text>
+                <Text style={[styles.insightsTitle, { color: Colors.text.primary }]}>Activity insights</Text>
                 {/* Two at most. The model returns up to three and the third is
                     reliably the weakest — what it writes once it has run out of
                     things to say, which is the padding its own rule 4 forbids. */}
                 {strengths.slice(0, 2).map((s, i) => (
-                  <Text key={i} style={styles.insightsText}>{s}</Text>
+                  <View key={i} style={styles.insightRow}>
+                    <Ionicons name="checkmark-circle" size={16} color={BRAND} style={styles.insightTick} />
+                    <Text style={styles.insightsText}>{s}</Text>
+                  </View>
                 ))}
               </View>
             </View>
@@ -845,8 +957,10 @@ export default function ConceptReportScreen({ route, navigation }) {
           <Section
             title="What to work on"
             subtitle={workList.length ? 'Most worth your time first' : null}
-            icon="flag-outline"
+            icon="flag"
+            iconTint={ICON_TINTS.work}
             tone="warn"
+            solidIcon
             headerInside
             inPair={twoCol}
           >
@@ -926,8 +1040,8 @@ export default function ConceptReportScreen({ route, navigation }) {
                   were never aligned to begin with. */}
               <Card style={[styles.card, twoCol && styles.cardFill]}>
                 <View style={styles.trendHead}>
-                  <View style={[styles.sectionIcon, { backgroundColor: STAT_TONES.info.bg }]}>
-                    <Ionicons name="pulse-outline" size={17} color={STAT_TONES.info.fg} />
+                  <View style={[styles.sectionIconSolid, { backgroundColor: ICON_TINTS.how.bg }]}>
+                    <Ionicons name="pulse" size={20} color={ICON_TINTS.how.fg} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.trendTitle}>How they work</Text>
@@ -1014,6 +1128,7 @@ export default function ConceptReportScreen({ route, navigation }) {
           title="Recent sessions"
           subtitle={SUBHEADING.dayByDay}
           icon="calendar-outline"
+          iconTint={ICON_TINTS.sessions}
           tone="info"
           headerInside
         >
@@ -1026,6 +1141,7 @@ export default function ConceptReportScreen({ route, navigation }) {
           title={HEADING.categories}
           subtitle="Tap a group to see the things inside it"
           icon="albums-outline"
+          iconTint={ICON_TINTS.groups}
           tone="good"
           summary={groupSummary}
           headerInside
@@ -1043,6 +1159,7 @@ export default function ConceptReportScreen({ route, navigation }) {
               of the section; the expandable behaviour moved onto them. */}
           <View style={styles.groupChartWrap}>
             <GroupProgress
+              showLegend
               categories={categories}
               selectedKey={expanded}
               onSelect={setExpanded}
@@ -1056,7 +1173,7 @@ export default function ConceptReportScreen({ route, navigation }) {
                     <ConceptThumb
                       categoryKey={r.category_key}
                       conceptKey={r.concept_key}
-                      size={26}
+                      size={38}
                     />
                     <Text style={styles.conceptName} numberOfLines={1}>
                       {conceptLabel(r.category_key, r.concept_key)}
@@ -1086,6 +1203,7 @@ export default function ConceptReportScreen({ route, navigation }) {
             title={HEADING.games}
             subtitle={SUBHEADING.games}
             icon="game-controller-outline"
+            iconTint={ICON_TINTS.games}
             tone="good"
             summary={gamesSummary}
             headerInside
@@ -1115,14 +1233,14 @@ export default function ConceptReportScreen({ route, navigation }) {
                 return (
                   <TouchableOpacity
                     key={`${a.category_key}-${a.activity_number}-${i}`}
-                    style={styles.gameCard}
+                    style={[styles.gameCard, { borderColor: face.fg + '1F' }]}
                     activeOpacity={0.75}
                     onPress={() => setOpenGame(a)}
                     accessibilityRole="button"
                     accessibilityLabel={`${GAME_NAME[a.activity_type] || GAME_NAME.practice}, ${meta}. Opens the details.`}
                   >
                     <View style={[styles.gameFace, { backgroundColor: face.bg }]}>
-                      <Ionicons name={face.icon} size={24} color={face.fg} />
+                      <Ionicons name={face.icon.replace(/-outline$/, '')} size={28} color={face.fg} />
                     </View>
 
                     {/* The game's name leads. Two entries with the same thumbnails
@@ -1169,48 +1287,65 @@ export default function ConceptReportScreen({ route, navigation }) {
         onRequestClose={() => setInsightsOpen(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHead}>
+          {/* Backdrop behind the card closes it. The card itself is a plain View, so
+              it does not swallow the list's scroll gestures. */}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setInsightsOpen(false)}
+            accessibilityLabel="Close"
+          />
+          <View style={[styles.modalCard, styles.insightsModalCard]}>
+            <View style={styles.insightsModalHead}>
+              <View style={[styles.sectionIconSolid, { backgroundColor: ICON_TINTS.work.bg }]}>
+                <Ionicons name="flag" size={20} color={ICON_TINTS.work.fg} />
+              </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>What to work on</Text>
+                <Text style={styles.insightsModalTitle}>What to work on</Text>
                 <Text style={styles.modalSub}>
                   {workList.length} {workList.length === 1 ? 'thing' : 'things'} worth your time, most first
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setInsightsOpen(false)}
+                style={styles.insightsModalClose}
                 accessibilityRole="button"
                 accessibilityLabel="Close"
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close" size={22} color={Colors.text.secondary} />
+                <Ionicons name="close" size={22} color={BRAND} />
               </TouchableOpacity>
             </View>
 
             <ScrollView
-              contentContainerStyle={styles.modalBody}
-              showsVerticalScrollIndicator={false}
+              style={styles.insightsModalScroll}
+              contentContainerStyle={styles.insightsModalBody}
+              showsVerticalScrollIndicator
             >
-              {workList.map((w) => (
+              {workList.map((w, i) => (
                 w.kind === 'pair' ? (
                   <MixUpCard
                     key={`mp:${w.item.category_key}/${w.item.concept_a}|${w.item.concept_b}`}
                     pair={w.item}
                     note={noteFor[`${w.item.concept_a}|${w.item.concept_b}`]}
+                    rank={i + 1}
+                    large
                   />
                 ) : (
-                  <View key={`mc:${w.item.category_key}/${w.item.concept_key}`} style={styles.workRow}>
+                  <View key={`mc:${w.item.category_key}/${w.item.concept_key}`} style={[styles.workRow, styles.workRowLarge]}>
+                    <View style={styles.rankBadgeInline}>
+                      <Text style={styles.rankBadgeInlineText}>{i + 1}</Text>
+                    </View>
                     <ConceptThumb
                       categoryKey={w.item.category_key}
                       conceptKey={w.item.concept_key}
-                      size={40}
+                      size={44}
                       tone="tricky"
                     />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.strugglingName}>
+                      <Text style={styles.strugglingNameLarge}>
                         {conceptLabel(w.item.category_key, w.item.concept_key)}
                       </Text>
-                      <Text style={styles.strugglingMeta}>
+                      <Text style={styles.strugglingMetaLarge}>
                         Got {countOf(w.item.correct_attempts, w.item.real_attempts)} right
                         {w.item.avg_response_ms ? ` · ${seconds(w.item.avg_response_ms)} each` : ''}
                       </Text>
@@ -1326,8 +1461,8 @@ export default function ConceptReportScreen({ route, navigation }) {
         uri={openArt?.image_url}
         title={openArt ? conceptLabel(openArt.category_key, openArt.concept_key) : ''}
         subtitle={openArt ? formatDateTime(openArt.created_at) : ''}
-        accent={theme.button}
-        accentText={theme.buttonText}
+        accent={BRAND}
+        accentText={'#FFFFFF'}
         onClose={() => setOpenArt(null)}
       />
       </SafeAreaView>
@@ -1339,16 +1474,35 @@ const styles = StyleSheet.create({
   // Colour comes from the BACKDROP gradient this is applied to.
   safe:      { flex: 1 },
   safeInner: { flex: 1 },
+
+  // In-page header: round back button, the student · Concepts heading, and the
+  // saved-reports pill — the same parts the student-side screens use.
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: Layout.spacing.lg,
+    // Extra room above, so the heading (and the page under it) sits lower.
+    paddingTop: 28,
+    paddingBottom: 8,
+  },
+  topTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: Colors.text.primary,
+    letterSpacing: -0.3,
+  },
   scroll:   { padding: Layout.spacing.lg, paddingBottom: Layout.spacing.xxl },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm, padding: Layout.spacing.xl },
   errorText:{ fontSize: Layout.fontSize.sm, color: Colors.text.secondary, textAlign: 'center' },
-  retry:    { fontSize: Layout.fontSize.sm, color: Colors.text.link, fontFamily: 'DMSans_700Bold' },
+  retry:    { fontSize: Layout.fontSize.sm, color: Colors.text.link, fontFamily: 'DMSans_600SemiBold' },
 
   card:    { marginBottom: 0 },
   // More air above a heading than below it, so each one reads as opening the block
   // under it rather than floating between two. Headings sit on the page backdrop
   // rather than inside a card, so they need the separation to hold their own.
-  section: { marginTop: Layout.spacing.xl },
+  section: { marginTop: 20 },
 
   // The paired row. Main is the wider of the two — it holds a chart, which needs
   // the room; the side column holds short labelled rows that survive being narrow.
@@ -1363,7 +1517,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Layout.spacing.lg,
     alignItems: 'stretch',
-    marginTop: 40,
+    marginTop: 20,
   },
   // How-they-work takes the larger share now. It carries a chart, a paragraph and
   // four figures; the list beside it is two cards that were never using the 61% it
@@ -1386,16 +1540,22 @@ const styles = StyleSheet.create({
     width: 34, height: 34, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
   },
+  sectionIconSolid: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // Larger title, for the sections that carry the solid icon.
+  sectionTitleLg: { fontSize: 18 },
   sectionTitle: {
-    fontSize: Layout.fontSize.lg,
+    fontSize: 18,
     fontFamily: 'DMSans_900Black',
     color: Colors.text.primary,
     letterSpacing: -0.4,
   },
-  sectionSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
+  sectionSub:   { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
   // Darker than the subtitle: when a section is closed this line IS the content,
   // so it should not read as secondary to a heading nobody can act on.
-  sectionSummary: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2, fontFamily: 'DMSans_600SemiBold' },
+  sectionSummary: { fontSize: 12, color: Colors.text.secondary, marginTop: 2, fontFamily: 'DMSans_600SemiBold' },
   sectionChevron: { marginLeft: 2 },
 
   workRow: {
@@ -1413,7 +1573,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.borderLight,
     marginVertical: Layout.spacing.md,
   },
-  viewAll: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: '#8FA9BC' },
+  viewAll: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: '#8FA9BC' },
   viewAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1452,9 +1612,58 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
-  modalTitle: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  modalSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
+  modalTitle: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  modalSub:   { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
   modalBody:  { padding: Layout.spacing.lg, gap: Layout.spacing.md },
+
+  // ── "What to work on" pop-up ────────────────────────────────────────────────
+  // Its own frame: a rounded white card with a soft green outline, a solid green
+  // icon in the header and numbered cards. The generic modal styles above stay as
+  // they are — the game-details pop-up still uses them.
+  insightsModalCard: {
+    maxWidth: 620,
+    maxHeight: '80%',
+    borderRadius: 28,
+    borderWidth: 3,
+    borderColor: '#CDEBD8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  insightsModalHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 10,
+  },
+  insightsModalTitle: { fontSize: 18, fontFamily: 'DMSans_900Black', color: Colors.text.primary, letterSpacing: -0.4 },
+  insightsModalClose: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#E4F4EC',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // flexShrink lets the list fit inside the card's maxHeight and scroll.
+  insightsModalScroll: { flexShrink: 1 },
+  insightsModalBody: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 20, gap: 10 },
+  workRowLarge: {
+    padding: 12,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#CDEBD8',
+    gap: 12,
+  },
+  rankBadgeInline: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: BRAND,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  rankBadgeInlineText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
+  strugglingNameLarge: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  strugglingMetaLarge: { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
 
   // Narrower than the insights sheet: this holds one game's worth of pictures,
   // and at 680 they spread into a thin band across the top of an empty box.
@@ -1466,8 +1675,8 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surfaceAlt,
   },
-  gameResultValue: { fontSize: 26, fontFamily: 'DMSans_800ExtraBold' },
-  gameResultLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
+  gameResultValue: { fontSize: 24, fontFamily: 'DMSans_600SemiBold' },
+  gameResultLabel: { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
 
   gameConcepts: {
     flexDirection: 'row',
@@ -1486,10 +1695,9 @@ const styles = StyleSheet.create({
   // summary reads as a single answer rather than four cards that happen to be
   // adjacent. Tinted rather than white because everything below it is white — a
   // white summary on a white stack has no top to the page.
+  // No box behind the three cards any more: the cards sit straight on the page
+  // background, so this only keeps the gap below them.
   band: {
-    backgroundColor: '#DFEBE3',
-    borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.md,
     marginBottom: Layout.spacing.md,
   },
   overviewStats: { flex: 1, flexDirection: 'row', gap: Layout.spacing.md },
@@ -1511,49 +1719,55 @@ const styles = StyleSheet.create({
   },
   statTilePlain: { borderWidth: 1, borderColor: Colors.borderLight },
 
+  // Summary card: white, rounded, soft shadow.
+  statCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: Colors.borderLight,
+    overflow: 'hidden',
+    paddingTop: 20,
+    paddingBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  statTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, alignSelf: 'stretch' },
+  statBarSlot: { alignSelf: 'stretch', height: 8, marginTop: 8, marginBottom: 2 },
+  statBarTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  statBarFill: { height: '100%', borderRadius: 4 },
+
   statBadge: {
-    width: 36, height: 36, borderRadius: 12,
+    width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: Layout.spacing.md,
   },
   statBody: { alignSelf: 'stretch', gap: 0 },
 
   statTileLabel: {
-    fontSize: 10,
-    fontFamily: 'DMSans_700Bold',
+    flexShrink: 1,
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
     textTransform: 'uppercase',
-    letterSpacing: 0.9,
+    letterSpacing: 1,
   },
-  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5, marginTop: 3 },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   statTileValue: {
-    fontSize: 28,
-    fontFamily: 'DMSans_800ExtraBold',
-    letterSpacing: -0.6,
+    fontSize: 32,
+    fontFamily: 'DMSans_600SemiBold',
+    letterSpacing: -1,
+    color: Colors.text.primary,
   },
-  statTileOf:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold' },
-  statTileNote: { fontSize: 11, marginTop: 5 },
+  statTileOf:   { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: Colors.text.muted },
+  statTileNote: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', marginTop: 8 },
 
   // The glance sentence. Separated from the stats by a hairline rather than a gap:
-  // it is a reading OF those numbers, not a separate fact alongside them.
-  glanceBlock: {
-    paddingHorizontal: Layout.spacing.md,
-    paddingTop: Layout.spacing.sm,
-    paddingBottom: Layout.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-    marginTop: 2,
-    gap: 6,
-  },
-  glance: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_600SemiBold',
-    color: Colors.text.primary,
-    lineHeight: 21,
-  },
+  // it is a reading OF those numbers, not a separate fact alongside them.
   aiRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   aiTag: {
-    fontSize: 9,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.7,
@@ -1565,7 +1779,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginTop: 1,
   },
-  strengthText: { flex: 1, fontSize: 12, color: Colors.text.secondary, lineHeight: 18 },
+  strengthText: { flex: 1, fontSize: 13, color: Colors.text.secondary, lineHeight: 18 },
 
   // A quiet slate band, not a warning colour. This states which period is on
   // screen; it is orientation, not an alert about the child.
@@ -1579,86 +1793,128 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     backgroundColor: '#E7ECF1',
   },
-  frozenTitle: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: '#2F3B47' },
-  frozenSub:   { fontSize: 11, color: '#5E6B7A', marginTop: 1 },
+  frozenTitle: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: '#2F3B47' },
+  frozenSub:   { fontSize: 12, color: '#5E6B7A', marginTop: 1 },
 
   caveat: {
     marginTop: Layout.spacing.lg,
-    fontSize: Layout.fontSize.xs,
+    fontSize: 12,
     lineHeight: 16,
     color: Colors.text.muted,
     fontStyle: 'italic',
     textAlign: 'center',
   },
 
-  mixUpList: { padding: Layout.spacing.md, gap: Layout.spacing.md },
+  mixUpList: { padding: 12, gap: 10 },
   // Kept as a full-width wrapper rather than dropped: the section is a column of
   // its own now, and a card that sized to its content would leave the second one
   // a different width from the first.
   pairFull: { width: '100%' },
 
   statCell:      { minWidth: 76, flexGrow: 1 },
-  statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
-  statCellLabel: { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
+  statCellValue: { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  statCellLabel: { fontSize: 12, color: Colors.text.muted, marginTop: 1 },
 
-  trendWrap:      { paddingHorizontal: Layout.spacing.md, paddingBottom: Layout.spacing.md },
 
+  // The Progress trend card: rounded, soft shadow, theme-tinted outline (the
+  // colour is set inline from the theme).
+  // No outline: the card is set apart by its shadow alone.
+  trendCard: {
+    borderRadius: 22,
+    borderWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  trendIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
   trendHead: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Layout.spacing.sm,
+    alignItems: 'center',
+    gap: Layout.spacing.sm + 2,
     padding: Layout.spacing.md,
     paddingBottom: Layout.spacing.sm,
   },
-  trendTitle: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, letterSpacing: -0.3 },
-  trendSub:   { fontSize: Layout.fontSize.xs, color: Colors.text.secondary, marginTop: 2 },
+  // The headline block: the sentence large, with a bar for how much of what was
+  // started is finished. No box or tint behind it — it sits straight on the card.
+  trendHighlight: {
+    marginHorizontal: Layout.spacing.md,
+    marginBottom: 12,
+    gap: 10,
+  },
+  trendHighlightText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', lineHeight: 21 },
+  trendHlRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  trendHlTrack: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
+  trendHlFill: { height: '100%', borderRadius: 3 },
+  trendHlPct: { fontSize: 12, fontFamily: 'DMSans_600SemiBold' },
+  // The chart's own white panel, inset from the card edge.
+  trendChartPanel: {
+    marginHorizontal: Layout.spacing.md,
+    marginBottom: 12,
+    padding: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+  },
+  insightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 4 },
+  insightTick: { marginTop: 2 },
+  trendTitle: { fontSize: 18, fontFamily: 'DMSans_900Black', color: Colors.text.primary, letterSpacing: -0.4 },
+  trendSub:   { fontSize: 12, color: Colors.text.secondary, marginTop: 2 },
 
   datePill: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
     borderRadius: Layout.radius.full,
     backgroundColor: Colors.surfaceAlt,
   },
-  datePillText: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
+  datePillText: { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
 
+  // No tinted box behind the insights: they sit straight on the card, lined up
+  // with the chart panel above.
   insightsBox: {
     flexDirection: 'row',
-    gap: Layout.spacing.sm,
-    margin: Layout.spacing.md,
-    marginTop: 0,
-    padding: Layout.spacing.md,
-    borderRadius: Layout.radius.lg,
-    backgroundColor: Colors.surfaceAlt,
+    gap: Layout.spacing.sm + 2,
+    marginHorizontal: Layout.spacing.md,
+    marginBottom: 12,
   },
   insightsIcon: {
-    width: 30, height: 30, borderRadius: 10,
+    width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#F6EFD6',
   },
-  insightsTitle: { fontSize: 12, fontFamily: 'DMSans_700Bold', color: Colors.text.primary, marginBottom: 3 },
-  insightsText:  { fontSize: 12, color: Colors.text.secondary, lineHeight: 19, marginTop: 1 },
-  groupChartWrap: { padding: Layout.spacing.md },
+  insightsTitle: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary, marginBottom: 2 },
+  insightsText:  { flex: 1, fontSize: 13, color: Colors.text.secondary, lineHeight: 21 },
+  groupChartWrap: { padding: 12 },
 
   // The indent rule that used to wrap these lives in GroupProgress now, since the
   // rows render inside its expanded row rather than in a list of their own.
-  conceptRow: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm, paddingVertical: 3 },
-  conceptName: { flex: 1, fontSize: 11, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
-  pills:       { flexDirection: 'row', gap: 3 },
-  tierPill:    { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  conceptScore:{ width: 42, textAlign: 'right', fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold' },
+  conceptRow: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm + 2, paddingVertical: 5 },
+  conceptName: { flex: 1, fontSize: 13, color: Colors.text.primary, fontFamily: 'DMSans_600SemiBold' },
+  pills:       { flexDirection: 'row', gap: 5 },
+  tierPill:    { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  conceptScore:{ width: 52, textAlign: 'right', fontSize: 13, fontFamily: 'DMSans_600SemiBold' },
 
-  strugglingName:  { fontSize: 12, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  strugglingMeta:  { fontSize: Layout.fontSize.xs, color: Colors.text.muted, marginTop: 1 },
+  strugglingName:  { fontSize: 12, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  strugglingMeta:  { fontSize: 12, color: Colors.text.muted, marginTop: 1 },
 
   rtHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 },
   rtHeadLabel: {
-    fontSize: Layout.fontSize.xs,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  rtHeadValue: { fontSize: Layout.fontSize.xxl, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  rtHeadValue: { fontSize: 22, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
 
   splitBarWrap:  { marginTop: Layout.spacing.sm, gap: 9 },
   splitBarTrack: { flexDirection: 'row', height: 16, borderRadius: 8, overflow: 'hidden', backgroundColor: Colors.surfaceAlt },
@@ -1671,7 +1927,7 @@ const styles = StyleSheet.create({
   timeRow:   { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, marginTop: Layout.spacing.lg },
   timeIcon:  { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   timeLabel: { flex: 1, fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
-  timePct:   { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  timePct:   { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
 
   countRow: { flexDirection: 'row', gap: Layout.spacing.sm, marginTop: Layout.spacing.lg },
   countBox: {
@@ -1681,20 +1937,20 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.surfaceAlt,
   },
-  countValue: { fontSize: 30, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  countValue: { fontSize: 26, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
   countLabel: {
-    fontSize: 10,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.9,
     marginTop: 2,
   },
 
-  relearnNote: { fontSize: 11, color: Colors.text.muted, marginTop: Layout.spacing.md },
+  relearnNote: { fontSize: 12, color: Colors.text.muted, marginTop: Layout.spacing.md },
 
-  pips:   { flexDirection: 'row', gap: 3, alignItems: 'center' },
-  pip:    { width: 8, height: 8, borderRadius: 4 },
+  pips:   { flexDirection: 'row', gap: 4, alignItems: 'center', marginTop: 2 },
+  pip:    { width: 12, height: 12, borderRadius: 6 },
   pipOn:  { backgroundColor: '#3FAE6F' },
   pipOff: { backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border },
 
@@ -1704,8 +1960,8 @@ const styles = StyleSheet.create({
   gameGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Layout.spacing.sm,
-    padding: Layout.spacing.md,
+    gap: Layout.spacing.md,
+    padding: 12,
   },
   gameCard: {
     // Just under a quarter, so four sit on one line with the gaps between them.
@@ -1715,24 +1971,25 @@ const styles = StyleSheet.create({
     flexBasis: '22%',
     minWidth: 150,
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: Layout.spacing.lg,
+    gap: 8,
+    paddingVertical: 22,
     paddingHorizontal: Layout.spacing.sm,
-    borderRadius: Layout.radius.lg,
-    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 22,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
   },
   gameFace: {
-    width: 52, height: 52, borderRadius: 17,
+    width: 60, height: 60, borderRadius: 30,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 4,
   },
   gameName: {
-    fontSize: Layout.fontSize.sm,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 13,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.primary,
     textAlign: 'center',
   },
-  gameMeta: { fontSize: 11, color: Colors.text.muted, textAlign: 'center' },
+  gameMeta: { fontSize: 12, color: Colors.text.secondary, textAlign: 'center' },
 
   hint: {
     flexDirection: 'row',
@@ -1742,15 +1999,15 @@ const styles = StyleSheet.create({
     borderRadius: Layout.radius.lg,
     backgroundColor: Colors.status.warningLight,
   },
-  hintText: { flex: 1, fontSize: 12, color: '#8A5D06', lineHeight: 19 },
+  hintText: { flex: 1, fontSize: 13, color: '#8A5D06', lineHeight: 19 },
   // The good-news variant. Same shape, green rather than amber — an encouraging
   // reading dressed in a warning colour would be read as a warning.
   hintGood:     { backgroundColor: '#E6F4EA' },
   hintTextGood: { color: '#1B5E3A' },
 
   subHeading: {
-    fontSize: 10,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.7,
@@ -1760,7 +2017,7 @@ const styles = StyleSheet.create({
   engagementGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Layout.spacing.md },
 
   footnote: {
-    fontSize: Layout.fontSize.xs,
+    fontSize: 12,
     color: Colors.text.muted,
     textAlign: 'center',
     marginTop: Layout.spacing.lg,

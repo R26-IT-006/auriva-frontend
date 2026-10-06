@@ -13,6 +13,7 @@ import BadgeNameInput, { NameBadge } from '../../../../components/level2/BadgeNa
 import AgePicker from '../../../../components/level2/AgePicker';
 import HometownPicker from '../../../../components/level2/HometownPicker';
 import SinhalaNameInput from '../../../../components/level2/SinhalaNameInput';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 const ALL_ACTIVITIES = ['Singing', 'Dancing', 'Art', 'Cricket', 'Games', 'Reading'];
 const ACTIVITY_ICONS = { Singing: 'musical-notes-outline', Dancing: 'body-outline', Art: 'color-palette-outline', Cricket: 'baseball-outline', Games: 'game-controller-outline', Reading: 'book-outline' };
@@ -120,8 +121,8 @@ export default function L2QuestionnaireScreen({ route, navigation }) {
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleBack} activeOpacity={0.7} accessibilityLabel="Go back">
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <TouchableOpacity style={[styles.iconBtn, BACK_BUTTON]} onPress={handleBack} activeOpacity={0.7} accessibilityLabel="Go back">
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           {/* Step progress: the current step is a wider filled pill. */}

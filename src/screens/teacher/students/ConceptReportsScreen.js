@@ -9,12 +9,14 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../../components/common/Card';
-import { Colors, BACKDROP } from '../../../constants/colors';
+import { Colors } from '../../../constants/colors';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 import { Layout } from '../../../constants/layout';
 import { teacherApi } from '../../../api/teacher';
 import { shareReportPdf, downloadReportPdf } from '../../../utils/reportPdf';
@@ -24,8 +26,16 @@ import { duration, firstNameOf } from '../../../constants/teacherWording';
 // large solid field rather than a line of text — white on it clears 5.8:1, and
 // the same green then carries the section heading and the two PDF actions so the
 // page reads as one colour rather than three near-misses.
-const GREEN_DEEP = '#146B49';
-const GREEN_TINT = '#E1EFE7';
+// The same brand green as the Concept report this screen opens.
+const GREEN_DEEP = Colors.brandDeep;
+const GREEN_TINT = '#E4F4EC';
+
+// The login page's gradient, as on the Concept report.
+const BACKDROP = {
+  colors: ['#B8E4F0', '#A8D5BC', '#D4EAC8', '#EDE8D0'],
+  start:  { x: 0, y: 0 },
+  end:    { x: 0, y: 1 },
+};
 // Muted enough to sit under the delete glyph without competing with the green
 // actions beside it. Colors.status.error is a pink built for error banners.
 const RED = '#D64545';
@@ -77,6 +87,11 @@ export default function ConceptReportsScreen({ route, navigation }) {
   // pressing Share does not put a spinner on Download beside it.
   const [busyExport, setBusyExport] = useState(null);
 
+  // The report waiting on a delete confirmation (null = pop-up closed).
+  const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
   const load = useCallback(async () => {
     if (!student?.sid) return;
     try {
@@ -98,9 +113,26 @@ export default function ConceptReportsScreen({ route, navigation }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // The header is drawn inside the page (see `topBar`), with the same round back
+  // button and heading as the Concept report and the student-side screens.
   useEffect(() => {
-    navigation.setOptions({ title: `${name} · Reports` });
-  }, [navigation, name]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const topBar = (
+    <View style={styles.topBar}>
+      <TouchableOpacity
+        style={BACK_BUTTON}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+      >
+        <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={Colors.text.primary} />
+      </TouchableOpacity>
+      <Text style={styles.topTitle} numberOfLines={1}>{name} · Reports</Text>
+    </View>
+  );
 
   async function generate(type, start) {
     setBusyPeriod(`${type}/${start}`);
@@ -150,33 +182,37 @@ export default function ConceptReportsScreen({ route, navigation }) {
     }
   }
 
+  // Opens the delete pop-up (styled like the "Make a report" one) instead of the
+  // plain system alert.
   function confirmDelete(row) {
-    Alert.alert(
-      'Delete this report?',
-      `${row.label} will be removed. You can make it again later, but the wording of the written summary may come out differently.`,
-      [
-        { text: 'Keep it', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await teacherApi.deleteConceptReport(student.sid, row.id);
-              await load();
-            } catch (err) {
-              Alert.alert('Could not delete', err.response?.data?.error || err.message);
-            }
-          },
-        },
-      ],
-    );
+    setDeleteError(null);
+    setDeleting(row);
+  }
+
+  async function doDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await teacherApi.deleteConceptReport(student.sid, deleting.id);
+      await load();
+      setDeleting(null);
+    } catch (err) {
+      // Shown inside the pop-up, so the teacher can try again or keep the report.
+      setDeleteError(err.response?.data?.error || err.message);
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   if (reports === null && !error) {
     return (
       <LinearGradient colors={BACKDROP.colors} start={BACKDROP.start} end={BACKDROP.end} style={styles.safe}>
-        <SafeAreaView style={[styles.safeInner, styles.centered]} edges={['bottom']}>
-          <ActivityIndicator size="large" color={Colors.icon.active} />
+        <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+          {topBar}
+          <View style={[styles.safeInner, styles.centered]}>
+            <ActivityIndicator size="large" color={Colors.icon.active} />
+          </View>
         </SafeAreaView>
       </LinearGradient>
     );
@@ -187,7 +223,8 @@ export default function ConceptReportsScreen({ route, navigation }) {
 
   return (
     <LinearGradient colors={BACKDROP.colors} start={BACKDROP.start} end={BACKDROP.end} style={styles.safe}>
-      <SafeAreaView style={styles.safeInner} edges={['bottom']}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom']}>
+        {topBar}
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
@@ -277,6 +314,14 @@ export default function ConceptReportsScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
+        <DeleteDialog
+          row={deleting}
+          busy={deleteBusy}
+          error={deleteError}
+          onCancel={() => { if (!deleteBusy) setDeleting(null); }}
+          onConfirm={doDelete}
+        />
+
         <PeriodPicker
           visible={pickerOpen}
           onClose={() => setPickerOpen(false)}
@@ -341,17 +386,17 @@ function ReportRow({ row, busy, onOpen, onShare, onDownload, onDelete }) {
         <FootAction
           icon="download-outline"
           label="Download"
+          tone="blue"
           working={saving}
           disabled={!!busy}
           onPress={onDownload}
           hint={`Save ${row.label} as a PDF`}
         />
 
-        <View style={styles.footDivider} />
-
         <FootAction
           icon="share-outline"
           label="Share as PDF"
+          tone="orange"
           working={sending}
           disabled={!!busy}
           onPress={onShare}
@@ -360,14 +405,17 @@ function ReportRow({ row, busy, onOpen, onShare, onDownload, onDelete }) {
 
         <View style={{ flex: 1 }} />
 
+        {/* Delete is a labelled red pill, not a bare bin icon, so it reads as a
+            button — and sits apart from the two safe actions on the left. */}
         <TouchableOpacity
-          style={styles.footBtn}
+          style={[styles.footBtn, styles.footBtnDelete]}
           onPress={onDelete}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`Delete ${row.label}`}
         >
-          <Ionicons name="trash-outline" size={16} color={RED} />
+          <Ionicons name="trash-outline" size={17} color={RED} />
+          <Text style={[styles.footBtnText, { color: RED }]}>Delete</Text>
         </TouchableOpacity>
       </View>
     </Card>
@@ -381,10 +429,17 @@ function ReportRow({ row, busy, onOpen, onShare, onDownload, onDelete }) {
  * the two buttons sit next to each other, and a label that changes width makes
  * the other one move under the finger that is about to press it.
  */
-function FootAction({ icon, label, working, disabled, onPress, hint }) {
+// Download is blue and Share is orange, so the two read as different actions.
+const FOOT_TONE = {
+  blue:   { bg: '#E5EEF9', fg: '#27609F' },
+  orange: { bg: '#FDEEDC', fg: '#C2620E' },
+};
+
+function FootAction({ icon, label, working, disabled, onPress, hint, tone = 'blue' }) {
+  const t = FOOT_TONE[tone] || FOOT_TONE.blue;
   return (
     <TouchableOpacity
-      style={[styles.footBtn, disabled && !working && styles.footBtnOff]}
+      style={[styles.footBtn, { backgroundColor: t.bg }, disabled && !working && styles.footBtnOff]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}
@@ -393,9 +448,9 @@ function FootAction({ icon, label, working, disabled, onPress, hint }) {
       accessibilityState={{ busy: working, disabled: !!disabled }}
     >
       {working
-        ? <ActivityIndicator size="small" color={GREEN_DEEP} />
-        : <Ionicons name={icon} size={16} color={GREEN_DEEP} />}
-      <Text style={styles.footBtnText}>{label}</Text>
+        ? <ActivityIndicator size="small" color={t.fg} />
+        : <Ionicons name={icon} size={17} color={t.fg} />}
+      <Text style={[styles.footBtnText, { color: t.fg }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -418,17 +473,85 @@ function Chip({ tone, text }) {
  * are marked rather than hidden — regenerating is legitimate after a late-logged
  * session, and silently hiding them would look like the archive had lost one.
  */
+/**
+ * "Delete this report?" — the same centred pop-up as "Make a report": a red bin
+ * icon, the warning in plain words, and two buttons: Keep it (safe, outlined)
+ * and Delete (red, raised).
+ */
+function DeleteDialog({ row, busy, error, onCancel, onConfirm }) {
+  return (
+    <Modal visible={!!row} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={styles.sheetBackdrop}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityLabel="Keep the report" />
+        <View style={[styles.sheet, styles.delCard]}>
+          <View style={styles.delIcon}>
+            <Ionicons name="trash" size={26} color={RED} />
+          </View>
+          <Text style={styles.delTitle}>Delete this report?</Text>
+          <Text style={styles.delBody}>
+            <Text style={styles.delName}>{row?.label}</Text> will be removed. You can make it
+            again later, but the wording of the written summary may come out differently.
+          </Text>
+
+          {error ? (
+            <View style={styles.delError}>
+              <Ionicons name="alert-circle" size={16} color={RED} />
+              <Text style={styles.delErrorText}>Could not delete: {error}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.delActions}>
+            <TouchableOpacity
+              style={[styles.delBtn, styles.delKeep]}
+              onPress={onCancel}
+              disabled={busy}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <Text style={styles.delKeepText}>Keep it</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.delBtn, styles.delConfirm, busy && { opacity: 0.7 }]}
+              onPress={onConfirm}
+              disabled={busy}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${row?.label ?? 'report'}`}
+            >
+              {busy
+                ? <ActivityIndicator size="small" color="#FFFFFF" />
+                : (
+                  <>
+                    <Ionicons name="trash-outline" size={17} color="#FFFFFF" />
+                    <Text style={styles.delConfirmText}>Delete</Text>
+                  </>
+                )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function PeriodPicker({ visible, onClose, periods, tab, onTab, busy, onPick }) {
   const list = (tab === 'week' ? periods?.weeks : periods?.months) || [];
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.sheetBackdrop}>
+        {/* Tapping outside the pop-up closes it. */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
         <View style={styles.sheet}>
           <View style={styles.sheetHead}>
-            <Text style={styles.sheetTitle}>Make a report</Text>
-            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
-              <Ionicons name="close" size={20} color={Colors.icon.default} />
+            <View style={styles.sheetTitleRow}>
+              <View style={styles.sheetIcon}>
+                <Ionicons name="document-text" size={18} color={GREEN_DEEP} />
+              </View>
+              <Text style={styles.sheetTitle}>Make a report</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.sheetClose} accessibilityRole="button" accessibilityLabel="Close">
+              <Ionicons name="close" size={20} color={GREEN_DEEP} />
             </TouchableOpacity>
           </View>
 
@@ -521,19 +644,36 @@ const styles = StyleSheet.create({
   safeInner: { flex: 1 },
   centered:  { alignItems: 'center', justifyContent: 'center' },
 
+  // In-page header: round back button and the heading, sitting lower on the page.
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: 28,
+    paddingBottom: 8,
+  },
+  topTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontFamily: 'DMSans_800ExtraBold',
+    color: Colors.text.primary,
+    letterSpacing: -0.3,
+  },
+
   scroll: {
     padding: Layout.spacing.lg,
     // Clears the fixed bar at the bottom, so the last report is not sitting
     // underneath the button that makes new ones.
-    paddingBottom: 96,
-    gap: Layout.spacing.lg,
+    paddingBottom: 130,
+    gap: 16,
   },
   explain: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Layout.spacing.md,
     padding: Layout.spacing.md,
-    borderRadius: Layout.radius.xl,
+    borderRadius: 22,
     backgroundColor: GREEN_TINT,
     // Clips the decoration to the card, so the leaf and books fade off its edge
     // instead of overhanging the page.
@@ -546,8 +686,8 @@ const styles = StyleSheet.create({
   },
   // Stops short of the decoration rather than running under it.
   explainText:  { flex: 1, paddingRight: 52, gap: 3 },
-  explainTitle: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  explainBody:  { fontSize: 12, lineHeight: 17, color: Colors.text.secondary },
+  explainTitle: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  explainBody:  { fontSize: 13, lineHeight: 19, color: Colors.text.secondary },
   explainArt: {
     position: 'absolute',
     right: Layout.spacing.md,
@@ -556,37 +696,49 @@ const styles = StyleSheet.create({
   explainLeaf: { position: 'absolute', left: -14, bottom: 16 },
 
   pageHead: {
-    fontSize: 19,
+    fontSize: 18,
     fontFamily: 'DMSans_800ExtraBold',
-    color: GREEN_DEEP,
+    color: Colors.text.primary,
     letterSpacing: -0.3,
     marginBottom: -Layout.spacing.sm,
   },
 
   group:     { gap: Layout.spacing.sm },
   groupHead: {
-    fontSize: 11,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
     color: Colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.7,
     marginBottom: 2,
   },
 
-  row:     { padding: 0, overflow: 'hidden' },
+  // Rounded white card with a soft shadow and no outline, like the Progress trend card.
+  row: {
+    padding: 0,
+    overflow: 'hidden',
+    borderRadius: 22,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+  },
   rowMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Layout.spacing.md,
-    padding: Layout.spacing.md,
+    gap: 18,
+    paddingHorizontal: 22,
+    paddingVertical: 20,
   },
   rowIcon: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: GREEN_TINT,
   },
   rowText:  { flex: 1, gap: 2 },
-  rowTitle: { fontSize: 16, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  rowTitle: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
   // secondary, not muted. This line carries the dates the whole report covers,
   // and the muted token measures 2.63:1 on white — under the 3:1 floor even for
   // large text, let alone at 12px.
@@ -597,61 +749,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: Layout.radius.full,
   },
-  chipText: { fontSize: 11, fontFamily: 'DMSans_600SemiBold' },
+  chipText: { fontSize: 12, fontFamily: 'DMSans_600SemiBold' },
 
   // On its own rule, so the two actions read as belonging to the card rather than
   // floating over the figures above them.
   rowFoot: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.sm,
+    gap: 10,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
   },
+  // Each action is a soft tinted pill with its icon and label.
   footBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 2,
+    gap: 7,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: GREEN_TINT,
   },
+  footBtnDelete: { backgroundColor: '#FDECEC' },
   // Dimmed only while the OTHER action is working. The one being pressed keeps
   // its full weight and shows a spinner, so it stays obvious which was tapped.
   footBtnOff:  { opacity: 0.4 },
-  footBtnText: { fontSize: 13, fontFamily: 'DMSans_700Bold', color: GREEN_DEEP },
-  footDivider: {
-    width: 1,
-    height: 14,
-    marginHorizontal: Layout.spacing.md,
-    backgroundColor: Colors.borderLight,
-  },
+  footBtnText: { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: GREEN_DEEP },
 
-  empty:      { alignItems: 'center', gap: 6, paddingVertical: Layout.spacing.xl },
-  emptyTitle: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  emptyBody:  { fontSize: 12, color: Colors.text.secondary, textAlign: 'center', maxWidth: 280 },
+  empty:      { alignItems: 'center', gap: 6, paddingVertical: Layout.spacing.xl, borderRadius: 22 },
+  emptyTitle: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  emptyBody:  { fontSize: 13, color: Colors.text.secondary, textAlign: 'center', maxWidth: 300 },
 
   errorCard: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm },
-  errorText: { flex: 1, fontSize: 12, color: Colors.text.secondary },
+  errorText: { flex: 1, fontSize: 13, color: Colors.text.secondary },
 
   bar: {
     position: 'absolute',
     left: 0, right: 0, bottom: 0,
     padding: Layout.spacing.lg,
     paddingTop: Layout.spacing.md,
+    paddingBottom: 44,
   },
   newBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 9,
-    paddingVertical: Layout.spacing.md + 2,
-    borderRadius: Layout.radius.full,
+    paddingVertical: Layout.spacing.md,
+    borderRadius: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
     backgroundColor: GREEN_DEEP,
     ...Layout.shadow.md,
   },
@@ -661,19 +814,43 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.22)',
   },
   newBtnOff:  { opacity: 0.4 },
-  newBtnText: { fontSize: 15, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },
+  newBtnText: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
 
-  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(16,20,34,0.4)' },
-  sheet: {
-    maxHeight: '82%',
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: Layout.radius.xl,
-    borderTopRightRadius: Layout.radius.xl,
+  sheetBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: Layout.spacing.lg,
+    backgroundColor: 'rgba(16,20,34,0.4)',
+  },
+  // A centred pop-up card rather than a sheet from the bottom.
+  sheet: {
+    width: '100%',
+    maxWidth: 560,
+    maxHeight: '80%',
+    backgroundColor: Colors.surface,
+    borderRadius: 28,
+    padding: 22,
     gap: Layout.spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
   },
   sheetHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sheetTitle: { fontSize: 17, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
+  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sheetIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: GREEN_TINT,
+  },
+  sheetClose: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: GREEN_TINT,
+  },
+  sheetTitle: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary },
 
   tabs: {
     flexDirection: 'row',
@@ -692,21 +869,56 @@ const styles = StyleSheet.create({
   tabText:   { fontSize: 13, fontFamily: 'DMSans_600SemiBold', color: Colors.text.secondary },
   tabTextOn: { color: '#FFFFFF' },
 
-  sheetList:      { flexGrow: 0 },
+  sheetList:      { flexGrow: 0, flexShrink: 1 },
+
+  // ── Delete pop-up ─────────────────────────────────────────────────────────
+  delCard: { maxWidth: 440, alignItems: 'center', paddingTop: 26 },
+  delIcon: {
+    width: 60, height: 60, borderRadius: 30,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FDECEC',
+  },
+  delTitle: { fontSize: 18, fontFamily: 'DMSans_800ExtraBold', color: Colors.text.primary, textAlign: 'center' },
+  delBody:  { fontSize: 13, lineHeight: 19, color: Colors.text.secondary, textAlign: 'center' },
+  delName:  { fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  delError: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'stretch',
+    backgroundColor: '#FDECEC', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  delErrorText: { flex: 1, fontSize: 12, color: RED },
+  delActions: { flexDirection: 'row', gap: 12, alignSelf: 'stretch', marginTop: 4 },
+  delBtn: {
+    flex: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    paddingVertical: 13,
+    borderRadius: 16,
+  },
+  // Safe choice: white, outlined.
+  delKeep: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: Colors.border },
+  delKeepText: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  // Destructive choice: red, raised like the app's other primary buttons.
+  delConfirm: {
+    backgroundColor: RED,
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+  },
+  delConfirmText: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', color: '#FFFFFF' },
   sheetListInner: { gap: 6, paddingVertical: 2 },
-  sheetEmpty:     { fontSize: 12, color: Colors.text.muted, paddingVertical: Layout.spacing.md },
+  sheetEmpty:     { fontSize: 13, color: Colors.text.muted, paddingVertical: Layout.spacing.md },
 
   period: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Layout.spacing.md,
     padding: Layout.spacing.md,
-    borderRadius: Layout.radius.lg,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
-  periodTitle: { fontSize: 14, fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
-  periodSub:   { fontSize: 11, color: Colors.text.muted, marginTop: 1 },
+  periodTitle: { fontSize: 14, fontFamily: 'DMSans_600SemiBold', color: Colors.text.primary },
+  periodSub:   { fontSize: 12, color: Colors.text.muted, marginTop: 1 },
 
-  sheetNote: { fontSize: 11, color: Colors.text.muted, lineHeight: 16 },
+  sheetNote: { fontSize: 12, color: Colors.text.muted, lineHeight: 17 },
 });

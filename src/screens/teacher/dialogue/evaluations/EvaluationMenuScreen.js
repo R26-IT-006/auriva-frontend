@@ -18,6 +18,7 @@ import { DMSans_800ExtraBold, DMSans_600SemiBold } from '@expo-google-fonts/dm-s
 import { Layout } from '../../../../constants/layout';
 import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { evaluationApi } from '../../../../api/evaluation';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 // Mirrors the backend's live EVAL_UNLOCK_THRESHOLD (evaluationService.js, DEC-04) —
 // the task file text says "master 4 words to unlock", but the already-approved
@@ -241,10 +242,10 @@ export default function EvaluationMenuScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={() => navigation.navigate('DialogueCategory', { student })}
             activeOpacity={0.7}
-            style={[styles.backBtn, { backgroundColor: 'rgba(0,0,0,0.12)' }]}
+            style={[styles.backBtn, { backgroundColor: 'rgba(0,0,0,0.12)' }, BACK_BUTTON]}
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
           <ColorfulTitle text="Evaluations" fontSize={44} fontsLoaded={fontsLoaded} />
           <View style={styles.backBtn} />

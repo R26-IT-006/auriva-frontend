@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { useFocusEffect } from "@react-navigation/native";
+import { useLockPortrait } from "../../../utils/useOrientationLock";
 import { teacherApi } from "../../../api/teacher";
 import { Colors } from "../../../constants/colors";
 import { Layout } from "../../../constants/layout";
@@ -297,6 +298,9 @@ function SessionTab({ result, isSelected, onPress }) {
 }
 
 export default function PronunciationResultsHistoryScreen({ route }) {
+  // A teacher-facing reading screen, opened from the Student Profile: portrait,
+  // like the profile and the reports beside it.
+  useLockPortrait();
   const student = route.params?.student;
   const studentId = getStudentIdentifier(student);
   const theme = getAvatarTheme(student?.avatar_key);

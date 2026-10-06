@@ -11,6 +11,7 @@ import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import AnimatedWord from '../../../components/common/AnimatedWord';
 import { dialogueApi } from '../../../api/dialogue';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 
 const PROGRESS_FRACTION = 0.65;
 
@@ -129,8 +130,8 @@ export default function AnimatedWordScreen({ route, navigation }) {
     <View style={styles.root}>
       <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.headerBtn}>
-            <Ionicons name="arrow-back" size={20} color={theme.headingText} />
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={[styles.headerBtn, BACK_BUTTON]}>
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />

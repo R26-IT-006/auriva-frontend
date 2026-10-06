@@ -51,6 +51,7 @@ import { hasCanvasDrawing } from '../../../../utils/canvasDrawingState';
 import { actionRowMinHeight } from '../../../../constants/writingActionRow';
 import { spokenWord, spokenLetter } from '../../../../utils/wordSpeech';
 import { startGuideReplayCycle } from '../../../../utils/guideReplayCycle';
+import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 
 // The same dwell the letter screens give their avatar feedback.
 const ATTEMPT_FEEDBACK_MS = 2200;
@@ -622,11 +623,11 @@ export default function WordWritingScreen({ route, navigation }) {
           <TouchableOpacity
             onPress={requestBack}
             hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-            style={styles.backBtn}
+            style={[styles.backBtn, BACK_BUTTON]}
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="chevron-back" size={26} color={theme.headingText} />
+            <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
