@@ -41,7 +41,7 @@ export default function Level1OverviewScreen({ route, navigation }) {
         } else if (categoryKey === 'abilities') {
           const word = await cat3Api.getNextWord(student.sid);
           if (word && word.id) {
-            navigation.replace('Cat3Landing', {
+            navigation.replace('AbilityLanding', {
               student,
               wordId:    word.id,
               wordKey:   word.asset_key,

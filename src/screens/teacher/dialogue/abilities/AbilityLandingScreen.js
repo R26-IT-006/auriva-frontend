@@ -18,9 +18,14 @@ import { getAvatarTheme } from '../../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../../components/common/ParentGateModal';
 import ProbeBanner from '../../../../components/common/ProbeBanner';
 import { dialogueApi } from '../../../../api/dialogue';
+import { clearRestartCount } from '../../../../utils/sessionRetryTracker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 import { rs, rf } from '../../../../utils/responsive';
+import { abilityLabel, isAbilityAnswerWord } from '../../../../data/abilitiesWords';
+
+// "Can you…?" (abilities) landing — the same screen as GreetingLandingScreen /
+// MagicWordLandingScreen, with this category's words.
 
 // Same per-avatar photos as Magic Words and the handwriting screens. A still
 // image rather than a video: nothing moves or plays sound while the child
@@ -34,9 +39,12 @@ const AVATAR_IMAGES = {
 
 const PROGRESS_FRACTION = 0.08;
 
-export default function Cat3LandingScreen({ route, navigation }) {
-  const { student, wordId, wordKey, wordLabel = '' } = route.params ?? {};
+export default function AbilityLandingScreen({ route, navigation }) {
+  const { student, wordKey = 'clap', wordId, wordLabel: labelParam } = route.params ?? {};
   const theme = getAvatarTheme(student?.avatar_key);
+  const label = labelParam || abilityLabel(wordKey);
+  // Yes / No are shown in quotes — they are things you say, not actions.
+  const wordLabel = isAbilityAnswerWord(wordKey) ? `"${label}"` : label;
 
   const avatarKey   = student?.avatar_key ?? 'lily';
   const avatarImage = AVATAR_IMAGES[avatarKey] ?? AVATAR_IMAGES.lily;
@@ -58,8 +66,6 @@ export default function Cat3LandingScreen({ route, navigation }) {
   // Rule 5 — periodic production probe (TASK-39). Purely additive: failure
   // or "nothing due" both just mean no banner, never an error state — this
   // never touches the screen's existing word/video/next-button behaviour.
-  // dialogueApi.getProbeCandidate (not cat3Api) — TASK-37 confirmed it
-  // already covers abilities words, no category3-specific version exists.
   const [probeCandidate, setProbeCandidate] = useState(null);
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +94,7 @@ export default function Cat3LandingScreen({ route, navigation }) {
     }
   }
 
+  // Stop audio when navigating away; also intercept Android hardware back
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -113,24 +120,29 @@ export default function Cat3LandingScreen({ route, navigation }) {
   }
 
   function closeSettings() {
-    Animated.timing(settingsFade, { toValue: 0, duration: 150, useNativeDriver: true }).start(
-      () => setShowSettings(false)
+    Animated.timing(settingsFade, { toValue: 0, duration: 150, useNativeDriver: true }).start(() =>
+      setShowSettings(false)
     );
   }
 
-  function handleExitSession() {
+  function handleSkipWord() {
+    clearRestartCount(student?.sid, wordId);
     closeSettings();
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
 
-  const isStandalone = wordKey === 'cat3_yes' || wordKey === 'cat3_no';
-  const wordDisplay  = isStandalone
-    ? `"${wordLabel}"`
-    : `${wordLabel}`;
+  function handleExitSession() {
+    clearRestartCount(student?.sid, wordId);
+    closeSettings();
+    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+  }
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]} edges={['top']}>
+      <SafeAreaView
+        style={[styles.headerWrap, { backgroundColor: theme.headerBackground }]}
+        edges={['top']}
+      >
         <View style={[styles.header, { backgroundColor: theme.headerBackground }]}>
           <TouchableOpacity
             onPress={goBackSmart}
@@ -144,7 +156,11 @@ export default function Cat3LandingScreen({ route, navigation }) {
             <View style={[styles.progressFill, { width: `${PROGRESS_FRACTION * 100}%`, backgroundColor: theme.button }]} />
           </View>
 
-          <TouchableOpacity onPress={openSettings} activeOpacity={0.7} style={styles.headerBtn}>
+          <TouchableOpacity
+            onPress={openSettings}
+            activeOpacity={0.7}
+            style={styles.headerBtn}
+          >
             <Ionicons name="settings-outline" size={20} color={theme.headingText} />
           </TouchableOpacity>
         </View>
@@ -153,7 +169,7 @@ export default function Cat3LandingScreen({ route, navigation }) {
       {/* ── Probe banner (Rule 5 check-in, TASK-39) ─────────── */}
       {probeCandidate && (
         <ProbeBanner
-          wordLabel={probeCandidate.word}
+          wordLabel={probeCandidate.word ?? abilityLabel(probeCandidate.asset_key)}
           theme={theme}
           onPress={goToProbe}
           onDismiss={() => setProbeCandidate(null)}
@@ -179,7 +195,7 @@ export default function Cat3LandingScreen({ route, navigation }) {
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
-                {wordDisplay}
+                {wordLabel}
               </Text>
             </View>
 
@@ -199,8 +215,10 @@ export default function Cat3LandingScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.nextBtn, { backgroundColor: theme.button }]}
               activeOpacity={0.85}
-              onPress={() =>
-                navigation.navigate('Cat3Phase1', { student, wordId, wordKey, wordLabel, sessionId: null })}
+              onPress={() => {
+                clearRestartCount(student?.sid, wordId);
+                navigation.navigate('AbilityPhase1Video', { student, wordKey, wordId, startIndex: 0 });
+              }}
             >
               <Text style={[styles.nextBtnText, { color: theme.buttonText }]}>Next</Text>
               <Ionicons name="arrow-forward" size={20} color={theme.buttonText} />
@@ -220,6 +238,14 @@ export default function Cat3LandingScreen({ route, navigation }) {
           <Animated.View style={[styles.settingsSheet, { opacity: settingsFade }]}>
             <TouchableOpacity activeOpacity={1}>
               <Text style={styles.settingsTitle}>Session Options</Text>
+
+              <TouchableOpacity style={styles.settingsOption} onPress={handleSkipWord} activeOpacity={0.7}>
+                <Ionicons name="play-skip-forward-outline" size={20} color="#555" />
+                <Text style={styles.settingsOptionText}>Skip this word</Text>
+              </TouchableOpacity>
+
+              <View style={styles.settingsDivider} />
+
               <TouchableOpacity style={styles.settingsOption} onPress={handleExitSession} activeOpacity={0.7}>
                 <Ionicons name="exit-outline" size={20} color="#FF4D6D" />
                 <Text style={[styles.settingsOptionText, { color: '#FF4D6D' }]}>Exit session</Text>
@@ -245,7 +271,11 @@ const styles = StyleSheet.create({
     paddingVertical: rs(12),
     gap: rs(8),
   },
-  headerSide:    { width: rs(40), alignItems: 'center', justifyContent: 'center' },
+  headerSide: {
+    width: rs(40),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // Concept's round translucent header button (spacers keep headerSide).
   headerBtn: {
     width: rs(40),
@@ -260,8 +290,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  progressTrack: { flex: 1, height: rs(8), backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: rs(4), overflow: 'hidden' },
-  progressFill:  { height: '100%', borderRadius: rs(4) },
+  progressTrack: {
+    flex: 1,
+    height: rs(8),
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: rs(4),
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: rs(4),
+  },
 
   // Top → bottom: word, avatar (fills the middle), Next. paddingBottom puts
   // Next where the concept screens' "Ready!" button sits — as Magic Words.
@@ -320,7 +359,11 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_800ExtraBold',
   },
 
-  settingsOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  settingsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
   settingsSheet: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: rs(24),
@@ -328,7 +371,27 @@ const styles = StyleSheet.create({
     padding: Layout.spacing.xl,
     paddingBottom: Layout.spacing.xxl,
   },
-  settingsTitle:      { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
-  settingsOption:     { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
-  settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
+  settingsTitle: {
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_700Bold',
+    color: '#333',
+    marginBottom: Layout.spacing.lg,
+    textAlign: 'center',
+  },
+  settingsOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.md,
+    paddingVertical: Layout.spacing.md,
+  },
+  settingsOptionText: {
+    fontSize: Layout.fontSize.md,
+    fontFamily: 'DMSans_600SemiBold',
+    color: '#333',
+  },
+  settingsDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#EEE',
+    marginVertical: rs(4),
+  },
 });

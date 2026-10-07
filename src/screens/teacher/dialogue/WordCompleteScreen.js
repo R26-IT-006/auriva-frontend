@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { ParentGateModal } from '../../../components/common/ParentGateModal';
 import { dialogueApi } from '../../../api/dialogue';
+import { cat3Api } from '../../../api/cat3';
 import { clearRestartCount } from '../../../utils/sessionRetryTracker';
 import Phase1CompleteCelebration from '../../../components/feedback/Phase1CompleteCelebration';
 import { rs, rf } from '../../../utils/responsive';
@@ -17,9 +18,25 @@ import { rs, rf } from '../../../utils/responsive';
 function getCategoryStartScreen(category) {
   switch (category) {
     case 'greetings':    return 'GreetingPhase1Video';
+    case 'abilities':    return 'AbilityPhase1Video';
     case 'magic_words':
     default:             return 'Phase1Video';
   }
+}
+
+// "Can you…?" keeps its own progress tables, so its next word comes from the
+// abilities endpoint (the same choice its old Word Complete screen made).
+async function fetchNextWord(studentId, { category, wordId, sessionPassed, status }) {
+  if (category === 'abilities') {
+    const word = await cat3Api.getNextWord(studentId);
+    return word?.id ? { id: word.id, asset_key: word.asset_key } : { done: true };
+  }
+  return dialogueApi.getNextWord(studentId, {
+    category,
+    excludeWordId: wordId,
+    sessionPassed,
+    status,
+  });
 }
 
 export default function WordCompleteScreen({ route, navigation }) {
@@ -54,12 +71,7 @@ export default function WordCompleteScreen({ route, navigation }) {
     setLoadingNext(true);
     clearRestartCount(student?.sid, wordId);
     try {
-      const nextWord = await dialogueApi.getNextWord(student?.sid, {
-        category,
-        excludeWordId: wordId,
-        sessionPassed,
-        status,
-      });
+      const nextWord = await fetchNextWord(student?.sid, { category, wordId, sessionPassed, status });
       if (!nextWord || nextWord.done) {
         navigation.navigate('DialogueCategory', { student });
         return;

@@ -28,7 +28,7 @@ import { buildReportHtml, printReport } from '../reportPrint';
 import {
   PLAIN_SCORE_LEAD,
   TIER2_RELIABILITY_CAVEAT,
-  wordSummaryLine,
+  WORD_STATUS,
   buildTrajectoryPrintModel,
 } from '../../screens/teacher/dialogue/TrajectoryReportScreen';
 import {
@@ -177,31 +177,38 @@ const L1_REPORT = {
   ],
 };
 
-describe('AC2 — Level 1 printed lines match the screen', () => {
+describe('AC2 — Level 1 printout is a short summary in the screen\'s own labels', () => {
   const model = buildTrajectoryPrintModel(L1_REPORT, 'Pansilu');
   const html = buildReportHtml(model);
 
-  it('prints a tier-1 word using the screen\'s own PLAIN_SCORE_LEAD string', () => {
-    const line = model.sections
-      .find((s) => s.heading === 'Greetings').lines[0];
-    // The exact sentence the screen renders for a 'fast' Tier 1 row.
-    expect(line).toContain(PLAIN_SCORE_LEAD.fast);
-    expect(line).toBe(wordSummaryLine(L1_REPORT.words[0]));
-    expect(html).toContain(PLAIN_SCORE_LEAD.fast.replace(/&/g, '&amp;'));
+  it('lists each category\'s words under the status label its word cards show', () => {
+    expect(model.sections.find((s) => s.heading === 'Greetings').lines[0])
+      .toBe(`${WORD_STATUS.fast.label}: hello`);
+    expect(model.sections.find((s) => s.heading === 'Magic words').lines[0])
+      .toBe(`${WORD_STATUS.struggling.label}: please`);
   });
 
-  it('prints the plain trajectory label, never the raw tier name', () => {
+  it('keeps it short — no per-word sentences', () => {
     const all = model.sections.flatMap((s) => s.lines).join(' ');
-    expect(all).toContain('fast');
-    expect(all).toContain('struggling');
+    expect(all).not.toContain(PLAIN_SCORE_LEAD.fast);
+    expect(all).not.toContain('The model’s prediction');
     expect(all).not.toContain('tier1');
     expect(all).not.toContain('tier2');
   });
 
-  it('renders a disabled row as "no prediction", not as a trajectory', () => {
-    const line = model.sections.find((s) => s.heading === 'Abilities').lines[0];
-    expect(line).toContain('no prediction');
-    expect(line).not.toContain('typical');
+  it('puts a word without a prediction under "No prediction", with the reason said once', () => {
+    const lines = model.sections.find((s) => s.heading === 'Abilities').lines;
+    expect(lines[0]).toBe(`${WORD_STATUS.none.label}: Clap`);
+    expect(lines.join(' ')).not.toContain(WORD_STATUS.typical.label);
+    expect(lines.filter((l) => l.startsWith('No prediction means'))).toHaveLength(1);
+  });
+
+  it('uses the screen\'s status labels in the overview too', () => {
+    expect(model.overview.map((o) => o.label)).toEqual([
+      WORD_STATUS.fast.label, WORD_STATUS.typical.label,
+      WORD_STATUS.struggling.label, WORD_STATUS.none.label,
+      'Words with a prediction',
+    ]);
   });
 
   it('groups sections by category, skipping categories with no words', () => {
@@ -226,9 +233,19 @@ describe('AC2 — Level 1 printed lines match the screen', () => {
     expect(plain.footnote).toContain('most recent recorded session');
   });
 
-  it('excludes the contribution bars and charts (task §0)', () => {
+  it('excludes the per-word contribution bars (task §0)', () => {
     expect(html).not.toContain('counted for about');
-    expect(html).not.toContain('svg');
+  });
+
+  it('includes the "Words by category" chart, self-contained', () => {
+    expect(html).toContain('Words by category');
+    expect(html).toContain('<svg');
+    // Still offline-safe: no namespace URL, script or external resource.
+    expect(html).not.toMatch(/https?:\/\//);
+    expect(html).not.toMatch(/<script/i);
+    // One bar per category with words, each segment named by its status.
+    expect(html).toContain(`Greetings · ${WORD_STATUS.fast.label}: 1`);
+    expect(html).toContain(`Abilities · ${WORD_STATUS.none.label}: 1`);
   });
 });
 

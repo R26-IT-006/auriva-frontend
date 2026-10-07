@@ -27,6 +27,10 @@ import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 import { rs, rf } from '../../../../utils/responsive';
 
 // ── Shared audio helpers ──────────────────────────────────────────────────────
+// The longest a prompt clip is allowed to hold the record button. Level 2 clips
+// are a sentence or a short paragraph; this is a safety net, not a limit.
+const PLAYBACK_TIMEOUT_MS = 30000;
+
 async function playBase64Audio(base64, soundRef) {
   if (!base64) return;
   try {
@@ -41,8 +45,25 @@ async function playBase64Audio(base64, soundRef) {
     const { sound } = await Audio.Sound.createAsync({ uri: fileUri });
     soundRef.current = sound;
     await sound.playAsync();
+    // Resolve when playback ends for ANY reason — finished, errored, stopped or
+    // unloaded — and after a safety timeout. Waiting on didJustFinish alone left
+    // the screen "playing" forever when a clip was interrupted or failed, which
+    // kept the record button disabled.
     await new Promise(resolve => {
-      sound.setOnPlaybackStatusUpdate(s => { if (s.didJustFinish) { sound.setOnPlaybackStatusUpdate(null); resolve(); } });
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        sound.setOnPlaybackStatusUpdate(null);
+        resolve();
+      };
+      const timer = setTimeout(finish, PLAYBACK_TIMEOUT_MS);
+      sound.setOnPlaybackStatusUpdate(s => {
+        if (!s.isLoaded || s.error || s.didJustFinish) { finish(); return; }
+        // Stopped / paused externally without finishing.
+        if (!s.isPlaying && !s.isBuffering && s.positionMillis > 0) finish();
+      });
     });
   } catch { /* ignore */ }
 }
@@ -327,15 +348,16 @@ const styles = StyleSheet.create({
   genderCard: { alignItems: 'center', gap: Layout.spacing.sm, borderRadius: rs(24), borderWidth: 3, borderBottomWidth: 6, padding: Layout.spacing.md, flex: 1, maxWidth: rs(240), ...Layout.shadow.md, backgroundColor: '#FFF' },
   genderAvatar: { width: rs(110), height: rs(150) },
   genderLabel: { fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold' },
-  actPreBody: { flex: 1, paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md },
+  // Title, cards and button centred together as one block (as the gender step).
+  actPreBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.spacing.lg, paddingVertical: Layout.spacing.md },
   actPreTitle: { fontSize: rf(13), fontFamily: 'DMSans_800ExtraBold', opacity: 0.6, letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', marginBottom: Layout.spacing.sm },
   actPrePrompt: { fontSize: rf(26), fontFamily: 'DMSans_900Black', textAlign: 'center', marginBottom: Layout.spacing.md },
   actPreSinhala: { fontSize: Layout.fontSize.sm, fontWeight: '500', textAlign: 'center', opacity: 0.65, marginBottom: Layout.spacing.md },
-  actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(16), justifyContent: 'center', alignContent: 'center', flex: 1 },
+  actGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(16), justifyContent: 'center', alignSelf: 'stretch', marginVertical: Layout.spacing.lg },
   actCard: { alignItems: 'center', gap: rs(8), borderRadius: rs(20), borderWidth: 2.5, borderBottomWidth: 5, paddingVertical: Layout.spacing.lg, paddingHorizontal: Layout.spacing.lg, width: rs(130), backgroundColor: '#FFF', ...Layout.shadow.sm },
   actCardSel: {},
   actCardLabel: { fontSize: rf(16), fontFamily: 'DMSans_800ExtraBold' },
-  actConfirmBtn: { alignSelf: 'center', minWidth: rs(260), borderRadius: rs(16), borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)', paddingVertical: rs(16), paddingHorizontal: rs(40), alignItems: 'center', marginTop: Layout.spacing.md, ...Layout.shadow.md },
+  actConfirmBtn: { alignSelf: 'center', minWidth: rs(260), borderRadius: rs(16), borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)', paddingVertical: rs(16), paddingHorizontal: rs(40), alignItems: 'center', marginTop: Layout.spacing.lg, ...Layout.shadow.md },
   actConfirmText: { fontSize: rf(19), fontFamily: 'DMSans_800ExtraBold' },
   micRow: { flexDirection: 'row', alignItems: 'center', gap: rs(8), marginTop: rs(8) },
   micBtn: { width: rs(84), height: rs(84), borderRadius: rs(42), alignItems: 'center', justifyContent: 'center', borderBottomWidth: 5, borderBottomColor: 'rgba(0,0,0,0.22)', ...Layout.shadow.md },
@@ -535,13 +557,21 @@ const S4 = { IDLE: 'idle', PLAYING: 'playing', PROCESSING: 'processing', DONE: '
 function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentenceIndex, onNext }) {
   const [phase,   setPhase]   = useState(S4.IDLE);
   const [feedbk,  setFeedbk]  = useState('');
+  // Shown under the mic when a recording could not start or be checked, so a
+  // tap never silently does nothing.
+  const [recError, setRecError] = useState('');
   const soundRef    = useRef(null);
   const hasAudio    = !!sentence.audio_base64;
 
   const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
-    onStart: () => setFeedbk(''),
+    onStart: () => { setFeedbk(''); setRecError(''); },
     onStop: uri => submitRecording(uri),
-    onError: () => setPhase(S4.IDLE),
+    onError: (err) => {
+      setPhase(S4.IDLE);
+      setRecError(err?.message === 'mic-permission-denied'
+        ? 'Microphone access is needed. Allow it in the tablet settings.'
+        : 'The microphone did not start. Tap to try again.');
+    },
   });
 
   useEffect(() => {
@@ -576,7 +606,10 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
       }
       setPhase(S4.DONE);
       setTimeout(onNext, 1200);
-    } catch { setPhase(S4.IDLE); }
+    } catch {
+      setPhase(S4.IDLE);
+      setRecError('That recording could not be checked. Tap to try again.');
+    }
   }
 
   const isRecording  = recorderState === 'recording';
@@ -612,7 +645,7 @@ function Step4Speak({ sentence, theme, avatarImg, studentId, sessionId, sentence
           <Ionicons name={isRecording ? 'stop' : 'mic'} size={28} color="#FFF" />
         </TouchableOpacity>
         <Text style={[styles.micDisabledText, { color: theme.headingText }]}>
-          {isRecording ? 'Recording… tap to stop' : isProcessing ? 'Processing…' : phase === S4.DONE ? feedbk : 'Tap to record'}
+          {isRecording ? 'Recording… tap to stop' : isProcessing ? 'Processing…' : phase === S4.DONE ? feedbk : (recError || 'Tap to record')}
         </Text>
       </View>
       <View style={styles.stepFooter}>

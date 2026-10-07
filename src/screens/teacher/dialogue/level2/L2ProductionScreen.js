@@ -16,6 +16,10 @@ import { rs, rf } from '../../../../utils/responsive';
 
 const P = { IDLE: 'idle', PLAYING: 'playing', PROCESSING: 'processing', DONE: 'done' };
 
+// The longest a prompt clip is allowed to hold the record button. Level 2 clips
+// are a sentence or a short paragraph; this is a safety net, not a limit.
+const PLAYBACK_TIMEOUT_MS = 30000;
+
 async function playBase64Audio(base64, soundRef) {
   if (!base64) return;
   try {
@@ -30,8 +34,25 @@ async function playBase64Audio(base64, soundRef) {
     const { sound } = await Audio.Sound.createAsync({ uri: fileUri });
     soundRef.current = sound;
     await sound.playAsync();
+    // Resolve when playback ends for ANY reason — finished, errored, stopped or
+    // unloaded — and after a safety timeout. Waiting on didJustFinish alone left
+    // the screen "playing" forever when a clip was interrupted or failed, which
+    // kept the record button disabled.
     await new Promise(resolve => {
-      sound.setOnPlaybackStatusUpdate(s => { if (s.didJustFinish) { sound.setOnPlaybackStatusUpdate(null); resolve(); } });
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        sound.setOnPlaybackStatusUpdate(null);
+        resolve();
+      };
+      const timer = setTimeout(finish, PLAYBACK_TIMEOUT_MS);
+      sound.setOnPlaybackStatusUpdate(s => {
+        if (!s.isLoaded || s.error || s.didJustFinish) { finish(); return; }
+        // Stopped / paused externally without finishing.
+        if (!s.isPlaying && !s.isBuffering && s.positionMillis > 0) finish();
+      });
     });
   } catch { /* ignore */ }
 }
@@ -67,6 +88,8 @@ export default function L2ProductionScreen({ route, navigation }) {
   const [sxsIdx,   setSxsIdx]   = useState(0);
   const [recPhase, setRecPhase] = useState(P.IDLE);
   const [feedback, setFeedback] = useState('');
+  // Shown under the mic when a recording could not start or be checked.
+  const [recError, setRecError] = useState('');
 
   const soundRef  = useRef(null);
 
@@ -75,15 +98,21 @@ export default function L2ProductionScreen({ route, navigation }) {
     : sentences[sxsIdx]?.audio_base64 ?? null;
 
   const { state: recorderState, toggleRecording, reset: resetRecorder } = useGuardedRecorder({
-    onStart: () => setFeedback(''),
+    onStart: () => { setFeedback(''); setRecError(''); },
     onStop: uri => submitRecording(uri),
-    onError: () => setRecPhase(P.IDLE),
+    onError: (err) => {
+      setRecPhase(P.IDLE);
+      setRecError(err?.message === 'mic-permission-denied'
+        ? 'Microphone access is needed. Allow it in the tablet settings.'
+        : 'The microphone did not start. Tap to try again.');
+    },
   });
 
   // Reset recorder state when moving to next sentence / section
   useEffect(() => {
     setRecPhase(P.IDLE);
     setFeedback('');
+    setRecError('');
     if (currentAudio) {
       handlePlayAudio();
     }
@@ -120,7 +149,10 @@ export default function L2ProductionScreen({ route, navigation }) {
         }
       }
       setRecPhase(P.DONE);
-    } catch { setRecPhase(P.IDLE); }
+    } catch {
+      setRecPhase(P.IDLE);
+      setRecError('That recording could not be checked. Tap to try again.');
+    }
   }
 
   function handleNext() {
@@ -184,15 +216,15 @@ export default function L2ProductionScreen({ route, navigation }) {
           {/* Mic area */}
           <View style={styles.micArea}>
             <TouchableOpacity
-              style={[styles.micBtn, { backgroundColor: isRecording ? '#FF4D6D' : isProcessing ? '#CCC' : theme.button }]}
+              style={[styles.micBtn, { backgroundColor: isRecording ? '#FF4D6D' : (isProcessing || recPhase === P.DONE) ? '#CCC' : theme.button }]}
               onPress={handleRecordBtn}
-              disabled={isProcessing || isPlaying}
+              disabled={isProcessing || isPlaying || recPhase === P.DONE}
               activeOpacity={0.85}
             >
               <Ionicons name={isRecording ? 'stop' : 'mic'} size={32} color="#FFF" />
             </TouchableOpacity>
             <Text style={[styles.micNote, { color: theme.headingText }]}>
-              {isRecording ? 'Recording… tap to stop' : isProcessing ? 'Processing…' : recPhase === P.DONE ? feedback : 'Tap to record'}
+              {isRecording ? 'Recording… tap to stop' : isProcessing ? 'Processing…' : recPhase === P.DONE ? `${feedback}  Tap Next to continue.` : (recError || 'Tap to record')}
             </Text>
           </View>
 

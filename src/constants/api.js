@@ -274,6 +274,8 @@ export const ENDPOINTS = {
   // TASK-47 — practice-trend timelines (module-level and per-topic).
   LEVEL2_TIMELINE:              (sid) => `/teacher/student/${sid}/level2/timeline`,
   LEVEL2_TOPIC_TIMELINE:        (sid, topic) => `/teacher/student/${sid}/level2/topic/${topic}/timeline`,
+  // Every recorded interaction for one topic, per session (teacher report drill-down).
+  LEVEL2_TOPIC_ACTIVITY:        (sid, topic) => `/teacher/student/${sid}/level2/topic/${topic}/activity`,
   LEVEL2_PROGRESS:              (sid) => `/teacher/student/${sid}/level2/progress`,
   LEVEL2_SESSION_START:         (sid) => `/teacher/student/${sid}/level2/session/start`,
   LEVEL2_SESSION_COMPLETE:      (sid, sessId) => `/teacher/student/${sid}/level2/session/${sessId}/complete`,

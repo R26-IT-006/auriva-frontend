@@ -151,6 +151,18 @@ export function attemptSentence(topic) {
  * What came through in the full paragraph. A null score means the paragraph
  * step was never reached, which must not be reported as "all five missing".
  */
+/**
+ * The hints line, shared by the screen and the printout so they read the same.
+ * "1 sentence" / "3 sentences".
+ */
+export function hintSentence(topic) {
+  const n = topic.sentences_total;
+  const noun = n === 1 ? 'sentence' : 'sentences';
+  return topic.sentences_needing_hints === 0
+    ? `Needed no hints across ${n} ${noun}.`
+    : `Needed a hint on ${topic.sentences_needing_hints} of ${n} ${noun}.`;
+}
+
 export function paragraphSentence(topic) {
   if (topic.paragraph_score == null) {
     return 'The full-paragraph step was not reached in this session.';
@@ -212,6 +224,248 @@ function TopicHistory({ studentId, topic }) {
             <Text style={styles.historyNote}>Could not load this topic’s history.</Text>
           ) : (
             <TrendSparkline points={points ?? []} width={260} height={48} />
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Activity — every recorded interaction, per session
+//
+// The summary above is one session's totals. This drill-down lists every
+// session for the topic (finished or not, newest first) and, inside each, what
+// the child did in the order they did it — including what the app heard them
+// say. Every stored value is shown as plain words, never the raw enum.
+// ---------------------------------------------------------------------------
+
+/** Fill-the-gap result (Level2SentenceAttempt.step3_result). */
+const STEP3_LABEL = {
+  first_attempt: 'Filled the gap first try',
+  required_hint: 'Needed a hint to fill the gap',
+  auto_advanced: 'Moved on automatically',
+};
+
+/** How closely what was heard matched the sentence. */
+const MATCH_LABEL = {
+  exact:    'exact match',
+  fuzzy:    'close match',
+  keyword:  'key word heard',
+  no_match: 'not matched',
+};
+
+/** Spoken attempts are scored 0–3. */
+const SPEECH_MAX = 3;
+
+/** A picture-choice fallback attempt, in a few words. */
+function pictureChoiceText(p) {
+  if (p.correct_on_first_attempt) return 'right first time';
+  if (p.required_second_attempt) return 'right on the second try';
+  if (p.auto_shown) return 'answer shown';
+  return 'not answered';
+}
+
+/** "Said "…" · close match · 2 of 3" — or why nothing could be heard. */
+function spokenText({ transcript, matchType, score, transcriptionError }) {
+  if (transcriptionError) return 'The recording could not be heard';
+  const said = transcript && transcript.trim() ? `Said “${transcript.trim()}”` : 'Nothing heard';
+  const parts = [said];
+  if (matchType && MATCH_LABEL[matchType]) parts.push(MATCH_LABEL[matchType]);
+  if (score != null) parts.push(`${score} of ${SPEECH_MAX}`);
+  return parts.join(' · ');
+}
+
+/** One step inside a session: an icon, a label and its detail lines. */
+function ActivityRow({ icon, title, lines, good }) {
+  const color = good == null ? Colors.text.secondary : good ? '#2E9E62' : '#E0735F';
+  return (
+    <View style={styles.actRow}>
+      <Ionicons name={icon} size={16} color={color} style={styles.actIcon} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.actTitle}>{title}</Text>
+        {lines.filter(Boolean).map((l, i) => (
+          <Text key={i} style={styles.actLine}>{l}</Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** One session, collapsible. The newest opens by default. */
+function SessionCard({ session, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const when = session.started_at ? formatDate(session.started_at) : 'Unknown date';
+  const status = session.is_complete ? 'Completed' : 'Not finished';
+  const how = session.is_complete && PATHWAY_LABEL[session.pathway] ? `using ${PATHWAY_LABEL[session.pathway]}` : null;
+
+  const detected = session.paragraph_elements || {};
+  const included = Object.keys(ELEMENT_LABEL).filter((k) => detected[k] === true);
+  const missing  = Object.keys(ELEMENT_LABEL).filter((k) => detected[k] !== true);
+  const nothing = session.sentences.length === 0 && !session.gender && !session.activity
+    && session.paragraph_attempts.length === 0 && session.sxs_attempts.length === 0
+    && session.sxs_picture_choice.length === 0;
+
+  return (
+    <View style={styles.sessionCard}>
+      <TouchableOpacity
+        style={styles.sessionHead}
+        activeOpacity={0.7}
+        onPress={() => setOpen((o) => !o)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`Session on ${when}, ${status}. ${open ? 'Tap to fold' : 'Tap to open'}`}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sessionTitle}>{when}</Text>
+          <Text style={styles.sessionMeta}>
+            {[status, how, session.is_complete && session.sxs_score != null ? `${session.sxs_score} of 5 sentences` : null]
+              .filter(Boolean).join(' · ')}
+          </Text>
+        </View>
+        <View style={[styles.sessionPill, { backgroundColor: session.is_complete ? '#E3F7EC' : '#FDF1DC' }]}>
+          <Text style={[styles.sessionPillText, { color: session.is_complete ? '#2E9E62' : '#B7791F' }]}>{status}</Text>
+        </View>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.text.secondary} />
+      </TouchableOpacity>
+
+      {open ? (
+        <View style={styles.sessionBody}>
+          {nothing ? <Text style={styles.historyNote}>Nothing was recorded in this session.</Text> : null}
+
+          {/* 1. Learning each sentence */}
+          {session.sentences.map((s) => (
+            <ActivityRow
+              key={`s${s.index}`}
+              icon="chatbox-ellipses-outline"
+              title={s.text ? `Sentence ${s.index} — “${s.text}”` : `Sentence ${s.index}`}
+              good={s.step3_result ? s.step3_result === 'first_attempt' : null}
+              lines={[
+                STEP3_LABEL[s.step3_result],
+                (s.step4_transcript != null || s.step4_score != null || s.transcription_error)
+                  ? spokenText({ transcript: s.step4_transcript, matchType: s.step4_match_type, score: s.step4_score, transcriptionError: s.transcription_error })
+                  : null,
+                ...s.picture_choice.map((p) => `Picture choice: ${pictureChoiceText(p)}`),
+              ]}
+            />
+          ))}
+
+          {/* 2. The two questions */}
+          {session.gender ? (
+            <ActivityRow
+              icon="people-outline"
+              title="Boy or girl?"
+              good={!!session.gender.correct_on_first_tap}
+              lines={[
+                session.gender.first_tap ? `Tapped “${session.gender.first_tap}”` : null,
+                session.gender.correct_on_first_tap ? 'Right first time'
+                  : session.gender.required_prompt ? 'Needed a prompt'
+                  : session.gender.auto_advanced ? 'Moved on automatically' : 'Not right first time',
+              ]}
+            />
+          ) : null}
+          {session.activity ? (
+            <ActivityRow
+              icon="color-palette-outline"
+              title="Favourite activity"
+              good={!!session.activity.matched_expected}
+              lines={[`Picked ${session.activity.child_selected_activity ?? '—'} (expected ${session.activity.expected_activity ?? '—'})`]}
+            />
+          ) : null}
+
+          {/* 3. The whole paragraph */}
+          {session.paragraph_attempts.map((p, i) => (
+            <ActivityRow
+              key={`p${i}`}
+              icon="document-text-outline"
+              title="Whole paragraph"
+              good={p.score != null ? p.score >= 3 : null}
+              lines={[
+                spokenText({ transcript: p.transcript, transcriptionError: p.transcription_error }),
+                i === session.paragraph_attempts.length - 1 && session.paragraph_score != null
+                  ? (missing.length === 0
+                    ? `All five parts said: ${labelElements(included)}`
+                    : `${session.paragraph_score} of 5 parts${included.length ? ` · said: ${labelElements(included)}` : ''} · missing: ${labelElements(missing)}`)
+                  : null,
+                p.silence_timeout_triggered ? 'Waited through a silence' : null,
+              ]}
+            />
+          ))}
+
+          {/* 4. One sentence at a time — the stage mastery is judged on */}
+          {session.sxs_attempts.length > 0 || session.sxs_picture_choice.length > 0 ? (
+            <ActivityRow
+              icon="mic-outline"
+              title={session.is_complete && session.sxs_score != null
+                ? `One sentence at a time — ${session.sxs_score} of 5 said`
+                : 'One sentence at a time'}
+              lines={[
+                ...session.sxs_attempts.map((a) => `Sentence ${a.sentence_index}: ${spokenText({ transcript: a.transcript, matchType: a.match_type, score: a.score, transcriptionError: a.transcription_error })}`),
+                ...session.sxs_picture_choice.map((p) => `Sentence ${p.sentence_index}: picture choice, ${pictureChoiceText(p)}`),
+              ]}
+            />
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Every session for a topic, fetched only when opened and cached in this
+ * component's state — the same pattern as TopicHistory. Never part of the
+ * batch report payload.
+ */
+function TopicActivity({ studentId, topic }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const toggle = useCallback(async () => {
+    const next = !open;
+    setOpen(next);
+    if (!next || data !== null || loading) return;
+    setLoading(true);
+    setFailed(false);
+    try {
+      const resp = await level2Api.getTopicActivity(studentId, topic);
+      setData(resp?.data ?? resp ?? { sessions: [] });
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [open, data, loading, studentId, topic]);
+
+  const sessions = data?.sessions ?? [];
+
+  return (
+    <View>
+      <TouchableOpacity style={styles.historyToggle} activeOpacity={0.7} onPress={toggle}>
+        <Ionicons name="list-outline" size={14} color={Colors.text.link} />
+        <Text style={styles.historyToggleText}>Activity</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.text.link} />
+      </TouchableOpacity>
+
+      {open ? (
+        <View style={styles.historyBody}>
+          <Text style={styles.historyNote}>
+            Everything recorded in each session, in order. What the child said is the app’s best guess from the recording.
+          </Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.icon.active} style={styles.historyLoading} />
+          ) : failed ? (
+            <Text style={styles.historyNote}>Could not load this topic’s activity.</Text>
+          ) : sessions.length === 0 ? (
+            <Text style={styles.historyNote}>No activity recorded for this topic yet.</Text>
+          ) : (
+            <>
+              {sessions.map((s, i) => <SessionCard key={s.id} session={s} defaultOpen={i === 0} />)}
+              {data?.limited ? (
+                <Text style={styles.historyNote}>Showing the latest {sessions.length} sessions.</Text>
+              ) : null}
+            </>
           )}
         </View>
       ) : null}
@@ -284,9 +538,7 @@ function TopicBlock({ topic, studentId, wide }) {
 
           {topic.sentences_total > 0 ? (
             <Line
-              text={topic.sentences_needing_hints === 0
-                ? `Needed no hints across ${topic.sentences_total} sentences.`
-                : `Needed a hint on ${topic.sentences_needing_hints} of ${topic.sentences_total} sentences.`}
+              text={hintSentence(topic)}
             />
           ) : null}
 
@@ -301,6 +553,7 @@ function TopicBlock({ topic, studentId, wide }) {
           ) : null}
 
           <TopicHistory studentId={studentId} topic={topic.topic} />
+          <TopicActivity studentId={studentId} topic={topic.topic} />
         </>
       ) : null}
     </View>
@@ -337,9 +590,7 @@ export function buildLevel2PrintModel(report, studentName) {
           );
         }
         if (topic.sentences_total > 0) {
-          lines.push(topic.sentences_needing_hints === 0
-            ? `Needed no hints across ${topic.sentences_total} sentences.`
-            : `Needed a hint on ${topic.sentences_needing_hints} of ${topic.sentences_total} sentences.`);
+          lines.push(hintSentence(topic));
         }
         // Same convention as the screen: absent things are simply not mentioned.
         if (topic.used_picture_fallback) {
@@ -685,6 +936,28 @@ const styles = StyleSheet.create({
   historyBody:    { gap: rs(6) },
   historyNote:    { fontSize: rf(11), color: Colors.text.muted, lineHeight: rf(16) },
   historyLoading: { alignSelf: 'flex-start', paddingVertical: Layout.spacing.sm },
+
+  // Activity — one card per session, rows inside in recorded order
+  sessionCard: {
+    borderWidth: 1, borderColor: '#E4E8EE', borderRadius: rs(14),
+    backgroundColor: '#FFFFFF', overflow: 'hidden',
+  },
+  sessionHead: {
+    flexDirection: 'row', alignItems: 'center', gap: rs(10),
+    paddingHorizontal: rs(14), paddingVertical: rs(10),
+  },
+  sessionTitle:    { fontSize: rf(14), fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  sessionMeta:     { fontSize: rf(11), color: Colors.text.muted, marginTop: 1 },
+  sessionPill:     { paddingHorizontal: rs(10), paddingVertical: rs(3), borderRadius: Layout.radius.full },
+  sessionPillText: { fontSize: rf(11), fontFamily: 'DMSans_700Bold' },
+  sessionBody: {
+    gap: rs(10), paddingHorizontal: rs(14), paddingBottom: rs(14), paddingTop: rs(4),
+    borderTopWidth: 1, borderTopColor: '#EEF1F4',
+  },
+  actRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: rs(10) },
+  actIcon:  { marginTop: rs(2) },
+  actTitle: { fontSize: rf(13), fontFamily: 'DMSans_700Bold', color: Colors.text.primary },
+  actLine:  { fontSize: rf(12), lineHeight: rf(17), color: Colors.text.secondary, marginTop: 1 },
 
   hint: {
     flexDirection: 'row',

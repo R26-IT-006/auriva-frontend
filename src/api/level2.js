@@ -124,4 +124,11 @@ export const level2Api = {
     const { data } = await client.get(ENDPOINTS.LEVEL2_TOPIC_TIMELINE(studentId, topic));
     return data;
   },
+
+  // Every recorded interaction for one topic, per session — finished or not.
+  // Returns { data: { topic, limited, sessions: [...] } }.
+  async getTopicActivity(studentId, topic) {
+    const { data } = await client.get(ENDPOINTS.LEVEL2_TOPIC_ACTIVITY(studentId, topic));
+    return data;
+  },
 };

@@ -32,13 +32,14 @@ import WordCompleteScreen         from '../screens/teacher/dialogue/WordComplete
 import VerbActivityScreen              from '../screens/teacher/dialogue/abilities/VerbActivityScreen';
 import ClapActivityScreen             from '../screens/teacher/dialogue/abilities/ClapActivityScreen';
 import RunActivityScreen              from '../screens/teacher/dialogue/abilities/RunActivityScreen';
-import Cat3LandingScreen              from '../screens/teacher/dialogue/abilities/Cat3LandingScreen';
-import Cat3Phase1Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase1Screen';
-import Cat3DragToLineScreen           from '../screens/teacher/dialogue/abilities/Cat3DragToLineScreen';
-import Cat3Phase2Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase2Screen';
-import Cat3Phase2NonVerbalScreen      from '../screens/teacher/dialogue/abilities/Cat3Phase2NonVerbalScreen';
-import Cat3Phase3Screen               from '../screens/teacher/dialogue/abilities/Cat3Phase3Screen';
-import Cat3WordCompleteScreen         from '../screens/teacher/dialogue/abilities/Cat3WordCompleteScreen';
+// "Can you…?" (abilities) — same screens and flow as Greetings / Magic Words.
+import AbilityLandingScreen           from '../screens/teacher/dialogue/abilities/AbilityLandingScreen';
+import AbilityPhase1VideoScreen       from '../screens/teacher/dialogue/abilities/AbilityPhase1VideoScreen';
+import AbilityDragToLineScreen        from '../screens/teacher/dialogue/abilities/AbilityDragToLineScreen';
+import AbilityPhase1CompleteScreen    from '../screens/teacher/dialogue/abilities/AbilityPhase1CompleteScreen';
+import AbilityPhase2ProductionScreen  from '../screens/teacher/dialogue/abilities/AbilityPhase2ProductionScreen';
+import AbilityPhase2NonVerbalScreen   from '../screens/teacher/dialogue/abilities/AbilityPhase2NonVerbalScreen';
+import AbilityPhase3ContextualScreen  from '../screens/teacher/dialogue/abilities/AbilityPhase3ContextualScreen';
 import GreetingLandingScreen      from '../screens/teacher/dialogue/greetings/GreetingLandingScreen';
 import GreetingPhase1VideoScreen  from '../screens/teacher/dialogue/greetings/GreetingPhase1VideoScreen';
 import GreetingDragToLineScreen   from '../screens/teacher/dialogue/greetings/GreetingDragToLineScreen';
@@ -260,13 +261,14 @@ export default function TeacherNavigator() {
         <Stack.Screen name="VerbActivity"         component={VerbActivityScreen} />
         <Stack.Screen name="ClapActivity"         component={ClapActivityScreen} />
         <Stack.Screen name="RunActivity"          component={RunActivityScreen} />
-        <Stack.Screen name="Cat3Landing"          component={Cat3LandingScreen} />
-        <Stack.Screen name="Cat3Phase1"           component={Cat3Phase1Screen} />
-        <Stack.Screen name="Cat3DragToLine"       component={Cat3DragToLineScreen} />
-        <Stack.Screen name="Cat3Phase2"           component={Cat3Phase2Screen} />
-        <Stack.Screen name="Cat3Phase2NonVerbal"  component={Cat3Phase2NonVerbalScreen} />
-        <Stack.Screen name="Cat3Phase3"           component={Cat3Phase3Screen} />
-        <Stack.Screen name="Cat3WordComplete"     component={Cat3WordCompleteScreen} />
+        {/* "Can you…?" (abilities) */}
+        <Stack.Screen name="AbilityLanding"           component={AbilityLandingScreen} />
+        <Stack.Screen name="AbilityPhase1Video"       component={AbilityPhase1VideoScreen} />
+        <Stack.Screen name="AbilityDragToLine"        component={AbilityDragToLineScreen} />
+        <Stack.Screen name="AbilityPhase1Complete"    component={AbilityPhase1CompleteScreen} />
+        <Stack.Screen name="AbilityPhase2Production"  component={AbilityPhase2ProductionScreen} />
+        <Stack.Screen name="AbilityPhase2NonVerbal"   component={AbilityPhase2NonVerbalScreen} />
+        <Stack.Screen name="AbilityPhase3Contextual"  component={AbilityPhase3ContextualScreen} />
 
         {/* Greetings */}
         <Stack.Screen name="GreetingLanding"           component={GreetingLandingScreen} />

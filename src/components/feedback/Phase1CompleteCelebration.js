@@ -39,6 +39,9 @@ export default function Phase1CompleteCelebration({
   note = null,
   actions = null,
   topRight = null,
+  // The single button's text — defaults to the Phase 1 wording.
+  continueLabel = "Let's say it!  🎤",
+  continueAccessibilityLabel = "Let's say it",
 }) {
   const avatarSource = AVATAR_CONGRATS_IMAGES[String(avatarKey ?? 'lily').toLowerCase()]
     ?? AVATAR_CONGRATS_IMAGES.lily;
@@ -107,9 +110,9 @@ export default function Phase1CompleteCelebration({
             ]}
             onPress={onContinue}
             accessibilityRole="button"
-            accessibilityLabel="Let's say it"
+            accessibilityLabel={continueAccessibilityLabel}
           >
-            <Text style={[styles.continueText, { color: theme.buttonText }]}>Let's say it!  🎤</Text>
+            <Text style={[styles.continueText, { color: theme.buttonText }]}>{continueLabel}</Text>
           </Pressable>
           )}
         </View>

@@ -23,7 +23,7 @@ import { Colors, LOGIN_BACKDROP } from '../../../constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Layout } from '../../../constants/layout';
 import { dialogueApi } from '../../../api/dialogue';
-import { buildReportHtml, printReport, printTimestamp } from '../../../utils/reportPrint';
+import { buildReportHtml, printReport, printTimestamp, stackedBarChartHtml } from '../../../utils/reportPrint';
 import { rs, rf } from '../../../utils/responsive';
 
 // ---------------------------------------------------------------------------
@@ -121,28 +121,6 @@ const TRAJECTORY_TINT = {
   typical:    Colors.text.secondary,
   struggling: Colors.status.error,
 };
-
-/**
- * TASK-48 — the one-line summary this row shows, as plain text.
- *
- * Exported and used by both the print builder and (via the components below)
- * the screen itself, so the printed line and the on-screen line are the same
- * string by construction. A disabled row has no finding, so it reports its
- * caveat rather than a trajectory it never predicted.
- */
-export function wordSummaryLine(row) {
-  if (row.tier === 'disabled') {
-    return `${row.word} — no prediction. ${row.caveat ?? ''}`.trim();
-  }
-  const lead = row.tier === 'tier1'
-    ? (row.explanation?.scored === false
-      ? 'No score — none of the five terms had data.'
-      // The screen keys this off the explanation's own label; do the same here
-      // rather than off row.trajectory, so the two can never disagree.
-      : PLAIN_SCORE_LEAD[row.explanation?.label ?? row.trajectory] ?? '')
-    : `The model’s prediction: ${voteShareLabel(row.confidence)}.`;
-  return `${row.word} — ${row.trajectory}. ${lead}`.trim();
-}
 
 // How many SHAP factors to draw per word. The full 13 per row would bury the
 // signal; the remainder is counted, never silently dropped.
@@ -397,7 +375,7 @@ function WordHistory({ studentId, wordId }) {
 }
 
 // How each trajectory reads on a word card: a plain phrase, its colour and tint.
-const WORD_STATUS = {
+export const WORD_STATUS = {
   fast:       { label: 'Going well',    fg: '#2E9E62', bg: '#E3F7EC' },
   typical:    { label: 'Typical pace',  fg: '#3B82C4', bg: '#E6F1FC' },
   struggling: { label: 'Needs support', fg: '#E0735F', bg: '#FBE7E2' },
@@ -571,12 +549,56 @@ function categoryStatus(rows) {
  * helpers the screen renders with, and the charts are deliberately excluded
  * (they are SVG components, not DOM — see the task's §0).
  */
+// The printout is a short summary, not a word-by-word essay: per category,
+// one line per status listing its words, using the status labels the screen's
+// word cards show. Detail (breakdowns, history, per-word caveats) stays on
+// screen.
+const PRINT_STATUS_ORDER = ['fast', 'typical', 'struggling', 'none'];
+
+export function categoryPrintLines(rows) {
+  const lines = PRINT_STATUS_ORDER
+    .map((key) => {
+      const names = rows.filter((r) => statusKeyOf(r) === key).map((r) => r.word);
+      return names.length ? `${WORD_STATUS[key].label}: ${names.join(', ')}` : null;
+    })
+    .filter(Boolean);
+  // Words without a prediction share one reason; say it once, briefly.
+  if (rows.some((r) => statusKeyOf(r) === 'none')) {
+    lines.push('No prediction means there is not enough session data for that word yet.');
+  }
+  return lines;
+}
+
+// The printout's chart: one stacked bar per category, split by the same
+// statuses (and colours) as the screen's word cards. "No prediction" is a
+// neutral grey — it is the absence of a finding, not a fourth kind of result.
+const PRINT_CHART_SERIES = [
+  { key: 'fast',       label: WORD_STATUS.fast.label,       color: WORD_STATUS.fast.fg },
+  { key: 'typical',    label: WORD_STATUS.typical.label,    color: WORD_STATUS.typical.fg },
+  { key: 'struggling', label: WORD_STATUS.struggling.label, color: WORD_STATUS.struggling.fg },
+  { key: 'none',       label: WORD_STATUS.none.label,       color: '#B8C0C8', textColor: '#1a1a2e' },
+];
+
+export function trajectoryChartHtml(words) {
+  return stackedBarChartHtml({
+    title: 'Words by category',
+    series: PRINT_CHART_SERIES,
+    rows: Object.keys(CATEGORY_LABEL).map((key) => {
+      const rows = words.filter((w) => w.category === key);
+      return {
+        label: CATEGORY_LABEL[key],
+        values: Object.fromEntries(PRINT_STATUS_ORDER.map((k) => [k, rows.filter((r) => statusKeyOf(r) === k).length])),
+      };
+    }),
+  });
+}
+
 export function buildTrajectoryPrintModel(report, studentName) {
   const { totals, words } = report;
   const sections = Object.keys(CATEGORY_LABEL)
     .map((key) => ({
       heading: CATEGORY_LABEL[key],
-      lines: words.filter((w) => w.category === key).map(wordSummaryLine),
+      lines: categoryPrintLines(words.filter((w) => w.category === key)),
     }))
     .filter((s) => s.lines.length > 0);
 
@@ -585,15 +607,16 @@ export function buildTrajectoryPrintModel(report, studentName) {
     studentName,
     generatedAt: printTimestamp(),
     overview: [
-      { label: 'Fast', value: String(totals.fast) },
-      { label: 'Typical', value: String(totals.typical) },
-      { label: 'Struggling', value: String(totals.struggling) },
-      { label: 'No prediction', value: String(totals.disabled) },
+      { label: WORD_STATUS.fast.label,       value: String(totals.fast) },
+      { label: WORD_STATUS.typical.label,    value: String(totals.typical) },
+      { label: WORD_STATUS.struggling.label, value: String(totals.struggling) },
+      { label: WORD_STATUS.none.label,       value: String(totals.disabled) },
       {
         label: 'Words with a prediction',
         value: `${totals.words_predicted} of ${totals.words_total}`,
       },
     ],
+    chartHtml: trajectoryChartHtml(words),
     sections,
     // The DEC-07 disclosure travels with the printout: a page handed to someone
     // else must not present the model as more reliable than it is.

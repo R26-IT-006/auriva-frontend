@@ -20,60 +20,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 import { rs, rf } from '../../../../utils/responsive';
 
-// Scene videos for Phase 3 — same Phase1And3.mp4 as Phase 1, per word folder
-const CAT3_CONTEXT_CORRECT = {
-  cat3_yes: require('../../../../../assets/dialogue-videos/words/abilities/yes/Phase1And3.mp4'),
-  cat3_no:  require('../../../../../assets/dialogue-videos/words/abilities/no/Phase1And3.mp4'),
-  clap:     require('../../../../../assets/dialogue-videos/words/abilities/clap/Phase1And3.mp4'),
-  run:      require('../../../../../assets/dialogue-videos/words/abilities/run/Phase1And3.mp4'),
-  walk:     require('../../../../../assets/dialogue-videos/words/abilities/walk/Phase1And3.mp4'),
-  jump:     require('../../../../../assets/dialogue-videos/words/abilities/jump/Phase1And3.mp4'),
-  talk:     require('../../../../../assets/dialogue-videos/words/abilities/talk/Phase1And3.mp4'),
-  dance:    require('../../../../../assets/dialogue-videos/words/abilities/dance/Phase1And3.mp4'),
-  sing:     require('../../../../../assets/dialogue-videos/words/abilities/sing/Phase1And3.mp4'),
-  brush:    require('../../../../../assets/dialogue-videos/words/abilities/brush/Phase1And3.mp4'),
-  wash:     require('../../../../../assets/dialogue-videos/words/abilities/wash/Phase1And3.mp4'),
-  eat:      require('../../../../../assets/dialogue-videos/words/abilities/eat/Phase1And3.mp4'),
-  drink:    require('../../../../../assets/dialogue-videos/words/abilities/drink/Phase1And3.mp4'),
-  write:    require('../../../../../assets/dialogue-videos/words/abilities/write/Phase1And3.mp4'),
-  play:     require('../../../../../assets/dialogue-videos/words/abilities/play/Phase1And3.mp4'),
-  sleep:    require('../../../../../assets/dialogue-videos/words/abilities/sleep/Phase1And3.mp4'),
-  watch:    require('../../../../../assets/dialogue-videos/words/abilities/watch/Phase1And3.mp4'),
-};
+import { clearRestartCount } from '../../../../utils/sessionRetryTracker';
+import {
+  abilityLabel, ABILITY_LABELS, ABILITY_WATCH_VIDEOS, ABILITY_PHASE3_PROMPT_AUDIO,
+} from '../../../../data/abilitiesWords';
 
-// Shared Phase 3 prompt audio for every abilities word.
-const PHASE3_PROMPT_AUDIO = require('../../../../../assets/dialogue-audios/abilities/ContextAwarenessAbilities.mp3');
+// "Can you…?" Phase 3 — ONE question (not the A/B/C scenarios Magic Words and
+// Greetings use): the word's video plays and the child taps the word that
+// matches it. A wrong first answer gets "Try again!"; a wrong second answer
+// ends the question with the child's choice marked red and the right word
+// marked green. The result goes to the abilities /complete endpoint (which
+// decides mastery) and then to the shared Word Complete screen.
+const PHASE3_PROMPT_AUDIO = ABILITY_PHASE3_PROMPT_AUDIO;
 
 const PROGRESS_FRACTION = 0.90;
 
-// All Cat3 word labels for picking distractors
-const ALL_CAT3_LABELS = [
-  'Yes', 'No', 'Clap', 'Run', 'Walk', 'Jump', 'Talk', 'Dance', 'Sing',
-  'Brush', 'Wash', 'Eat', 'Drink', 'Write', 'Play', 'Sleep', 'Watch',
-];
+// How long the final green / red marking stays up before Word Complete.
+const RESULT_HOLD_MS = 1800;
 
-const WORD_LABELS = {
-  cat3_yes: 'Yes',
-  cat3_no:  'No',
-  clap:     'Clap',
-  run:      'Run',
-  walk:     'Walk',
-  jump:     'Jump',
-  talk:     'Talk',
-  dance:    'Dance',
-  sing:     'Sing',
-  brush:    'Brush',
-  wash:     'Wash',
-  eat:      'Eat',
-  drink:    'Drink',
-  write:    'Write',
-  play:     'Play',
-  sleep:    'Sleep',
-  watch:    'Watch',
-};
+const ALL_CAT3_LABELS = Object.values(ABILITY_LABELS);
 
 function getSceneVideo(wordKey) {
-  return CAT3_CONTEXT_CORRECT[wordKey] ?? null;
+  return ABILITY_WATCH_VIDEOS[wordKey] ?? null;
 }
 
 function pickDistractors(correctLabel, count = 2) {
@@ -85,10 +53,10 @@ function pickDistractors(correctLabel, count = 2) {
   return pool.slice(0, count);
 }
 
-export default function Cat3Phase3Screen({ route, navigation }) {
+export default function AbilityPhase3ContextualScreen({ route, navigation }) {
   const { student, wordId, wordKey, wordLabel: labelParam, sessionId } = route.params ?? {};
   const theme     = getAvatarTheme(student?.avatar_key);
-  const wordLabel = labelParam ?? WORD_LABELS[wordKey] ?? wordKey;
+  const wordLabel = labelParam ?? abilityLabel(wordKey);
   const sceneVideo = getSceneVideo(wordKey);
 
   const distractors = useMemo(() => pickDistractors(wordLabel), [wordLabel]);
@@ -210,13 +178,24 @@ export default function Cat3Phase3Screen({ route, navigation }) {
       attempt2PromptCount:         hadSecondAttempt ? promptCountAttempt2Ref.current : undefined,
     }).catch(() => {});
 
-    setTimeout(() => {
-      if (activeRef.current) {
-        navigation.navigate('Cat3WordComplete', {
-          student, wordId, wordKey, wordLabel, sessionId, phase3Passed,
-        });
-      }
-    }, 1400);
+    const completion = cat3Api.completeWordSession(student?.sid, wordId, phase3Passed, sessionId)
+      .catch(() => null);
+    const hold = new Promise(r => setTimeout(r, RESULT_HOLD_MS));
+
+    Promise.all([completion, hold]).then(([result]) => {
+      if (!activeRef.current) return;
+      clearRestartCount(student?.sid, wordId);
+      navigation.navigate('WordComplete', {
+        student,
+        wordKey,
+        wordId,
+        wordLabel,
+        category:      'abilities',
+        mastered:      result?.mastered       ?? false,
+        sessionPassed: result?.session_passed ?? false,
+        status:        result?.status         ?? 'in_progress',
+      });
+    });
   }
 
   function handleTileTap(tile, idx) {
@@ -289,7 +268,14 @@ export default function Cat3Phase3Screen({ route, navigation }) {
     );
   }
 
+  function handleSkipWord() {
+    clearRestartCount(student?.sid, wordId);
+    closeSettings();
+    setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
+  }
+
   function handleExitSession() {
+    clearRestartCount(student?.sid, wordId);
     closeSettings();
     setTimeout(() => navigation.navigate('DialogueCategory', { student }), 300);
   }
@@ -364,17 +350,17 @@ export default function Cat3Phase3Screen({ route, navigation }) {
                     activeOpacity={settled ? 1 : 0.82}
                     style={[
                       styles.tile,
-                      { backgroundColor: theme.cardSurface },
-                      showProvisional && { borderColor: theme.button, borderWidth: 2.5 },
+                      { borderColor: theme.cardOutline },
+                      showProvisional && [styles.tileSelected, { borderColor: theme.button, shadowColor: theme.button }],
                       showGreen && styles.tileCorrect,
                       showRed   && styles.tileWrong,
                     ]}
                   >
-                    <Text style={[styles.tileText, { color: theme.button }]}>
+                    <Text style={[styles.tileText, { color: theme.headingText }]}>
                       {tile.label}
                     </Text>
-                    {showGreen && <Ionicons name="checkmark-circle" size={20} color="#22C55E" />}
-                    {showRed   && <Ionicons name="close-circle"     size={20} color="#FF4D6D" />}
+                    {showGreen && <Ionicons name="checkmark-circle" size={24} color="#22C55E" />}
+                    {showRed   && <Ionicons name="close-circle"     size={24} color="#FF4D6D" />}
                   </TouchableOpacity>
                 );
               })}
@@ -384,9 +370,9 @@ export default function Cat3Phase3Screen({ route, navigation }) {
               <TouchableOpacity
                 onPress={handleHearAgain}
                 disabled={settled}
-                style={[styles.hearAgainButton, { borderColor: theme.button }]}
+                style={[styles.hearAgainButton, { borderColor: theme.cardOutline }, settled && { opacity: 0.5 }]}
               >
-                <Ionicons name="volume-high-outline" size={16} color={theme.button} />
+                <Ionicons name="volume-high" size={20} color={theme.button} />
                 <Text style={[styles.hearAgainText, { color: theme.button }]}>Hear it again</Text>
               </TouchableOpacity>
               {selectedId !== null && !settled && (
@@ -394,7 +380,7 @@ export default function Cat3Phase3Screen({ route, navigation }) {
                   onPress={handleConfirmTile}
                   style={[styles.confirmButton, { backgroundColor: theme.button }]}
                 >
-                  <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                  <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
                   <Text style={styles.confirmButtonText}>Confirm</Text>
                 </TouchableOpacity>
               )}
@@ -418,6 +404,11 @@ export default function Cat3Phase3Screen({ route, navigation }) {
           <Animated.View style={[styles.settingsSheet, { opacity: settingsFade }]}>
             <TouchableOpacity activeOpacity={1}>
               <Text style={styles.settingsTitle}>Session Options</Text>
+              <TouchableOpacity style={styles.settingsOption} onPress={handleSkipWord} activeOpacity={0.7}>
+                <Ionicons name="play-skip-forward-outline" size={20} color="#555" />
+                <Text style={styles.settingsOptionText}>Skip this word</Text>
+              </TouchableOpacity>
+              <View style={styles.settingsDivider} />
               <TouchableOpacity style={styles.settingsOption} onPress={handleExitSession} activeOpacity={0.7}>
                 <Ionicons name="exit-outline" size={20} color="#FF4D6D" />
                 <Text style={[styles.settingsOptionText, { color: '#FF4D6D' }]}>Exit session</Text>
@@ -489,21 +480,38 @@ const styles = StyleSheet.create({
     gap:            Layout.spacing.md,
   },
 
+  // Word options as the raised white answer cards the other dialogue screens
+  // use: theme outline (set inline), thick bottom edge, lifted when chosen.
   tile: {
     flexDirection:     'row',
     alignItems:        'center',
+    justifyContent:    'center',
     gap:               rs(8),
-    paddingVertical:   Layout.spacing.md,
-    paddingHorizontal: Layout.spacing.xl,
-    borderRadius:      Layout.radius.xl,
-    borderWidth:       2,
-    borderColor:       'transparent',
-    minWidth:          rs(100),
-    ...Layout.shadow.md,
+    backgroundColor:   '#FFFFFF',
+    paddingVertical:   rs(14),
+    paddingHorizontal: rs(28),
+    borderRadius:      rs(16),
+    borderWidth:       3,
+    borderBottomWidth: 6,
+    minWidth:          rs(130),
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: rs(4) },
+    shadowOpacity:     0.1,
+    shadowRadius:      10,
+    elevation:         4,
   },
-  tileCorrect: { borderColor: '#22C55E', borderWidth: 2.5 },
-  tileWrong:   { borderColor: '#FF4D6D', opacity: 0.7 },
-  tileText:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold' },
+  // Chosen but not yet confirmed: lifted, thicker theme border, glow.
+  tileSelected: {
+    borderWidth:       4,
+    borderBottomWidth: 6,
+    transform:         [{ translateY: -4 }],
+    shadowOpacity:     0.35,
+    shadowRadius:      14,
+    elevation:         10,
+  },
+  tileCorrect: { borderColor: '#22C55E', borderWidth: 4, borderBottomWidth: 6 },
+  tileWrong:   { borderColor: '#FF4D6D', borderWidth: 3, borderBottomWidth: 6, opacity: 0.55 },
+  tileText:    { fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold' },
 
   feedbackBanner: { position: 'absolute', bottom: rs(60), left: 0, right: 0, alignItems: 'center', zIndex: 60 },
   feedbackText: {
@@ -518,31 +526,47 @@ const styles = StyleSheet.create({
   settingsTitle:   { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_700Bold', color: '#333', marginBottom: Layout.spacing.lg, textAlign: 'center' },
   settingsOption:  { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.md, paddingVertical: Layout.spacing.md },
   settingsOptionText: { fontSize: Layout.fontSize.md, fontFamily: 'DMSans_600SemiBold', color: '#333' },
+  settingsDivider:    { height: StyleSheet.hairlineWidth, backgroundColor: '#EEE', marginVertical: rs(4) },
 
   actionRow: {
     flexDirection:  'row',
     justifyContent: 'center',
     alignItems:     'center',
-    gap:            Layout.spacing.md,
-    marginTop:      Layout.spacing.md,
+    gap:            rs(20),
+    marginTop:      rs(20),
   },
+  // Raised 3D buttons, the same as Magic Words / Greetings Phase 3.
   hearAgainButton: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               rs(6),
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical:   rs(8),
-    borderRadius:      Layout.radius.full,
-    borderWidth:       1.5,
+    gap:               rs(8),
+    backgroundColor:   '#FFFFFF',
+    paddingHorizontal: rs(26),
+    paddingVertical:   rs(13),
+    borderRadius:      rs(16),
+    borderWidth:       2,
+    borderBottomWidth: 5,
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: rs(3) },
+    shadowOpacity:     0.1,
+    shadowRadius:      8,
+    elevation:         4,
   },
-  hearAgainText: { fontSize: Layout.fontSize.xs, fontFamily: 'DMSans_700Bold' },
+  hearAgainText: { fontSize: rf(17), fontFamily: 'DMSans_800ExtraBold' },
   confirmButton: {
     flexDirection:     'row',
     alignItems:        'center',
-    gap:               rs(6),
-    paddingHorizontal: Layout.spacing.lg,
-    paddingVertical:   rs(8),
-    borderRadius:      Layout.radius.full,
+    gap:               rs(8),
+    paddingHorizontal: rs(34),
+    paddingVertical:   rs(14),
+    borderRadius:      rs(16),
+    borderBottomWidth: 5,
+    borderBottomColor: 'rgba(0,0,0,0.22)',
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: rs(4) },
+    shadowOpacity:     0.18,
+    shadowRadius:      10,
+    elevation:         6,
   },
-  confirmButtonText: { fontSize: Layout.fontSize.sm, fontFamily: 'DMSans_700Bold', color: '#FFFFFF' },
+  confirmButtonText: { fontSize: rf(18), fontFamily: 'DMSans_800ExtraBold', color: '#FFFFFF' },
 });

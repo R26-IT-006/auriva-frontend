@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
+  Animated,
   StyleSheet,
   ActivityIndicator,
   BackHandler,
@@ -28,80 +30,53 @@ import { rs, rf } from '../../../../utils/responsive';
 // already reports as unlocked. Flagged in STATE.md for planner awareness.
 const EVAL_UNLOCK_THRESHOLD = 3;
 
-// Fixed per-category identity (avatar + gradient) — the cards themselves keep a fixed
-// illustrated identity regardless of avatar theme, but the screen background below
-// still uses theme.backgroundGradient like the rest of the app.
+// Fixed per-category avatar. The cards themselves use the avatar theme's card
+// colours, like the Level 1 category cards.
 const CATEGORY_META = {
   greetings: {
     label: 'Greetings',
     avatar: require('../../../../../assets/dialogue-images/Evaluations/Lily_sunglasses.png'),
-    gradient: ['#FF8FAB', '#E8336F'],
-    shadowColor: 'rgba(232, 51, 111, 0.4)',
     avatarHeight: 192,
   },
   magic_words: {
     label: 'Magic Words',
     avatar: require('../../../../../assets/dialogue-images/Evaluations/Megatron_balloon.png'),
-    gradient: ['#67E5C2', '#1AA898'],
-    shadowColor: 'rgba(26, 168, 152, 0.4)',
     avatarHeight: 192,
   },
   abilities: {
     label: 'Can You?',
     avatar: require('../../../../../assets/dialogue-images/Evaluations/Boba_superhero.png'),
-    gradient: ['#FFB347', '#E06B00'],
-    shadowColor: 'rgba(224, 107, 0, 0.4)',
     avatarHeight: 192,
   },
 };
 
-const LOCKED_GRADIENT = ['#CBD5E1', '#94A3B8'];
 const AVATAR_OVERLAP = 64;
 
-// Same cycling palette as AnimatedWord (components/common/AnimatedWord.js) —
-// used here statically (no per-letter animation) for the "Evaluations" title.
-const TITLE_LETTER_COLORS = [
-  '#4C8BF5', // blue
-  '#FF6FA5', // pink
-  '#F4C430', // yellow
-  '#4CAF7D', // green
-  '#A66BE8', // purple
-  '#FF7F5C', // coral
-  '#2CBFAE', // teal
-  '#E0A526', // gold
-];
-
-function ColorfulTitle({ text, fontSize, fontsLoaded }) {
-  return (
-    <View style={styles.colorfulTitleRow}>
-      {text.split('').map((char, i) => (
-        <Text
-          key={i}
-          style={[
-            styles.headerTitle,
-            {
-              fontSize,
-              color: char === ' ' ? 'transparent' : TITLE_LETTER_COLORS[i % TITLE_LETTER_COLORS.length],
-            },
-            fontsLoaded && { fontFamily: 'Colora', },
-          ]}
-        >
-          {char}
-        </Text>
-      ))}
-    </View>
-  );
-}
-
-function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
+// The card itself matches the Level 1 category cards (DialogueCategoryScreen):
+// theme card surface + outline, rounded, soft shadow, dark bold label, and a
+// gentle press-in. The category's avatar still overlaps the top of the card.
+function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded, theme }) {
   const locked = !entry.unlocked;
+  const scale  = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    if (locked) return;
+    Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }).start();
+  }
 
   return (
-    <TouchableOpacity
-      activeOpacity={locked ? 1 : 0.88}
+    <Animated.View style={{ transform: [{ scale }] }}>
+    <Pressable
       disabled={locked}
       onPress={onPress}
+      onPressIn={pressIn}
+      onPressOut={pressOut}
       style={[styles.cardWrap, { width: cardWidth }]}
+      accessibilityRole="button"
+      accessibilityLabel={locked ? `${meta.label}, locked` : `${meta.label}, start`}
     >
       {/* Avatar — overlaps above the card. Needs its own elevation higher than
           the card's (8) too: on Android, elevation decides paint order between
@@ -115,16 +90,17 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
         />
       </View>
 
-      <LinearGradient
-        colors={locked ? LOCKED_GRADIENT : meta.gradient}
-        style={[styles.card, { shadowColor: locked ? '#475569' : meta.shadowColor, paddingTop: AVATAR_OVERLAP + 16 }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.4 }}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardSurface,
+            borderColor: theme.cardOutline,
+            paddingTop: AVATAR_OVERLAP + 16,
+          },
+          locked && styles.cardLocked,
+        ]}
       >
-        {/* Decorative circles */}
-        <View style={styles.circleTopRight} />
-        <View style={styles.circleBottomLeft} />
-
         <View style={styles.cardTextWrap}>
           <Text
             style={[
@@ -156,7 +132,7 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
           )}
         </View>
 
-        <View style={styles.statusPill}>
+        <View style={[styles.statusPill, { backgroundColor: locked ? '#94A3B8' : theme.button }]}>
           {locked ? (
             <>
               <Ionicons name="lock-closed" size={13} color="#FFF" />
@@ -183,8 +159,9 @@ function CategoryCard({ entry, meta, cardWidth, onPress, fontsLoaded }) {
             </>
           )}
         </View>
-      </LinearGradient>
-    </TouchableOpacity>
+      </View>
+    </Pressable>
+    </Animated.View>
   );
 }
 
@@ -197,10 +174,8 @@ export default function EvaluationMenuScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
 
-  // Same pattern as L2TopicSelectionScreen — Colora loaded locally,
-  // DM Sans pulled from the @expo-google-fonts/dm-sans package.
+  // DM Sans for the card text, from the @expo-google-fonts/dm-sans package.
   const [fontsLoaded] = useFonts({
-    Colora: require('../../../../../assets/fonts/COLORA.ttf'),
     DMSans_800ExtraBold,
     DMSans_600SemiBold,
   });
@@ -239,26 +214,30 @@ export default function EvaluationMenuScreen({ route, navigation }) {
       end={{ x: 0, y: 1 }}
     >
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.header}>
+        {/* Heading — the same top bar as the Level 1 category screen
+            (DialogueCategoryScreen): round back button, icon circle + title,
+            then a one-line subtitle. */}
+        <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.navigate('DialogueCategory', { student })}
             activeOpacity={0.7}
-            style={[styles.backBtn, { backgroundColor: 'rgba(0,0,0,0.12)' }, BACK_BUTTON]}
+            style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }, BACK_BUTTON]}
             accessibilityLabel="Go back"
           >
             <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
           </TouchableOpacity>
-          <ColorfulTitle text="Evaluations" fontSize={44} fontsLoaded={fontsLoaded} />
-          <View style={styles.backBtn} />
+
+          <View style={styles.titleRow}>
+            <View style={[styles.titleIconCircle, { backgroundColor: theme.cardOutline }]}>
+              <Ionicons name="trophy" size={18} color="#FFF" />
+            </View>
+            <Text style={[styles.title, { color: theme.headingText }]}>Evaluations</Text>
+          </View>
+
+          <View style={styles.iconBtn} />
         </View>
 
-        <Text
-          style={[
-            styles.subheading,
-            { color: theme.headingText },
-            fontsLoaded && { fontFamily: 'Colora', },
-          ]}
-        >
+        <Text style={[styles.subtitle, { color: theme.headingText }]}>
           Pick a category to show what you've learned!
         </Text>
 
@@ -286,6 +265,7 @@ export default function EvaluationMenuScreen({ route, navigation }) {
                   meta={meta}
                   cardWidth={cardWidth}
                   fontsLoaded={fontsLoaded}
+                  theme={theme}
                   onPress={() =>
                     navigation.navigate('EvaluationMatch', { student, category: entry.category })
                   }
@@ -303,32 +283,58 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1 },
 
-  header: {
+  // ── Heading — same as DialogueCategoryScreen ──────────────────────────────
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.xl,
-    paddingBottom: Layout.spacing.xs,
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
   },
-  backBtn: {
-    width: rs(40), height: rs(40), borderRadius: rs(20),
-    alignItems: 'center', justifyContent: 'center',
-  },
-  colorfulTitleRow: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  iconBtn: {
+    width: rs(40), height: rs(40),
+    borderRadius: rs(20),
+    alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  headerTitle: {
-    fontFamily: 'DMSans_900Black', letterSpacing: -0.4,
-    textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  // Less top space than the landing screens (as L2 topic selection): the
+  // avatar cards below are tall and must still fit a landscape tablet.
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: rs(10),
+    marginTop: rs(36),
   },
-
-  subheading: {
-    fontSize: rf(20), fontFamily: 'DMSans_600SemiBold',
-    textAlign: 'center', opacity: 0.85,
-    marginTop: rs(4), marginBottom: Layout.spacing.xl + AVATAR_OVERLAP - 20,
+  titleIconCircle: {
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: rs(3) },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  title: {
+    fontSize: rf(32),
+    fontFamily: 'DMSans_800ExtraBold',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: rf(13),
+    fontFamily: 'DMSans_600SemiBold',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginTop: 2,
+    // Room for the avatars that overlap the top of each card.
+    marginBottom: Layout.spacing.xl + AVATAR_OVERLAP - 20,
     paddingHorizontal: Layout.spacing.lg,
   },
 
@@ -348,50 +354,43 @@ const styles = StyleSheet.create({
 
   cardWrap: { alignItems: 'center' },
   avatarWrap: { alignItems: 'center', zIndex: 2, elevation: 12 },
+  // Same card as the Level 1 category cards: theme surface + 2px outline
+  // (set inline), rounded, soft shadow. Content is centred like theirs.
   card: {
     width: '100%',
     minHeight: rs(235),
-    borderRadius: rs(26),
+    borderRadius: rs(20),
+    borderWidth: 2,
+    alignItems: 'center',
     paddingHorizontal: Layout.spacing.lg,
     paddingBottom: Layout.spacing.lg,
-    overflow: 'hidden',
     zIndex: 1,
-    shadowOffset: { width: 0, height: rs(10) },
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: rs(3) },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  circleTopRight: {
-    position: 'absolute', top: rs(-30), right: rs(-20),
-    width: rs(100), height: rs(100), borderRadius: rs(50),
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  circleBottomLeft: {
-    position: 'absolute', bottom: rs(-18), left: rs(-18),
-    width: rs(70), height: rs(70), borderRadius: rs(35),
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
+  // Locked: still readable, visibly not yet available.
+  cardLocked: { opacity: 0.6 },
 
-  cardTextWrap: { zIndex: 1 },
+  cardTextWrap: { alignItems: 'center' },
   cardTitle: {
-    fontSize: rf(20), fontFamily: 'DMSans_900Black', color: '#FFF',
-    textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6,
+    fontSize: rf(20), fontFamily: 'DMSans_800ExtraBold', color: '#1A1A1A', textAlign: 'center',
   },
   cardSub: {
-    fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', color: 'rgba(255,255,255,0.9)', marginTop: rs(4),
+    fontSize: rf(12), fontFamily: 'DMSans_600SemiBold', color: '#555555', marginTop: rs(4), textAlign: 'center',
   },
 
+  // Theme-coloured "Start" (grey when locked), like the app's other pills.
   statusPill: {
-    zIndex: 1,
-    alignSelf: 'flex-end',
     marginTop: rs(14),
     flexDirection: 'row',
     alignItems: 'center',
     gap: rs(5),
-    backgroundColor: 'rgba(0,0,0,0.2)',
     borderRadius: rs(100),
-    paddingHorizontal: rs(12),
-    paddingVertical: rs(7),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(8),
   },
-  statusPillText: { fontSize: rf(12), fontFamily: 'DMSans_700Bold', color: '#FFF' },
+  statusPillText: { fontSize: rf(13), fontFamily: 'DMSans_800ExtraBold', color: '#FFF' },
 });

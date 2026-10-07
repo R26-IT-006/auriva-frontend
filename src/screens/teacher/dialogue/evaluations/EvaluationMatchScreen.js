@@ -22,6 +22,7 @@ import { evaluationApi } from '../../../../api/evaluation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../../constants/backButton';
 import { rs, rf } from '../../../../utils/responsive';
+import Phase1CompleteCelebration from '../../../../components/feedback/Phase1CompleteCelebration';
 
 const PLACEHOLDER_IMAGE = require('../../../../../assets/dialogue-images/placeholder.png');
 
@@ -139,7 +140,6 @@ export default function EvaluationMatchScreen({ route, navigation }) {
   const videoRef        = useRef(null);
   const activeRef        = useRef(true);
   const feedbackSlide    = useRef(new Animated.Value(FEEDBACK_OFFSCREEN)).current;
-  const starScale        = useRef(new Animated.Value(0)).current;
   // One { word_id, chosen_word_id_for_image } per round, built from each
   // round's FIRST tap — evaluation scoring reflects first-attempt accuracy
   // even though the child can keep retrying afterwards to learn the answer.
@@ -203,12 +203,6 @@ export default function EvaluationMatchScreen({ route, navigation }) {
       videoRef.current?.pauseAsync().catch(() => {});
     };
   }, []));
-
-  useEffect(() => {
-    if (completed) {
-      Animated.spring(starScale, { toValue: 1, useNativeDriver: true, bounciness: 18, speed: 8 }).start();
-    }
-  }, [completed]);
 
   // Reset per-round state whenever a new round begins
   useEffect(() => {
@@ -310,6 +304,26 @@ export default function EvaluationMatchScreen({ route, navigation }) {
   // tile so the child can find it themselves rather than getting stuck.
   const showHint = wrongCount >= 2;
 
+  // Finished — the same celebration screen the other dialogue steps end on
+  // (celebrating avatar over a white card, burst, raised button). No score is
+  // shown to the child; it lives only in the teacher's record.
+  if (!loading && !error && completed) {
+    return (
+      <Phase1CompleteCelebration
+        theme={theme}
+        avatarKey={student?.avatar_key}
+        heading="Great job!"
+        subtext="You finished the evaluation for"
+        wordLabel={categoryLabel}
+        burst="🏆"
+        note={rounds.length ? `${rounds.length} ${rounds.length === 1 ? 'word' : 'words'} practised` : null}
+        continueLabel="Done  ✓"
+        continueAccessibilityLabel="Done, back to evaluations"
+        onContinue={() => navigation.navigate('EvaluationMenu', { student })}
+      />
+    );
+  }
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ backgroundColor: theme.headerBackground }} edges={['top']}>
@@ -388,15 +402,15 @@ export default function EvaluationMatchScreen({ route, navigation }) {
                       onPress={() => handleTileTap(tile)}
                       style={[
                         styles.tile,
-                        { borderColor: theme.cardOutline, backgroundColor: theme.cardSurface },
+                        { borderColor: theme.cardOutline },
                         showGreen      && styles.tileCorrect,
                         showRed        && styles.tileWrong,
                         showHintOnTile && styles.tileHint,
                       ]}
                     >
                       <Text style={[styles.tileText, { color: theme.headingText }]}>{tile.text}</Text>
-                      {showGreen && <Ionicons name="checkmark-circle" size={20} color="#22C55E" />}
-                      {showRed   && <Ionicons name="close-circle"     size={20} color="#FF4D6D" />}
+                      {showGreen && <Ionicons name="checkmark-circle" size={24} color="#22C55E" />}
+                      {showRed   && <Ionicons name="close-circle"     size={24} color="#FF4D6D" />}
                     </TouchableOpacity>
                   );
                 })}
@@ -404,33 +418,6 @@ export default function EvaluationMatchScreen({ route, navigation }) {
             </View>
           )}
 
-          {!loading && !error && completed && (
-            <View style={styles.content}>
-              <Animated.Text style={[styles.stars, { transform: [{ scale: starScale }] }]}>
-                ⭐⭐⭐
-              </Animated.Text>
-
-              <View style={[styles.completeCard, { backgroundColor: theme.cardSurface }]}>
-                <View style={[styles.iconCircle, { backgroundColor: '#22C55E' }]}>
-                  <Ionicons name="trophy" size={32} color="#FFF" />
-                </View>
-                <Text style={[styles.completeHeading, { color: theme.headingText }]}>
-                  Great Job! 🎉
-                </Text>
-                <Text style={[styles.completeSubtext, { color: theme.headingText }]}>
-                  You finished the {categoryLabel.toLowerCase()} evaluation!
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.primaryBtn, { backgroundColor: theme.button }]}
-                onPress={() => navigation.navigate('EvaluationMenu', { student })}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.primaryBtnText, { color: theme.buttonText }]}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          )}
 
         </SafeAreaView>
       </LinearGradient>
@@ -504,7 +491,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Layout.spacing.md,
+    // A little space below the header so the question doesn't sit on it.
+    paddingTop: rs(40),
     alignItems: 'center',
   },
 
@@ -536,79 +524,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Layout.spacing.md,
   },
+  // Word options as the raised white answer cards the other dialogue screens
+  // use: theme outline (set inline), thick bottom edge, soft shadow.
   tile: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: rs(8),
-    paddingVertical: Layout.spacing.md,
-    paddingHorizontal: Layout.spacing.xl,
-    borderRadius: Layout.radius.xl,
-    borderWidth: 2,
-    minWidth: rs(110),
     justifyContent: 'center',
-    ...Layout.shadow.sm,
-  },
-  tileCorrect: { backgroundColor: '#DCFCE7', borderColor: '#22C55E' },
-  tileWrong:   { backgroundColor: '#FEE2E2', borderColor: '#EF4444' },
-  // Soft-yellow hint after a second wrong tap — points at the correct tile
-  // without giving it away as loudly as the green "correct" state.
-  tileHint:    { backgroundColor: '#FEF9C3', borderColor: '#EAB308' },
-  tileText:    { fontSize: Layout.fontSize.lg, fontFamily: 'DMSans_800ExtraBold' },
-
-  stars: {
-    fontSize: rf(48),
-    letterSpacing: 4,
-    marginTop: Layout.spacing.xxl,
-  },
-  completeCard: {
-    width: '100%',
-    borderRadius: Layout.radius.xl,
-    padding: Layout.spacing.xl,
-    alignItems: 'center',
-    gap: Layout.spacing.md,
-    marginTop: Layout.spacing.lg,
-    ...Layout.shadow.lg,
-  },
-  iconCircle: {
-    width: rs(68),
-    height: rs(68),
-    borderRadius: rs(34),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completeHeading: {
-    fontSize: Layout.fontSize.xxl,
-    fontFamily: 'DMSans_900Black',
-    textAlign: 'center',
-  },
-  completeSubtext: {
-    fontSize: Layout.fontSize.md,
-    fontFamily: 'DMSans_600SemiBold',
-    textAlign: 'center',
-    opacity: 0.75,
-  },
-  primaryBtn: {
-    flexDirection: 'row',
     gap: rs(8),
-    paddingHorizontal: rs(32),
+    backgroundColor: '#FFFFFF',
     paddingVertical: rs(14),
+    paddingHorizontal: rs(28),
     borderRadius: rs(16),
-    borderBottomWidth: 5,
-    borderBottomColor: 'rgba(0,0,0,0.22)',
+    borderWidth: 3,
+    borderBottomWidth: 6,
+    minWidth: rs(130),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: rs(4) },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.1,
     shadowRadius: 10,
-    elevation: 5,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Layout.spacing.xl,
+    elevation: 4,
   },
-  primaryBtnText: {
-    fontSize: rf(17),
-    fontFamily: 'DMSans_800ExtraBold',
-  },
+  tileCorrect: { backgroundColor: '#DCFCE7', borderColor: '#22C55E', borderWidth: 4, borderBottomWidth: 6 },
+  tileWrong:   { backgroundColor: '#FEE2E2', borderColor: '#EF4444', borderWidth: 4, borderBottomWidth: 6 },
+  // Soft-yellow hint after a second wrong tap — points at the correct tile
+  // without giving it away as loudly as the green "correct" state.
+  tileHint:    { backgroundColor: '#FEF9C3', borderColor: '#EAB308', borderWidth: 4, borderBottomWidth: 6 },
+  tileText:    { fontSize: rf(22), fontFamily: 'DMSans_800ExtraBold' },
 
   // Slides in from the right edge, vertically centred (same technique as
   // ConceptActivityScreen.js's gifPopup).

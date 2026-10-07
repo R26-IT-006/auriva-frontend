@@ -56,7 +56,70 @@ const STYLES = `
   li { margin: 2px 0; page-break-inside: avoid; }
   .empty { color: #5a5f7a; font-style: italic; }
   .footnote { margin-top: 26px; padding-top: 10px; border-top: 1px solid #e2e6f0; color: #5a5f7a; font-size: 9pt; }
+  .chart { margin: 0 0 24px; page-break-inside: avoid; }
+  .chart h2 { margin-top: 0; }
+  .chart svg { display: block; width: 100%; height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 8px; font-size: 9.5pt; color: #3a3f55; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 `;
+
+/**
+ * A static horizontal stacked-bar chart as inline SVG — one bar per row, split
+ * into the given series. Self-contained (no script, no external resource), so
+ * it prints offline like the rest of the document. Printed, so no hover layer:
+ * every segment wide enough carries its count, and a legend names the series.
+ *
+ *   series: [{ key, label, color, textColor }]   — fixed order, left to right
+ *   rows:   [{ label, values: { [seriesKey]: number } }]
+ *
+ * Returns '' when there is nothing to draw.
+ */
+export function stackedBarChartHtml({ title = '', series = [], rows = [] } = {}) {
+  const usable = rows.filter((r) => series.some((s) => (r.values?.[s.key] ?? 0) > 0));
+  if (usable.length === 0 || series.length === 0) return '';
+
+  const W = 640;            // viewBox width; scales to the page width
+  const LABEL_W = 120;      // category names
+  const TOTAL_W = 64;       // "12 words" at the end of each bar
+  const BAR_W = W - LABEL_W - TOTAL_W;
+  const BAR_H = 22;
+  const ROW_GAP = 14;
+  const GAP = 2;            // surface gap between segments
+  const H = usable.length * (BAR_H + ROW_GAP) - ROW_GAP;
+
+  const bars = usable.map((r, i) => {
+    const y = i * (BAR_H + ROW_GAP);
+    const total = series.reduce((n, s) => n + (r.values[s.key] ?? 0), 0);
+    let x = LABEL_W;
+    const segs = series.map((s) => {
+      const v = r.values[s.key] ?? 0;
+      if (v <= 0) return '';
+      const w = (v / total) * BAR_W;
+      const rectW = Math.max(1, w - GAP);
+      const seg = `<rect x="${x.toFixed(1)}" y="${y}" width="${rectW.toFixed(1)}" height="${BAR_H}" rx="4" fill="${escapeHtml(s.color)}"><title>${escapeHtml(`${r.label} · ${s.label}: ${v}`)}</title></rect>`
+        + (rectW >= 22
+          ? `<text x="${(x + rectW / 2).toFixed(1)}" y="${y + BAR_H / 2 + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="${escapeHtml(s.textColor ?? '#FFFFFF')}">${v}</text>`
+          : '');
+      x += w;
+      return seg;
+    }).join('');
+    return `<text x="0" y="${y + BAR_H / 2 + 4}" font-size="12" font-weight="600" fill="#1a1a2e">${escapeHtml(r.label)}</text>`
+      + segs
+      + `<text x="${W}" y="${y + BAR_H / 2 + 4}" text-anchor="end" font-size="11" fill="#5a5f7a">${total} ${total === 1 ? 'word' : 'words'}</text>`;
+  }).join('');
+
+  const legend = series.map((s) =>
+    `<span><i style="background:${escapeHtml(s.color)}"></i>${escapeHtml(s.label)}</span>`).join('');
+
+  return `
+    <div class="chart">
+      ${title ? `<h2>${escapeHtml(title)}</h2>` : ''}
+      <div class="legend">${legend}</div>
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHtml(title || 'Chart')}">${bars}</svg>
+    </div>`;
+}
 
 /**
  * Builds a self-contained print document from a generic report shape both
@@ -64,6 +127,7 @@ const STYLES = `
  *
  *   { title, studentName, generatedAt, footnote,
  *     overview: [{ label, value }],
+ *     chartHtml,   // optional — from stackedBarChartHtml(), shown after the overview
  *     sections: [{ heading, lines: [string, ...] }] }
  *
  * `lines` are already-plain-language sentences produced by the calling screen.
@@ -75,6 +139,7 @@ export function buildReportHtml({
   generatedAt = '',
   footnote = '',
   overview = [],
+  chartHtml = '',
   sections = [],
 } = {}) {
   const overviewHtml = overview.length === 0 ? '' : `
@@ -109,6 +174,7 @@ export function buildReportHtml({
 ${studentName ? `<p class="sub">${escapeHtml(studentName)}</p>` : ''}
 ${generatedAt ? `<p class="generated">Generated ${escapeHtml(generatedAt)}</p>` : ''}
 ${overviewHtml}
+${chartHtml}
 ${sectionsHtml}
 ${footnote ? `<p class="footnote">${escapeHtml(footnote)}</p>` : ''}
 </body>

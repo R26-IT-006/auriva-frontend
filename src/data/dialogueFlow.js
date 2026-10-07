@@ -6,7 +6,7 @@
  * chooses Level 1 or Level 2. Traced from the screens:
  *
  *   Level 1  DialogueCategory → Level1Overview → Magic Words / Greetings /
- *            "Can you…" landing (MagicWordLanding, GreetingLanding, Cat3Landing;
+ *            "Can you…" landing (MagicWordLanding, GreetingLanding, AbilityLanding;
  *            a ProbeProduction check is offered there for an earlier word)
  *     Phase 1  Phase1Video (videos) → AnimatedWord → BoldWord → DragToLine
  *              (3 drag-the-phrase activities; a mistake on the last one →
