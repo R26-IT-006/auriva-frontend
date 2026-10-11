@@ -144,8 +144,8 @@ function LeftPreviewShape({ shape, color }) {
       accessible={false}
     >
       {shape.elements.map((element, index) => {
+        const key = `preview-shape-${index}`;
         const common = {
-          key: `preview-shape-${index}`,
           stroke: color,
           strokeWidth: LEFT_PREVIEW_STROKE_WIDTH,
           strokeLinecap: 'round',
@@ -153,9 +153,9 @@ function LeftPreviewShape({ shape, color }) {
           vectorEffect: 'non-scaling-stroke',
           fill: 'none',
         };
-        if (element.type === 'path') return <Path {...common} d={element.d} />;
+        if (element.type === 'path') return <Path key={key} {...common} d={element.d} />;
         if (element.type === 'line') {
-          return <Line {...common} x1={element.x1} y1={element.y1} x2={element.x2} y2={element.y2} />;
+          return <Line key={key} {...common} x1={element.x1} y1={element.y1} x2={element.x2} y2={element.y2} />;
         }
         return null;
       })}

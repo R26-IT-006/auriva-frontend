@@ -31,6 +31,7 @@ import FlowOverviewModal from "../../../components/common/FlowOverviewModal";
 import HeaderPillButton from "../../../components/common/HeaderPillButton";
 import { buildPronunciationFlow } from "../../../data/pronunciationFlow";
 import { rs, rf } from '../../../utils/responsive';
+import useGatedBack from '../../../utils/useGatedBack';
 
 // "How it works" stages — static, so built once.
 const PRONUNCIATION_FLOW = buildPronunciationFlow();
@@ -183,6 +184,12 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
   const loadImageStyle = usePronunciationSessionStore((state) => state.loadImageStyle);
   const setImageStyle = usePronunciationSessionStore((state) => state.setImageStyle);
   const { width, height } = useWindowDimensions();
+  // Leaving the module for the student dashboard is an adult decision — gated,
+  // on-screen and hardware back alike.
+  const { requestBack, gateModal } = useGatedBack(
+    () => navigation.navigate("StudentDashboard", { student }),
+    { enabled: true },
+  );
   // Downstream screens read `student` from navigation params, not the store,
   // so a sensory-setting change made on this screen has to travel forward
   // through that same object — otherwise the celebration screen at the end
@@ -302,7 +309,7 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
         <View style={styles.sideGroup}>
           <ButtonFeedback
             style={[styles.iconBtn, { backgroundColor: "rgba(255,255,255,0.7)" }, BACK_BUTTON]}
-            onPress={() => navigation.goBack()}
+            onPress={requestBack}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Back"
@@ -517,6 +524,8 @@ export default function PronunciationSessionSetupScreen({ navigation, route }) {
         stages={PRONUNCIATION_FLOW}
         subtitle="How the Pronunciation module works"
       />
+
+      {gateModal}
     </LinearGradient>
   );
 }

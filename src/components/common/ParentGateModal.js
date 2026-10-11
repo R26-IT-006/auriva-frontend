@@ -15,6 +15,11 @@ import { rs, rf } from '../../utils/responsive';
 // immediately counts as a correct code — every caller's onSuccess runs as if
 // the adult had passed, and no modal is shown. All gate code below is kept
 // as-is; set this back to true to re-enable it everywhere.
+//
+// The gate is being brought back one place at a time: a caller passes
+// `enabled` to switch its own gate on regardless of this default. Currently
+// enabled: leaving a module landing page for the student dashboard
+// (ConceptCategories, LetterHome, DialogueLanding, PronunciationSessionSetup).
 const PARENT_GATE_ENABLED = false;
 
 const WORDS = ['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE'];
@@ -25,7 +30,7 @@ function generateCode() {
   return Array.from({ length: CODE_LENGTH }, () => Math.floor(Math.random() * 10));
 }
 
-export function ParentGateModal({ visible, onSuccess, onCancel }) {
+export function ParentGateModal({ visible, onSuccess, onCancel, enabled = PARENT_GATE_ENABLED }) {
   const [code,    setCode]    = useState([]);
   const [entered, setEntered] = useState([]);
   const [shake,   setShake]   = useState(false);
@@ -39,11 +44,11 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
 
   // Gate disabled: pass straight through the moment a caller opens it.
   useEffect(() => {
-    if (!PARENT_GATE_ENABLED && visible) onSuccessRef.current?.();
-  }, [visible]);
+    if (!enabled && visible) onSuccessRef.current?.();
+  }, [visible, enabled]);
 
   useEffect(() => {
-    if (!PARENT_GATE_ENABLED) return;
+    if (!enabled) return;
     if (visible) {
       setCode(generateCode());
       setEntered([]);
@@ -55,7 +60,7 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
       scaleAnim.setValue(0.92);
       opacityAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, enabled]);
 
   const doShake = useCallback(() => {
     setShake(true);
@@ -94,7 +99,7 @@ export function ParentGateModal({ visible, onSuccess, onCancel }) {
 
   const KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'];
 
-  if (!PARENT_GATE_ENABLED) return null;
+  if (!enabled) return null;
 
   return (
     <Modal visible={visible} animationType="none" transparent onRequestClose={handleClose}>

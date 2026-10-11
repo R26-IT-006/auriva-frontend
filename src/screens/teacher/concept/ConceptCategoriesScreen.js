@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
-import { ParentGateModal } from '../../../components/common/ParentGateModal';
+import useGatedBack from '../../../utils/useGatedBack';
 import { getOrderedCategories } from '../../../data/conceptData';
 import { Layout } from '../../../constants/layout';
 import ConceptSummaryModal from '../../../components/concept/ConceptSummaryModal';
@@ -86,7 +86,12 @@ function CategoryCard({ item, cardW, cardH, theme, onPress }) {
 export default function ConceptCategoriesScreen({ route, navigation }) {
   const student = route.params?.student;
   const { width, height } = useWindowDimensions();
-  const [gateVisible, setGateVisible] = useState(false);
+  // Leaving the module for the student dashboard is an adult decision — gated,
+  // on-screen and hardware back alike.
+  const { requestBack, gateModal } = useGatedBack(
+    () => navigation.navigate('StudentDashboard', { student }),
+    { enabled: true },
+  );
   const [showSummary, setShowSummary] = useState(false);
   const [showFlow,    setShowFlow]    = useState(false);
 
@@ -138,7 +143,7 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
           <View style={styles.sideGroup}>
             <TouchableOpacity
               style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }, BACK_BUTTON]}
-              onPress={() => setGateVisible(true)}
+              onPress={requestBack}
               activeOpacity={0.7}
             >
               <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
@@ -189,11 +194,7 @@ export default function ConceptCategoriesScreen({ route, navigation }) {
         />
       </SafeAreaView>
 
-      <ParentGateModal
-        visible={gateVisible}
-        onSuccess={() => { setGateVisible(false); navigation.navigate('StudentDashboard', { student }); }}
-        onCancel={() => setGateVisible(false)}
-      />
+      {gateModal}
 
       <ConceptFlowModal
         visible={showFlow}

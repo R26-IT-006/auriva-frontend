@@ -819,6 +819,9 @@ export default function LetterHomeScreen({ route, navigation }) {
           visible={gateVisible}
           onSuccess={handleGateSuccess}
           onCancel={handleGateCancel}
+          // Only leaving for the student dashboard is gated for now; the other
+          // gated actions follow ParentGateModal's app-wide default.
+          {...(pendingGateAction === 'back' && { enabled: true })}
         />
 
       </SafeAreaView>

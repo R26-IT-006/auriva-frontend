@@ -84,7 +84,13 @@ export function useGatedHardwareBack(onRequest, enabled = true) {
   );
 }
 
-export default function useGatedBack(onConfirm) {
+/**
+ * @param {() => void} onConfirm — runs once the adult passes the gate.
+ * @param {{ enabled?: boolean }} [options] — `enabled` switches this gate on
+ *   even while the app-wide default in ParentGateModal is off. Omitted, the
+ *   gate follows that default.
+ */
+export default function useGatedBack(onConfirm, { enabled } = {}) {
   const [gateVisible, setGateVisible] = useState(false);
 
   // Keeps the latest callback without re-creating requestBack on every render.
@@ -111,6 +117,7 @@ export default function useGatedBack(onConfirm) {
       visible={gateVisible}
       onSuccess={handleSuccess}
       onCancel={handleCancel}
+      {...(enabled !== undefined && { enabled })}
     />
   );
 

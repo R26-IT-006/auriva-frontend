@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,11 @@ import {
   StyleSheet,
   Animated,
   useWindowDimensions,
-  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import useGatedBack from '../../../utils/useGatedBack';
 import { Layout } from '../../../constants/layout';
 import { getAvatarTheme } from '../../../constants/avatarThemes';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
@@ -78,14 +77,13 @@ export default function DialogueLandingScreen({ route, navigation }) {
   const { width } = useWindowDimensions();
   const [showFlow, setShowFlow] = useState(false);
 
-  // Intercept Android hardware back → same destination as the UI back arrow
-  useFocusEffect(useCallback(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      navigation.navigate('StudentDashboard', { student });
-      return true;
-    });
-    return () => sub.remove();
-  }, [student]));
+  // Leaving the module for the student dashboard is an adult decision. The
+  // hook gates the Android hardware back button too, sending it to the same
+  // destination as the UI back arrow.
+  const { requestBack, gateModal } = useGatedBack(
+    () => navigation.navigate('StudentDashboard', { student }),
+    { enabled: true },
+  );
 
   const H_PAD = Layout.spacing.lg;
   const GAP   = 48;
@@ -120,7 +118,7 @@ export default function DialogueLandingScreen({ route, navigation }) {
           <View style={styles.sideGroup}>
             <TouchableOpacity
               style={[styles.iconBtn, { backgroundColor: 'rgba(255,255,255,0.7)' }, BACK_BUTTON]}
-              onPress={() => navigation.navigate('StudentDashboard', { student })}
+              onPress={requestBack}
               activeOpacity={0.7}
             >
               <Ionicons name="arrow-back" size={BACK_ICON_SIZE} color={theme.headingText} />
@@ -176,6 +174,8 @@ export default function DialogueLandingScreen({ route, navigation }) {
         stages={DIALOGUE_FLOW}
         subtitle="How the Dialogue module works"
       />
+
+      {gateModal}
     </LinearGradient>
   );
 }
