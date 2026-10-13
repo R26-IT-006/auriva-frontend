@@ -7,7 +7,7 @@ import Constants from "expo-constants";
 // the Expo host detected below both take precedence, so it rarely applies.
 // It is a DHCP address and goes stale whenever the dev machine changes network —
 // set EXPO_PUBLIC_API_BASE_URL rather than editing this if yours differs.
-const DEFAULT_API_BASE_URL = "http://172.20.10.3:3000/api";
+const DEFAULT_API_BASE_URL = "http://172.17.12.25:3000/api";
 
 function normalizeApiBaseUrl(value) {
   if (!value) return DEFAULT_API_BASE_URL;

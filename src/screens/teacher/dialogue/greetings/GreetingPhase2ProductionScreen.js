@@ -44,9 +44,6 @@ const AUDIO = {
   goodJob:       require('../../../../../assets/dialogue-audios/Good_job.mp3'),
 };
 
-const PLACEHOLDER_WORD    = require('../../../../../assets/dialogue-audios/magic_words/Thankyou.mp3');
-const PLACEHOLDER_CAN_SAY = require('../../../../../assets/dialogue-audios/magic_words/Can_you_say_Thankyou.mp3');
-
 const WORD_AUDIO = {
   hello: {
     word:      require('../../../../../assets/dialogue-audios/greetings/hello.mp3'),
@@ -60,12 +57,30 @@ const WORD_AUDIO = {
     word:      require('../../../../../assets/dialogue-audios/greetings/good_morning.mp3'),
     canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_goodmorning.mp3'),
   },
-  good_afternoon: { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
-  good_night:     { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
-  happy_birthday: { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
-  how_are_you:    { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
-  im_fine:        { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
-  happy_new_year: { word: PLACEHOLDER_WORD, canYouSay: PLACEHOLDER_CAN_SAY },
+  good_afternoon: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/good_afternoon.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_goodafternoon.mpeg'),
+  },
+  good_night: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/good_night.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_goodnight.mpeg'),
+  },
+  happy_birthday: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/happy_birthday.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_happy_birthday.mpeg'),
+  },
+  how_are_you: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/how_are_you.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_how_are_you.mpeg'),
+  },
+  im_fine: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/im_fine.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_im_fine.mpeg'),
+  },
+  happy_new_year: {
+    word:      require('../../../../../assets/dialogue-audios/greetings/happy_new_year.mp3'),
+    canYouSay: require('../../../../../assets/dialogue-audios/greetings/can_you_say_happy_new_year.mpeg'),
+  },
 };
 
 const P = {

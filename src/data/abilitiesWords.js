@@ -169,6 +169,9 @@ export const ABILITY_CAN_YOU_SAY_AUDIO = {
   run:      require('../../assets/dialogue-audios/abilities/can_you_say_run.mp3'),
   walk:     require('../../assets/dialogue-audios/abilities/can_you_say_walk.mp3'),
   brush:    require('../../assets/dialogue-audios/abilities/can_you_say_brush.mp3'),
+  dance:    require('../../assets/dialogue-audios/abilities/can_you_say_dance.mpeg'),
+  sing:     require('../../assets/dialogue-audios/abilities/can_you_say_sing.mpeg'),
+  talk:     require('../../assets/dialogue-audios/abilities/can_you_say_talk.mpeg'),
 };
 
 // One shared Phase 3 prompt recording for every abilities word.
