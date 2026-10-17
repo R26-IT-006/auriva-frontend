@@ -135,13 +135,39 @@ describe('SENTINEL — the child is not told their handwriting failed', () => {
 
 // ─── 9: the network path stays conservative ─────────────────────────────
 
-describe('SENTINEL — a network error is still treated conservatively', () => {
-  it.each(SCREENS)('%s still consumes a cycle on a transport failure', (_name, src) => {
+describe('SENTINEL — a transport failure is held for retry, never scored locally', () => {
+  it.each(SCREENS)('%s does not consume a cycle on a transport failure', (_name, src) => {
     const code = stripComments(src);
-    // The catch block keeps calling handleFailedCycle(null): the request may
-    // have reached the server even though the response was lost, so not
-    // consuming would permit unbounded retries against a counted cycle.
-    expect(code).toMatch(/handleFailedCycle\(null\)/);
+    // CHANGED (user-testing fix 4). The catch block used to call
+    // handleFailedCycle(null), spending one of the day's three cycles for a
+    // performance the server may never have seen — and, on the other branch,
+    // ADVANCED the child past the letter on the client's own didPassAttempt()
+    // rule while discarding three attempts of raw trajectory.
+    //
+    // Neither is acceptable for a measured session: a transport failure means
+    // we have no server opinion at all, so the only honest response is to hold
+    // position and let the submission be retried. The cycle cap is still
+    // enforced server-side from letter_attempts, which is the authority, so
+    // nothing here can buy an extra cycle.
+    const catchStart = code.indexOf('} catch {');
+    const catchBlock = code.slice(catchStart, catchStart + 1200);
+    expect(catchBlock).not.toMatch(/handleFailedCycle\(/);
+  });
+
+  it.each(SCREENS)('%s holds the learner on the mastery attempt for retry', (_name, src) => {
+    const code = stripComments(src);
+    const catchStart = code.indexOf('} catch {');
+    const catchBlock = code.slice(catchStart, catchStart + 1200);
+    expect(catchBlock).toMatch(/setAttempt\(MASTERY_ATTEMPT_NUMBER\)/);
+    expect(catchBlock).toMatch(/show\('Unable to save\. Please try again\.'/);
+  });
+
+  it.each(SCREENS)('%s trims only the failed attempt so a retry sends three, not four', (_name, src) => {
+    const code = stripComments(src);
+    const catchStart = code.indexOf('} catch {');
+    const catchBlock = code.slice(catchStart, catchStart + 1200);
+    expect(catchBlock).toMatch(/sessionAttemptsRef\.current\.slice\(0, MASTERY_ATTEMPT_INDEX\)/);
+    expect(catchBlock).toMatch(/attemptScoresRef\.current\.slice\(0, MASTERY_ATTEMPT_INDEX\)/);
   });
 
   it.each(SCREENS)('%s does NOT route transport errors to the capture path', (_name, src) => {

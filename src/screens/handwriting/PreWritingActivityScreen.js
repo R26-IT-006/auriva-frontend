@@ -59,6 +59,7 @@ const ATTEMPT_FEEDBACK_MS = 2200;
 //     calculateFeatures exactly, DTW path matches its zigzag/curve_wave path)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Scores the warm-up shape for feedback only; this result never affects letter mastery.
 function calculateActivityFeatures(paths, activity) {
   const allPoints = paths.flat();
   if (allPoints.length < 2) {
@@ -238,6 +239,7 @@ export default function PreWritingActivityScreen({ route, navigation }) {
   }, [activity, attempt, notifyLiveSessionUpdate]);
 
   const finish = useCallback(async () => {
+    // Warm-up and Cycle-3 remediation both end here without consuming a normal letter attempt.
     onComplete?.(resultsRef.current);
 
     // Best-effort save — never blocks the child from moving on to letters,

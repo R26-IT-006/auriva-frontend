@@ -526,6 +526,7 @@ export default function WordWritingScreen({ route, navigation }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => canWriteRef.current,
       onMoveShouldSetPanResponder:  () => canWriteRef.current,
+      // Starts a new stroke and captures its first x/y/time point.
       onPanResponderGrant: (evt) => {
         if (!canWriteRef.current) return;
         stopGuideRef.current?.();  // first touch cancels the idle replay
@@ -543,6 +544,7 @@ export default function WordWritingScreen({ route, navigation }) {
           requestTargetSpeech(() => spellWordRef.current?.());
         }
       },
+      // Captures x/y/time stroke points that the backend later scores.
       onPanResponderMove: (evt) => {
         const { x, y } = mapTouchToCanvas({
           pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
@@ -613,6 +615,7 @@ export default function WordWritingScreen({ route, navigation }) {
     let saved;
     try {
       submitActionIdRef.current ||= newActionId();
+      // Sends the written word to the backend, which returns the authoritative score and layout advisory.
       saved = await submitWordAttempt({student,actionId:submitActionIdRef.current,word,stage:'guided_word_writing',attempt_number:attempt,strokes:allPathsRef.current,canvas_width:CANVAS_W,canvas_height:CANVAS_H});
       submitActionIdRef.current = null;
     } catch { setSaveError('Could not save yet. Check the connection and try again.'); setSubmitting(false); return; }

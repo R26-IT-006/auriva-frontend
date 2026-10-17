@@ -112,6 +112,7 @@ const activityById = (id) => PRE_WRITING_ACTIVITIES.find((a) => a.id === id) ?? 
  *   own source order. Empty for an unknown letter or an unmapped stroke —
  *   never a substituted default.
  */
+// Reads the stroke types this specific letter is built from, so remediation targets its real motor primitives.
 export function remediationStrokeTypes(letter) {
   const strokeTypes = getLetterStrokeTypes(letter);
   if (!Array.isArray(strokeTypes)) return [];
@@ -137,6 +138,7 @@ export function remediationStrokeTypes(letter) {
  *   stroke order. Empty means "no remediation is possible" — the caller must
  *   continue straight to cycle 3 rather than showing an empty screen.
  */
+// Builds the pre-writing support shown before Cycle 3; this does not consume a normal letter attempt.
 export function buildLetterRemediationActivities(letter) {
   const variants = getLetterStrokeVariants(letter);
   return remediationStrokeTypes(letter)

@@ -71,6 +71,7 @@ export function evidenceUnavailableMessage(status) {
  *
  * @returns {'lowercase'|'uppercase'|null} null for anything not A-Z or a-z.
  */
+// Lowercase and uppercase are separate records, so the case is always sent with the letter.
 export function caseTypeForLetter(letter) {
   const ch = String(letter ?? '').trim();
   if (!/^[A-Za-z]$/.test(ch)) return null;
@@ -85,6 +86,7 @@ export function caseTypeForLetter(letter) {
  *
  * @returns {Promise<{status: string, evidence: Object|null}>}
  */
+// Loads student writing evidence only when the teacher opens the letter details.
 export async function fetchLetterMasteryEvidence(studentId, letter) {
   const caseType = caseTypeForLetter(letter);
   const sid = Number(studentId);

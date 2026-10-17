@@ -57,6 +57,7 @@ const letterAt = (sequence, index) => {
  * @param {number} index — position of the letter about to be presented.
  * @returns {string|null} the group being entered, or null.
  */
+// Chooses the motor-primitive warm-up shown when the learner crosses into a new letter category.
 export function primitiveGroupOnEntering(sequence, index) {
   if (!Array.isArray(sequence)) return null;
   // Index 0 has nothing before it. A single-letter selection is this case too:
@@ -78,6 +79,7 @@ export function primitiveGroupOnEntering(sequence, index) {
  * True when the sequence changes primitive group at `index`.
  * @returns {boolean}
  */
+// Warm-ups run only on category transitions, never before the very first letter.
 export function isCategoryTransition(sequence, index) {
   return primitiveGroupOnEntering(sequence, index) !== null;
 }

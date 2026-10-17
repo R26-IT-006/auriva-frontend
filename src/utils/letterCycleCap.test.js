@@ -63,9 +63,14 @@ describe('REGRESSION — a failed letter can no longer repeat forever', () => {
         src.indexOf('handleFailedCycle(response'));
       // The old shape — an unconditional retry — is gone from both branches.
       expect(src).not.toMatch(/scheduleAdaptiveRepetitionIfEligible\(\);\s*\n\s*attemptScoresRef\.current\s*=\s*\[\];\s*\n\s*sessionAttemptsRef\.current\s*=\s*\[\];\s*\n\s*setAttempt\(1\);/);
-      // Both failure paths now go through the ceiling.
+      // The one EVALUATED failure path goes through the ceiling.
       expect(src).toMatch(/const handleFailedCycle = \(serverCyclesToday\) => \{/);
-      expect((src.match(/handleFailedCycle\(/g) ?? []).length).toBe(2); // both failure paths
+      // CHANGED (user-testing fix 4), from 2 to 1. The declaration reads
+      // `handleFailedCycle = (`, so it is not counted — this counts real call
+      // sites only. The transport-failure catch no longer calls it: a request
+      // that may never have reached the server is not an evaluated cycle, so it
+      // is held for retry instead of consuming one of the day's three.
+      expect((src.match(/handleFailedCycle\(/g) ?? []).length).toBe(1);
       // `const` sits in the temporal dead zone until its declaration is
       // evaluated, and both failure branches run EARLIER in the same function
       // body — so the helpers must be declared above them, not below. (They
@@ -193,8 +198,10 @@ describe('an app restart cannot buy an extra cycle', () => {
   it('the screens pass the server count through on a backend-confirmed failure', () => {
     for (const src of [letterScreen, upperScreen]) {
       expect(src).toMatch(/handleFailedCycle\(response\.data\?\.cycle_usage\?\.cycles_today \?\? null\)/);
-      // ...and null on a network failure, where there is no server opinion.
-      expect(src).toMatch(/handleFailedCycle\(null\)/);
+      // CHANGED (user-testing fix 4): there is no longer a handleFailedCycle(null)
+      // transport-failure call. With no server opinion the cycle is not scored at
+      // all — the submission is held for retry — so there is no count to pass.
+      expect(src).not.toMatch(/handleFailedCycle\(null\)/);
     }
   });
 
@@ -264,10 +271,19 @@ describe('a letter set aside moves on the same way a mastered one does', () => {
 
   it('collection mode is untouched — the research protocol never caps', () => {
     for (const src of [letterScreen, upperScreen]) {
-      // The failure branches that call the ceiling are already inside
-      // `!collectionMode` guards, exactly as before.
+      // The branch that calls the ceiling is still inside a `!collectionMode`
+      // guard, exactly as before — capping remains normal-practice only.
       expect(src).toMatch(/if \(!collectionMode && response\.data\.completed === false\)/);
-      expect(src).toMatch(/if \(!collectionMode && !wroteCorrectly\)/);
+
+      // CHANGED (user-testing fix 4): the old `if (!collectionMode && !wroteCorrectly)`
+      // transport-failure guard is gone, and the hold-for-retry it was replaced by
+      // is DELIBERATELY unconditional. That does not cap anything — it only
+      // declines to advance when the save failed. For a research session that is
+      // strictly safer: collection mode used to fall through this exact path and
+      // advance, silently losing a protocol item's three attempts. Cycle counting
+      // still ignores collection_mode rows entirely (letterCycleService), so
+      // holding cannot interact with the cap.
+      expect(src).not.toMatch(/if \(!collectionMode && !wroteCorrectly\)/);
     }
   });
 });

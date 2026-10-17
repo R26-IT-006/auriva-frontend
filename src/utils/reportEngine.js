@@ -188,10 +188,55 @@ export function computeUnifiedMotorReportScore(assessmentData, motorProfile) {
 // ─── Letter Practice Metrics ──────────────────────────────────────────────────
 
 /**
+ * The descriptive score band shown alongside a letter. NOT a mastery claim —
+ * see `status` below for that. A band is just "how did this score land",
+ * which is useful next to the authoritative state but must never stand in
+ * for it: the two answer different questions, and conflating them is exactly
+ * the bug this split exists to prevent.
+ *
+ * @param {number|null} accuracy
+ * @returns {'Strong'|'Developing'|'Emerging'|null}
+ */
+export function performanceBandForScore(accuracy) {
+  if (accuracy == null || !Number.isFinite(accuracy)) return null;
+  if (accuracy >= 80) return 'Strong';
+  if (accuracy >= 60) return 'Developing';
+  return 'Emerging';
+}
+
+/**
  * Computes per-letter handwriting metrics from attempt history.
- * @param {Object} letterProgressMap  { [letter]: { letter, attempts, completed } }
+ *
+ * ── `status` is the BACKEND's mastery state, never a score band ───────────
+ * This used to read `accuracy >= 80 ? 'Mastered' : …`, where `accuracy` was
+ * `serverBestScore` — the best-of-all-attempts score. That disagreed with the
+ * system in both directions:
+ *
+ *   - operational mastery is ATTEMPT 3 alone, at >= 70
+ *     (auriva-backend/src/config/masteryPolicy.js)
+ *   - best-of-3 includes attempts 1 and 2, which are drawn WITH the on-screen
+ *     guide, so a letter whose guided attempt 1 scored 85 showed as "Mastered"
+ *     even when the unguided attempt 3 scored 60 and the backend did not
+ *     master it
+ *   - and a letter genuinely mastered at attempt-3 = 72 showed as
+ *     "Progressing", because 72 < 80
+ *
+ * `status: 'Mastered'` now comes ONLY from `data.mastered`, which the caller
+ * sets from GET /handwriting/mastered-letters/:studentId — the authoritative
+ * LetterProgress.mastered_at state (see utils/masteredLetterFiltering.js).
+ * Nothing here recomputes mastery, and no threshold is duplicated in this
+ * file: 70 lives in the backend policy and is never mirrored on the client.
+ *
+ * `data.mastered` absent/false means "not confirmed mastered". That is the
+ * safe direction on a failed fetch — `fetchMasteredLetters` resolves to an
+ * empty pair list on error, so a transient failure under-reports mastery
+ * rather than inventing it.
+ *
+ * @param {Object} letterProgressMap  { [letter]: { letter, attempts, completed,
+ *   serverBestScore?: number|null, mastered?: boolean } }
  * @returns {{ letters, avgDeviation, avgPauses, avgTime, explanation }}
  */
+// Aggregates stored letter attempts into per-letter accuracy for display only.
 export function computeLetterMetrics(letterProgressMap) {
   if (!letterProgressMap || Object.keys(letterProgressMap).length === 0) {
     return {
@@ -216,6 +261,9 @@ export function computeLetterMetrics(letterProgressMap) {
       ? Math.round(data.serverBestScore)
       : Math.max(0, Math.min(100, Math.round((1 - avgDev / 50) * 100)));
 
+    // Authoritative mastery state, supplied by the caller. Never derived here.
+    const isMastered = data?.mastered === true;
+
     return {
       letter,
       attempts:  attempts.length,
@@ -224,7 +272,16 @@ export function computeLetterMetrics(letterProgressMap) {
       avgPause:  Math.round(avgPause * 10) / 10,
       avgTimeSec: Math.round(avgTime / 1000),
       accuracy,
-      status: accuracy >= 80 ? 'Mastered' : accuracy >= 60 ? 'Progressing' : 'Needs Practice',
+      // Descriptive score band, kept available next to `status` but never
+      // substituted for it.
+      performanceBand: performanceBandForScore(accuracy),
+      mastered: isMastered,
+      // 'Mastered' is the backend's state. The other two remain descriptive
+      // progress wording for letters that are not yet mastered, and the
+      // vocabulary is unchanged so every existing consumer keeps working.
+      status: isMastered
+        ? 'Mastered'
+        : (accuracy >= 60 ? 'Progressing' : 'Needs Practice'),
     };
   }).filter(Boolean);
 
@@ -244,6 +301,8 @@ export function computeLetterMetrics(letterProgressMap) {
     `Average deviation: ${avgDeviation ?? 'N/A'} px — ` +
     `${avgDeviation !== null && avgDeviation < 20 ? 'excellent precision' : avgDeviation !== null && avgDeviation < 35 ? 'good control' : 'needs more practice'}. ` +
     `Pause count shows how often the child lifted the pencil mid-stroke (ideal: 0–2 pauses). ` +
+    `A letter counts as mastered only when the app recorded it as mastered — that is judged on the third, ` +
+    `unguided attempt alone, not on the child's best attempt. ` +
     `Result: ${mastered} mastered, ${progressing} progressing, ${needsWork} need more practice.`;
 
   return { letters, avgDeviation, avgPauses, avgTime, explanation };
@@ -270,6 +329,7 @@ export const WORD_EXERCISE_NAMES = Object.freeze({
   A: 'First Letter', B: 'Find Picture', C: 'Fill Gap', D: 'Spell It', E: 'Write the Word',
 });
 
+// Groups persisted A-E outcomes by initial letter for the Word Practice section.
 export function computeWordMastery(wordProgress) {
   const entries = Object.entries(wordProgress ?? {});
   if (entries.length === 0) {
@@ -340,7 +400,9 @@ export function computeWordMastery(wordProgress) {
     `Overall accuracy: ${totalCorrect}/${totalEx} exercises correct (${overallPct}%). ` +
     `${strongLetters.length > 0 ? `Strong letters: ${strongLetters.join(', ')}. ` : ''}` +
     `${weakLetters.length > 0 ? `Letters needing more practice: ${weakLetters.join(', ')}. ` : ''}` +
-    `The 80% threshold is used for mastery — at that level, a child can work independently with the material.`;
+    `80% or more correct is shown as a strong result for these activities. That is a descriptive band for ` +
+    `word activities only — it is not the letter-writing mastery rule, which the app judges separately on ` +
+    `the third, unguided writing attempt.`;
 
   return { byLetter, overall: { correct: totalCorrect, total: totalEx, pct: overallPct }, explanation };
 }
@@ -576,6 +638,7 @@ export function computeMotorDifficulty(assessmentData, letterMetrics, motorScore
 /**
  * Master entry point — computes the complete report.
  */
+// This report summarizes stored evidence for teachers and does not directly change child progression.
 export function generateReport({ assessmentData, motorProfile, letterProgressMap, wordProgress, completedLetters, student }) {
   const motorScore         = computeUnifiedMotorReportScore(assessmentData, motorProfile);
   const letterMetrics      = computeLetterMetrics(letterProgressMap);

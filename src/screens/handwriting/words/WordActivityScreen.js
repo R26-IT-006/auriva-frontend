@@ -326,6 +326,7 @@ export default function WordActivityScreen({ route, navigation }) {
     const result    = wasCorrect ? 'correct' : 'good';
     if (ex !== 'E') {
       setSaving(true); setSaveError(null);
+      // Persists this exercise's outcome as 'correct' (first try) or 'good' (solved with help).
       try { await saveWordActivity({ student, word: currentWord.word, activity: ex, status: result }); }
       catch { setSaveError('Could not save yet. Check the connection and try again.'); setSaving(false); return; }
       setSaving(false);

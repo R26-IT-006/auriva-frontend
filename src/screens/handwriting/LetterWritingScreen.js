@@ -1104,6 +1104,7 @@ export default function LetterWritingScreen({ route, navigation }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => canWriteRef.current,
       onMoveShouldSetPanResponder:  () => canWriteRef.current,
+      // Starts a new stroke and captures its first x/y/time point.
       onPanResponderGrant: (evt) => {
         if (!canWriteRef.current) return;
         stopGuideRef.current?.();  // first touch cancels the idle replay
@@ -1125,6 +1126,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           requestTargetSpeech(() => playLetterSoundRef.current?.());
         }
       },
+      // Captures x/y/time stroke points that the backend later scores.
       onPanResponderMove: (evt) => {
         const { x: locationX, y: locationY } = mapTouchToCanvas({
           pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
@@ -1143,6 +1145,7 @@ export default function LetterWritingScreen({ route, navigation }) {
           }];
         });
       },
+      // Closes the stroke and appends it to this attempt's stroke list.
       onPanResponderRelease: () => {
         notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
@@ -1545,6 +1548,7 @@ export default function LetterWritingScreen({ route, navigation }) {
       }
 
       try {
+        // Sends all three attempts for authoritative scoring; the backend decides mastery, not this screen.
         const response = await client.post(ENDPOINTS.LETTER_COMPLETE, {
           student_id:      student.sid,
           letter,
@@ -1603,22 +1607,42 @@ export default function LetterWritingScreen({ route, navigation }) {
           return;
         }
       } catch {
-        // network failure — gate only in normal mode
-        if (!collectionMode && !wroteCorrectly) {
-          // Feature 5 Step 3 — same activation point as the backend-
-          // confirmed failure above: a network error still means this
-          // cycle failed locally and will immediately retry exactly as
-          // before.
-          scheduleAdaptiveRepetitionIfEligible();
-          // No server opinion on a network failure - the in-interaction guard
-          // is the whole limit here, which is the safe direction.
-          logCycleOutcome(
-            recordedCyclesWillReachCap(null) ? 'FAILED_ADVANCE_AFTER_CYCLE_2' : 'FAILED_START_CYCLE_2',
-            null,
-          );
-          handleFailedCycle(null);
-          return;
+        // ── The submission did not reach the server ──────────────────────
+        //
+        // A thrown request means we have NO server opinion on this cycle. The
+        // previous behaviour split on the client's own `wroteCorrectly`:
+        //   !wroteCorrectly -> consume a cycle and retry the letter
+        //    wroteCorrectly -> fall through, clear both refs, and ADVANCE
+        // The second branch advanced the child past the letter on the
+        // client-side didPassAttempt() rule (smoothness < 0.35 &&
+        // dtw_distance < 22) while three attempts of raw trajectory were
+        // discarded with nothing persisted anywhere. That is a different,
+        // more lenient mastery rule than the authoritative attempt-3 >= 70,
+        // and the loss was silent.
+        //
+        // Now: never advance, never consume a cycle, and never let the local
+        // pass rule stand in for the backend's decision. The child stays on
+        // this letter at attempt 3 and the submission can simply be retried.
+        //
+        // The two refs are trimmed back by exactly the one attempt-3 record
+        // THIS run appended, so pressing Next again re-sends exactly three
+        // attempts rather than four. Attempts 1 and 2 are untouched, and
+        // resetCanvas() is deliberately NOT called — the child's drawing stays
+        // on screen, which is both what makes the retry possible and what
+        // keeps the captured data intact. Same mechanism handleCaptureIncomplete
+        // already uses for a device capture fault.
+        sessionAttemptsRef.current = sessionAttemptsRef.current.slice(0, MASTERY_ATTEMPT_INDEX);
+        attemptScoresRef.current   = attemptScoresRef.current.slice(0, MASTERY_ATTEMPT_INDEX);
+
+        if (__DEV__) {
+          console.log('[NORMAL_LETTER_CYCLE] submit failed — holding on attempt 3 for retry', {
+            letter, caseType, attempts_kept: sessionAttemptsRef.current.length,
+          });
         }
+
+        show('Unable to save. Please try again.', 'info');
+        setAttempt(MASTERY_ATTEMPT_NUMBER);
+        return;
       }
       attemptScoresRef.current   = [];
       sessionAttemptsRef.current = [];

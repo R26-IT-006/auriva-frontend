@@ -225,8 +225,18 @@ describe('the Android hardware back button cannot bypass the gate', () => {
 // under different session_keys, seconds apart.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('letter completion cannot be submitted twice', () => {
-  const writing = read(path.join(SCREENS_DIR, 'LetterWritingScreen.js'));
+// Both writing screens are covered. The guard originally landed on lowercase
+// only, and because this suite read just that one file it kept passing while
+// the identical window stayed open on uppercase — a child practising capital
+// letters could still double-submit. Driving the same assertions from a table
+// is what makes a future third writing screen fail loudly instead of silently.
+const WRITING_SCREENS = [
+  { label: 'lowercase', file: path.join(SCREENS_DIR, 'LetterWritingScreen.js') },
+  { label: 'uppercase', file: path.join(SCREENS_DIR, 'uppercase', 'UppercaseWritingScreen.js') },
+];
+
+describe.each(WRITING_SCREENS)('letter completion cannot be submitted twice ($label)', ({ file }) => {
+  const writing = read(file);
   const code = stripComments(writing);
 
   it('handleNext is guarded by a synchronous in-flight ref', () => {
@@ -251,5 +261,53 @@ describe('letter completion cannot be submitted twice', () => {
   it('the button still calls handleNext, not the unguarded body', () => {
     expect(writing).toMatch(/onPress=\{handleNext\}/);
     expect(writing).not.toMatch(/onPress=\{runNextCycle\}/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A failed completion POST must never advance the child
+//
+// The old catch branched on the client's own wroteCorrectly: a "passing"
+// attempt fell through, cleared both refs and advanced past the letter, so
+// three attempts of raw trajectory were discarded and the child was promoted
+// on didPassAttempt() (smoothness < 0.35 && dtw_distance < 22) rather than on
+// the authoritative attempt-3 >= 70 decision the server never got to make.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe.each(WRITING_SCREENS)('a failed completion POST holds the child on the letter ($label)', ({ file }) => {
+  const code = stripComments(read(file));
+  // The catch block attached to the completion POST, up to the point where the
+  // normal (successful) path resumes clearing the refs.
+  const catchBlock = code.slice(
+    code.indexOf('} catch {', code.indexOf('ENDPOINTS.LETTER_COMPLETE')),
+    code.indexOf('attemptScoresRef.current   = [];', code.indexOf('ENDPOINTS.LETTER_COMPLETE')),
+  );
+
+  it('shows the neutral retry message', () => {
+    expect(catchBlock).toMatch(/show\('Unable to save\. Please try again\.'/);
+  });
+
+  it('returns before the advance/clear path instead of falling through', () => {
+    expect(catchBlock).toMatch(/return;/);
+  });
+
+  it('holds the learner at the mastery attempt', () => {
+    expect(catchBlock).toMatch(/setAttempt\(MASTERY_ATTEMPT_NUMBER\)/);
+  });
+
+  it('keeps attempts 1 and 2 instead of discarding the cycle', () => {
+    expect(catchBlock).toMatch(/sessionAttemptsRef\.current\.slice\(0, MASTERY_ATTEMPT_INDEX\)/);
+    expect(catchBlock).toMatch(/attemptScoresRef\.current\.slice\(0, MASTERY_ATTEMPT_INDEX\)/);
+  });
+
+  it('does not consume a cycle or wipe the canvas on a backend failure', () => {
+    expect(catchBlock).not.toMatch(/handleFailedCycle\(/);
+    expect(catchBlock).not.toMatch(/resetCanvas\(\)/);
+  });
+
+  it('never advances on the local pass rule after a backend failure', () => {
+    expect(catchBlock).not.toMatch(/wroteCorrectly/);
+    expect(catchBlock).not.toMatch(/setLetterIdx/);
+    expect(catchBlock).not.toMatch(/advancePastLetter/);
   });
 });

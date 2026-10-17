@@ -242,9 +242,21 @@ describe('§11 — nothing else moved', () => {
       .toMatch(/clampToCanvas\(lx - border, ly - border, w, h\)/);
   });
 
-  it('the report’s own letter calculations are unchanged', () => {
-    expect(readCode('./reportEngine.js'))
-      .toMatch(/status: accuracy >= 80 \? 'Mastered' : accuracy >= 60 \? 'Progressing' : 'Needs Practice'/);
+  it('the report’s letter status is the backend mastery state, not a score band', () => {
+    // Evidence is only meaningful next to an honest mastery claim: this panel
+    // opens for a letter whose status is 'Mastered', so that status must be the
+    // backend's own mastered_at state rather than a best-of-3 score band.
+    //
+    // Scoped to computeLetterMetrics. computeWordMastery further down still has
+    // its own separate 80% band for word-ACTIVITY accuracy, which is a
+    // different measure and deliberately out of scope here.
+    const engine = readCode('./reportEngine.js');
+    const letterFn = engine.slice(
+      engine.indexOf('export function computeLetterMetrics'),
+      engine.indexOf('export function computeWordMastery'),
+    );
+    expect(letterFn).toMatch(/status: isMastered\s*\?\s*'Mastered'/);
+    expect(letterFn).not.toMatch(/accuracy >= 80 \? 'Mastered'/);
     const code = readCode(REPORT);
     expect(code).toMatch(/<DetailRow label="Status" value=\{letter\.status\} \/>/);
     expect(code).toMatch(/label="Practice attempts"/);

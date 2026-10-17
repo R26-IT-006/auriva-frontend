@@ -86,23 +86,41 @@ describe('Test 37 — failed cycle + recommendation true + count 0 -> insert', (
   });
 });
 
-describe('Test 38 — the activation call site only exists inside the FAILURE branches (source-scan)', () => {
-  it('scheduleAdaptiveRepetitionIfEligible() is called exactly twice in LetterWritingScreen.js, both inside failed-cycle branches, never in the success path', () => {
-    const fs = require('fs');
-    const path = require('path');
-    const source = fs.readFileSync(path.resolve(__dirname, '../screens/handwriting/LetterWritingScreen.js'), 'utf8');
-    const callSites = source.match(/scheduleAdaptiveRepetitionIfEligible\(\);/g) ?? [];
-    // Exactly 2 real call sites (the two failure branches) — the
-    // definition itself uses `= () => {`, not `();`, so it isn't counted.
-    expect(callSites).toHaveLength(2);
-  });
+describe('Test 38 — the activation call site only exists inside the FAILURE branch (source-scan)', () => {
+  const SCREEN_PATHS = [
+    ['LetterWritingScreen.js', '../screens/handwriting/LetterWritingScreen.js'],
+    ['UppercaseWritingScreen.js', '../screens/handwriting/uppercase/UppercaseWritingScreen.js'],
+  ];
 
-  it('same structural guarantee holds in UppercaseWritingScreen.js', () => {
+  it.each(SCREEN_PATHS)(
+    'scheduleAdaptiveRepetitionIfEligible() is called exactly once in %s — the backend-confirmed failure branch, never the success path and never a transport failure',
+    (_name, rel) => {
+      const fs = require('fs');
+      const path = require('path');
+      const source = fs.readFileSync(path.resolve(__dirname, rel), 'utf8');
+      const callSites = source.match(/scheduleAdaptiveRepetitionIfEligible\(\);/g) ?? [];
+      // Exactly 1 real call site — the definition itself uses `= () => {`,
+      // not `();`, so it isn't counted.
+      //
+      // CHANGED (user-testing fix 4), from 2 to 1. The second call site was in
+      // the transport-failure catch block, which no longer treats a failure as
+      // a failed cycle at all: the submission is held for retry instead. A
+      // spaced repetition must only ever be scheduled off a cycle the SERVER
+      // actually judged and failed — scheduling one for a request that may
+      // never have arrived would reorder the child's practice on no evidence.
+      expect(callSites).toHaveLength(1);
+    },
+  );
+
+  it.each(SCREEN_PATHS)('the one call site in %s sits in the backend-confirmed failure branch', (_name, rel) => {
     const fs = require('fs');
     const path = require('path');
-    const source = fs.readFileSync(path.resolve(__dirname, '../screens/handwriting/uppercase/UppercaseWritingScreen.js'), 'utf8');
-    const callSites = source.match(/scheduleAdaptiveRepetitionIfEligible\(\);/g) ?? [];
-    expect(callSites).toHaveLength(2);
+    const source = fs.readFileSync(path.resolve(__dirname, rel), 'utf8');
+    const callIdx = source.indexOf('scheduleAdaptiveRepetitionIfEligible();');
+    const confirmedFailureIdx = source.indexOf('response.data.completed === false');
+    const catchIdx = source.indexOf('} catch {', source.indexOf('ENDPOINTS.LETTER_COMPLETE'));
+    expect(callIdx).toBeGreaterThan(confirmedFailureIdx);
+    expect(callIdx).toBeLessThan(catchIdx);
   });
 });
 

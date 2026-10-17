@@ -147,6 +147,7 @@ function rotateTemplate(template, shiftPoints) {
   return [...template.slice(shiftPoints), ...template.slice(0, shiftPoints)];
 }
 
+// Rotates the template to the best-matching angle first, so a tilted circle is not scored as a bad one.
 function computeInvariantDtwDistance(childPoints, shapeId, canvasWidth, canvasHeight) {
   if (!Array.isArray(childPoints) || childPoints.length < 2) return null;
   const template = computeShapeTemplate(shapeId, canvasWidth, canvasHeight);
@@ -171,6 +172,7 @@ function computeInvariantDtwDistance(childPoints, shapeId, canvasWidth, canvasHe
   return Number.isFinite(best) ? best : null;
 }
 
+// Initial shape score combines 80% DTW similarity with 20% smoothness.
 function computeUnifiedShapeScore(dtwDistance, smoothnessRaw) {
   const dtwScore = dtwDistance == null ? null : clamp(100 - (dtwDistance / DTW_DIVISOR) * 100, 0, 100);
   const smoothnessScore = smoothnessRaw == null ? null : clamp(100 - (smoothnessRaw / SMOOTHNESS_CEILING) * 100, 0, 100);

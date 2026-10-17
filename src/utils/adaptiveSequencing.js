@@ -1,54 +1,33 @@
 /**
- * Motor-Informed Adaptive Letter Sequencing
+ * Motor-Informed Adaptive Letter Sequencing (proposal Section 124-127)
  *
- * RESEARCH NOVELTY (proposal Section 124-127):
- * Instead of presenting letters alphabetically, this algorithm analyses
- * the child's initial motor assessment to determine which stroke types they
- * already control well, then sequences letters so the child begins with
- * familiar motor patterns and progressively encounters harder ones.
+ * Deterministic, rule-based ordering — no machine learning. Uses the child's
+ * initial six-shape assessment to start letter practice with the stroke type
+ * they already control best. Intended to reduce early difficulty; its effect
+ * on learning outcomes has not been evaluated.
  *
- * This builds motor confidence early, reduces frustration, and aligns
- * letter practice with the child's current developmental readiness.
+ *  1. SCORE:      each shape's unified motor_score (0-100), computed by
+ *                 unifiedShapeScoreMirror.js during the assessment
+ *  2. AGGREGATE:  straight (lines), curved (circles/arcs), complex (zigzag/wave)
+ *  3. PROFILE:    compare straight vs curved, with a 10-point buffer
+ *  4. SEQUENCE:   stronger category first, mixed always last; letters within
+ *                 a category are pre-sorted easy → hard in letterCategories.js
  *
- * ── How it works ─────────────────────────────────────────────────────────────
- *
- *  1. SCORE each shape:   convert raw deviation/smoothness into 0-100
- *                         performance score (100 = perfect, 0 = unable)
- *
- *  2. AGGREGATE by type:  straight shapes  → straightScore  (lines)
- *                         curved shapes    → curvedScore    (circles/arcs)
- *                         complex shapes   → complexScore   (direction changes)
- *
- *  3. PROFILE:            compare straight vs curved to find primary strength
- *                         (uses a 10-point buffer to absorb measurement noise)
- *
- *  4. SEQUENCE:           stronger category goes first within the letter list;
- *                         within every category letters are already sorted
- *                         easy(1) → medium(2) → hard(3) in letterCategories.js
- *
- * ─────────────────────────────────────────────────────────────────────────────
+ * complexScore is reported but does not change the order.
  */
 
 import { LETTER_CATEGORIES } from '../constants/letterCategories';
 
-// ─── Score conversion ─────────────────────────────────────────────────────────
-// Raw assessment data uses two quality metrics (lower = worse performance):
-//   accuracy    : pixel-deviation from ideal path (0 = perfect, 100+ = poor)
-//   smoothness  : angular jerk in radians         (0 = perfect, 1+  = poor)
-//   dtw_distance: normalised DTW trajectory error, in the dtw_norm_v1
-//                 coordinate space (both child and template scaled to their
-//                 own 100-unit bounding box before DTW runs — see
-//                 utils/dtwNormalization.js). 0 = perfect, ~45+ = far off.
-//                 NOT raw pixels — device/canvas size no longer affects it.
-//
-// We combine these into a 0-100 performance score where 100 = perfect.
+// ─── Client-side score conversion ─────────────────────────────────────────────
+// Input metrics (lower = better):
+//   accuracy    : pixel deviation from ideal path (0 = perfect)
+//   smoothness  : mean turning angle in radians    (0 = perfect, 1+ = poor)
+//   dtw_distance: normalized DTW error in dtw_norm_v1 units (see
+//                 dtwNormalization.js), not raw pixels. 0 = perfect, ~45+ = far off.
+// featuresToScore() combines them into a 0-100 score (100 = perfect).
 
-// DTW_CAP: ceiling for normalised (dtw_norm_v1) DTW distance. Placeholder
-// calibration — a genuine trace typically deviates by a small fraction of
-// the 100-unit bounding box (child hand jitter), a badly wrong shape by a
-// much larger fraction. Cap anything beyond this so it scores the maximum
-// penalty without overflowing. Recalibrate from real collection-day data;
-// this is a pipeline-safe starting point, not a clinically validated value.
+// DTW_CAP: ceiling for dtw_norm_v1 distance; anything beyond scores the
+// maximum penalty. Placeholder calibration, not clinically validated.
 const DTW_CAP = 45;
 
 /** Scoring weights for the letter-writing formula. DTW is dominant (0.7)
@@ -56,48 +35,36 @@ const DTW_CAP = 45;
 export const SCORE_WEIGHTS = { trajectory: 0.7, smoothness: 0.3 };
 
 /**
- * Completion gate: a letter attempt passes only when its DTW distance is
- * strictly below this value, in the dtw_norm_v1 normalized coordinate
- * space (see utils/dtwNormalization.js) — NOT raw pixels, so this value is
- * comparable across every device/screen size. Placeholder calibration
- * pending real collection-day data; sits well inside the expected "good"
- * zone by the same margin the previous raw-pixel threshold did.
- * Exported so LetterWritingScreen and storage.js share one source of truth.
+ * Client-side DTW gate (dtw_norm_v1 units): an attempt's on-device pass check
+ * requires dtw_distance strictly below this value. Used for in-session
+ * feedback and local progress only — mastery is decided by the backend's
+ * attempt-3 Motor Score. Placeholder calibration.
+ * Shared by the writing screens and storage.js.
  */
 export const DTW_CORRECT_THRESHOLD = 22;
 
 /**
  * Converts a single shape/letter-attempt's features into a 0-100 score.
  *
- * ⚠ NON-AUTHORITATIVE for progression (Motor Score Unification, 2026-08):
- * this score is a local, client-side estimate only. It still drives
- * in-session UX (live feedback, local sequencing hints, the instant number
- * a child/teacher sees while writing) — that usage is fine and unchanged.
- * It must NEVER be treated as deciding mastery, pass/fail, threshold
- * updates, or Feature 2/3 evidence: those are decided solely by the
- * backend's computeMotorScore() (auriva-backend/src/utils/motorScore.js)
- * once an attempt reaches the server. Any `attempt_scores` this function
- * produces and sends to the backend is read there only for a diagnostic
- * mismatch check — see handwritingController.recordLetterCompletion() and
- * tests/motorScoreAuthority.test.js (backend repo) for the enforcement and
- * proof that a client-inflated/suppressed score here cannot move the
- * authoritative outcome.
+ * ⚠ NON-AUTHORITATIVE: a client-side estimate for in-session feedback (the
+ * number shown while writing). Mastery, pass/fail and thresholds are decided
+ * by the backend's computeMotorScore() on attempt 3. The `attempt_scores`
+ * sent from here are used by the backend only for a diagnostic mismatch log
+ * (see backend tests/motorScoreAuthority.test.js).
  *
  * Three code paths:
- *  1. accuracy !== 0  → shape-assessment path (lines, circles): score = 100 - accuracy
- *  2. dtw_distance provided → letter-writing path: weighted DTW + smoothness
- *  3. dtw_distance null     → old client / no template: weight redistributed to
- *     smoothness so missing DTW is never treated as a perfect trajectory.
- *
- * Backward-compatible: callers that only pass {smoothness} (or {accuracy,smoothness})
- * continue to receive a valid score; they simply take path 1 or 3.
+ *  1. accuracy > 0          → legacy geometric path: score = 100 - accuracy.
+ *                             No current caller passes accuracy; shapes now
+ *                             use the unified motor_score (buildScoreMap).
+ *  2. dtw_distance provided → letter path: weighted DTW + smoothness
+ *  3. dtw_distance null     → smoothness only, carrying the full weight, so
+ *                             missing DTW is never treated as a perfect trajectory.
  *
  * @param {{ accuracy?: number, smoothness?: number, dtw_distance?: number|null }} features
  * @returns {number} 0-100 performance score (higher = better)
  */
 export function featuresToScore({ accuracy = null, smoothness = 0, dtw_distance = null }) {
-  // Path 1 — geometric accuracy (lines, circles): accuracy is a positive number.
-  // null means "not computed" (zigzag, curve_wave, letters) → skip to DTW/smoothness.
+  // Path 1 — legacy geometric accuracy; null means "not computed".
   if (accuracy != null && accuracy > 0) {
     return Math.min(100, Math.max(0, 100 - accuracy));
   }
@@ -105,15 +72,12 @@ export function featuresToScore({ accuracy = null, smoothness = 0, dtw_distance 
   const smoothPenalty = smoothness * 100; // 0 = perfect, 100 = maximally poor
 
   if (dtw_distance == null) {
-    // Path 3 — no DTW available: redistribute trajectory weight to smoothness.
-    // Total effective weight = 0.7 + 0.3 = 1.0 (same scale, no free pass).
+    // Path 3 — no DTW available: smoothness carries the full weight (0.7 + 0.3 = 1.0).
     const w = SCORE_WEIGHTS.trajectory + SCORE_WEIGHTS.smoothness;
     return Math.min(100, Math.max(0, 100 - w * smoothPenalty));
   }
 
-  // Path 2 — letter writing with DTW.
-  // Normalise DTW to 0-100 scale, capped at DTW_CAP so far-off strokes
-  // don't exceed the penalty budget (observed range good~27 → bad~166).
+  // Path 2 — letter writing with DTW, scaled to 0-100 and capped at DTW_CAP.
   const trajectoryPenalty = Math.min(dtw_distance, DTW_CAP) / DTW_CAP * 100;
 
   return Math.min(100, Math.max(0,
@@ -142,23 +106,11 @@ function buildScoreMap(assessmentData) {
 
   for (const shape of assessmentData) {
     if (shape?.shapeId && shape?.features) {
-      // Shape-assessment scoring path: reads the unified motor_score
-      // calculateFeatures() (ShapeAssessmentScreen.js) already computed via
-      // utils/unifiedShapeScoreMirror.js, rather than calling
-      // featuresToScore() below. featuresToScore itself is UNCHANGED and
-      // still used as-is by letters/words/uppercase/pre-writing — this is
-      // a narrower, shape-assessment-only substitution, not a retirement
-      // of featuresToScore().
-      //
-      // Unlike the display-facing ?? 50 fallbacks removed elsewhere (which
-      // could silently show a fabricated score to a teacher), this map
-      // feeds calculateMotorProfile's family-averaging arithmetic directly
-      // below — it structurally needs a number for every key, it can't
-      // leave a hole the way a "Not available" badge can. This path only
-      // ever runs on freshly-computed, same-session data (calculateFeatures
-      // always sets motor_score), so motor_score should never actually be
-      // missing here; if it is, that's a real bug, not stale historical
-      // data — so this warns loudly rather than substituting silently.
+      // Uses the unified motor_score that ShapeAssessmentScreen's
+      // calculateFeatures() computed (unifiedShapeScoreMirror.js), not
+      // featuresToScore(). The family averages below need a number for every
+      // shape, hence the neutral 50 fallback. motor_score is always set on
+      // live data, so a missing value indicates a bug and is logged.
       if (shape.features.motor_score == null) {
         console.warn(`buildScoreMap: motor_score missing for shape "${shape.shapeId}" in a live assessment — falling back to neutral 50, but this should never happen (calculateFeatures() always sets it).`);
       }
@@ -277,14 +229,9 @@ export function getMotorWeaknesses(assessmentData) {
 // ─── Main sequence generator ──────────────────────────────────────────────────
 
 /**
- * CORE ALGORITHM — generates the child's personalised letter sequence.
- *
- * Steps:
- *   1. Calculate motor profile from assessment data
- *   2. Order the three letter categories by the child's primary strength
- *   3. Within each category letters are already sorted by complexity (1→2→3)
- *      in letterCategories.js — no additional sort is needed
- *   4. Concatenate and return the full ordered sequence
+ * Generate the adaptive letter order (rule-based): the three categories in
+ * the profile's categoryOrder, each already sorted by complexity in
+ * letterCategories.js, concatenated.
  *
  * @param {Array}  assessmentData  — shape results from initial assessment
  * @param {'lowercase'|'uppercase'} caseType
@@ -294,8 +241,6 @@ export function generateAdaptiveSequence(assessmentData, caseType = 'lowercase')
   const motorProfile = calculateMotorProfile(assessmentData);
   const cats         = LETTER_CATEGORIES[caseType];
 
-  // Build the ordered sequence: stronger motor category first,
-  // complexity 1 → 2 → 3 within each category (already ordered in the constant)
   const letters = motorProfile.categoryOrder.flatMap(categoryName => {
     return cats[categoryName] ?? [];
   });

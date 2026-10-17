@@ -50,6 +50,7 @@ const normaliseWord = (word) => String(word ?? '').trim().toLowerCase();
  * @param {Object|null|undefined} activityStatus — the row's activity_status.
  * @returns {boolean} true only when every exercise A-E is recorded as done.
  */
+// A word is complete only when all activities A-E have persisted successful outcomes.
 export function isWordCompleted(activityStatus) {
   if (!activityStatus || typeof activityStatus !== 'object') return false;
   return WORD_EXERCISES.every((key) => COMPLETED_STATUSES.includes(activityStatus[key]));
@@ -90,6 +91,7 @@ export function completedWordsForLetter(progress, letter) {
  * @param {string} letter
  * @returns {Array} the same entry objects, minus the finished ones.
  */
+// Drops already-finished words so a later session never repeats them.
 export function filterUnfinishedWords(words, progress, letter) {
   if (!Array.isArray(words)) return [];
   const done = completedWordsForLetter(progress, letter);

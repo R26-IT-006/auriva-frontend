@@ -68,11 +68,54 @@ export const DEMO_PREVIEW_UNLOCK = parseDemoPreviewFlag(
   process.env.EXPO_PUBLIC_DEMO_PREVIEW_UNLOCK,
 );
 
+/**
+ * RESEARCH STATUS OF A PREVIEW-UNLOCKED BUILD
+ *
+ * Kept deliberately enabled for pilot/usability testing, so Uppercase and
+ * Words can be reached without first completing the full curriculum. What
+ * that costs, stated plainly so it is never discovered later:
+ *
+ * SAFE — nothing about measurement changes. This flag is consumed at exactly
+ * two tap sites (LetterHomeScreen, LetterPracticeScreen) via canOpen().
+ * It does not touch scoring, the attempt-3 mastery rule, the mastery
+ * threshold, cycle counting, support levels, or the earned-progression gates
+ * themselves — isWordsUnlocked() and the lowercase >= 26 rule still answer
+ * exactly what they answered before, and the cards still SHOW the child's
+ * true state.
+ *
+ * NOT SAFE FOR TRAINING DATA — a preview-unlocked session produces real
+ * letter_attempts rows for letters the child had not yet earned, so the
+ * curriculum ORDER those rows imply is not the designed one. Nothing on the
+ * row records that it was collected under preview access.
+ *
+ * ALREADY EXCLUDED FROM THE ML EXPORT — and this is the one piece of good
+ * news, so rely on it rather than re-deriving it: preview practice is always
+ * NORMAL mode (collection_mode = false). Collection mode is entered only from
+ * WelcomeScreen's explicit Data Collection path, which this flag does not
+ * touch. GET /handwriting/ml-samples/export filters `collection_mode = true`,
+ * so preview rows cannot reach it.
+ *
+ * The gap that remains: a DIRECT query of normal-practice letter_attempts
+ * rows WILL include preview sessions, and cannot distinguish them. Closing
+ * that properly needs a new column, which is deliberately not done here.
+ * Until then, usability-test participants must be kept out of any
+ * normal-practice training export by participant id.
+ */
+
 // One line, once per app launch (module scope runs once), never per render,
 // and never anywhere a child can see it. Silent in a normal build, because
 // the flag is false there.
 if (DEMO_PREVIEW_UNLOCK && typeof console !== 'undefined') {
-  console.warn('[DEMO] Progression preview access is enabled. Uppercase and Words can be opened before they are earned. Do not ship this build to a child.');
+  console.warn(
+    '[DEMO] Progression preview access is enabled.\n' +
+    '  Uppercase and Words can be opened before they are earned. Do not ship this build to a child.\n' +
+    '  PILOT / USABILITY TESTING ONLY — this build must not be used for ML training data collection.\n' +
+    '  Scoring, mastery (attempt 3 only, threshold unchanged) and cycle counting are NOT affected.\n' +
+    '  Attempts recorded in this build are real rows with no preview marker on them.\n' +
+    '  They are excluded from /handwriting/ml-samples/export (collection_mode = false),\n' +
+    '  but a direct query of normal-practice attempts CANNOT tell them apart —\n' +
+    '  exclude usability-test participants by participant id. See constants/demoAccess.js.',
+  );
 }
 
 /**

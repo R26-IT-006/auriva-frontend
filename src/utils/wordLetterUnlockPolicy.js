@@ -4,8 +4,10 @@ import { completedWordsForLetter } from './wordCompletionHistory';
 import { getSelectedWords } from './wordWorkflow';
 
 export const WORD_LETTERS = Object.freeze('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
+// A, B and C are open from the first session; every later letter must be earned.
 export const INITIAL_WORD_LETTERS = Object.freeze(['A', 'B', 'C']);
 
+// A letter counts as complete only when every one of its words has finished all activities A-E.
 export function isWordPracticeLetterCompleted(progress, letter) {
   const key = typeof letter === 'string' ? letter.trim().toLowerCase() : '';
   if (!/^[a-z]$/.test(key)) return false;
@@ -17,6 +19,7 @@ export function isWordPracticeLetterCompleted(progress, letter) {
   return catalogueWords.every(({ word }) => completed.has(String(word).toLowerCase()));
 }
 
+// D unlocks only after all required A, B and C words are complete, then E-Z open one at a time.
 export function computeWordLetterUnlocks(progress) {
   const unlocked = Object.fromEntries(WORD_LETTERS.map((letter) => [letter, false]));
   INITIAL_WORD_LETTERS.forEach((letter) => { unlocked[letter] = true; });

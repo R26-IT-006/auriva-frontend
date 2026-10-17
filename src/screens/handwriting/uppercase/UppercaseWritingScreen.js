@@ -577,6 +577,11 @@ export default function UppercaseWritingScreen({ route, navigation }) {
   // full rationale (staleness + concurrent-request protection for the
   // repetition-recommendation fetch).
   const cycleTokenRef = useRef(0);
+
+  // True while a completion cycle (including its network POST) is running.
+  // See handleNext's own comment for why this guard exists and why it is a
+  // ref rather than state.
+  const submitInFlightRef = useRef(false);
   attemptRef.current  = attempt;
   hasDrawnRef.current = hasDrawn;
 
@@ -981,6 +986,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => canWriteRef.current,
       onMoveShouldSetPanResponder:  () => canWriteRef.current,
+      // Starts a new stroke and captures its first x/y/time point.
       onPanResponderGrant: (evt) => {
         if (!canWriteRef.current) return;
         stopGuideRef.current?.();  // first touch cancels the idle replay
@@ -1001,6 +1007,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           requestTargetSpeech(() => playLetterSoundRef.current?.());
         }
       },
+      // Captures x/y/time stroke points that the backend later scores.
       onPanResponderMove: (evt) => {
         const { x: locationX, y: locationY } = mapTouchToCanvas({
           pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
@@ -1019,6 +1026,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           }];
         });
       },
+      // Closes the stroke and appends it to this attempt's stroke list.
       onPanResponderRelease: () => {
         notifyStrokeEnd(); // FR-13 — stroke finished; the break prompt may now be shown if eligible
         setCurrentPath(prev => {
@@ -1077,7 +1085,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     ]).start();
   }, [celebOpacity, celebScale, reduceMotion]);
 
-  const handleNext = useCallback(async () => {
+  const runNextCycle = useCallback(async () => {
     // Feature 5 Step 3 — see LetterWritingScreen.js's identical block for
     // the full rationale.
     cycleTokenRef.current += 1;
@@ -1397,6 +1405,7 @@ export default function UppercaseWritingScreen({ route, navigation }) {
       }
 
       try {
+        // Sends all three attempts for authoritative scoring; the backend decides mastery, not this screen.
         const response = await client.post(ENDPOINTS.LETTER_COMPLETE, {
           student_id:      student.sid,
           letter,
@@ -1447,19 +1456,24 @@ export default function UppercaseWritingScreen({ route, navigation }) {
           return;
         }
       } catch {
-        // network failure — gate only in normal mode
-        if (!collectionMode && !wroteCorrectly) {
-          // Feature 5 Step 3 — see LetterWritingScreen.js's identical block.
-          scheduleAdaptiveRepetitionIfEligible();
-          // No server opinion on a network failure - the in-interaction guard
-          // is the whole limit here, which is the safe direction.
-          logCycleOutcome(
-            recordedCyclesWillReachCap(null) ? 'FAILED_ADVANCE_AFTER_CYCLE_2' : 'FAILED_START_CYCLE_2',
-            null,
-          );
-          handleFailedCycle(null);
-          return;
+        // The submission did not reach the server — see
+        // LetterWritingScreen.js's identical block for the full rationale.
+        // Never advance, never consume a cycle, and never let the client's own
+        // didPassAttempt() rule stand in for the authoritative attempt-3 >= 70
+        // decision. The child stays on this letter at attempt 3 with their
+        // drawing intact, and the submission can be retried.
+        sessionAttemptsRef.current = sessionAttemptsRef.current.slice(0, MASTERY_ATTEMPT_INDEX);
+        attemptScoresRef.current   = attemptScoresRef.current.slice(0, MASTERY_ATTEMPT_INDEX);
+
+        if (__DEV__) {
+          console.log('[NORMAL_LETTER_CYCLE] submit failed — holding on attempt 3 for retry', {
+            letter, caseType, attempts_kept: sessionAttemptsRef.current.length,
+          });
         }
+
+        show('Unable to save. Please try again.', 'info');
+        setAttempt(MASTERY_ATTEMPT_NUMBER);
+        return;
       }
       attemptScoresRef.current   = [];
       sessionAttemptsRef.current = [];
@@ -1500,6 +1514,36 @@ export default function UppercaseWritingScreen({ route, navigation }) {
     // handleNext's body now reads it directly to build the attempt record.
   }, [attempt, actualDemoSpeedLevel, collectionMode, collectionSessionId, isLastAttempt, isLastLetter, letter, letterIdx,
       letterObj, interactionId, resetCanvas, sequence, show, showCelebrationFor, student.sid, supportLevel]);
+
+  // ── Double-submit guard ──────────────────────────────────────────────────
+  // Mirrors LetterWritingScreen.js's guard exactly — the same window existed
+  // here and was simply never closed.
+  //
+  // The Next button is disabled only while `attemptFeedback` is showing, and
+  // that flag is cleared BEFORE the completion POST is sent. Between the
+  // feedback clearing and the response landing the button is live again, so a
+  // second tap fires a whole second completion — a duplicate set of attempt
+  // rows under a NEW session_key.
+  //
+  // Live data confirms this happens: 10 pairs of attempt-3 rows for the same
+  // student and letter exist less than 3 seconds apart under different
+  // session_keys. Feature 7 dedupes by session_key, so those two bursts count
+  // as two independent longitudinal cycles rather than the one the child
+  // actually performed.
+  //
+  // A ref, not state: two taps in the same frame would both read a stale
+  // `false` from state before either re-render, so the check must be
+  // synchronous. Cleared in `finally` so a failed/rejected cycle can be
+  // retried normally.
+  const handleNext = useCallback(async () => {
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+    try {
+      await runNextCycle();
+    } finally {
+      submitInFlightRef.current = false;
+    }
+  }, [runNextCycle]);
 
   const handleDismissCelebration = useCallback(() => {
     const isAllDone = celebration?.isAllDone;

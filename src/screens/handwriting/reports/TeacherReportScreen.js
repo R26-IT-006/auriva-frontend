@@ -110,6 +110,10 @@ import ReportPreviewModal from '../../../components/handwriting/reports/ReportPr
 import * as ImagePicker from 'expo-image-picker';
 import useGatedBack from '../../../utils/useGatedBack';
 import { fetchTeacherOverrideFamilies } from '../../../utils/familyThresholds';
+// The authoritative mastery state (LetterProgress.mastered_at) — the report
+// must never derive "Mastered" from a score band of its own. See
+// reportEngine.computeLetterMetrics for why.
+import { fetchMasteredLetters } from '../../../utils/masteredLetterFiltering';
 import { navigateToWritingCheck } from '../../../utils/writingCheckNavigation';
 import { goBackToOrigin } from '../../../utils/backToOrigin';
 import { resolveWordImageKey, resolveWordEmoji } from '../../../utils/wordImageResolver';
@@ -446,6 +450,7 @@ export default function TeacherReportScreen({ route, navigation }) {
   // Word activities and word writing arrive as two payloads and stay two
   // payloads; this is only the join, so each word can be shown once with all
   // of its evidence. Letter summary numbers pass through untouched.
+  // Joins word activity results with word writing results so each word is shown once with all its evidence.
   const mergedWordPractice = useMemo(
     () => mergeWordPracticeByLetter(
       report?.wordMastery?.byLetter, report?.wordWritingHistory?.words),
@@ -528,10 +533,30 @@ export default function TeacherReportScreen({ route, navigation }) {
             if (m.best_score != null) letterMasteryByLetter[m.letter] = m.best_score;
           }
 
+          // The AUTHORITATIVE mastery state — LetterProgress.mastered_at, via
+          // GET /handwriting/mastered-letters/:studentId. The report no longer
+          // decides mastery from best_score >= 80; it reports what the backend
+          // actually recorded. `pair.letter` already encodes case ('l' vs 'L')
+          // exactly as completedLetters/letterProgressMap keys do, so this is
+          // the same exact-match convention used for serverBestScore above —
+          // lowercase and uppercase are never merged.
+          //
+          // fetchMasteredLetters never throws: a failure resolves to an empty
+          // pair set, so a transient error under-reports mastery rather than
+          // inventing it.
+          const masteredResult = await fetchMasteredLetters(student?.sid ?? 0);
+          const masteredLetterSet = new Set(masteredResult.pairs.map((p) => p.letter));
+
           const letterProgressMap = {};
           for (const letter of (completedLetters ?? [])) {
             const lp = await getLetterProgress(student?.sid ?? 0, letter);
-            if (lp) letterProgressMap[letter] = { ...lp, serverBestScore: letterMasteryByLetter[letter] ?? null };
+            if (lp) {
+              letterProgressMap[letter] = {
+                ...lp,
+                serverBestScore: letterMasteryByLetter[letter] ?? null,
+                mastered: masteredLetterSet.has(letter),
+              };
+            }
           }
 
           // 5. Generate report using server-sourced motor data + local letter/word data
@@ -1265,6 +1290,7 @@ const MASTERY_PREVIEW_SIZE = 132;
 // one normalizer handles the { stroke_id, points } shape both are stored in
 // and both preserve the drawing's own aspect ratio. Read-only: no replay, no
 // scoring, no editing.
+// Draws the stored Attempt-3 trajectory itself; it never renders the reference glyph as if it were the child's writing.
 function MasteryWritingPreview({ result }) {
   if (result == null) {
     return (
@@ -1316,6 +1342,7 @@ function MasteryWritingPreview({ result }) {
   );
 }
 
+// Fetches mastery writing evidence lazily, only for a letter the teacher actually opens.
 function LetterDetailSheet({ letter, studentId, onClose }) {
   // Lazy, and only for a mastered letter: the strokes are a targeted read
   // that never rides along with the report payload. `null` while in flight so

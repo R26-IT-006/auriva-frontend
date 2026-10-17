@@ -403,6 +403,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
       onStartShouldSetPanResponder: () => !feedbackActiveRef.current,
       onMoveShouldSetPanResponder:  () => !feedbackActiveRef.current,
 
+      // Starts a new stroke and captures its first x/y/time point.
       onPanResponderGrant: (evt) => {
         if (feedbackActiveRef.current) return;
         const { x: locationX, y: locationY } = mapTouchToCanvas({
@@ -417,6 +418,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
         setCurrentPath([{ x: locationX, y: locationY, t: 0, tAbs: now, stroke_id: strokeIdCounter.current }]);
       },
 
+      // Captures x/y/time stroke points that the backend later scores.
       onPanResponderMove: (evt) => {
         const { x: locationX, y: locationY } = mapTouchToCanvas({
           pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY,
@@ -433,6 +435,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
         });
       },
 
+      // Closes the stroke and stores it in the shape trajectory.
       onPanResponderRelease: () => {
         setCurrentPath(prev => {
           if (prev.length > 2) {
@@ -452,6 +455,7 @@ export default function ShapeAssessmentScreen({ route, navigation }) {
   // ── Actions ─────────────────────────────────────────────────────────────────
   const submitAssessment = useCallback(async (assessmentData) => {
     try {
+      // Sends the six shape trajectories to the backend, which is authoritative for the Motor Score.
       const response = await client.post(ENDPOINTS.HANDWRITING_ASSESSMENT, {
         student_id:      student.sid,
         session_start:   sessionStartTime.current,

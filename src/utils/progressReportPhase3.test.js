@@ -83,9 +83,25 @@ describe('letter mastery is split by case', () => {
     expect(report).toMatch(/\$\{needs\} Needs Practice/);
   });
 
-  it('SENTINEL — the mastery/accuracy calculation itself is untouched', () => {
+  it('SENTINEL — "Mastered" comes from the backend state, never from a score band', () => {
     const engine = stripComments(read('./reportEngine.js'));
-    expect(engine).toMatch(/accuracy >= 80 \? 'Mastered' : accuracy >= 60 \? 'Progressing' : 'Needs Practice'/);
+    // Mastery is the backend's own LetterProgress.mastered_at state, surfaced
+    // as `data.mastered`. It must never be re-derived from a score here: the
+    // old rule thresholded best-of-3 at 80, which both over-reported (a guided
+    // attempt 1 at 85 read as mastered) and under-reported (a real attempt-3
+    // mastery at 72 read as progressing).
+    expect(engine).toMatch(/const isMastered = data\?\.mastered === true;/);
+    expect(engine).toMatch(/status: isMastered\s*\?\s*'Mastered'/);
+    // Scoped to the LETTER function — computeWordMastery keeps its own
+    // separate 80% band for word-activity accuracy, which is a different
+    // measure and out of scope here.
+    const letterFn = engine.slice(
+      engine.indexOf('export function computeLetterMetrics'),
+      engine.indexOf('export function computeWordMastery'),
+    );
+    expect(letterFn).not.toMatch(/accuracy >= 80 \? 'Mastered'/);
+    // And the threshold itself is never mirrored on the client.
+    expect(letterFn).not.toMatch(/\b70\b/);
   });
 
   it('tiles are a fixed size, so neither grid clips or reflows oddly', () => {
