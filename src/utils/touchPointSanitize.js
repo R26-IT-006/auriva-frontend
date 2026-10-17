@@ -1,37 +1,23 @@
 // Sanitizes raw PanResponder touch coordinates before they become a stroke
-// point, on every handwriting drawing canvas. Fixes a real reported bug:
-// touching near/at a canvas's border produces a long, straight, unintended
-// line the child never drew.
+// point, on every handwriting drawing canvas. Prevents a long, straight,
+// unintended line appearing when a touch runs near the canvas border.
 //
-// ROOT CAUSE (confirmed after an initial clamp-only fix did NOT fully
-// resolve it — see pageToLocal() below, which is the actual fix; clamping
-// and the jump guard are a secondary safety net, not the primary cause):
-// React Native's `nativeEvent.locationX/locationY` are computed relative to
-// *whichever native view the touch currently appears to be over*, not
-// reliably relative to the PanResponder's own view, once a drag crosses a
-// view boundary (a documented RN/Android quirk). A drag that grazes the
-// canvas's border/rounded-corner/shadow edge can have `locationX/Y` silently
-// re-based mid-gesture — each individual touch-move event still looks like a
-// small, plausible step in ITS OWN (now-wrong) frame, so no single event
-// looks like an obvious glitch, but the accumulated stroke ends up as one
-// long straight line from the last correctly-framed point to wherever the
-// re-based coordinates drifted to.
+// Why page coordinates: React Native's `nativeEvent.locationX/locationY` are
+// relative to whichever native view the touch currently appears to be over.
+// When a drag grazes the canvas border, they can be re-based mid-gesture
+// (an RN/Android quirk). Each event still looks like a small step, but the
+// stroke ends up as one long straight line. pageToLocal() instead uses
+// `nativeEvent.pageX/pageY`, which always share one reference frame, minus
+// the canvas origin measured with `View.measure()` on layout (also page
+// space; see mapTouchToCanvas below).
 //
-// THE FIX — pageToLocal(): use `nativeEvent.pageX/pageY` (absolute
-// screen coordinates — always the SAME reference frame, regardless of which
-// native view is nominally under the finger) minus the canvas's own
-// on-screen origin, measured once via `View.measureInWindow()` on layout.
-// This never re-bases mid-gesture, so it can't produce the bug above.
+// clampToCanvas() and isImplausibleJump() are defense-in-depth: a touch can
+// still land past the canvas edge (clamping keeps drawing up to the edge
+// correct), and a single event can still glitch (the jump guard drops it).
 //
-// clampToCanvas() / isImplausibleJump() remain as defense-in-depth: even
-// with a stable coordinate frame, a touch can still genuinely land past the
-// canvas edge (clamp keeps "draw right up to the edge" correct) or a single
-// event can still glitch for unrelated reasons (the jump guard drops it).
-//
-// All three are pure, side-effect-free, and used identically across every
-// drawing canvas (LetterWritingScreen, UppercaseWritingScreen,
-// ShapeAssessmentScreen, PreWritingActivityScreen, WordWritingScreen,
-// ExerciseE_WriteWord) — one fix, not six separate ones.
+// All four functions are pure and shared by every drawing canvas
+// (LetterWritingScreen, UppercaseWritingScreen, ShapeAssessmentScreen,
+// PreWritingActivityScreen, WordWritingScreen, ExerciseE_WriteWord).
 
 // @param {number} pageX/pageY — nativeEvent.pageX/pageY (page space)
 // @param {{x: number, y: number}} origin — the canvas view's own position in
@@ -44,6 +30,7 @@ export function pageToLocal(pageX, pageY, origin) {
   };
 }
 
+// Keeps a mapped point inside the canvas so a border touch cannot produce an off-canvas stroke.
 export function clampToCanvas(x, y, width, height) {
   return {
     x: Math.min(Math.max(x, 0), width),
@@ -51,7 +38,7 @@ export function clampToCanvas(x, y, width, height) {
   };
 }
 
-// A fraction of the canvas's larger dimension â€” generous enough that fast,
+// A fraction of the canvas's larger dimension — generous enough that fast,
 // legitimate drawing is never mistaken for a glitch, tight enough to catch
 // an implausible single-event jump (e.g. from one edge clear across to the
 // other) right at a border.
@@ -81,26 +68,18 @@ export function isImplausibleJump(lastPoint, nextPoint, width, height) {
  * the overflow is clipped. So the Svg's coordinate space begins exactly
  * `border` px inside the view and runs 1:1 from there.
  *
- * That makes the whole transform:  local - border.
+ * That makes the whole transform:  local - border. (No scaling: the content
+ * box `measured - 2*border` is not the size the Svg is drawn at.)
  *
- * A scale by `logical / (measured - 2*border)` was tried here and was wrong in
- * both directions: the denominator is the content box, which is not the size
- * the Svg is drawn at, and on a device where the two agree it multiplied every
- * coordinate by ~1.01 for nothing. Removed.
+ * ── Why View.measure(), not measureInWindow() ────────────────────────────
+ * Touches arrive in page space (`nativeEvent.pageX/pageY`). On Android, when
+ * the app draws under a translucent status bar, window space excludes the
+ * system inset and page space includes it. A window-space origin would leave
+ * a constant vertical offset. `View.measure()` reports the view's own
+ * pageX/pageY, so origin and touch share one space.
  *
- * ── The bug this fixes ───────────────────────────────────────────────────
- * The origin used to come from `measureInWindow()` while the touches come from
- * `nativeEvent.pageX/pageY`. On Android those are NOT the same coordinate
- * space when the app draws under a translucent status bar — window space
- * excludes the system inset, page space includes it. Subtracting a window-space
- * origin from a page-space touch left a CONSTANT vertical offset, invisible on
- * X because there is no equivalent horizontal inset. `View.measure()` reports
- * the view's own pageX/pageY, so origin and touch are now read in one space and
- * the difference is a true local coordinate.
- *
- * The renderer keeps drawing in CANVAS_W/CANVAS_H units, the stored point
- * format is unchanged, and every reference path, guide and score still lives in
- * the same logical space. Nothing downstream knows this happened.
+ * Output stays in CANVAS_W/CANVAS_H logical units, the same space as every
+ * reference path, guide and score.
  *
  * @param {{
  *   pageX: number, pageY: number,

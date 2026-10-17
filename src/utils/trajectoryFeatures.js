@@ -11,35 +11,29 @@
  * the handwriting screens (see ShapeAssessmentScreen.js, LetterWritingScreen.js,
  * uppercase/UppercaseWritingScreen.js).
  *
- * This module is purely additive: it introduces NEW derived features
- * (total_distance/avg_speed for letters, plus speed_std/speed_cv/pause
- * extras for ML use) alongside the existing calculateFeatures()/
- * calculateDrawingFeatures() functions in those screens. It does not
- * change, replace, or duplicate any existing formula that already feeds
- * child-facing scoring (smoothness, pause_count, dtw_distance, accuracy).
+ * These features (total_distance, avg_speed, speed_mean/std/cv, pause
+ * extras and the tAbs-based attempt_* family) sit alongside the screens' own
+ * smoothness, pause_count and dtw_distance calculations and do not change
+ * them. Note that avg_speed from here is sent with each attempt, and the
+ * backend uses it for the Motor Score speed component when present
+ * (featureNormalization.js).
  *
  * ── NOTE ON `t` (important for anyone extending this file) ────────────────
  * Each stroke's `t` clock resets to 0 at that stroke's own
  * onPanResponderGrant (see e.g. LetterWritingScreen.js's PanResponder) — it
  * is NOT one continuous clock across a whole multi-stroke attempt.
- * `calculateDuration()` below intentionally REPLICATES the existing
- * app-wide convention (the last point's `t`, in flattened stroke order,
- * exactly as ShapeAssessmentScreen.js's calculateFeatures() and
- * LetterWritingScreen.js's calculateDrawingFeatures() already compute
- * duration_ms/completionTime) for backward compatibility — it is
- * deliberately NOT "fixed" here, even though for a multi-stroke attempt it
- * technically only reflects the last stroke's own elapsed time rather than
- * the whole attempt's wall-clock duration. See the ML readiness audit for
- * this known, pre-existing caveat; changing it is out of scope for this
- * feature-completeness pass.
+ * `calculateDuration()` below intentionally keeps the existing app-wide
+ * convention (the last point's `t`, in flattened stroke order, as the
+ * screens compute duration_ms/completionTime) for backward compatibility.
+ * Known limitation: for a multi-stroke attempt it reflects only the last
+ * stroke's elapsed time, not the attempt's wall-clock duration. The
+ * tAbs-based attempt_* functions at the end of this file avoid it.
  *
- * One useful side effect of the per-stroke `t` reset: any calculation that
- * guards on `dt > 0` (calculateSegmentSpeeds, and therefore
- * calculateSpeedStats) automatically excludes stroke-boundary segments on
- * its own, because the delta at a boundary is always <= 0. Distance and
- * pause calculations don't get this for free (x/y and t-gaps don't jump
- * predictably at a boundary), so they explicitly iterate stroke-by-stroke
- * instead of flattening first.
+ * Side effect of the per-stroke `t` reset: any calculation that guards on
+ * `dt > 0` (calculateSegmentSpeeds, and therefore calculateSpeedStats)
+ * excludes stroke-boundary segments automatically, because the delta at a
+ * boundary is always <= 0. Distance does not get this for free, so the
+ * distance and pause functions iterate stroke-by-stroke explicitly.
  */
 
 'use strict';
@@ -56,9 +50,9 @@ function euclidean(a, b) {
 
 /**
  * Sum of Euclidean distances between consecutive points, computed
- * separately within each stroke — never across a stroke boundary (Part 12).
- * Uses the exact same distance() formula as ShapeAssessmentScreen.js's
- * calculateFeatures() (sqrt((x2-x1)^2 + (y2-y1)^2)).
+ * separately within each stroke — never across a stroke boundary.
+ * Same formula as ShapeAssessmentScreen.js's calculateFeatures():
+ * sqrt((x2-x1)^2 + (y2-y1)^2).
  *
  * @param {Array<Array<{x:number,y:number}>>} strokes
  * @returns {number} pixels; 0 for empty/degenerate input
@@ -106,13 +100,10 @@ function countPoints(strokes) {
 }
 
 /**
- * avg_speed = total_distance / duration_ms — the exact semantics
- * ShapeAssessmentScreen.js's calculateFeatures() already uses. Returns
- * null (never an invented number, and never a fabricated 0) when duration
- * is not strictly positive/finite, or the trajectory has fewer than 2
- * points total (Part 2: "protect against ... empty trajectory, one-point
- * trajectory" — a single point has no distance to measure a speed from,
- * so 0 would misrepresent "no data" as "measured, stationary").
+ * avg_speed = total_distance / duration_ms (same semantics as
+ * ShapeAssessmentScreen.js's calculateFeatures()). Returns null, never 0,
+ * when duration is not strictly positive/finite or the trajectory has fewer
+ * than 2 points: 0 would misrepresent "no data" as "measured, stationary".
  *
  * @param {Array<Array<{x:number,y:number,t:number}>>} strokes
  * @returns {number|null} pixels/millisecond
@@ -128,9 +119,9 @@ export function calculateAverageSpeed(strokes) {
 
 /**
  * Per-segment speed (px/ms) for every consecutive, same-stroke point pair
- * with a strictly positive time delta (Part 6: "ignore invalid segments
- * where dt <= 0"). Segments spanning a stroke boundary are excluded as a
- * side effect of the dt > 0 guard — see the module doc comment.
+ * with a strictly positive time delta (segments with dt <= 0 are ignored).
+ * Segments spanning a stroke boundary are excluded as a side effect of the
+ * dt > 0 guard — see the module doc comment.
  *
  * @param {Array<Array<{x:number,y:number,t:number}>>} strokes
  * @returns {number[]}
@@ -155,9 +146,8 @@ export function calculateSegmentSpeeds(strokes) {
 /**
  * speed_mean / speed_std (population standard deviation) / speed_cv from
  * the valid segment-speed sequence (see calculateSegmentSpeeds). All three
- * are null when there are no valid segments; speed_cv is additionally null
- * whenever speed_mean is not strictly positive (Part 6: "speed_cv =
- * speed_std / speed_mean only when speed_mean > 0").
+ * are null when there are no valid segments. speed_cv = speed_std /
+ * speed_mean, and is null unless speed_mean > 0.
  *
  * @param {Array<Array<{x:number,y:number,t:number}>>} strokes
  * @returns {{speed_mean: number|null, speed_std: number|null, speed_cv: number|null}}
@@ -175,28 +165,20 @@ export function calculateSpeedStats(strokes) {
 }
 
 // Matches the inline `300` literal in ShapeAssessmentScreen.js's
-// calculateFeatures() and LetterWritingScreen.js's/
-// UppercaseWritingScreen.js's calculateDrawingFeatures() exactly. Kept as
-// a named default here (those three call sites are left untouched) so any
-// future consolidation has one place to change.
+// calculateFeatures() and the letter screens' calculateDrawingFeatures().
+// Those call sites still use their own literal; keep the values in sync.
 export const DEFAULT_PAUSE_THRESHOLD_MS = 300;
 
 /**
  * Pause metrics from consecutive, same-stroke point gaps STRICTLY GREATER
- * THAN thresholdMs (never >=  — matches the existing app-wide pause
- * definition exactly, Part 7). Computed per-stroke so a pen-up transition
- * between strokes is never counted as a pause.
+ * THAN thresholdMs (never >=, matching the existing app-wide pause
+ * definition). Computed per-stroke so a pen-up transition between strokes
+ * is never counted as a pause.
  *
- * This produces IDENTICAL pause_count results to the existing
- * calculateFeatures()/calculateDrawingFeatures() flatten-then-diff
- * implementations: those flatten across strokes and diff every consecutive
- * pair, but because each stroke's `t` resets to 0 at its own start, a
- * cross-stroke pair's delta is always <= 0 there too and so is never
- * counted — this function just makes that stroke-boundary exclusion
- * explicit and intentional instead of an accidental side effect. In other
- * words: these pause metrics measure WITHIN-STROKE pauses only. Pen-up
- * time between strokes is not (and, given the current per-stroke `t`
- * clock, cannot be) measured by this function.
+ * Gives the same pause_count as the screens' flatten-then-diff code: there,
+ * a cross-stroke pair's delta is always <= 0 (each stroke's `t` restarts at
+ * 0), so it is never counted either. These metrics therefore measure
+ * WITHIN-STROKE pauses only; pen-up time between strokes is not measured.
  *
  * @param {Array<Array<{t:number}>>} strokes
  * @param {{thresholdMs?: number, durationMs?: number}} [options]
@@ -244,22 +226,15 @@ export function calculatePauseMetrics(strokes, options = {}) {
   return { pause_count, total_pause_duration_ms, mean_pause_duration_ms, pause_frequency, pause_duration_ratio };
 }
 
-// ─── ML-safe "attempt" duration — absolute-time based ──────────────────────
+// ─── Attempt duration from absolute time (tAbs) ────────────────────────────
 //
-// calculateDuration() above (and therefore avg_speed/pause_frequency/
-// pause_duration_ratio) inherits a real limitation: because each stroke's
-// relative `t` resets to 0 at that stroke's own start, `calculateDuration()`
-// only ever reflects the LAST stroke's own elapsed time for a multi-stroke
-// attempt, not the true wall-clock span of the whole attempt. Every
-// captured point also carries `tAbs` (`Date.now()`, an absolute epoch-ms
-// timestamp that does NOT reset between strokes — verified monotonic
-// across strokes for real captured data). The functions below derive an
-// ML-safe duration/speed/pause-rate family from `tAbs` instead, WITHOUT
-// touching `calculateDuration()`/`calculateAverageSpeed()`/
-// `calculatePauseMetrics()` above, which remain exactly as they were for
-// backward compatibility with existing child-facing scoring and already-
-// stored `duration_ms`/`avg_speed`/`pause_frequency`/`pause_duration_ratio`
-// values.
+// calculateDuration() above, and therefore avg_speed, pause_frequency and
+// pause_duration_ratio, reflects only the LAST stroke's elapsed time for a
+// multi-stroke attempt (the per-stroke `t` clock resets). Every point also
+// carries `tAbs` (Date.now(), epoch ms), which does NOT reset between
+// strokes. The functions below derive duration, speed and pause rates from
+// `tAbs` instead. The functions above are left unchanged for backward
+// compatibility with existing scoring and already-stored values.
 
 /**
  * True wall-clock span of a (possibly multi-stroke) attempt, derived from
@@ -297,10 +272,9 @@ export function calculateAttemptDurationFromAbsoluteTime(strokes) {
 }
 
 /**
- * ML-safe average speed: total_distance / attempt_duration_ms. Kept
- * distinct from calculateAverageSpeed() (which divides by the legacy,
- * possibly-truncated calculateDuration()) — both are preserved side by
- * side (Part 3).
+ * Attempt-level average speed: total_distance / attempt_duration_ms. Kept
+ * separate from calculateAverageSpeed(), which divides by the legacy,
+ * possibly truncated calculateDuration().
  *
  * @param {number|null} totalDistance — the existing, within-stroke-only
  *   calculateTotalDistance() result; pen-up movement is never included.
@@ -315,12 +289,10 @@ export function calculateAttemptAverageSpeed(totalDistance, attemptDurationMs) {
 }
 
 /**
- * ML-safe pause-rate pair, using attempt_duration_ms as the denominator
- * instead of the legacy calculateDuration(). Takes the already-computed
- * pause_count/total_pause_duration_ms (from calculatePauseMetrics() —
- * the underlying >300ms, within-stroke-only pause DETECTION itself is
- * unchanged, only the rate/ratio denominator differs here) rather than
- * recomputing pause detection a second time.
+ * Attempt-level pause rates, using attempt_duration_ms as the denominator
+ * instead of the legacy calculateDuration(). Reuses pause_count and
+ * total_pause_duration_ms from calculatePauseMetrics() (same within-stroke
+ * detection, default threshold 300 ms); only the denominator differs.
  *
  * @param {number|null} pauseCount
  * @param {number|null} totalPauseDurationMs

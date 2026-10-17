@@ -1,21 +1,12 @@
 /**
  * Coordinate normalization for DTW handwriting scoring.
  *
- * Problem: DTW previously compared raw device-pixel coordinates. Templates
- * and child strokes were both sampled/captured in absolute canvas pixels,
- * which vary by screen size (letters) or aren't scaled to the canvas at all
- * (zigzag/curve_wave). Identical handwriting quality therefore produced
- * different dtw_distance values on different devices, and a child who wrote
- * a letter larger/smaller/shifted than the template was unfairly penalized
- * even when the *shape* was correct.
- *
- * Fix: before DTW runs, both the child path and the template path are each
- * independently translated to their own bounding-box origin and uniformly
- * scaled (aspect ratio preserved) so their larger bounding-box dimension
- * maps to NORMALIZED_SIZE. This removes device/canvas-size and
- * position/size differences while still penalizing genuine shape errors
- * (stretching x and y independently would hide those, so scaling is
- * uniform, not per-axis).
+ * Before DTW runs, the child path and the template path are each translated
+ * to their own bounding-box origin and scaled uniformly (aspect ratio
+ * preserved) so their larger bounding-box dimension maps to NORMALIZED_SIZE.
+ * This removes device/canvas size, position and overall letter size from
+ * dtw_distance. Scaling is uniform, not per-axis: stretching x and y
+ * independently would hide genuine shape errors.
  *
  * NORMALIZATION_VERSION is bumped whenever this method changes, so stored
  * dtw_distance values can be grouped by which normalization produced them.
@@ -61,10 +52,11 @@ export function normalizeStrokesForDTW(strokes, targetSize = NORMALIZED_SIZE) {
   const width = maxX - minX;
   const height = maxY - minY;
   const span = Math.max(width, height);
-  // Degenerate bbox (single point, or a perfectly straight line along one
-  // axis with zero extent on the other): fall back to scale 1 rather than
-  // dividing by zero. The resulting distance against a non-degenerate
-  // template will still be a real (large) number, never a fabricated 0.
+  // Degenerate bbox (all points coincide, so both width and height are ~0):
+  // fall back to scale 1 rather than dividing by zero. A straight line along
+  // one axis still has a non-zero span and is scaled normally. The resulting
+  // distance against a non-degenerate template is still a real (large)
+  // number, never a fabricated 0.
   const scale = span > 1e-6 ? targetSize / span : 1;
 
   return strokes.map(stroke => {

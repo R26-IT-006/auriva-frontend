@@ -4,6 +4,7 @@ export { NORMALIZATION_VERSION };
 
 /**
  * Dynamic Time Warping — pure JavaScript, no dependencies.
+ * Warps the time axis, so differences in writing speed are tolerated.
  *
  * Complexity: O(n × m) time and space, where n = child points, m = template points.
  * Typical call: 60 template × ≤500 child = 30,000 cells — well under 1 ms on a
@@ -147,31 +148,31 @@ export function sampleSmoothPath(pathOrWaypoints, numSamples = 60, canvasW, canv
 // Penalty added per unmatched stroke (child has fewer or more strokes than
 // the template).  Units: normalizedDistance in the normalized 0-100
 // coordinate space (dtw_norm_v1 — see dtwNormalization.js), NOT raw pixels.
-// The final multi-stroke score averages per-stroke costs over
-// templateStrokeCount, so the penalty must be large enough that
-//   penalty / maxTemplateStrokes  >  DTW_CORRECT_THRESHOLD (currently 22).
-// 55 / 2 = 27.5 > 22, guaranteeing a missing stroke fails the gate even when
-// the matched stroke is perfect. Recalibrate alongside DTW_CORRECT_THRESHOLD
-// once real collection-day data is available.
+// The final multi-stroke score averages costs over templateStrokeCount, so a
+// missing stroke adds 55 / templateStrokeCount. With DTW_CORRECT_THRESHOLD = 22
+// that guarantees a fail only for 2-stroke templates (55 / 2 = 27.5). It does
+// NOT for 3-stroke templates (55 / 3 ≈ 18.3, e.g. lowercase k) or 4-stroke
+// templates (55 / 4 = 13.75, e.g. uppercase M): there, a missing stroke with
+// otherwise perfect strokes can still pass the DTW gate. Known limitation;
+// recalibrate together with DTW_CORRECT_THRESHOLD.
 const UNMATCHED_STROKE_PENALTY = 55;
 
 // Small penalty added when the child draws a multi-stroke letter's strokes
 // in a different order than the template (e.g. crossing the 't' before
 // drawing the vertical stroke). Deliberately small — stroke order is a
-// secondary signal, not a hard failure, so it nudges the score without
-// being able to fail an otherwise-correct attempt on its own (well under
-// DTW_CORRECT_THRESHOLD).
+// secondary signal. It cannot fail an attempt by itself (5 < 22), but it can
+// push a borderline attempt over DTW_CORRECT_THRESHOLD.
 const STROKE_ORDER_PENALTY = 5;
 
 /**
- * Order-invariant DTW for multi-stroke letters.
+ * Multi-stroke DTW with order-invariant stroke assignment.
  *
- * Single-stroke template → delegates to the existing concatenated computeDTW
- * (behaviour is byte-identical to the old code path).
+ * Single-stroke template → computeDTW on the concatenated, normalized path.
  *
  * Multi-stroke template → samples each template stroke independently, then
- * does optimal bipartite matching between child strokes and template strokes
- * so the child can draw them in any order without penalty.
+ * finds the optimal bipartite matching between child and template strokes,
+ * so geometry is compared regardless of drawing order. If the child's order
+ * differs from the template's, STROKE_ORDER_PENALTY (+5) is added.
  *
  * @param {Array}  templatePath   — raw LETTER_PATHS entry (single or multi)
  * @param {Array<Array<{x,y}>>} childStrokes — allPathsRef.current (array of
