@@ -78,6 +78,10 @@ import {
   fetchLetterMotorEvaluations, resolveLetterMotorEvaluationStatus, METRIC_LABELS,
   LETTER_MOTOR_PATTERN_CAPTION,
 } from '../../../../utils/letterMotorState';
+import {
+  getLetterMotorFeatureDescription, isLegacyMilestoneResult,
+  LETTER_MOTOR_LEGACY_MILESTONE_NOTE, LETTER_MOTOR_TEACHER_GUIDANCE, LETTER_MOTOR_PILOT_LIMITATION,
+} from '../../../../utils/letterMotorPatternLabels';
 // Proposal FR-19/FR-20, Phase 7C/7D — periodic report (flexible date
 // ranges) + real PDF export/share. Additive section only — every existing
 // section below (current-state Feature 8/9/10/11, family thresholds,
@@ -2540,7 +2544,9 @@ function LetterMotorMetricTiles({ smoothness, dtw, speedCv }) {
         <MetricTile icon="git-compare-outline" label={METRIC_LABELS.dtw.label}        value={fmt(dtw)} />
         <MetricTile icon="speedometer-outline" label={METRIC_LABELS.speedCv.label}    value={fmt(speedCv)} />
       </View>
-      <Text style={f11.metricCaption}>{METRIC_LABELS.dtw.caption} · {METRIC_LABELS.speedCv.caption}</Text>
+      <Text style={f11.metricCaption}>
+        {METRIC_LABELS.dtw.caption} {METRIC_LABELS.speedCv.caption} {METRIC_LABELS.smoothness.caption}
+      </Text>
     </View>
   );
 }
@@ -3486,6 +3492,11 @@ function LetterMotorDevelopmentCard({ latest, history, trend, evaluations }) {
   // latest.status === 'found' — a persisted state exists (14/20 or later).
   if (latest.status === 'found') {
     const currentState = latest.state;
+    const featureDescription = getLetterMotorFeatureDescription({
+      stateCode: currentState.stateCode,
+      modelVersion: currentState.modelVersion,
+      milestone: currentState.milestone,
+    });
     return (
       <SectionCard title="Letter Motor Patterns" icon="trending-up" accentColor="#0891B2">
         <View style={{ gap: 14 }}>
@@ -3505,6 +3516,17 @@ function LetterMotorDevelopmentCard({ latest, history, trend, evaluations }) {
           {/* Always rendered next to a pattern label so the label can never
               be read as a ranking, a severity level or a stage. */}
           <Text style={f11.patternCaption}>{LETTER_MOTOR_PATTERN_CAPTION}</Text>
+
+          {featureDescription ? (
+            <View style={{ gap: 4 }}>
+              <Text style={f11.historyMilestone}>{featureDescription.summary}</Text>
+              <Text style={f11.notReportedText}>{featureDescription.explanation}</Text>
+              <Text style={f11.notReportedText}>{LETTER_MOTOR_TEACHER_GUIDANCE}</Text>
+              <Text style={f11.patternCaption}>{LETTER_MOTOR_PILOT_LIMITATION}</Text>
+            </View>
+          ) : isLegacyMilestoneResult(currentState.milestone) ? (
+            <Text style={f11.patternCaption}>{LETTER_MOTOR_LEGACY_MILESTONE_NOTE}</Text>
+          ) : null}
 
           <CoverageBadge coverageN={currentState.coverageN} />
 

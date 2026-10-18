@@ -97,15 +97,15 @@ const YOURE_WELCOME_VIDEOS = [
 const EXCUSE_ME_VIDEOS = [
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/excuse_me/excuse-me_V1.mp4'),
-    caption: 'Saman needs to pass by Anjalie.\nHe says "Excuse me"',
+    caption: 'Saman makes a big noise next to Anjalie.\nHe says "Excuse me"',
   },
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/excuse_me/excuse-me_V2.mp4'),
-    caption: 'Anjalie is walking through a crowd.\nShe says "Excuse me"',
+    caption: 'Saman knocks into his mom accidentally.\nHe says "Excuse me"',
   },
   {
     source:  require('../../../../../assets/dialogue-videos/words/magic_words/excuse_me/excuse-me_V3.mp4'),
-    caption: 'Saman needs to reach something behind Anjalie.\nHe says "Excuse me"',
+    caption: 'Saman bumps into his dad.\nHe says "Excuse me"',
   },
 ];
 

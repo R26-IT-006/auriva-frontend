@@ -84,9 +84,9 @@ const WORD_VIDEOS = {
     { source: require('../../../../../assets/dialogue-videos/words/greetings/good_night/Good-night_V3.mp4'), caption: 'Saman calls his grandma before bed.\nHe says "Good Night"' },
   ],
   happy_birthday: [
-    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_birthday/happy-birthday_V1.mp4'), caption: 'It is Anjalie\'s birthday!\nSaman gives her a card and says "Happy Birthday"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_birthday/happy-birthday_V1.mp4'), caption: 'It is Anjalie\'s birthday!\nSaman gives her a present and says "Happy Birthday"' },
     { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_birthday/happy-birthday_V2.mp4'), caption: 'Anjalie\'s friends surprise her.\nThey all say "Happy Birthday"' },
-    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_birthday/happy-birthday_V3.mp4'), caption: 'The class sings for Saman on his birthday.\nThey say "Happy Birthday"' },
+    { source: require('../../../../../assets/dialogue-videos/words/greetings/happy_birthday/happy-birthday_V3.mp4'), caption: 'Saman sings Happy Birthday for Anjalie on her birthday.\nHe says "Happy Birthday"' },
   ],
   how_are_you: [
     { source: require('../../../../../assets/dialogue-videos/words/greetings/how_are_you/how-are-you_V1.mp4'), caption: 'Saman meets Anjalie on the way to school.\nHe asks "How Are You?"' },

@@ -178,8 +178,8 @@ describe('Coverage is presented as an evidence count, never a confidence percent
 
 describe('DTW and Speed CV direction semantics are represented correctly', () => {
   it('METRIC_LABELS captions state "lower = ..." for both dtw and speedCv (see letterMotorState.test.js for the full assertion)', () => {
-    expect(letterMotorUtil).toMatch(/dtw:\s*\{[\s\S]*?caption:\s*'Lower value = closer path match'/);
-    expect(letterMotorUtil).toMatch(/speedCv:\s*\{[\s\S]*?caption:\s*'Lower value = more consistent speed'/);
+    expect(letterMotorUtil).toMatch(/dtw:\s*\{[\s\S]*?caption:\s*'Lower means a closer match to the reference shape\.'/);
+    expect(letterMotorUtil).toMatch(/speedCv:\s*\{[\s\S]*?caption:\s*'Lower means more even writing speed\.'/);
   });
 
   it('LetterMotorMetricTiles renders both captions, never a red/green color based on the value', () => {

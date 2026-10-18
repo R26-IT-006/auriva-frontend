@@ -108,9 +108,9 @@ export function formatMilestoneLabel(milestone) {
 // red/green judgement, never compared across measurements automatically.
 
 export const METRIC_LABELS = Object.freeze({
-  smoothness: { label: 'Writing Smoothness',    caption: null },
-  dtw:        { label: 'Trajectory Similarity', caption: 'Lower value = closer path match' },
-  speedCv:    { label: 'Speed Consistency',     caption: 'Lower value = more consistent speed' },
+  smoothness: { label: 'Writing Smoothness',             caption: 'Higher means fewer sharp direction changes.' },
+  dtw:        { label: 'Path Difference from Reference', caption: 'Lower means a closer match to the reference shape.' },
+  speedCv:    { label: 'Writing Speed Variation',        caption: 'Lower means more even writing speed.' },
 });
 
 const FAILSAFE_LATEST  = Object.freeze({ status: 'unavailable', state: null });

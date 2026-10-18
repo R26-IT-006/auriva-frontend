@@ -79,3 +79,45 @@ describe('module stays dependency-free', () => {
     expect(source).not.toMatch(/require\(/);
   });
 });
+
+describe('Letter V1 feature descriptions', () => {
+  const {
+    getLetterMotorFeatureDescription, isLegacyMilestoneResult,
+    LETTER_MOTOR_LEGACY_MILESTONE_NOTE,
+  } = require('./letterMotorPatternLabels');
+  const v1 = 'letter_motor_cluster_v1';
+
+  it('describes Pattern A and B only for a Writing Check result on the v1 model', () => {
+    expect(getLetterMotorFeatureDescription({ stateCode: 'LETTER_STATE_A', modelVersion: v1, milestone: 'WRITING_CHECK' }))
+      .toEqual({
+        summary: 'Closer letter-shape matching in the pilot reference data.',
+        explanation: 'This pattern is associated with letter strokes that follow the reference shapes more closely than those in Pattern B.',
+      });
+    expect(getLetterMotorFeatureDescription({ stateCode: 'LETTER_STATE_B', modelVersion: v1, milestone: 'WRITING_CHECK' }))
+      .toEqual({
+        summary: 'Greater letter-shape differences in the pilot reference data.',
+        explanation: 'This pattern is associated with letter strokes that differ more from the reference shapes than those in Pattern A.',
+      });
+  });
+
+  it('returns null for legacy milestones, other models, unknown sources and unknown codes', () => {
+    for (const milestone of ['UPPERCASE_STRAIGHT_14', 'UPPERCASE_CURVED_17', 'FULL_REFERENCE_20', null, undefined, 'SOMETHING_NEW']) {
+      expect(getLetterMotorFeatureDescription({ stateCode: 'LETTER_STATE_A', modelVersion: v1, milestone })).toBeNull();
+    }
+    expect(getLetterMotorFeatureDescription({ stateCode: 'LETTER_STATE_A', modelVersion: 'letter_motor_cluster_v2', milestone: 'WRITING_CHECK' })).toBeNull();
+    expect(getLetterMotorFeatureDescription({ stateCode: 'LETTER_STATE_A', modelVersion: null, milestone: 'WRITING_CHECK' })).toBeNull();
+    expect(getLetterMotorFeatureDescription({ stateCode: 'LETTER_STATE_C', modelVersion: v1, milestone: 'WRITING_CHECK' })).toBeNull();
+    expect(getLetterMotorFeatureDescription({ stateCode: null, modelVersion: v1, milestone: 'WRITING_CHECK' })).toBeNull();
+    expect(getLetterMotorFeatureDescription()).toBeNull();
+  });
+
+  it('flags only 14/17/20 as legacy and carries the approved note', () => {
+    expect(isLegacyMilestoneResult('UPPERCASE_STRAIGHT_14')).toBe(true);
+    expect(isLegacyMilestoneResult('FULL_REFERENCE_20')).toBe(true);
+    expect(isLegacyMilestoneResult('WRITING_CHECK')).toBe(false);
+    expect(isLegacyMilestoneResult(null)).toBe(false);
+    expect(LETTER_MOTOR_LEGACY_MILESTONE_NOTE).toBe(
+      'Historical practice-based grouping. This result uses different writing conditions from the controlled Writing Check and should not be interpreted as an equivalent assessment.'
+    );
+  });
+});

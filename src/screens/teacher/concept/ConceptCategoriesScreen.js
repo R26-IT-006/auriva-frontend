@@ -23,9 +23,14 @@ import HeaderPillButton from '../../../components/common/HeaderPillButton';
 import { BACK_BUTTON, BACK_ICON_SIZE } from '../../../constants/backButton';
 import { rs, rf } from '../../../utils/responsive';
 
+// Categories temporarily left off the grid. Only the card is hidden: the catalogue
+// entry, its concepts and the backend logic stay intact, so removing the key from
+// this set brings the category back.
+const HIDDEN_CATEGORIES = new Set(['nature']);
+
 // Derived from the catalogue rather than listed here, so the grid can never offer a
 // category that has no concepts behind it.
-const CATEGORIES = getOrderedCategories();
+const CATEGORIES = getOrderedCategories().filter((c) => !HIDDEN_CATEGORIES.has(c.key));
 
 function CategoryCard({ item, cardW, cardH, theme, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;

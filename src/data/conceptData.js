@@ -153,7 +153,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:      'pineapple',
         label:    'Pineapple',
-        labelSi:  'අන්නාස්',
+        labelSi:  'අන්නාසි්',
         sortColor: 'yellow',
         icon:     require('../../assets/concepts/categories/Fruits/Fruits_Icons/pineapple.png'),
         real:     require('../../assets/concepts/categories/Fruits/Pineapple/Pineapple_Real.png'),
@@ -193,7 +193,7 @@ export const CONCEPT_CATEGORIES = {
         label:    'Baker',
         labelSi:  'බේකර්',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/baker.png'),
-        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/baker.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Baker/Baker_Real.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Baker/Baker_Coloring.png'),
       },
       {
@@ -201,7 +201,7 @@ export const CONCEPT_CATEGORIES = {
         label:    'Carpenter',
         labelSi:  'වඩුවා',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/carpenter.png'),
-        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/carpenter.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Carpenter/Carpenter_Real.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Carpenter/Carpenter_Coloring.png'),
       },
       {
@@ -209,7 +209,7 @@ export const CONCEPT_CATEGORIES = {
         label:    'Cashier',
         labelSi:  'මුදල් භාරකරු',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/cashier.png'),
-        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/cashier.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Cashier/Cashier_Real.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Cashier/Cashier_Coloring.png'),
       },
       {
@@ -217,7 +217,7 @@ export const CONCEPT_CATEGORIES = {
         label:    'Doctor',
         labelSi:  'වෛද්‍යවරයා',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/doctor.png'),
-        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/doctor.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Doctor/Doctor_Real.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Doctor/Doctor_Coloring.png'),
       },
       {
@@ -225,7 +225,7 @@ export const CONCEPT_CATEGORIES = {
         label:    'Farmer',
         labelSi:  'ගොවියා',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/farmer.png'),
-        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/farmer.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Farmer/Farmer_Real.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Farmer/Farmer_Coloring.png'),
       },
       {
@@ -233,7 +233,7 @@ export const CONCEPT_CATEGORIES = {
         label:    'Nurse',
         labelSi:  'හෙදිය',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/nurse.png'),
-        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/nurse.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Nurse/Nurse_Real.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Nurse/Nurse_Coloring.png'),
       },
       {
@@ -241,7 +241,7 @@ export const CONCEPT_CATEGORIES = {
         label:    'Principal',
         labelSi:  'විදුහල්පති',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/principal.png'),
-        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/principal.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Principal/Principal_Real.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Principal/Principal_Coloring.png'),
       },
       {
@@ -249,7 +249,7 @@ export const CONCEPT_CATEGORIES = {
         label:    'Teacher',
         labelSi:  'ගුරුවරයා',
         icon:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/teacher.png'),
-        real:     require('../../assets/concepts/categories/Professionals/Professionals_Icons/teacher.png'),
+        real:     require('../../assets/concepts/categories/Professionals/Teacher/Teacher_Real.png'),
         coloring: require('../../assets/concepts/categories/Professionals/Teacher/Teacher_Coloring.png'),
       },
     ],
@@ -360,7 +360,7 @@ export const CONCEPT_CATEGORIES = {
       {
         key:        'hen',
         label:      'Hen',
-        labelSi:    'කිකිළිය',
+        labelSi:    'කිකිළි',
         icon:       require('../../assets/concepts/categories/Animals/Animals_Icons/hen.png'),
         real:       require('../../assets/concepts/categories/Animals/Hen/Hen_Real.png'),
         tier3Video: require('../../assets/concepts/Tier3_videos/Animals/Hen.mp4'),

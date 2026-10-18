@@ -44,6 +44,64 @@ export const LETTER_MOTOR_PATTERN_FALLBACK = 'Letter Motor Pattern';
 export const LETTER_MOTOR_PATTERN_CAPTION =
   'Pattern labels are descriptive categories and do not indicate severity or progression.';
 
+// ─── Plain-language descriptions of the Letter V1 patterns ─────────────────
+//
+// Feature-based wording, valid ONLY for letter_motor_cluster_v1 and ONLY for
+// a result from the controlled Writing Check (milestone WRITING_CHECK). The
+// historical 14/17/20 practice-based groupings were collected under different
+// writing conditions, so they get a note instead of a description.
+
+export const LETTER_MOTOR_V1_MODEL_VERSION = 'letter_motor_cluster_v1';
+export const LETTER_MOTOR_WRITING_CHECK_MILESTONE = 'WRITING_CHECK';
+export const LETTER_MOTOR_LEGACY_MILESTONES = Object.freeze([
+  'UPPERCASE_STRAIGHT_14',
+  'UPPERCASE_CURVED_17',
+  'FULL_REFERENCE_20',
+]);
+
+export const LETTER_MOTOR_V1_DESCRIPTIONS = Object.freeze({
+  LETTER_STATE_A: Object.freeze({
+    summary: 'Closer letter-shape matching in the pilot reference data.',
+    explanation:
+      'This pattern is associated with letter strokes that follow the reference shapes more closely than those in Pattern B.',
+  }),
+  LETTER_STATE_B: Object.freeze({
+    summary: 'Greater letter-shape differences in the pilot reference data.',
+    explanation:
+      'This pattern is associated with letter strokes that differ more from the reference shapes than those in Pattern A.',
+  }),
+});
+
+export const LETTER_MOTOR_LEGACY_MILESTONE_NOTE =
+  'Historical practice-based grouping. This result uses different writing conditions from the controlled '
+  + 'Writing Check and should not be interpreted as an equivalent assessment.';
+
+export const LETTER_MOTOR_TEACHER_GUIDANCE =
+  'Review letter formation, stroke paths and classroom writing samples alongside this result.';
+
+export const LETTER_MOTOR_PILOT_LIMITATION =
+  'This exploratory pattern is based on a seven-participant pilot dataset. It does not diagnose a '
+  + 'condition or independently measure writing ability or progress.';
+
+/**
+ * Feature-based description for one assigned result, or null when it must not
+ * be shown (other model version, legacy milestone, unknown source, unknown code).
+ *
+ * @param {{stateCode?: *, modelVersion?: *, milestone?: *}} result
+ * @returns {{summary: string, explanation: string}|null}
+ */
+export function getLetterMotorFeatureDescription({ stateCode, modelVersion, milestone } = {}) {
+  if (modelVersion !== LETTER_MOTOR_V1_MODEL_VERSION) return null;
+  if (milestone !== LETTER_MOTOR_WRITING_CHECK_MILESTONE) return null;
+  if (typeof stateCode !== 'string') return null;
+  return LETTER_MOTOR_V1_DESCRIPTIONS[stateCode] ?? null;
+}
+
+/** True for a result from the legacy normal-practice 14/17/20 milestones. */
+export function isLegacyMilestoneResult(milestone) {
+  return LETTER_MOTOR_LEGACY_MILESTONES.includes(milestone);
+}
+
 // ─── S2 — teacher-facing copy for the four evaluation states ───────────────
 //
 // Defined once and shared by TeacherReportScreen, PeriodicReportSection and

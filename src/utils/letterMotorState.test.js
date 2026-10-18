@@ -51,8 +51,11 @@ describe('research-safe labels', () => {
 
   it('METRIC_LABELS never uses good/bad/high/low language, and captions direction only for dtw/speedCv', () => {
     expect(METRIC_LABELS.smoothness.label).toBe('Writing Smoothness');
-    expect(METRIC_LABELS.dtw.label).toBe('Trajectory Similarity');
-    expect(METRIC_LABELS.speedCv.label).toBe('Speed Consistency');
+    expect(METRIC_LABELS.dtw.label).toBe('Path Difference from Reference');
+    expect(METRIC_LABELS.speedCv.label).toBe('Writing Speed Variation');
+    expect(METRIC_LABELS.dtw.caption).toBe('Lower means a closer match to the reference shape.');
+    expect(METRIC_LABELS.speedCv.caption).toBe('Lower means more even writing speed.');
+    expect(METRIC_LABELS.smoothness.caption).toBe('Higher means fewer sharp direction changes.');
     expect(METRIC_LABELS.dtw.caption).toMatch(/lower/i);
     expect(METRIC_LABELS.speedCv.caption).toMatch(/lower/i);
     for (const key of Object.keys(METRIC_LABELS)) {

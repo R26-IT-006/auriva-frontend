@@ -69,12 +69,6 @@ function voteShareLabel(confidence) {
   return 'weakly leaning this way';
 }
 
-/** Always rendered under every Tier 1 breakdown — never behind a disclosure. */
-const TIER1_PLACEHOLDER_WEIGHTS_FOOTER =
-  'These weights are literature-informed placeholders. They have not been '
-  + 'derived from this cohort’s own data, so treat the balance between the '
-  + 'terms as provisional.';
-
 const CATEGORY_LABEL = {
   greetings:   'Greetings',
   magic_words: 'Magic words',
@@ -233,7 +227,6 @@ function Tier1Breakdown({ explanation, wide }) {
     return (
       <View>
         <Text style={styles.muted}>No breakdown available for this word.</Text>
-        <Text style={styles.disclaimer}>{TIER1_PLACEHOLDER_WEIGHTS_FOOTER}</Text>
       </View>
     );
   }
@@ -268,9 +261,6 @@ function Tier1Breakdown({ explanation, wide }) {
           {' '}terms count for more here than their usual share.
         </Text>
       )}
-
-      {/* Always visible, never gated (AC12). */}
-      <Text style={styles.disclaimer}>{TIER1_PLACEHOLDER_WEIGHTS_FOOTER}</Text>
     </View>
   );
 }
@@ -795,15 +785,6 @@ export default function TrajectoryReportScreen({ route, navigation }) {
             <Text style={styles.hintText}>{printError}</Text>
           </View>
         ) : null}
-
-        {/* DEC-07 — mandatory reliability caveat, placed immediately under the
-            overview so it is on screen before any Tier 2 result can be read. */}
-        {totals.tier2 > 0 && (
-          <View style={styles.hint}>
-            <Ionicons name="information-circle-outline" size={16} color="#B4780A" />
-            <Text style={styles.hintText}>{TIER2_RELIABILITY_CAVEAT}</Text>
-          </View>
-        )}
 
         {totals.words_predicted === 0 && (
           <View style={styles.hint}>

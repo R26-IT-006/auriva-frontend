@@ -220,7 +220,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/im_fine/correct_context2.jpg'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/correct_context2.jpg'),
       },
-      captions: { correct: 'Saying goodnight\nto parents', wrong1: 'Telling teacher\nyou\'re feeling well', wrong2: 'Fireworks on\nNew Year\'s Eve' },
+      captions: { correct: 'Saying goodnight\nto parents', wrong1: 'Telling teacher\nyou\'re feeling well', wrong2: 'Greeting gramdma on\nNew Year\'s Eve' },
     },
     C: {
       images: {
@@ -228,7 +228,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context3.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/correct_context3.png'),
       },
-      captions: { correct: 'Turning off the light\nbefore sleeping', wrong1: 'Waving hello\nto a neighbour', wrong2: 'Saying goodbye\nto grandma' },
+      captions: { correct: 'Turning off the light\nbefore sleeping', wrong1: 'Waving hello\nto a neighbour', wrong2: 'Saying goodbye\nto teacher' },
     },
     checkpoint: {
       images: {
@@ -256,7 +256,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/happy_new_year/correct_context2.jpg'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/hello/correct_context2.png'),
       },
-      captions: { correct: 'Giving a birthday\ncard to a friend', wrong1: 'Fireworks on\nNew Year\'s Eve', wrong2: 'Meeting a teacher\nat school' },
+      captions: { correct: 'Giving a birthday\ncard to a friend', wrong1: 'Greeting grandma on\nNew Year\'s Eve', wrong2: 'Meeting a teacher\nat school' },
     },
     C: {
       images: {
@@ -264,7 +264,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/greetings/goodbye/correct_context3.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/greetings/good_morning/correct_context3.png'),
       },
-      captions: { correct: 'Everyone singing\nfor the birthday person', wrong1: 'Saying goodbye\nto grandma', wrong2: 'Morning greeting\nat the park' },
+      captions: { correct: 'Everyone singing\nfor the birthday person', wrong1: 'Saying goodbye\nto teacher', wrong2: 'Morning greeting\nat home to mom' },
     },
     checkpoint: {
       images: {

@@ -167,7 +167,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
-      captions: { correct: 'Saman needs to\npass by Anjalie', wrong1: 'They are laughing\ntogether', wrong2: 'Saman is eating\nlunch' },
+      captions: { correct: 'Saman accidently draws on\nAnjalie\'s paper', wrong1: 'Saman is eating\nbreakfast', wrong2: 'Saman is \ncrying' },
     },
     B: {
       images: {
@@ -175,7 +175,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
       },
-      captions: { correct: 'Anjalie walks through\na crowd', wrong1: 'Saman is reading\na book', wrong2: 'They are drawing\ntogether' },
+      captions: { correct: 'Saman needs to reach\na book', wrong1: 'Saman is \ncrying', wrong2: 'Saman is eating\nlunch' },
     },
     C: {
       images: {
@@ -183,7 +183,7 @@ const PHASE3_SCENARIOS = {
         wrong1:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong1.png'),
         wrong2:  require('../../../../../assets/dialogue-images/words/magic_words/thank_you/context_wrong2.png'),
       },
-      captions: { correct: 'Saman needs to reach\nsomething behind Anjalie', wrong1: 'They are laughing\ntogether', wrong2: 'They are drawing\ntogether' },
+      captions: { correct: 'Anjalie needs to talk\nto her sister', wrong1: 'Saman is eating\nbreakfast', wrong2: 'Saman is\ncrying' },
     },
     checkpoint: {
       images: {
